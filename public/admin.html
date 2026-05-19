@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - ExSol</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <h1>Admin Dashboard</h1>
+        <div class="spacer"></div>
+        <span class="badge badge--admin" id="admin-email"></span>
+        <button id="signout">Sign out</button>
+      </div>
+
+      <div class="row" style="margin-top: 1rem;">
+        <h2>Clients</h2>
+        <div class="spacer"></div>
+        <button class="primary" id="add-client">+ Add Client</button>
+      </div>
+
+      <div id="workspace-list">Loading...</div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <script type="module">
+      import { fetchMe, getJSON, postJSON, signOut } from '/assets/js/api.js';
+      import { renderImpersonationBanner } from '/assets/js/banner.js';
+
+      const errorBox = document.getElementById('error');
+      function showError(msg) { errorBox.textContent = msg; }
+      function clearError() { errorBox.textContent = ''; }
+
+      const me = await fetchMe();
+      if (!me.user) { window.location.href = '/login.html'; }
+      else if (!me.user.isAdmin) { window.location.href = '/me.html'; }
+      document.getElementById('admin-email').textContent = me.user.email;
+      renderImpersonationBanner(me.impersonation);
+
+      document.getElementById('signout').addEventListener('click', async () => {
+        await signOut();
+        window.location.href = '/login.html';
+      });
+
+      const listEl = document.getElementById('workspace-list');
+
+      async function loadList() {
+        listEl.replaceChildren(document.createTextNode('Loading...'));
+        const data = await getJSON('/api/admin/workspaces');
+        const workspaces = data.workspaces || [];
+        if (workspaces.length === 0) {
+          listEl.replaceChildren();
+          const p = document.createElement('p');
+          p.className = 'muted';
+          p.textContent = 'No clients yet. Click "Add Client" to onboard your first one.';
+          listEl.append(p);
+          return;
+        }
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        ['Name', 'Primary', 'Products', 'Members', 'Status', ''].forEach((h) => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          trh.append(th);
+        });
+        thead.append(trh);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        for (const w of workspaces) {
+          const tr = document.createElement('tr');
+          const td = (text) => { const c = document.createElement('td'); c.textContent = text; return c; };
+          tr.append(td(w.name));
+          tr.append(td(`${w.primary_name || w.primary_email} <${w.primary_email}>`));
+          tr.append(td(String(w.product_count ?? 0)));
+          tr.append(td(String(w.member_count ?? 0)));
+          const stTd = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = `badge badge--${w.unlocked ? 'unlocked' : 'locked'}`;
+          badge.textContent = w.unlocked ? 'Unlocked' : 'Locked';
+          stTd.append(badge);
+          tr.append(stTd);
+          const aTd = document.createElement('td');
+          const view = document.createElement('button');
+          view.textContent = 'View';
+          view.addEventListener('click', () => {
+            window.location.href = `/admin-workspace.html?id=${encodeURIComponent(w.id)}`;
+          });
+          aTd.append(view);
+          tr.append(aTd);
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        listEl.replaceChildren(table);
+      }
+
+      document.getElementById('add-client').addEventListener('click', () => {
+        clearError();
+        openAddClientModal();
+      });
+
+      function openAddClientModal() {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop';
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        backdrop.append(modal);
+
+        const h = document.createElement('h2');
+        h.textContent = 'Onboard a new Client';
+        modal.append(h);
+
+        const form = document.createElement('form');
+        form.id = 'add-client-form';
+
+        const mk = (label, name, type = 'text', required = true) => {
+          const wrap = document.createElement('label');
+          wrap.textContent = label;
+          const inp = document.createElement('input');
+          inp.type = type; inp.name = name; inp.required = required;
+          wrap.append(inp);
+          form.append(wrap);
+          return inp;
+        };
+        mk('Workspace name (e.g. "Acme Stores")', 'workspaceName');
+        mk('Primary user email', 'primaryEmail', 'email');
+        mk('Primary user name (optional)', 'primaryName', 'text', false);
+
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const submit = document.createElement('button');
+        submit.type = 'submit'; submit.className = 'primary'; submit.textContent = 'Create';
+        const cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.textContent = 'Cancel';
+        row.append(submit, cancel);
+        form.append(row);
+
+        const formError = document.createElement('div');
+        formError.className = 'error';
+        form.append(formError);
+
+        modal.append(form);
+        document.body.append(backdrop);
+
+        cancel.addEventListener('click', () => backdrop.remove());
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          formError.textContent = '';
+          submit.disabled = true;
+          const body = {
+            workspaceName: form.workspaceName.value.trim(),
+            primaryEmail: form.primaryEmail.value.trim(),
+            primaryName: form.primaryName.value.trim() || undefined,
+          };
+          const { ok, data } = await postJSON('/api/admin/workspaces', body);
+          submit.disabled = false;
+          if (!ok) {
+            formError.textContent = data.error || 'Failed';
+            return;
+          }
+          backdrop.remove();
+          showAccessKeyModal(data.accessKey, body.workspaceName);
+          await loadList();
+        });
+      }
+
+      function showAccessKeyModal(key, workspaceName) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop';
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        backdrop.append(modal);
+
+        const h = document.createElement('h2');
+        h.textContent = `Access key for ${workspaceName}`;
+        modal.append(h);
+
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = 'Share this 12-character key with the Primary user. They\'ll need it (and you will too) to unlock the workspace. It is shown only once.';
+        modal.append(p);
+
+        const display = document.createElement('div');
+        display.className = 'key-display';
+        display.textContent = key;
+        modal.append(display);
+
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const copy = document.createElement('button');
+        copy.textContent = 'Copy';
+        copy.addEventListener('click', async () => {
+          try { await navigator.clipboard.writeText(key); copy.textContent = 'Copied'; }
+          catch { /* clipboard not allowed */ }
+        });
+        const ack = document.createElement('button');
+        ack.className = 'primary';
+        ack.textContent = "I've saved the key";
+        ack.addEventListener('click', () => backdrop.remove());
+        row.append(copy, ack);
+        modal.append(row);
+
+        document.body.append(backdrop);
+      }
+
+      loadList();
+    </script>
+  </body>
+</html>

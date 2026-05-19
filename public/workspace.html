@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Products - ExSol</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container container--wide">
+      <div class="row">
+        <a id="back-link" href="/me.html">&larr; Back</a>
+        <div class="spacer"></div>
+        <span id="role-badge" class="badge"></span>
+        <button id="signout">Sign out</button>
+      </div>
+
+      <h1 id="ws-name">Loading...</h1>
+      <p class="muted" id="ws-meta"></p>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="toolbar">
+        <h2 style="margin:0">Products</h2>
+        <div class="spacer"></div>
+        <button id="add-product" class="primary">+ Add Product</button>
+      </div>
+
+      <div class="filters">
+        <label class="grow">Search
+          <input id="filter-search" type="search" placeholder="Name or SKU" />
+        </label>
+        <label>Status
+          <select id="filter-status">
+            <option value="">All</option>
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+        <label>Marketplace
+          <select id="filter-marketplace">
+            <option value="">All</option>
+            <option value="amazon">Amazon</option>
+            <option value="flipkart">Flipkart</option>
+            <option value="meta">Meta</option>
+            <option value="wa">WhatsApp Business</option>
+            <option value="rakuten">Rakuten</option>
+            <option value="aliexpress">AliExpress</option>
+            <option value="swiggy">Swiggy</option>
+            <option value="zomato">Zomato</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="products">Loading...</div>
+      <div class="error" id="error"></div>
+    </div>
+
+    <script type="module">
+      import { fetchMe, getJSON, postJSON, signOut } from '/assets/js/api.js';
+      import { renderImpersonationBanner } from '/assets/js/banner.js';
+
+      const params = new URLSearchParams(window.location.search);
+      const workspaceId = params.get('id');
+      if (!workspaceId) window.location.replace('/me.html');
+
+      const errorBox = document.getElementById('error');
+      const setError = (m) => { errorBox.textContent = m || ''; };
+
+      const me = await fetchMe();
+      if (!me.user) window.location.href = '/login.html';
+      renderImpersonationBanner(me.impersonation);
+
+      document.getElementById('signout').addEventListener('click', async () => {
+        await signOut(); window.location.href = '/login.html';
+      });
+
+      const backLink = document.getElementById('back-link');
+      backLink.href = me.user.isAdmin ? `/admin-workspace.html?id=${workspaceId}` : '/me.html';
+
+      const roleBadge = document.getElementById('role-badge');
+      if (me.user.isAdmin) {
+        roleBadge.textContent = me.impersonation && me.impersonation.workspaceId === workspaceId
+          ? `Impersonating ${me.impersonation.targetUserName}`
+          : 'Admin';
+        roleBadge.className = 'badge badge--admin';
+      } else {
+        const m = (me.memberships || []).find((m) => m.workspaceId === workspaceId);
+        if (m) {
+          roleBadge.textContent = m.role.charAt(0).toUpperCase() + m.role.slice(1);
+        }
+      }
+
+      function fmtPrice(p, cur = 'INR') {
+        if (cur === 'INR') return `₹${Number(p).toLocaleString('en-IN')}`;
+        return `${cur} ${Number(p).toLocaleString()}`;
+      }
+
+      function fmtRelative(d) {
+        const ms = Date.now() - new Date(d).getTime();
+        const mins = Math.round(ms / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.round(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.round(hrs / 24);
+        if (days < 30) return `${days}d ago`;
+        return new Date(d).toLocaleDateString();
+      }
+
+      async function loadWorkspaceMeta() {
+        if (me.user.isAdmin) {
+          const r = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceId)}`, { credentials: 'include' });
+          if (r.ok) {
+            const d = await r.json();
+            document.getElementById('ws-name').textContent = d.workspace.name;
+          }
+        } else {
+          const m = (me.memberships || []).find((m) => m.workspaceId === workspaceId);
+          if (m) document.getElementById('ws-name').textContent = m.workspaceName;
+        }
+      }
+
+      async function loadTiles() {
+        try {
+          const v = await getJSON(`/api/workspaces/${encodeURIComponent(workspaceId)}/stock/views`);
+          const tilesEl = document.getElementById('tiles');
+          tilesEl.replaceChildren();
+          const mk = (label, value, hint) => {
+            const t = document.createElement('div');
+            t.className = 'tile';
+            const l = document.createElement('div'); l.className = 'tile__label'; l.textContent = label;
+            const v = document.createElement('div'); v.className = 'tile__value'; v.textContent = value;
+            const h = document.createElement('div'); h.className = 'tile__hint'; h.textContent = hint;
+            t.append(l, v, h);
+            return t;
+          };
+          tilesEl.append(
+            mk('Low stock', String(v.lowStock.length), 'At or below threshold'),
+            mk('Dead stock', String(v.deadStock.length), 'No sales recently'),
+            mk('Fast movers', String(v.fastMovers.length), 'Most movement last 30d'),
+          );
+        } catch (err) {
+          // Stock views are non-critical; skip tile render on failure
+        }
+      }
+
+      let currentList = [];
+
+      async function loadProducts() {
+        const search = document.getElementById('filter-search').value.trim();
+        const status = document.getElementById('filter-status').value;
+        const marketplace = document.getElementById('filter-marketplace').value;
+        const qp = new URLSearchParams();
+        if (search) qp.set('search', search);
+        if (status) qp.set('status', status);
+        if (marketplace) qp.set('marketplace', marketplace);
+        qp.set('limit', '100');
+
+        const containerEl = document.getElementById('products');
+        containerEl.replaceChildren(document.createTextNode('Loading...'));
+        try {
+          const data = await getJSON(`/api/workspaces/${encodeURIComponent(workspaceId)}/products?${qp}`);
+          currentList = data.products;
+          renderProductTable(currentList, data.total);
+        } catch (err) {
+          containerEl.replaceChildren();
+          setError(err.message || 'Failed to load products');
+        }
+      }
+
+      function renderProductTable(products, total) {
+        const containerEl = document.getElementById('products');
+        containerEl.replaceChildren();
+
+        if (!products || products.length === 0) {
+          const p = document.createElement('p');
+          p.className = 'muted';
+          p.textContent = 'No products yet. Click "+ Add Product" to create your first one.';
+          containerEl.append(p);
+          return;
+        }
+
+        const summary = document.createElement('p');
+        summary.className = 'muted';
+        summary.textContent = `Showing ${products.length} of ${total}`;
+        containerEl.append(summary);
+
+        const table = document.createElement('table');
+        table.className = 'product-table';
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        ['', 'Name', 'SKU', 'Price', 'Stock', 'Status', 'Last updated', ''].forEach((h) => {
+          const th = document.createElement('th'); th.textContent = h; trh.append(th);
+        });
+        thead.append(trh);
+        table.append(thead);
+
+        const tbody = document.createElement('tbody');
+        for (const p of products) {
+          const tr = document.createElement('tr');
+          tr.className = 'product-row';
+          tr.addEventListener('click', () => {
+            window.location.href = `/product-edit.html?wsid=${workspaceId}&pid=${p.id}`;
+          });
+
+          const tdThumb = document.createElement('td');
+          const thumb = document.createElement('div');
+          thumb.className = 'product-thumb';
+          thumb.textContent = (p.sku || '?').slice(0, 2).toUpperCase();
+          tdThumb.append(thumb);
+          tr.append(tdThumb);
+
+          const td = (text) => { const c = document.createElement('td'); c.textContent = text; return c; };
+          tr.append(td(p.name));
+          tr.append(td(p.sku));
+          tr.append(td(fmtPrice(p.price, p.currency)));
+          tr.append(td(`${p.stockCount} ${p.stockUnit || ''}`));
+
+          const tdStatus = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = p.status;
+          tdStatus.append(badge);
+          tr.append(tdStatus);
+
+          tr.append(td(fmtRelative(p.updatedAt)));
+
+          const tdAct = document.createElement('td');
+          const editBtn = document.createElement('button');
+          editBtn.textContent = 'Edit';
+          editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.location.href = `/product-edit.html?wsid=${workspaceId}&pid=${p.id}`;
+          });
+          tdAct.append(editBtn);
+          tr.append(tdAct);
+
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        containerEl.append(table);
+      }
+
+      document.getElementById('add-product').addEventListener('click', () => {
+        window.location.href = `/product-edit.html?wsid=${workspaceId}`;
+      });
+
+      let searchTimeout;
+      document.getElementById('filter-search').addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadProducts, 250);
+      });
+      document.getElementById('filter-status').addEventListener('change', loadProducts);
+      document.getElementById('filter-marketplace').addEventListener('change', loadProducts);
+
+      await loadWorkspaceMeta();
+      await loadTiles();
+      await loadProducts();
+    </script>
+  </body>
+</html>

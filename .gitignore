@@ -1,0 +1,20 @@
+node_modules/
+.netlify/
+.env
+.env.local
+.env.*.local
+dist/
+.vitest-cache/
+coverage/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
+
+# Local agent / scratch state
+.claude/
+.remember/
+
+# Netlify CLI auto-generated
+deno.lock

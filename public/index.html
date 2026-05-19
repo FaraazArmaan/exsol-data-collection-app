@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ExSol</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>ExSol Data Collection</h1>
+      <p class="muted">Redirecting...</p>
+    </div>
+    <script type="module">
+      import { fetchMe } from '/assets/js/api.js';
+      const { user } = await fetchMe();
+      if (!user) window.location.replace('/login.html');
+      else window.location.replace(user.isAdmin ? '/admin.html' : '/me.html');
+    </script>
+  </body>
+</html>

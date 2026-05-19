@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ExSol</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <h1 id="greeting">Loading...</h1>
+        <div class="spacer"></div>
+        <button id="signout">Sign out</button>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <img id="avatar" class="avatar" alt="" />
+          <div>
+            <div id="name"></div>
+            <div class="muted" id="email"></div>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 2rem;">Your workspaces</h2>
+      <div id="workspaces">Loading...</div>
+    </div>
+
+    <script type="module">
+      import { fetchMe, signOut } from '/assets/js/api.js';
+
+      const data = await fetchMe();
+      if (!data.user) { window.location.href = '/login.html'; }
+      if (data.user.isAdmin) { window.location.href = '/admin.html'; }
+
+      document.getElementById('greeting').textContent = `Hello, ${data.user.name}`;
+      document.getElementById('name').textContent = data.user.name;
+      document.getElementById('email').textContent = data.user.email;
+      const avatar = document.getElementById('avatar');
+      if (data.user.photoUrl) avatar.src = data.user.photoUrl;
+      else avatar.style.display = 'none';
+
+      const wsEl = document.getElementById('workspaces');
+      wsEl.replaceChildren();
+      if (!data.memberships || data.memberships.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = 'You haven\'t been added to any workspace yet. Ask your admin to onboard you.';
+        wsEl.append(p);
+      } else {
+        const list = document.createElement('div');
+        for (const m of data.memberships) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          const row = document.createElement('div');
+          row.className = 'row';
+          const main = document.createElement('div');
+          const name = document.createElement('div');
+          name.style.fontWeight = '600';
+          name.textContent = m.workspaceName;
+          const role = document.createElement('div');
+          role.className = 'muted';
+          role.textContent = `Role: ${m.role}`;
+          main.append(name, role);
+          const spacer = document.createElement('div');
+          spacer.className = 'spacer';
+          const open = document.createElement('button');
+          open.className = 'primary';
+          open.textContent = 'Open';
+          open.addEventListener('click', () => {
+            window.location.href = `/workspace.html?id=${encodeURIComponent(m.workspaceId)}`;
+          });
+          row.append(main, spacer, open);
+          card.append(row);
+          list.append(card);
+        }
+        wsEl.append(list);
+      }
+
+      document.getElementById('signout').addEventListener('click', async () => {
+        await signOut();
+        window.location.href = '/login.html';
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workspace - ExSol Admin</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <a href="/admin.html">&larr; All Clients</a>
+        <div class="spacer"></div>
+        <button id="signout">Sign out</button>
+      </div>
+
+      <h1 id="ws-name">Loading...</h1>
+      <p class="muted" id="ws-meta"></p>
+
+      <div id="content"></div>
+      <div class="error" id="error"></div>
+    </div>
+
+    <script type="module">
+      import { fetchMe, getJSON, postJSON, signOut } from '/assets/js/api.js';
+      import { renderImpersonationBanner } from '/assets/js/banner.js';
+
+      const params = new URLSearchParams(window.location.search);
+      const workspaceId = params.get('id');
+      if (!workspaceId) window.location.replace('/admin.html');
+
+      const errorBox = document.getElementById('error');
+      const setError = (m) => { errorBox.textContent = m || ''; };
+
+      const me = await fetchMe();
+      if (!me.user) window.location.href = '/login.html';
+      if (!me.user.isAdmin) window.location.href = '/me.html';
+      renderImpersonationBanner(me.impersonation);
+
+      document.getElementById('signout').addEventListener('click', async () => {
+        await signOut();
+        window.location.href = '/login.html';
+      });
+
+      const contentEl = document.getElementById('content');
+
+      async function load() {
+        setError('');
+        contentEl.replaceChildren(document.createTextNode('Loading...'));
+        const r = await fetch(`/api/admin/workspaces/${encodeURIComponent(workspaceId)}`, { credentials: 'include' });
+        if (r.status === 404) {
+          document.getElementById('ws-name').textContent = 'Not found';
+          contentEl.replaceChildren();
+          return;
+        }
+        const data = await r.json();
+        document.getElementById('ws-name').textContent = data.workspace.name;
+        if (data.unlocked) {
+          renderUnlocked(data);
+        } else {
+          renderLocked(data.workspace);
+        }
+      }
+
+      function renderLocked(workspace) {
+        document.getElementById('ws-meta').textContent = 'Workspace is locked. Enter the access key to continue.';
+        contentEl.replaceChildren();
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        const form = document.createElement('form');
+
+        const label = document.createElement('label');
+        label.textContent = 'Access key (12 characters)';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.required = true;
+        input.maxLength = 12;
+        input.autocomplete = 'one-time-code';
+        input.style.textTransform = 'uppercase';
+        input.style.letterSpacing = '0.1em';
+        label.append(input);
+        form.append(label);
+
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'primary';
+        submit.textContent = 'Unlock';
+        row.append(submit);
+        form.append(row);
+
+        card.append(form);
+        contentEl.append(card);
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          submit.disabled = true;
+          setError('');
+          const key = input.value.trim().toUpperCase();
+          const { ok, data } = await postJSON(
+            `/api/admin/workspaces/${encodeURIComponent(workspace.id)}/unlock`,
+            { key },
+          );
+          submit.disabled = false;
+          if (!ok) {
+            if (data.error === 'invalid_key') {
+              setError(`Wrong key. ${data.remainingAttempts} attempts left before lockout.`);
+            } else if (data.error === 'locked_out') {
+              setError(`Locked out until ${new Date(data.lockedUntil).toLocaleString()}.`);
+            } else {
+              setError(data.error || 'Unlock failed');
+            }
+            return;
+          }
+          await load();
+        });
+      }
+
+      function renderUnlocked(data) {
+        const ws = data.workspace;
+        document.getElementById('ws-meta').textContent =
+          `${data.productCount} products. Primary: ${ws.primary.name} <${ws.primary.email}>. ` +
+          `Created ${new Date(ws.createdAt).toLocaleDateString()}.`;
+
+        contentEl.replaceChildren();
+
+        const teamCard = document.createElement('div');
+        teamCard.className = 'card';
+        const h = document.createElement('h2');
+        h.textContent = 'Team Members';
+        teamCard.append(h);
+
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        ['Name', 'Email', 'Role', ''].forEach((header) => {
+          const th = document.createElement('th');
+          th.textContent = header;
+          trh.append(th);
+        });
+        thead.append(trh);
+        table.append(thead);
+
+        const tbody = document.createElement('tbody');
+        for (const m of data.members) {
+          const tr = document.createElement('tr');
+          const td = (t) => { const c = document.createElement('td'); c.textContent = t; return c; };
+          tr.append(td(m.name));
+          tr.append(td(m.email));
+          tr.append(td(m.role));
+          const aTd = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.textContent = 'Impersonate';
+          btn.addEventListener('click', () => openImpersonateModal(m, ws.id));
+          aTd.append(btn);
+          tr.append(aTd);
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        teamCard.append(table);
+        contentEl.append(teamCard);
+
+        const adminCard = document.createElement('div');
+        adminCard.className = 'card';
+        const ah = document.createElement('h2');
+        ah.textContent = 'Workspace controls';
+        adminCard.append(ah);
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const browse = document.createElement('button');
+        browse.className = 'primary';
+        browse.textContent = 'Browse products';
+        browse.addEventListener('click', () => {
+          window.location.href = `/workspace.html?id=${encodeURIComponent(ws.id)}`;
+        });
+        const rotate = document.createElement('button');
+        rotate.textContent = 'Rotate access key';
+        rotate.addEventListener('click', async () => {
+          if (!confirm('Rotate the access key? All current unlocks will be invalidated.')) return;
+          const { ok, data: d } = await postJSON(
+            `/api/admin/workspaces/${encodeURIComponent(ws.id)}/rotate-key`,
+            null,
+          );
+          if (ok) showKeyModal(d.accessKey, ws.name);
+          else setError(d.error || 'Rotate failed');
+        });
+        row.append(browse, rotate);
+        adminCard.append(row);
+        contentEl.append(adminCard);
+      }
+
+      function openImpersonateModal(member, workspaceId) {
+        setError('');
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop';
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        backdrop.append(modal);
+
+        const h = document.createElement('h2');
+        h.textContent = `Impersonate ${member.name}`;
+        modal.append(h);
+
+        const note = document.createElement('p');
+        note.className = 'muted';
+        note.textContent = 'You\'ll act as this user for 30 minutes. The reason is logged and visible to the Client.';
+        modal.append(note);
+
+        const form = document.createElement('form');
+        const label = document.createElement('label');
+        label.textContent = 'Reason (required)';
+        const ta = document.createElement('input');
+        ta.type = 'text';
+        ta.required = true;
+        ta.placeholder = 'e.g. Helping Alice fix WA Catalog export';
+        label.append(ta);
+        form.append(label);
+
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const submit = document.createElement('button');
+        submit.type = 'submit'; submit.className = 'primary';
+        submit.textContent = 'Start impersonation';
+        const cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.textContent = 'Cancel';
+        row.append(submit, cancel);
+        form.append(row);
+
+        const errBox = document.createElement('div');
+        errBox.className = 'error';
+        form.append(errBox);
+
+        modal.append(form);
+        document.body.append(backdrop);
+
+        cancel.addEventListener('click', () => backdrop.remove());
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          submit.disabled = true;
+          errBox.textContent = '';
+          const { ok, data: d } = await postJSON('/api/admin/impersonate', {
+            targetUserId: member.id,
+            workspaceId,
+            reason: ta.value.trim(),
+          });
+          submit.disabled = false;
+          if (!ok) {
+            errBox.textContent = d.error || 'Failed';
+            return;
+          }
+          backdrop.remove();
+          window.location.reload();
+        });
+      }
+
+      function showKeyModal(key, workspaceName) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop';
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        backdrop.append(modal);
+        const h = document.createElement('h2');
+        h.textContent = `New access key for ${workspaceName}`;
+        modal.append(h);
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = 'Share this key with the Primary. The old key no longer works.';
+        modal.append(p);
+        const d = document.createElement('div');
+        d.className = 'key-display';
+        d.textContent = key;
+        modal.append(d);
+        const row = document.createElement('div');
+        row.className = 'button-row';
+        const ack = document.createElement('button');
+        ack.className = 'primary';
+        ack.textContent = "I've saved it";
+        ack.addEventListener('click', () => { backdrop.remove(); load(); });
+        row.append(ack);
+        modal.append(row);
+        document.body.append(backdrop);
+      }
+
+      load();
+    </script>
+  </body>
+</html>
