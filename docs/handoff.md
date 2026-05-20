@@ -6,6 +6,120 @@
 
 ---
 
+## 2026-05-20 (late evening) — All 13 modules + audit UI done, Friday is deploy day
+
+### How to resume
+
+You finished what was originally Day 1, Day 2, AND Day 3's module work in a single (long) day. The remaining v1 scope is **production deployment** (Friday) and a **cross-browser smoke test**. There is no module work left.
+
+1. **`cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"`**
+2. **`git pull --ff-only`** — should be at `43a6399` or later.
+3. **`npm run typecheck && npm test`** — baseline green (24 pass, 34 DB-gated skipping).
+4. **`npm run migrate:status`** — 010 should be applied. Fresh machine: `npm run migrate` picks it up.
+5. **Smoke-test the new UI surfaces locally before deploying** — open `localhost:8888` and click through:
+   - Workspace dashboard → **Exports** section → run each of the three profiles, confirm ZIP downloads with `manifest.json` inside.
+   - Workspace dashboard → **Backups** section → create a backup, open the ZIP, confirm `data/`, `images/`, and `manifest.json`.
+   - Workspace dashboard → **Audit log** button (top toolbar) → see workspace events; expand a Diff.
+   - Admin dashboard → **System backups** → create system backup, open ZIP, confirm `schema/` + `data/`.
+   - Admin dashboard → **System audit log** → see cross-workspace events; try the Workspace filter.
+6. **Then start the production deploy.** Steps:
+   1. In the Netlify dashboard, create a new site connected to `github.com/FaraazArmaan/exsol-data-collection-app` on the `main` branch.
+   2. Set production env vars (Site → Settings → Environment variables):
+      - `NEON_DATABASE_URL` — pointing at a **production Neon branch** (not the dev one currently in `.env`). Migrate it first: clone the dev branch in Neon's UI, then run `NEON_DATABASE_URL=<prod-url> npm run migrate`.
+      - `JWT_SIGNING_SECRET` — generate a fresh one for prod (`openssl rand -hex 32`). Do NOT reuse the dev one.
+      - `GOOGLE_OAUTH_CLIENT_ID` — keep the same OAuth client, but in Google Cloud Console add the deployed URL to "Authorized JavaScript origins" AND "Authorized redirect URIs."
+      - `GOOGLE_OAUTH_CLIENT_SECRET` — copy from Google Cloud OAuth credentials (was empty in dev).
+      - `RESEND_API_KEY` — only needed when email/invite flow is wired (deferred to v1.1). Safe to leave unset for the deploy.
+      - `RESEND_FROM_EMAIL` — same.
+      - `ADMIN_GOOGLE_EMAIL` — `theexsolenterprise@gmail.com`.
+      - `APP_BASE_URL` — the deployed URL, e.g. `https://exsol.netlify.app` or the custom domain.
+      - `NODE_ENV` — `production`.
+      - **No `GOOGLE_DRIVE_*` vars** — Drive is gone (ADR-0006). Don't set them.
+      - **No `@netlify/blobs` config** — Blobs auto-provisions for the site.
+   3. Trigger a deploy. First build will pull `npm install` and run `echo 'static frontend - no build step'` (per `netlify.toml`). Functions deploy automatically.
+   4. **Bootstrap the production admin row:** open a terminal pointed at the prod Neon connection string and run `ADMIN_GOOGLE_EMAIL=theexsolenterprise@gmail.com npm run bootstrap:admin`. This creates the admin user row so Google sign-in succeeds.
+   5. Visit the deployed URL → click **Sign in with Google** → land on `/admin.html`. From there: + Add Client, unlock, impersonate, create a product, upload an image, run an export, run a backup, view the audit log. Repeat the local smoke-test checklist against production.
+7. **Custom domain (optional, boss-dependent).** Set up in Netlify → Domain management. Add the domain to Google OAuth Authorized origins/redirects too.
+8. **End-of-week handoff.** After deploy, add a final block to this file noting what's live, what's deferred to v1.1, and any production-only quirks you discovered.
+
+### Goal we are working towards
+
+Same v1. Day 1 absorbed Days 1+2+3's module work because of the Drive → Blobs pivot and a clean follow-through on Phase 5. Boss wants v1 live by Friday. We're well ahead of plan.
+
+### Current state of the code
+
+- **Git:** Latest on `main` is `43a6399`. Commits since the morning handoff: `b85bbd9` (pre-pivot snapshot), `2eddef2` (Module 10 on Blobs + docs), `52e8b5b` (Module 11 exportEngine), `6ab0dd1` (Module 12 backupEngine), `43a6399` (audit viewers).
+- **Build:** `npm run typecheck` clean. `npm test` → 24 pass, 34 DB-gated skipping.
+- **Migrations:** through 010 (image columns rename + storage column rename).
+- **All 13 modules of 13** complete. Audit UI complete. Storage backend is Netlify Blobs end-to-end.
+- **Storage stores in use:**
+  - `product-images` (Module 10)
+  - `product-exports` (Module 11)
+  - `workspace-backups` (Module 12)
+  - `system-backups` (Module 12)
+
+### What changed in this session (delta from the prior block)
+
+**Module 11 — exportEngine** (commit `52e8b5b`):
+- `run({ actor, profile, filter })` plus `listJobs` and `getJob`.
+- Three profiles: `xlsx_comprehensive` (exceljs), `csv_comprehensive` (papaparse), `meta_catalog_csv` (Meta Commerce / WhatsApp Business catalog schema).
+- **All exports are ZIP-wrapped** at the user's request — every download is `catalog_<date>_<ext>.zip` containing the inner file + a `manifest.json` (profile, filter, row_count, generated_at, workspace_id, requester_id, format_version). DEFLATE compression; XLSX is near no-op, CSV cases shrink meaningfully.
+- Sync only; 500-row hard cap; async path (queued worker) deferred to v1.1.
+- Endpoints: `POST/GET /api/workspaces/:wsid/exports`, `GET /api/workspaces/:wsid/exports/:id/download`.
+- UI: Exports section on `workspace.html` with profile picker + Create button + history + Download links.
+
+**Module 12 — backupEngine** (commit `6ab0dd1`):
+- `runWorkspace(actor)` — Primary-only. ZIP with `manifest.json` + `data/*.json` (7 tables) + `images/<key>.<ext>` (raw bytes from `product-images`). Records a `backups` row.
+- `runSystem(actor)` — admin-only. ZIP with `manifest.json` + `schema/00X_*.sql` (every migration) + `data/*.json` (18 tables). Self-sufficient for restore into a fresh Neon project.
+- Endpoints: `POST/GET /api/workspaces/:wsid/backups`, `GET /api/workspaces/:wsid/backups/:id/download`, `POST/GET /api/admin/backups`, `GET /api/admin/backups/:id/download`.
+- UI: Backups section on `workspace.html`, System backups section on `admin.html`.
+- Migration 010: `drive_file_id` → `blob_key` on `export_jobs`, `backups`, and `files` (full cleanup of remaining Drive-named columns).
+
+**Audit log viewers** (commit `43a6399`):
+- `GET /api/workspaces/:wsid/audit` and `GET /api/admin/audit` with action-prefix / actor / resource / date-range / pagination filters. Joins with users (actor + on-behalf-of emails) and workspaces (for admin view) for readability.
+- `public/workspace-audit.html` — table with When | Actor | Action | Resource | Diff. Expandable JSON diff per row. Linked from the workspace dashboard's top toolbar.
+- `public/admin-audit.html` — same table + Workspace column + workspace-filter dropdown. Linked from the admin dashboard's top toolbar.
+- No new module — just presentation on top of Module 7 (auditLogWriter) which has been writing events since Phase 3.
+
+### Files actively editing
+
+**None.** Clean working tree after `43a6399`.
+
+### Everything tried that failed and why (this session only)
+
+- **Initial blob-storage `set()` call rejected `Uint8Array`.** The `@netlify/blobs` API signature accepts `ArrayBuffer | string | ReadableStream | Blob | Buffer`; passing a `Uint8Array` typecheckers but the strict overload didn't match. Fixed by converting via `.buffer.slice(byteOffset, byteOffset+byteLength)` to extract a plain `ArrayBuffer` before set.
+- **Resource type `'export'` rejected by TypeScript.** The `ResourceType` enum in types.ts uses `'export_job'` (matching the table name) — not `'export'`. Fixed via a sed pass.
+- **Security hook fired on a thead assignment using the unsafe HTML property** in the exports UI. Rewrote with `createElement` + `textContent` following the project convention established in Phase 3 (`banner.js` XSS lesson).
+
+### Pending Thursday (revised)
+
+- Smoke-test all the new UI surfaces locally if you haven't already (the resume checklist above).
+- Optional: tackle v1.1 items (CSV bulk import UI, scheduled-function async export worker, per-marketplace structured field forms, Resend email/invite flow). None are required for the Friday demo.
+
+### Pending Friday
+
+- Production deployment (the 8-step checklist in "How to resume").
+- Custom domain (boss-dependent).
+- Final cross-browser smoke against the deployed URL.
+- End-of-week handoff block.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing the ExSol Data Collection App production sprint.
+
+Please read docs/handoff.md (top block dated 2026-05-20 late evening).
+All 13 modules + the audit viewer UI are done. The remaining work is
+production deployment on Netlify (Friday). Pick up at step 6 of "How
+to resume" — Netlify site setup + prod env vars + Neon prod branch +
+bootstrap-admin.
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-20 (evening) — Module 10 done on Netlify Blobs, Drive abandoned
 
 ### How to resume
