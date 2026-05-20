@@ -6,6 +6,127 @@
 
 ---
 
+## 2026-05-20 (mid-day) — Day 1 of production sprint, ready for /clear resume
+
+### How to resume after /clear (read this first)
+
+You're picking up partway through **Day 1 of a 3-day production sprint** (Wed 2026-05-20 → Fri 2026-05-22). Boss wants v1 deployed by Friday. All four of his onboarding directives are locked and partially executed. The morning email to the boss has been sent committing to the full original scope (no cuts negotiated). Today's coding work is partway through.
+
+To resume work, the next concrete actions in order are:
+
+1. **`cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"`**
+2. **`git pull --ff-only`** — should be a no-op; just verifies local matches origin.
+3. **`npm run typecheck && npm test`** — confirm baseline is green (24 passing, 34 DB-skipped).
+4. **Mirror the `try/catch` wrapper from `netlify/functions/auth-google.ts` to every other endpoint** (~13 files in `netlify/functions/`). The pattern: outer `try` calls an inner `async function handle(req): Promise<Response>` and `catch` logs + returns `json({ error: 'server_error', detail: ... }, 500)`. This is ~30 min of mechanical work; do it as a single commit.
+5. **Start `src/lib/drive-client.ts` (Module 9).** Interface: `ensurePath(segments[])`, `requestUploadSession(folderId, filename, mime, size)`, `getBytes(fileId)`, `createFolder`, `move`, `delete`, `list`. Service-account auth via `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY` env var (not yet set; the user will provide it before deployment). Use `googleapis` (already installed). Add JSDoc on every exported function — boss directive #4 requires it.
+6. **Around 7 PM IST, draft an evening email to the boss** summarizing what shipped today + what's queued for Thursday. Use the morning email's tone (warm, deferential, professional). Link the GitHub commits.
+
+### Goal we are working towards
+
+Same v1 goal. **The fresh constraint as of this morning is a Friday production deadline.** Boss reviewed the repo yesterday evening and emailed four directives (HTML workflow docs, LICENSE, scientific-format README, inline code documentation) plus the deadline. Morning email already sent confirming all four + the deadline. Full v1 scope committed.
+
+### Boss's onboarding email (verbatim) — what we're being held to
+
+The boss is Prateek. He wants:
+
+1. **HTML workflow docs** instead of Markdown. One master + short addendum docs. Multiple files so future Claude sessions have "a slightly better objective in mind." Maintained **independent of all the other AI-generated Claude docs and plans**.
+2. **LICENSE** (MIT or other) + **references folder** with UI/UX and documentation references.
+3. **README in industry-standard scientific paper or conference submission format** on GitHub.
+4. **Clean code + folders + explanation comments + documentation of every working and nuance.** Build clean implementation with LLM conversation and research.
+
+Deadline: Friday 2026-05-22 (production). Daily morning + evening email check-ins.
+
+### Decisions locked this morning (so you don't re-litigate)
+
+- **Production scope:** v1 feature complete + deployed by Friday (the aggressive option).
+- **Schedule call:** morning email sent committing to full scope. No deferred items negotiated.
+- **Cuts:** only the user-facing file manager UI for arbitrary documents may be deferred to v1.1 if time runs out. Auto-managed `<Workspace>/Products/`, `<Workspace>/Backups/`, `<Workspace>/Exports/` folders still ship.
+- **LICENSE:** MIT.
+- **README format:** Systems-paper sections (Abstract / Intro / Background / Architecture / Implementation / Evaluation / Future Work / References / License).
+- **Spec folder:** `/spec/` at repo root, master `index.html` + numbered addendum HTMLs (`001-…`, `002-…`) + shared `style.css` + `README.md` rules. Plain HTML5, no build step.
+- **References folder:** `/references/index.md` — curated MD index linking out to categorized external resources.
+- **Code commenting:** JSDoc on every exported function + inline WHY-comments at non-obvious decisions. Added as files are touched, not as a separate pass.
+
+### Current state of the code
+
+- **Git:** 3 commits on `main`, all pushed to https://github.com/FaraazArmaan/exsol-data-collection-app
+- **Latest commit (`a686469`):** "Day 1: LICENSE + spec/ + references/ + scientific-format README"
+- **Build:** `npm run typecheck` and `npm test` both green. 58 tests total, 24 passing (permissionPolicy), 34 DB-gated and skipping cleanly.
+- **Phase 4 (Modules 1–8, 13):** complete and working on localhost as verified yesterday with Google sign-in.
+- **Phase 5 (Modules 9–12):** not started. This is today's + Thursday's main code work.
+- **Deployment:** still localhost only. Production deployment happens Friday.
+
+### Today's progress (committed)
+
+Already shipped this session:
+
+- **`LICENSE`** — MIT, copyright 2026 Faraaz Armaan.
+- **`/references/index.md`** — 8 categories of curated external resources (UI/UX, auth, multi-tenancy, marketplace specs, infrastructure, library docs, patterns, India-specific GST/HSN).
+- **`/spec/README.md`** — rules of authorship; declares `/spec/` as canonical, `/docs/` as AI-assisted.
+- **`/spec/style.css`** — shared minimal print-style stylesheet, paper-like reading typography, dark-mode support.
+- **`/spec/index.html`** — master end-to-end rundown: problem, solution + topology diagram, actors table, core workflows numbered list, tech stack, module inventory table, glossary pointer.
+- **`/spec/001-data-model.html`** — first addendum: entity table, relationships, tenant isolation explanation, core+overlay pattern, stock-ledger pattern.
+- **`README.md`** — rewritten in systems-paper format with Abstract / 1. Introduction / 2. Background / 3. Architecture / 4. Implementation / 5. Evaluation / 6. Future Work / 7. References. Contains a topology diagram, a component diagram, the `ActorContext` shape, a stack table, and a test-coverage table.
+
+### Pending today
+
+1. **Try/catch wrappers on the remaining endpoints** (~30 min). Files to touch:
+   - `netlify/functions/auth-email-login.ts`
+   - `netlify/functions/auth-refresh.ts`
+   - `netlify/functions/auth-logout.ts`
+   - `netlify/functions/me.ts`
+   - `netlify/functions/config.ts`
+   - `netlify/functions/admin-workspaces.ts`
+   - `netlify/functions/admin-workspace-detail.ts`
+   - `netlify/functions/admin-workspace-unlock.ts`
+   - `netlify/functions/admin-workspace-rotate-key.ts`
+   - `netlify/functions/admin-impersonate.ts`
+   - `netlify/functions/workspace-products.ts`
+   - `netlify/functions/workspace-product-detail.ts`
+   - `netlify/functions/workspace-product-overlay.ts`
+   - `netlify/functions/workspace-stock-movements.ts`
+   - `netlify/functions/workspace-stock-views.ts`
+2. **Start `src/lib/drive-client.ts` (Module 9)** — Google Drive service-account abstraction. Finish today if possible; otherwise spill into Thursday morning.
+3. **Evening email to boss at ~7 PM IST** — what shipped today, what's queued for Thursday.
+
+### Pending Thursday
+
+- `src/lib/image-pipeline.ts` (Module 10) + image upload UI on `product-edit.html`.
+- `src/lib/export-engine.ts` (Module 11) + exports tab on `workspace.html`.
+- `src/lib/backup-engine.ts` (Module 12) + backups panel on `workspace.html`.
+- Audit log viewer UI (`workspace-audit.html` and `admin-audit.html`).
+
+### Pending Friday
+
+- Production deployment: connect GitHub repo to a Netlify site, set production env vars (real `NEON_DATABASE_URL`, production `GOOGLE_OAUTH_CLIENT_ID` with the production URL added to Authorized JavaScript origins, `JWT_SIGNING_SECRET`, `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, `RESEND_API_KEY` if email is wired by then, `ADMIN_GOOGLE_EMAIL`, `APP_BASE_URL` set to the deployed URL).
+- Custom domain (TBD with the boss).
+- Final cross-browser smoke test against the deployed URL.
+- End-of-week handoff covering what's deployed and what's deferred.
+
+### Files actively editing
+
+**None right now.** Latest commit is clean. When you resume, the next file to edit is the first endpoint to wrap in try/catch (start with `netlify/functions/auth-email-login.ts` to mirror the pattern from `auth-google.ts`).
+
+### Everything tried that failed and why (this session only)
+
+Nothing failed this session. The grilling at the start surfaced a 7–10-hour time-math gap between the boss's scope and the working hours available; the user chose to send a deferential morning email committing to the full scope without negotiating cuts. That's a deliberate choice (relationship-building over scope-renegotiation), but it does mean Thursday will be a long day. Expect 10–12 hours of focused execution on Thursday to fit Phase 5 modules + their UIs.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing Day 1 of the production sprint for the ExSol Data Collection App.
+
+Please read docs/handoff.md (top block dated 2026-05-20) for the full context,
+then do the next concrete action from the "How to resume after /clear" list at
+the top of that block. Start with the try/catch wrapper pass, then move to
+src/lib/drive-client.ts (Module 9).
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-19 (late evening) — pushed to GitHub, added README
 
 ### Goal we are working towards
