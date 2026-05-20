@@ -10,7 +10,23 @@ import { json, methodNotAllowed, readJson } from '../../src/lib/http.ts';
 
 export const config = { path: '/api/workspaces/:wsid/products/:pid' };
 
+/**
+ * /api/workspaces/:wsid/products/:pid
+ *
+ *   GET    — single product detail + all marketplace overlays.
+ *   PATCH  — partial update; computes a before/after audit diff.
+ *   DELETE — remove product (and cascade to overlays + movements).
+ */
 export default async (req: Request, context: Context): Promise<Response> => {
+  try {
+    return await handle(req, context);
+  } catch (err) {
+    console.error('[workspace-product-detail] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request, context: Context): Promise<Response> {
   const workspaceId = context.params?.wsid;
   const productId = context.params?.pid;
   if (!workspaceId || !productId) return json({ error: 'missing_param' }, 400);
@@ -59,4 +75,4 @@ export default async (req: Request, context: Context): Promise<Response> => {
   }
 
   return methodNotAllowed();
-};
+}

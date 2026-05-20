@@ -11,14 +11,32 @@ import {
 
 export const config = { path: '/api/admin/workspaces' };
 
+/**
+ * /api/admin/workspaces
+ *
+ *   GET  — list all workspaces with primary, counts, and unlock status.
+ *   POST — onboard a new Client (creates user if needed, workspace,
+ *          primary membership, returns one-time access key).
+ *
+ * Admin-only. Wrapped in try/catch for resilient error reporting.
+ */
 export default async (req: Request): Promise<Response> => {
+  try {
+    return await handle(req);
+  } catch (err) {
+    console.error('[admin-workspaces] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request): Promise<Response> {
   const admin = await requireAdmin(req);
   if (admin instanceof Response) return admin;
 
   if (req.method === 'GET') return list(admin.id);
   if (req.method === 'POST') return create(req, admin.id);
   return methodNotAllowed();
-};
+}
 
 async function list(adminId: string): Promise<Response> {
   const rows = await withAdminContext({ userId: adminId }, async (c) => {

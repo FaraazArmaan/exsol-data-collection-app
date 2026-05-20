@@ -19,7 +19,29 @@ type Body = {
   note?: unknown;
 };
 
+/**
+ * POST /api/workspaces/:wsid/stock/movements
+ *
+ * Record a stock movement. Two modes via request body:
+ *
+ *   { productId, delta, reason, source?, note? } — signed integer delta.
+ *   { productId, absoluteCount, note? }          — recount to absolute;
+ *                                                  computes delta needed.
+ *
+ * Both modes append to the stock_movements ledger; the products.stock_count
+ * column is maintained by a Postgres trigger. Storekeepers can write; Primary,
+ * Manager, and Admin (via impersonation) can also write.
+ */
 export default async (req: Request, context: Context): Promise<Response> => {
+  try {
+    return await handle(req, context);
+  } catch (err) {
+    console.error('[workspace-stock-movements] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request, context: Context): Promise<Response> {
   if (req.method !== 'POST') return methodNotAllowed();
   const workspaceId = context.params?.wsid;
   if (!workspaceId) return json({ error: 'missing_workspace_id' }, 400);
@@ -70,4 +92,4 @@ export default async (req: Request, context: Context): Promise<Response> => {
     return json(result, result.error === 'product_not_found' ? 404 : 400);
   }
   return json({ movement: result });
-};
+}

@@ -4,7 +4,25 @@ import { setAccessCookie, setRefreshCookie } from '../../src/lib/cookies.ts';
 
 export const config = { path: '/api/auth/email/login' };
 
+/**
+ * POST /api/auth/email/login
+ *
+ * Email + password sign-in (fallback for users without a Google account).
+ * Verifies credentials via Argon2id and issues a session on success.
+ *
+ * Wrapped in try/catch to keep the Netlify CLI 23.x error normalizer from
+ * crashing on uncaught throws inside the handler.
+ */
 export default async (req: Request): Promise<Response> => {
+  try {
+    return await handle(req);
+  } catch (err) {
+    console.error('[auth-email-login] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   let body: unknown;
@@ -39,7 +57,7 @@ export default async (req: Request): Promise<Response> => {
       ]),
     },
   );
-};
+}
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {

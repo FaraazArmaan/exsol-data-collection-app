@@ -7,7 +7,25 @@ import type { Marketplace, ProductStatus } from '../../src/lib/types.ts';
 
 export const config = { path: '/api/workspaces/:wsid/products' };
 
+/**
+ * /api/workspaces/:wsid/products
+ *
+ *   GET  — list products with filters (search, status, category, marketplace, paging).
+ *   POST — create a product (Primary/Manager only; admin via impersonation).
+ *
+ * Access is resolved through `resolveWorkspaceActor` which handles the four
+ * cases: admin-unlocked, admin-impersonating, workspace-member, forbidden.
+ */
 export default async (req: Request, context: Context): Promise<Response> => {
+  try {
+    return await handle(req, context);
+  } catch (err) {
+    console.error('[workspace-products] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request, context: Context): Promise<Response> {
   const workspaceId = context.params?.wsid;
   if (!workspaceId) return json({ error: 'missing_workspace_id' }, 400);
 
@@ -47,4 +65,4 @@ export default async (req: Request, context: Context): Promise<Response> => {
   }
 
   return methodNotAllowed();
-};
+}

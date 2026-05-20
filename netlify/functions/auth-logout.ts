@@ -8,7 +8,22 @@ import {
 
 export const config = { path: '/api/auth/logout' };
 
+/**
+ * POST /api/auth/logout
+ *
+ * Revokes the current refresh token (best-effort) and clears auth cookies.
+ * Always returns 200 — clearing the cookies is the primary outcome.
+ */
 export default async (req: Request): Promise<Response> => {
+  try {
+    return await handle(req);
+  } catch (err) {
+    console.error('[auth-logout] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   const cookies = parseCookies(req.headers.get('cookie') ?? '');
@@ -17,7 +32,8 @@ export default async (req: Request): Promise<Response> => {
     try {
       await revoke(rt);
     } catch {
-      // ignore - clearing cookies is the important part
+      // Best-effort: ignore if the token is already revoked or DB unreachable;
+      // cookie clear below is what matters for the user-facing logout.
     }
   }
 
@@ -29,7 +45,7 @@ export default async (req: Request): Promise<Response> => {
       ['set-cookie', clearRefreshCookie()],
     ]),
   });
-};
+}
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {

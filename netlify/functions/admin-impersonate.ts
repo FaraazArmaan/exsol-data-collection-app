@@ -15,7 +15,27 @@ type BeginBody = {
   reason?: unknown;
 };
 
+/**
+ * /api/admin/impersonate
+ *
+ *   GET    — return the admin's currently-active impersonation session (or null).
+ *   POST   — begin a new impersonation session (target user + workspace + reason).
+ *   DELETE — end the active impersonation session.
+ *
+ * Impersonation is god-mode: admin retains admin powers while acting as
+ * the target user. Reason is required (3+ chars). Session auto-expires
+ * after 30 minutes; only one active session per admin at a time.
+ */
 export default async (req: Request): Promise<Response> => {
+  try {
+    return await handle(req);
+  } catch (err) {
+    console.error('[admin-impersonate] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request): Promise<Response> {
   const admin = await requireAdmin(req);
   if (admin instanceof Response) return admin;
 
@@ -71,4 +91,4 @@ export default async (req: Request): Promise<Response> => {
   }
 
   return methodNotAllowed();
-};
+}

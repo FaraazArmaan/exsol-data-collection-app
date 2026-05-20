@@ -5,7 +5,24 @@ import { json, methodNotAllowed, requireAdmin } from '../../src/lib/http.ts';
 
 export const config = { path: '/api/admin/workspaces/:id' };
 
+/**
+ * GET /api/admin/workspaces/:id
+ *
+ * Admin's workspace detail. Always returns the workspace name. Full
+ * detail (team list, product count, primary user) is gated by an
+ * active unlock claim — locked responses include `unlocked: false`
+ * so the admin UI can prompt for the access key.
+ */
 export default async (req: Request, context: Context): Promise<Response> => {
+  try {
+    return await handle(req, context);
+  } catch (err) {
+    console.error('[admin-workspace-detail] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request, context: Context): Promise<Response> {
   if (req.method !== 'GET') return methodNotAllowed();
   const admin = await requireAdmin(req);
   if (admin instanceof Response) return admin;
@@ -80,4 +97,4 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   if (!detail) return json({ error: 'not_found' }, 404);
   return json(detail);
-};
+}

@@ -13,7 +13,24 @@ type Body = {
   enabled?: unknown;
 };
 
+/**
+ * PUT /api/workspaces/:wsid/products/:pid/marketplaces/:mp
+ *
+ * Replace (or create) the marketplace overlay for a given product.
+ * The `fields` body is freeform JSON in v1; per-marketplace structured
+ * field forms come in v1.1. The `enabled` flag controls whether this
+ * overlay is included in marketplace-targeted exports.
+ */
 export default async (req: Request, context: Context): Promise<Response> => {
+  try {
+    return await handle(req, context);
+  } catch (err) {
+    console.error('[workspace-product-overlay] uncaught', err);
+    return json({ error: 'server_error', detail: (err as Error)?.message ?? String(err) }, 500);
+  }
+};
+
+async function handle(req: Request, context: Context): Promise<Response> {
   if (req.method !== 'PUT') return methodNotAllowed();
 
   const workspaceId = context.params?.wsid;
@@ -54,4 +71,4 @@ export default async (req: Request, context: Context): Promise<Response> => {
     return json(result, status);
   }
   return json({ overlay: result });
-};
+}
