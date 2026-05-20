@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>001 · Data model — ExSol Data Collection</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="doc-header">
+        <div class="eyebrow">Specification · Addendum 001</div>
+        <h1>Data model</h1>
+        <p class="meta">Entities, relationships, and isolation. Added 2026-05-20.</p>
+      </header>
+
+      <nav class="doc-nav">
+        <a href="index.html">← Master</a>
+        <a href="README.md">Folder rules</a>
+      </nav>
+
+      <section>
+        <h2>1. Entities at a glance</h2>
+        <table>
+          <thead><tr><th>Entity</th><th>Lives in</th><th>One per</th></tr></thead>
+          <tbody>
+            <tr><td>User</td><td>System-wide</td><td>Email address (or Google sub)</td></tr>
+            <tr><td>Workspace</td><td>System-wide</td><td>Client business</td></tr>
+            <tr><td>Workspace Membership</td><td>Workspace</td><td>User × Workspace pair</td></tr>
+            <tr><td>Category</td><td>Workspace</td><td>(name, parent) within a workspace</td></tr>
+            <tr><td>Product</td><td>Workspace</td><td>SKU within a workspace</td></tr>
+            <tr><td>Marketplace Overlay</td><td>Workspace</td><td>Product × Marketplace pair</td></tr>
+            <tr><td>Stock Movement</td><td>Workspace</td><td>Append-only ledger row</td></tr>
+            <tr><td>File</td><td>Workspace</td><td>Drive file</td></tr>
+            <tr><td>Audit Event</td><td>System / Workspace</td><td>Recorded action</td></tr>
+            <tr><td>Impersonation Session</td><td>System</td><td>Admin's active session</td></tr>
+            <tr><td>Workspace Unlock</td><td>System</td><td>(Admin, Workspace) pair, 15-min claim</td></tr>
+            <tr><td>Export Job</td><td>Workspace</td><td>Run instance</td></tr>
+            <tr><td>Backup</td><td>Workspace or system</td><td>Snapshot</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>2. Key relationships</h2>
+        <ul>
+          <li>A <strong>Workspace</strong> has exactly one <strong>Primary User</strong> (referenced by <code>workspaces.primary_user_id</code>) and zero-to-many additional Workspace Memberships.</li>
+          <li>A <strong>User</strong> can be a member of many Workspaces, each potentially with a different role. The Admin user has no Workspace Memberships — Admin authority is at the system level via <code>users.is_admin</code>.</li>
+          <li>A <strong>Product</strong> has a canonical core (one row in <code>products</code>) and zero-to-many <strong>Marketplace Overlays</strong> (rows in <code>product_marketplace_fields</code> keyed by marketplace).</li>
+          <li>A <strong>Stock Movement</strong> never updates a Product directly. The <code>products.stock_count</code> column is derived: a Postgres trigger on <code>stock_movements</code> INSERT applies the delta to the product. The ledger is append-only.</li>
+          <li>An <strong>Audit Event</strong> records the <em>real actor</em> in <code>actor_user_id</code> and (when impersonation is active) the <em>on-behalf-of user</em> in <code>on_behalf_of</code>. Both columns reference Users.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Tenant isolation</h2>
+        <p>
+          Every workspace-scoped table has a <code>workspace_id</code> column and Row-Level Security enabled. A request opens a transaction, sets the GUCs <code>app.current_user_id</code>, <code>app.current_workspace_id</code>, and <code>app.is_admin</code>, runs the query, and commits. Postgres enforces the policy server-side regardless of what the application code's <code>WHERE</code> clause says.
+        </p>
+        <pre>USING (
+  is_admin_context()
+  OR workspace_id = current_workspace_id()
+)</pre>
+        <p>
+          Three context flavors exist in code: <code>withTenantContext</code> (user + workspace), <code>withAdminContext</code> (admin, cross-workspace), and <code>withUserContext</code> (user only, no workspace selected — used by <code>/api/me</code> to list a user's memberships).
+        </p>
+        <div class="callout">
+          The single most security-critical pair of modules is <code>tenancyContext</code> and <code>permissionPolicy</code>. The first prevents data leakage at the database layer; the second prevents privilege escalation at the application layer. Both are in the test tier.
+        </div>
+      </section>
+
+      <section>
+        <h2>4. The marketplace overlay pattern</h2>
+        <p>
+          Different marketplaces require different fields for the same product (Amazon wants 200+ attributes, Meta wants 10, Swiggy wants menu-shaped data). To support this without a 500-column products table or an Entity-Attribute-Value monster, we use a <em>core + overlay</em> shape:
+        </p>
+        <ul>
+          <li>The <code>products</code> table holds canonical fields every product has (SKU, name, price, stock, dimensions, GST/HSN, etc.).</li>
+          <li>The <code>product_marketplace_fields</code> table holds per-marketplace JSONB blobs. One row per (product, marketplace) pair. Each row has an <code>enabled</code> flag and a <code>fields</code> JSONB.</li>
+          <li>To list products enabled for a given marketplace, join on <code>product_marketplace_fields</code> with <code>enabled = true</code>.</li>
+        </ul>
+        <p>
+          Adding a new marketplace is a code change (extend the <code>Marketplace</code> enum) — not a schema migration. v1 supports <code>amazon</code>, <code>flipkart</code>, <code>meta</code>, <code>wa</code>, <code>rakuten</code>, <code>aliexpress</code>, <code>swiggy</code>, <code>zomato</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. The stock ledger pattern</h2>
+        <p>
+          Stock is a function of history, not a fact you overwrite. Every change is a row in <code>stock_movements</code> with a positive or negative integer <code>delta</code>, a <code>reason</code> (purchase, sale, damage, recount, manual_adjust), a <code>source</code> (manual, csv, recount), an actor, optional impersonation marker, and a timestamp. The current count derives from <code>SUM(delta)</code>.
+        </p>
+        <p>
+          A "recount to absolute" is mechanically a movement with <code>reason = recount</code> and a delta computed to reach the target. The ledger never lies about history.
+        </p>
+      </section>
+
+      <footer class="doc-footer">
+        <p>
+          See <code>db/migrations/001</code>–<code>008</code> for the exact DDL. See <code>docs/adr/0004-product-and-stock-model.md</code> for the rationale and alternatives considered.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
