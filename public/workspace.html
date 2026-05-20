@@ -55,6 +55,24 @@
 
       <div id="products">Loading...</div>
       <div class="error" id="error"></div>
+
+      <section id="exports-section" style="margin-top: 3rem;">
+        <div class="toolbar">
+          <h2 style="margin:0">Exports</h2>
+          <div class="spacer"></div>
+          <select id="export-profile">
+            <option value="xlsx_comprehensive">Comprehensive (XLSX inside ZIP)</option>
+            <option value="csv_comprehensive">Comprehensive (CSV inside ZIP)</option>
+            <option value="meta_catalog_csv">Meta Commerce / WA Business catalog (CSV inside ZIP)</option>
+          </select>
+          <button id="run-export" class="primary">Create export</button>
+        </div>
+        <p class="muted-section" id="export-hint">
+          Every export downloads as a ZIP containing the catalog file (XLSX or CSV) plus a <code>manifest.json</code> describing the filter, row count, and generation timestamp. Filters above (search / status / marketplace) apply; sync path supports up to 500 products at a time — narrow with filters if you exceed that.
+        </p>
+        <p class="muted-section" id="export-status"></p>
+        <div id="export-jobs"></div>
+      </section>
     </div>
 
     <script type="module">
@@ -265,6 +283,153 @@
       await loadWorkspaceMeta();
       await loadTiles();
       await loadProducts();
+
+      // ============= Exports =============
+
+      const PROFILE_LABELS = {
+        xlsx_comprehensive: 'Comprehensive XLSX (.zip)',
+        csv_comprehensive: 'Comprehensive CSV (.zip)',
+        meta_catalog_csv: 'Meta catalog CSV (.zip)',
+      };
+
+      function setExportStatus(msg, isError = false) {
+        const el = document.getElementById('export-status');
+        el.textContent = msg;
+        el.className = isError ? 'error-text' : 'muted-section';
+      }
+
+      function currentFilter() {
+        return {
+          search: document.getElementById('filter-search').value || undefined,
+          status: document.getElementById('filter-status').value || undefined,
+          marketplaceEnabled: document.getElementById('filter-marketplace').value || undefined,
+        };
+      }
+
+      function exTd(text) {
+        const c = document.createElement('td');
+        c.textContent = text;
+        return c;
+      }
+
+      function filterSummary(f) {
+        if (!f || Object.keys(f).length === 0) return '—';
+        const parts = [];
+        if (f.search) parts.push(`search="${f.search}"`);
+        if (f.status) parts.push(`status=${f.status}`);
+        if (f.categoryId) parts.push(`category=${f.categoryId.slice(0, 8)}…`);
+        if (f.marketplaceEnabled) parts.push(`mp=${f.marketplaceEnabled}`);
+        return parts.join(', ') || '—';
+      }
+
+      async function renderJobs() {
+        const wrap = document.getElementById('export-jobs');
+        wrap.replaceChildren();
+        let data;
+        try {
+          data = await getJSON(`/api/workspaces/${workspaceId}/exports`);
+        } catch (err) {
+          wrap.textContent = `Failed to load: ${err.message || err}`;
+          return;
+        }
+        if (!data.jobs?.length) {
+          const p = document.createElement('p');
+          p.className = 'muted-section';
+          p.textContent = 'No exports yet. Create one above.';
+          wrap.append(p);
+          return;
+        }
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        for (const label of ['When', 'Profile', 'Status', 'Filter', '']) {
+          const th = document.createElement('th');
+          th.textContent = label;
+          headerRow.append(th);
+        }
+        thead.append(headerRow);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        for (const j of data.jobs) {
+          const tr = document.createElement('tr');
+          tr.append(exTd(new Date(j.finishedAt ?? j.queuedAt).toLocaleString()));
+          tr.append(exTd(PROFILE_LABELS[j.profile] ?? j.profile));
+          const tdStatus = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = j.status;
+          tdStatus.append(badge);
+          if (j.status === 'failed' && j.error) {
+            tdStatus.append(document.createTextNode(` — ${j.error.slice(0, 60)}`));
+          }
+          tr.append(tdStatus);
+          tr.append(exTd(filterSummary(j.filter)));
+          const tdAct = document.createElement('td');
+          if (j.status === 'done') {
+            const a = document.createElement('a');
+            a.href = `/api/workspaces/${workspaceId}/exports/${j.id}/download`;
+            a.textContent = 'Download';
+            a.target = '_self';
+            tdAct.append(a);
+          }
+          tr.append(tdAct);
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        wrap.append(table);
+      }
+
+      document.getElementById('run-export').addEventListener('click', async () => {
+        const profile = document.getElementById('export-profile').value;
+        const filter = currentFilter();
+        const button = document.getElementById('run-export');
+        button.disabled = true;
+        setExportStatus('Generating…');
+        try {
+          const { ok, data } = await postJSON(`/api/workspaces/${workspaceId}/exports`, {
+            profile,
+            filter,
+          });
+          if (!ok) {
+            if (data.error === 'too_large') {
+              setExportStatus(`Too many rows (${data.rowCount} > ${data.ceiling}). Apply filters to narrow.`, true);
+            } else if (data.error === 'no_rows') {
+              setExportStatus('No products match the current filter.', true);
+            } else {
+              setExportStatus(data.detail || data.error || 'Export failed', true);
+            }
+            return;
+          }
+          setExportStatus(`Export ${data.job.filename} ready (${(data.job.sizeBytes / 1024).toFixed(1)} KB).`);
+          if (data.inline) {
+            triggerInlineDownload(data.inline, data.job.contentType, data.job.filename);
+          } else {
+            window.location.href = data.downloadUrl;
+          }
+          await renderJobs();
+        } catch (err) {
+          setExportStatus(`Export failed: ${err.message || err}`, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      function triggerInlineDownload(base64, contentType, filename) {
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      await renderJobs();
     </script>
   </body>
 </html>

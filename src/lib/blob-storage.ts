@@ -88,6 +88,55 @@ export async function deleteImage(key: string): Promise<void> {
   await imageStore().delete(key);
 }
 
+// ---------- Export files ----------
+
+/** Netlify Blobs store dedicated to generated catalog exports (Module 11). */
+const EXPORT_STORE = 'product-exports';
+
+let _exportStore: Store | null = null;
+
+function exportStore(): Store {
+  if (_exportStore) return _exportStore;
+  _exportStore = getStore({ name: EXPORT_STORE, consistency: 'strong' });
+  return _exportStore;
+}
+
+/**
+ * Stores generated export bytes (XLSX/CSV) and returns the opaque key.
+ * Used by `exportEngine` to persist sync-mode output and any async-mode
+ * results once the worker pipeline lands.
+ */
+export async function putExport(
+  workspaceId: string,
+  jobId: string,
+  filename: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<string> {
+  const key = `${workspaceId}_${jobId}`;
+  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  await exportStore().set(key, buf, {
+    metadata: { contentType, filename, workspaceId, jobId },
+  });
+  return key;
+}
+
+/**
+ * Returns the bytes + filename + content-type for a previously stored
+ * export, or null if absent. Used by the download endpoint to stream a
+ * completed export back to the user as a file attachment.
+ */
+export async function getExport(
+  key: string,
+): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string; filename: string } | null> {
+  const r = await exportStore().getWithMetadata(key, { type: 'stream' });
+  if (!r) return null;
+  const meta = (r.metadata as Record<string, unknown> | null) ?? {};
+  const ct = typeof meta['contentType'] === 'string' ? (meta['contentType'] as string) : 'application/octet-stream';
+  const filename = typeof meta['filename'] === 'string' ? (meta['filename'] as string) : 'export';
+  return { stream: r.data as ReadableStream<Uint8Array>, contentType: ct, filename };
+}
+
 /**
  * Validates that an image key has the expected `<wsid>/<pid>/<uuid>` shape
  * before we let it into a URL path or DB column. Defense against junk
