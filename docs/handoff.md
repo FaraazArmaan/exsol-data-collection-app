@@ -91,9 +91,24 @@ Same v1. Day 1 absorbed Days 1+2+3's module work because of the Drive → Blobs 
 - **Resource type `'export'` rejected by TypeScript.** The `ResourceType` enum in types.ts uses `'export_job'` (matching the table name) — not `'export'`. Fixed via a sed pass.
 - **Security hook fired on a thead assignment using the unsafe HTML property** in the exports UI. Rewrote with `createElement` + `textContent` following the project convention established in Phase 3 (`banner.js` XSS lesson).
 
+### Smoke-test results (2026-05-20 evening, against localhost)
+
+Driven via Chrome DevTools MCP. Step 5 of "How to resume" was executed end-to-end and everything passed:
+
+- Sign-in (email+password fallback as `admin@example.com`) → `/admin.html`. ✓
+- Admin dashboard: 2 clients (Acme + Papa), System backups + System audit links. ✓
+- Workspace unlock with `FNTK9BCHS64P` → Acme detail. ✓
+- Workspace dashboard for Acme: 5 products listed, **Egg 5 thumbnail rendered via the Image CDN proxy** (Module 10 read path proven on the renamed Blob key).
+- Exports section: 4 prior exports in history with working Download links (XLSX + CSV + Meta + XLSX).
+- Workspace backup: created `workspace_acme-stores_2026-05-20T12-12-27-377Z.zip` (61.7 KB), `POST → 200 in 2.5s`, history refreshed to 2 entries. ✓
+- System backup: pre-existing 17.8 KB `done` entry from earlier session (this run didn't trigger a new one to avoid noise).
+- Workspace audit: 25 events render newest-first; **Diff expansion on `product.create` for Egg 5 showed `{"before":null, "after":{"sku":"E01015","name":"Egg 5","price":13,"status":"draft"}, "metadata":{}}`**. ✓
+- Admin audit: 28 events render across both workspaces; system-scoped row has Workspace = `—`; cross-workspace count delta vs the workspace view (28 − 25 = 3) matches expected (Papa create + system backup + new Acme backup). ✓
+
+**No bugs surfaced.** v1 functional surface is complete and behaviorally verified.
+
 ### Pending Thursday (revised)
 
-- Smoke-test all the new UI surfaces locally if you haven't already (the resume checklist above).
 - Optional: tackle v1.1 items (CSV bulk import UI, scheduled-function async export worker, per-marketplace structured field forms, Resend email/invite flow). None are required for the Friday demo.
 
 ### Pending Friday
