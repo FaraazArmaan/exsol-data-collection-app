@@ -24,6 +24,19 @@
       <div id="workspace-list">Loading...</div>
 
       <div class="error" id="error"></div>
+
+      <section id="system-backups-section" style="margin-top: 3rem;">
+        <div class="toolbar">
+          <h2 style="margin:0">System backups</h2>
+          <div class="spacer"></div>
+          <button id="run-system-backup" class="primary">Create system backup</button>
+        </div>
+        <p class="muted-section">
+          A full cross-workspace snapshot: every table dumped to JSON plus the migration SQL files, all in one ZIP. Building may take a few seconds on a large dataset. Off-platform backups are still the deepest safety net — download these periodically.
+        </p>
+        <p class="muted-section" id="system-backup-status"></p>
+        <div id="system-backup-jobs"></div>
+      </section>
     </div>
 
     <script type="module">
@@ -208,6 +221,104 @@
       }
 
       loadList();
+
+      // ============= System backups =============
+
+      function fmtBytes(n) {
+        if (n == null) return '—';
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / 1024 / 1024).toFixed(1)} MB`;
+      }
+
+      function setSysBackupStatus(msg, isError = false) {
+        const el = document.getElementById('system-backup-status');
+        el.textContent = msg;
+        el.className = isError ? 'error-text' : 'muted-section';
+      }
+
+      function sTd(text) {
+        const c = document.createElement('td');
+        c.textContent = text;
+        return c;
+      }
+
+      async function renderSystemBackups() {
+        const wrap = document.getElementById('system-backup-jobs');
+        wrap.replaceChildren();
+        let data;
+        try {
+          data = await getJSON('/api/admin/backups');
+        } catch (err) {
+          wrap.textContent = `Failed to load: ${err.message || err}`;
+          return;
+        }
+        if (!data.backups?.length) {
+          const p = document.createElement('p');
+          p.className = 'muted-section';
+          p.textContent = 'No system backups yet. Create one above.';
+          wrap.append(p);
+          return;
+        }
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        for (const label of ['When', 'Status', 'Size', '']) {
+          const th = document.createElement('th');
+          th.textContent = label;
+          headerRow.append(th);
+        }
+        thead.append(headerRow);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        for (const b of data.backups) {
+          const tr = document.createElement('tr');
+          tr.append(sTd(new Date(b.finishedAt ?? b.createdAt).toLocaleString()));
+          const tdStatus = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = b.status;
+          tdStatus.append(badge);
+          if (b.status === 'failed' && b.error) {
+            tdStatus.append(document.createTextNode(` — ${b.error.slice(0, 60)}`));
+          }
+          tr.append(tdStatus);
+          tr.append(sTd(fmtBytes(b.sizeBytes)));
+          const tdAct = document.createElement('td');
+          if (b.status === 'done') {
+            const a = document.createElement('a');
+            a.href = `/api/admin/backups/${b.id}/download`;
+            a.textContent = 'Download';
+            tdAct.append(a);
+          }
+          tr.append(tdAct);
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        wrap.append(table);
+      }
+
+      document.getElementById('run-system-backup').addEventListener('click', async () => {
+        const btn = document.getElementById('run-system-backup');
+        btn.disabled = true;
+        setSysBackupStatus('Building system backup — this may take several seconds…');
+        try {
+          const { ok, data } = await postJSON('/api/admin/backups');
+          if (!ok) {
+            setSysBackupStatus(data.detail || data.error || 'Backup failed', true);
+            return;
+          }
+          setSysBackupStatus(`System backup ${data.backup.filename} ready (${fmtBytes(data.backup.sizeBytes)}). Download starting…`);
+          window.location.href = data.downloadUrl;
+          await renderSystemBackups();
+        } catch (err) {
+          setSysBackupStatus(`Backup failed: ${err.message || err}`, true);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      renderSystemBackups();
     </script>
   </body>
 </html>

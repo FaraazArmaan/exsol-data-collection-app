@@ -73,6 +73,19 @@
         <p class="muted-section" id="export-status"></p>
         <div id="export-jobs"></div>
       </section>
+
+      <section id="backups-section" style="margin-top: 3rem;">
+        <div class="toolbar">
+          <h2 style="margin:0">Backups</h2>
+          <div class="spacer"></div>
+          <button id="run-backup" class="primary">Create backup</button>
+        </div>
+        <p class="muted-section">
+          A backup is a ZIP snapshot of this workspace: all products, marketplace overlays, stock ledger, audit events, and image bytes, plus a <code>manifest.json</code>. Designed for disaster recovery; keep at least a recent copy off-platform.
+        </p>
+        <p class="muted-section" id="backup-status"></p>
+        <div id="backup-jobs"></div>
+      </section>
     </div>
 
     <script type="module">
@@ -430,6 +443,104 @@
       }
 
       await renderJobs();
+
+      // ============= Backups =============
+
+      function setBackupStatus(msg, isError = false) {
+        const el = document.getElementById('backup-status');
+        el.textContent = msg;
+        el.className = isError ? 'error-text' : 'muted-section';
+      }
+
+      function bTd(text) {
+        const c = document.createElement('td');
+        c.textContent = text;
+        return c;
+      }
+
+      function fmtBytes(n) {
+        if (n == null) return '—';
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / 1024 / 1024).toFixed(1)} MB`;
+      }
+
+      async function renderBackups() {
+        const wrap = document.getElementById('backup-jobs');
+        wrap.replaceChildren();
+        let data;
+        try {
+          data = await getJSON(`/api/workspaces/${workspaceId}/backups`);
+        } catch (err) {
+          wrap.textContent = `Failed to load: ${err.message || err}`;
+          return;
+        }
+        if (!data.backups?.length) {
+          const p = document.createElement('p');
+          p.className = 'muted-section';
+          p.textContent = 'No backups yet. Create one above.';
+          wrap.append(p);
+          return;
+        }
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        for (const label of ['When', 'Status', 'Size', '']) {
+          const th = document.createElement('th');
+          th.textContent = label;
+          headerRow.append(th);
+        }
+        thead.append(headerRow);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        for (const b of data.backups) {
+          const tr = document.createElement('tr');
+          tr.append(bTd(new Date(b.finishedAt ?? b.createdAt).toLocaleString()));
+          const tdStatus = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = b.status;
+          tdStatus.append(badge);
+          if (b.status === 'failed' && b.error) {
+            tdStatus.append(document.createTextNode(` — ${b.error.slice(0, 60)}`));
+          }
+          tr.append(tdStatus);
+          tr.append(bTd(fmtBytes(b.sizeBytes)));
+          const tdAct = document.createElement('td');
+          if (b.status === 'done') {
+            const a = document.createElement('a');
+            a.href = `/api/workspaces/${workspaceId}/backups/${b.id}/download`;
+            a.textContent = 'Download';
+            tdAct.append(a);
+          }
+          tr.append(tdAct);
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        wrap.append(table);
+      }
+
+      document.getElementById('run-backup').addEventListener('click', async () => {
+        const btn = document.getElementById('run-backup');
+        btn.disabled = true;
+        setBackupStatus('Building backup — this may take several seconds, especially with images…');
+        try {
+          const { ok, data } = await postJSON(`/api/workspaces/${workspaceId}/backups`);
+          if (!ok) {
+            setBackupStatus(data.detail || data.error || 'Backup failed', true);
+            return;
+          }
+          setBackupStatus(`Backup ${data.backup.filename} ready (${fmtBytes(data.backup.sizeBytes)}). Download starting…`);
+          window.location.href = data.downloadUrl;
+          await renderBackups();
+        } catch (err) {
+          setBackupStatus(`Backup failed: ${err.message || err}`, true);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      await renderBackups();
     </script>
   </body>
 </html>

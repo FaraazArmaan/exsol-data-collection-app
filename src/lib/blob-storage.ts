@@ -137,6 +137,102 @@ export async function getExport(
   return { stream: r.data as ReadableStream<Uint8Array>, contentType: ct, filename };
 }
 
+// ---------- Backup files ----------
+
+/**
+ * Per-workspace backups (Primary-triggered ZIPs containing product data,
+ * stock ledger, audit events, and image bytes). Separated from exports so
+ * retention policies and access controls can differ — backups are
+ * disaster-recovery artifacts and tend to be much larger than exports.
+ */
+const WORKSPACE_BACKUP_STORE = 'workspace-backups';
+let _workspaceBackupStore: Store | null = null;
+function workspaceBackupStore(): Store {
+  if (_workspaceBackupStore) return _workspaceBackupStore;
+  _workspaceBackupStore = getStore({ name: WORKSPACE_BACKUP_STORE, consistency: 'strong' });
+  return _workspaceBackupStore;
+}
+
+/**
+ * Admin-only system backups (cross-workspace DB dumps). Separate store
+ * so that destructive operations (clear a workspace's backups, etc.)
+ * can never accidentally hit the system backup set.
+ */
+const SYSTEM_BACKUP_STORE = 'system-backups';
+let _systemBackupStore: Store | null = null;
+function systemBackupStore(): Store {
+  if (_systemBackupStore) return _systemBackupStore;
+  _systemBackupStore = getStore({ name: SYSTEM_BACKUP_STORE, consistency: 'strong' });
+  return _systemBackupStore;
+}
+
+/**
+ * Reads bytes of a previously-stored Blob from the chosen image, export,
+ * or backup store. Used by streamImage. Image-specific (image-pipeline
+ * calls `getImage` directly); kept here so the streaming pattern is the
+ * same across stores.
+ */
+async function readBlob(
+  store: Store,
+  key: string,
+): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string; filename: string } | null> {
+  const r = await store.getWithMetadata(key, { type: 'stream' });
+  if (!r) return null;
+  const meta = (r.metadata as Record<string, unknown> | null) ?? {};
+  const ct = typeof meta['contentType'] === 'string' ? (meta['contentType'] as string) : 'application/octet-stream';
+  const filename = typeof meta['filename'] === 'string' ? (meta['filename'] as string) : 'backup';
+  return { stream: r.data as ReadableStream<Uint8Array>, contentType: ct, filename };
+}
+
+export async function putWorkspaceBackup(
+  workspaceId: string,
+  backupId: string,
+  filename: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<string> {
+  const key = `${workspaceId}_${backupId}`;
+  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  await workspaceBackupStore().set(key, buf, {
+    metadata: { contentType, filename, workspaceId, backupId },
+  });
+  return key;
+}
+
+export async function getWorkspaceBackup(key: string) {
+  return readBlob(workspaceBackupStore(), key);
+}
+
+export async function putSystemBackup(
+  backupId: string,
+  filename: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<string> {
+  const key = `system_${backupId}`;
+  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  await systemBackupStore().set(key, buf, {
+    metadata: { contentType, filename, backupId },
+  });
+  return key;
+}
+
+export async function getSystemBackup(key: string) {
+  return readBlob(systemBackupStore(), key);
+}
+
+/**
+ * Deletes a backup. Used by retention pruning (planned v1.1) and any
+ * future "delete this backup" UI.
+ */
+export async function deleteWorkspaceBackup(key: string): Promise<void> {
+  await workspaceBackupStore().delete(key);
+}
+
+export async function deleteSystemBackup(key: string): Promise<void> {
+  await systemBackupStore().delete(key);
+}
+
 /**
  * Validates that an image key has the expected `<wsid>/<pid>/<uuid>` shape
  * before we let it into a URL path or DB column. Defense against junk
