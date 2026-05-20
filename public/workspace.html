@@ -23,6 +23,7 @@
       <div class="toolbar">
         <h2 style="margin:0">Products</h2>
         <div class="spacer"></div>
+        <a id="view-audit" href="#" class="image-btn">Audit log</a>
         <button id="add-product" class="primary">+ Add Product</button>
       </div>
 
@@ -284,6 +285,7 @@
       document.getElementById('add-product').addEventListener('click', () => {
         window.location.href = `/product-edit.html?wsid=${workspaceId}`;
       });
+      document.getElementById('view-audit').href = `/workspace-audit.html?wsid=${workspaceId}`;
 
       let searchTimeout;
       document.getElementById('filter-search').addEventListener('input', () => {

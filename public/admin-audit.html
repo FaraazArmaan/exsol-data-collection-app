@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System audit — ExSol</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+  </head>
+  <body>
+    <div class="container container--wide">
+      <div class="row">
+        <a href="/admin.html">&larr; Back to admin</a>
+        <div class="spacer"></div>
+        <span class="badge badge--admin" id="admin-email"></span>
+        <button id="signout">Sign out</button>
+      </div>
+
+      <h1>System audit log</h1>
+      <p class="muted">Every audited action across every workspace. Use the filters to narrow.</p>
+
+      <div class="filters">
+        <label>Workspace
+          <select id="filter-workspace">
+            <option value="">All workspaces</option>
+          </select>
+        </label>
+        <label>Action prefix
+          <input type="text" id="filter-action" placeholder="e.g. product., backup.system." />
+        </label>
+        <label>Resource type
+          <select id="filter-resource">
+            <option value="">Any</option>
+            <option value="product">product</option>
+            <option value="stock_movement">stock_movement</option>
+            <option value="export_job">export_job</option>
+            <option value="backup">backup</option>
+            <option value="workspace">workspace</option>
+            <option value="team_member">team_member</option>
+            <option value="system">system</option>
+          </select>
+        </label>
+        <label>Since (UTC)
+          <input type="datetime-local" id="filter-since" />
+        </label>
+        <label>Until (UTC)
+          <input type="datetime-local" id="filter-until" />
+        </label>
+        <div class="spacer"></div>
+        <button id="apply-filters">Apply</button>
+        <button id="reset-filters">Reset</button>
+      </div>
+
+      <p class="muted-section" id="result-meta"></p>
+      <div id="events">Loading…</div>
+      <div class="row" style="margin-top: 1rem;">
+        <button id="prev-page" disabled>« Prev</button>
+        <span class="spacer"></span>
+        <span class="muted-section" id="page-info"></span>
+        <span class="spacer"></span>
+        <button id="next-page" disabled>Next »</button>
+      </div>
+    </div>
+
+    <script type="module">
+      import { fetchMe, getJSON, signOut } from '/assets/js/api.js';
+
+      const me = await fetchMe();
+      if (!me.user) window.location.href = '/login.html';
+      if (!me.user.isAdmin) window.location.replace('/me.html');
+      document.getElementById('admin-email').textContent = me.user.email;
+
+      document.getElementById('signout').addEventListener('click', async () => {
+        await signOut();
+        window.location.href = '/login.html';
+      });
+
+      // Populate the workspace filter from /api/admin/workspaces.
+      try {
+        const data = await getJSON('/api/admin/workspaces');
+        const select = document.getElementById('filter-workspace');
+        for (const w of data.workspaces ?? []) {
+          const opt = document.createElement('option');
+          opt.value = w.id;
+          opt.textContent = w.name;
+          select.append(opt);
+        }
+      } catch {
+        // Non-fatal — admin can still filter by other fields.
+      }
+
+      const PAGE_SIZE = 50;
+      let offset = 0;
+      let totalKnown = 0;
+
+      function buildQuery() {
+        const usp = new URLSearchParams();
+        const action = document.getElementById('filter-action').value.trim();
+        const resourceType = document.getElementById('filter-resource').value;
+        const workspaceId = document.getElementById('filter-workspace').value;
+        const since = document.getElementById('filter-since').value;
+        const until = document.getElementById('filter-until').value;
+        if (action) usp.set('action', action);
+        if (resourceType) usp.set('resourceType', resourceType);
+        if (workspaceId) usp.set('workspaceId', workspaceId);
+        if (since) usp.set('since', new Date(since).toISOString());
+        if (until) usp.set('until', new Date(until).toISOString());
+        usp.set('limit', String(PAGE_SIZE));
+        usp.set('offset', String(offset));
+        return usp.toString();
+      }
+
+      async function loadPage() {
+        const container = document.getElementById('events');
+        container.replaceChildren();
+        const meta = document.getElementById('result-meta');
+        meta.textContent = 'Loading…';
+        try {
+          const data = await getJSON(`/api/admin/audit?${buildQuery()}`);
+          totalKnown = data.total;
+          meta.textContent = `${data.total} event${data.total === 1 ? '' : 's'} match the filter`;
+          if (!data.events.length) {
+            const p = document.createElement('p');
+            p.className = 'muted-section';
+            p.textContent = 'No events.';
+            container.append(p);
+            updatePager();
+            return;
+          }
+          const table = document.createElement('table');
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          for (const label of ['When (UTC)', 'Workspace', 'Actor', 'Action', 'Resource', '']) {
+            const th = document.createElement('th');
+            th.textContent = label;
+            headerRow.append(th);
+          }
+          thead.append(headerRow);
+          table.append(thead);
+          const tbody = document.createElement('tbody');
+          for (const e of data.events) {
+            tbody.append(renderRow(e));
+          }
+          table.append(tbody);
+          container.append(table);
+          updatePager();
+        } catch (err) {
+          meta.textContent = `Failed to load: ${err.message || err}`;
+        }
+      }
+
+      function renderRow(e) {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td');
+        td1.textContent = new Date(e.occurredAt).toISOString().replace('T', ' ').slice(0, 19);
+        tr.append(td1);
+
+        const td2 = document.createElement('td');
+        td2.textContent = e.workspaceName || (e.workspaceId ? e.workspaceId.slice(0, 8) + '…' : '—');
+        tr.append(td2);
+
+        const td3 = document.createElement('td');
+        if (e.onBehalfOfEmail) {
+          td3.textContent = `${e.actorEmail || '?'} → ${e.onBehalfOfEmail}`;
+          td3.title = e.impersonationReason ? `Reason: ${e.impersonationReason}` : 'Admin impersonation';
+        } else {
+          td3.textContent = e.actorEmail || e.actorUserId?.slice(0, 8) + '…' || '?';
+        }
+        tr.append(td3);
+
+        const td4 = document.createElement('td');
+        const code = document.createElement('code');
+        code.textContent = e.action;
+        td4.append(code);
+        tr.append(td4);
+
+        const td5 = document.createElement('td');
+        if (e.resourceType) {
+          td5.textContent = e.resourceType + (e.resourceId ? `:${e.resourceId.slice(0, 8)}…` : '');
+        } else {
+          td5.textContent = '—';
+        }
+        tr.append(td5);
+
+        const td6 = document.createElement('td');
+        if (e.before || e.after) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = 'Diff';
+          btn.addEventListener('click', () => toggleDiff(tr, e));
+          td6.append(btn);
+        } else {
+          td6.textContent = '—';
+        }
+        tr.append(td6);
+
+        return tr;
+      }
+
+      function toggleDiff(rowTr, e) {
+        const existing = rowTr.nextElementSibling;
+        if (existing?.dataset.diff === e.id) {
+          existing.remove();
+          return;
+        }
+        const diffTr = document.createElement('tr');
+        diffTr.dataset.diff = e.id;
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        const pre = document.createElement('pre');
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.fontSize = '0.85rem';
+        pre.style.background = 'var(--surface)';
+        pre.style.padding = '0.6rem';
+        pre.style.borderRadius = '6px';
+        pre.textContent = JSON.stringify(
+          { before: e.before, after: e.after, metadata: e.metadata },
+          null,
+          2,
+        );
+        td.append(pre);
+        diffTr.append(td);
+        rowTr.after(diffTr);
+      }
+
+      function updatePager() {
+        const prev = document.getElementById('prev-page');
+        const next = document.getElementById('next-page');
+        prev.disabled = offset === 0;
+        next.disabled = offset + PAGE_SIZE >= totalKnown;
+        document.getElementById('page-info').textContent =
+          `Showing ${Math.min(offset + 1, totalKnown)}–${Math.min(offset + PAGE_SIZE, totalKnown)} of ${totalKnown}`;
+      }
+
+      document.getElementById('apply-filters').addEventListener('click', () => {
+        offset = 0;
+        loadPage();
+      });
+      document.getElementById('reset-filters').addEventListener('click', () => {
+        document.getElementById('filter-workspace').value = '';
+        document.getElementById('filter-action').value = '';
+        document.getElementById('filter-resource').value = '';
+        document.getElementById('filter-since').value = '';
+        document.getElementById('filter-until').value = '';
+        offset = 0;
+        loadPage();
+      });
+      document.getElementById('prev-page').addEventListener('click', () => {
+        offset = Math.max(0, offset - PAGE_SIZE);
+        loadPage();
+      });
+      document.getElementById('next-page').addEventListener('click', () => {
+        offset += PAGE_SIZE;
+        loadPage();
+      });
+
+      await loadPage();
+    </script>
+  </body>
+</html>
