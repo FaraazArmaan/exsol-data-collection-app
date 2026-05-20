@@ -1,7 +1,8 @@
 # ADR 0005: Files, Backups, Audit, and Deployment
 
-- **Status:** Accepted
+- **Status:** Partially superseded
 - **Date:** 2026-05-19
+- **See also:** ADR-0006 (2026-05-20) — the file-storage portions of this document (Google Drive folder layout, Drive-as-CDN, Drive service-account model) are superseded by the pivot to Netlify Blobs. The audit-log, deployment workflow, and backup *format* decisions in this ADR remain valid; only the *storage target* changed. Read this document as historical context for the original design; read ADR-0006 for current truth on where files actually live.
 
 ## Context
 

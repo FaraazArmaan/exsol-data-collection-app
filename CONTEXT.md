@@ -53,20 +53,21 @@ A given user can be Primary in one Workspace and Manager in another (e.g., a cha
 
 ## Files & exports
 
-- **File Manager** — Per-Workspace UI over the Workspace's GDrive folder tree. Roles: Primary/Manager full CRUD; Storekeeper read+upload only.
-- **Export Job** — A row in `export_jobs` table tracking an async export. States: `queued`, `running`, `done`, `failed`. Owns the resulting GDrive file ID and the requesting user.
+- **Blob Store** — Netlify Blobs namespace used for binary persistence. v1 stores: `product-images` (in use), `product-exports`, `workspace-backups`, `system-backups` (Modules 11/12). Keys are opaque `<wsid>_<pid>_<uuid>` strings; values are byte blobs with `contentType` metadata. See ADR-0006.
+- **Image Key** — A `product-images` Blob store key, recorded on `products.primary_image_id` or `products.extra_image_ids`. Opaque to the rest of the app — only `blobStorage` and the `/api/img` proxy interpret it.
+- **Export Job** — A row in `export_jobs` table tracking an async export. States: `queued`, `running`, `done`, `failed`. Owns the resulting Blob key and the requesting user.
 - **Comprehensive Export** — XLSX or CSV containing every core field + every enabled overlay flattened. Default target for the future Internal Website.
 - **Meta Catalog CSV** — CSV in Meta's exact catalog schema; works for both Meta Commerce and WhatsApp Business Catalog.
 
 ## Audit & backups
 
-- **Audit Event** — A row in `audit_events`: who (real actor), on-behalf-of (if impersonating), action, resource, before/after diff, metadata, timestamp. 90 days hot, then archived as CSV to GDrive.
-- **Per-Client Backup** — On-demand ZIP snapshot of a Workspace's data + files. Triggered by Primary, kept in `<Workspace>/Backups/`.
-- **System Backup** — Nightly `pg_dump` + GDrive manifest, Admin-only, kept in `System Backups/`. Excludes Drive file contents (Drive is its own backup).
+- **Audit Event** — A row in `audit_events`: who (real actor), on-behalf-of (if impersonating), action, resource, before/after diff, metadata, timestamp. 90 days hot, then archived as CSV to the `system-backups` Blob store.
+- **Per-Client Backup** — On-demand ZIP snapshot of a Workspace's data + image bytes. Triggered by Primary, stored in the `workspace-backups` Blob store keyed by workspace.
+- **System Backup** — Nightly SQL dump + manifest, Admin-only, stored in the `system-backups` Blob store. Image bytes are NOT duplicated into the backup (they live in their own store and have their own retention).
 - **Neon PITR** — Underlying point-in-time recovery from Neon itself; the deepest safety net.
 
 ## Deployment
 
-- **Local dev** — `netlify dev` running against the Neon `dev` branch + a test Drive folder. The only environment that doesn't deploy anywhere.
+- **Local dev** — `netlify dev` running against the Neon `dev` branch + a sandboxed local Blobs store (auto-provisioned by `netlify dev`). The only environment that doesn't deploy anywhere.
 - **Deploy Preview** — Netlify-generated URL per feature branch, connected to an ephemeral Neon branch with isolated data. Used for review before merge.
-- **Production** — `main` branch auto-deployed by Netlify. Connected to Neon `main`, the live Drive folder, and production Google OAuth client.
+- **Production** — `main` branch auto-deployed by Netlify. Connected to Neon `main`, the production Blobs store (auto-provisioned per Netlify site), and production Google OAuth client.

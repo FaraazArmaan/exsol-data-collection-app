@@ -1,9 +1,17 @@
 # PRD — ExSol Data Collection App, v1
 
 - **Status:** Ready for agent
-- **Date:** 2026-05-19
+- **Date:** 2026-05-19 (architecture amendment 2026-05-20)
 - **Triage:** `ready-for-agent`
-- **Related:** `CONTEXT.md`, `docs/adr/0001`..`0005`, `docs/grilling-log.md`
+- **Related:** `CONTEXT.md`, `docs/adr/0001`..`0006`, `docs/grilling-log.md`
+
+> **2026-05-20 amendment:** File storage pivoted from Google Drive to Netlify Blobs. See ADR-0006 for the full decision record. Throughout this PRD, references to "Drive folder," "drive_file_id," "drive resumable upload," and Module 9 `driveClient` should be read as their Blobs equivalents:
+> - `<Workspace>/Products/<sku>/` Drive folder → opaque Blob key `<wsid>_<pid>_<uuid>`
+> - `drive_file_id` columns → `image_id` columns (migration 009 renamed)
+> - Drive resumable upload → multipart POST to `/api/.../images/upload`, 5 MB cap
+> - `driveClient` module → `blobStorage` module (`src/lib/blob-storage.ts`)
+>
+> The high-level requirements (workflows, schema *shape*, RLS, audit, role matrix) are unchanged. Only the *storage target* swapped. Modules 11 (`exportEngine`) and 12 (`backupEngine`) will also write to Blobs (separate stores: `product-exports`, `workspace-backups`, `system-backups`).
 
 ---
 
@@ -231,10 +239,10 @@ Each is implemented behind a stable interface. Frontend pages and HTTP handlers 
 6. **`impersonationManager`** — `begin(adminId, targetUserId, workspaceId, reason)`, `end(sessionId)`, `currentActor(session)`. Begin requires an unlocked workspace; persists an `impersonation_sessions` row; sets session claim; auto-expires at 30 min. `currentActor` returns `{ realActorId, onBehalfOfId, impersonationReason, isImpersonating }` used by every write path.
 7. **`auditLogWriter`** — `record(event)`. Single entry point for all events. Pulls actor context from current session via `impersonationManager.currentActor`. Diffs are computed by passing `{ resource, before, after }` — the writer extracts changed fields only. Bulk operations call `record` once with a `bulkSummary: { count, sampleIds }` field instead of one row per item.
 8. **`stockLedger`** — `recordMovement(payload)`, `currentCount(productId)`, `recountToAbsolute(productId, absolute, reason, actorId)`. Inserts into `stock_movements`; a Postgres trigger maintains `products.stock_count = SUM(deltas)`. Validates source/reason against allowed enums.
-9. **`driveClient`** — `requestUploadSession(folderId, filename, mime, size)`, `getBytes(fileId)`, `createFolder(parentId, name)`, `move(fileId, destFolderId)`, `delete(fileId)`, `list(folderId)`, `ensurePath(pathSegments[])`. Wraps Google Drive API with exponential backoff retry, refresh-token-rotation, and rate-limit awareness. Path resolution caches folder-name → file-id lookups in-memory.
-10. **`imagePipeline`** — `requestUploadSession(productId)`, `registerUploadedFile(productId, driveFileId)`, `proxyUrl(productId, variant)` where variant is `thumb`, `card`, `full`. Returns Netlify Image CDN URLs that resolve to `/api/img/:productId/:driveFileId`.
-11. **`exportEngine`** — `run({ profile, filter, workspace, requesterId })`. Profiles: `xlsx_comprehensive`, `csv_comprehensive`, `meta_catalog_csv`. Dispatch logic: estimate row count + col count; if ≤ 500 rows or ≤ 2 MB estimated size, run synchronously and return the file bytes; else insert into `export_jobs` and return a job ID. Worker function (Scheduled, every 1 min) picks `queued` jobs, builds the file, uploads to `<Workspace>/Exports/` via `driveClient`, updates row to `done`.
-12. **`backupEngine`** — `runWorkspace(workspaceId, requesterId)`, `runSystem(requesterId)`, `pruneRetention()`. Workspace backup composes a ZIP from Postgres queries + Drive file streams. System backup invokes `pg_dump` (via a child process if needed; otherwise SQL via `pg` driver) and produces a tar.gz. Retention pruning runs at end of each backup: keep last N + monthly snapshots.
+9. **`blobStorage`** — `putImage(workspaceId, productId, bytes, contentType)`, `getImage(key)`, `deleteImage(key)`, `isWellFormedKey(key)`. Thin wrapper over Netlify Blobs (`@netlify/blobs`). Stores currently in use: `product-images`. Future Modules 11/12 will add `product-exports`, `workspace-backups`, `system-backups` stores. No env config required — auto-provisions per Netlify site, and `netlify dev` provides a sandboxed local store.
+10. **`imagePipeline`** — `uploadAndRegister(actor, productId, filename, mime, body, slot)`, `registerUploadedFile(actor, productId, imageKey, slot)`, `proxyUrl(productId, imageKey, variant)` where variant is `thumb`, `card`, `full`, `streamImage(productId, imageKey)`. Returns Netlify Image CDN URLs that resolve to `/api/img/:productId/:imageKey`. Single multipart upload endpoint (`/api/.../images/upload`); 5 MB per-file cap (Netlify Functions body limit minus envelope overhead). Image keys are opaque `<wsid>_<pid>_<uuid>` strings.
+11. **`exportEngine`** — `run({ profile, filter, workspace, requesterId })`. Profiles: `xlsx_comprehensive`, `csv_comprehensive`, `meta_catalog_csv`. Dispatch logic: estimate row count + col count; if ≤ 500 rows or ≤ 2 MB estimated size, run synchronously and return the file bytes; else insert into `export_jobs` and return a job ID. Worker function (Scheduled, every 1 min) picks `queued` jobs, builds the file via `exceljs`/`papaparse`, writes it to the `product-exports` Blobs store, updates row to `done` with the storage key.
+12. **`backupEngine`** — `runWorkspace(workspaceId, requesterId)`, `runSystem(requesterId)`, `pruneRetention()`. Workspace backup composes a ZIP from Postgres queries + image bytes streamed from Blobs into the `workspace-backups` store. System backup builds a SQL dump (Neon-friendly: SQL serialization via `pg` driver, since `pg_dump` may not be available in the Netlify Function runtime) plus a `system-backups`-store entry. Retention pruning runs at end of each backup: keep last N + monthly snapshots.
 13. **`productService`** — CRUD methods + `validateOverlay(marketplace, fields)` + `bulkImport(csvRows, mode)`. Overlay validation uses per-marketplace JSON schemas stored as constants. Conditional food-vs-goods field handling at validate-time. SKU uniqueness enforced via unique index on `(workspace_id, sku)`.
 
 ### Database schema (sketch)
@@ -265,7 +273,7 @@ categories
 products
   id uuid pk, workspace_id, sku text,
   name, description, product_type (physical_goods|food_item),
-  category_id, sub_category_id, primary_image_drive_id, extra_image_drive_ids text[],
+  category_id, sub_category_id, primary_image_id, extra_image_ids text[],
   price numeric(12,2), currency, cost numeric(12,2),
   stock_count int (materialized from movements),
   stock_unit, weight_g, dim_l_mm, dim_w_mm, dim_h_mm,
@@ -370,7 +378,7 @@ Admin-scoped (require admin + per-Workspace unlock for Workspace ops):
 - `GET /admin/audit`
 
 Image proxy:
-- `GET /api/img/:productId/:driveFileId?variant=thumb|card|full`
+- `GET /api/img/:productId/:imageKey` (variant chosen by the Netlify Image CDN query params, not by the upstream)
 
 Webhook (reserved for v2; designed but not exposed):
 - `POST /workspaces/:id/stock/webhook` (X-Webhook-Secret)
@@ -380,7 +388,7 @@ Webhook (reserved for v2; designed but not exposed):
 - Applied via a Netlify build step on deploy, against the connected Neon branch.
 
 ### Image flow (decision-recap)
-- Browser → `POST /workspaces/:id/products/:pid/images/upload-init` → Function returns a Drive resumable upload session URL → browser PUTs bytes directly to Drive → `POST .../images/upload-complete` → Function stores `drive_file_id` on the product.
+- Browser → `POST /workspaces/:id/products/:pid/images/upload` (multipart/form-data) → Function calls `imagePipeline.uploadAndRegister` → bytes go to Netlify Blobs (`product-images` store) → product row updated with the resulting key.
 - Display: `<img src="/.netlify/images?url=/api/img/:pid/:fid&w=200">` → Netlify Image CDN → cached 30d at edge.
 
 ### God-mode impersonation contract

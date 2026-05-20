@@ -80,7 +80,7 @@
           <li><strong>Frontend:</strong> Vanilla HTML / CSS / ES-module JavaScript, served as static files by Netlify.</li>
           <li><strong>Backend:</strong> Netlify Functions in TypeScript.</li>
           <li><strong>Database:</strong> Neon Postgres with Row-Level Security on every workspace-scoped table.</li>
-          <li><strong>File storage:</strong> Google Drive via service-account API (Phase 5).</li>
+          <li><strong>File storage:</strong> Netlify Blobs (<code>product-images</code> store; ≤5 MB per file via multipart POST).</li>
           <li><strong>Auth:</strong> Google Identity Services (primary) + email + password with Argon2id (fallback). JWT in HTTP-only cookies, 15-minute access + 30-day refresh with rotation.</li>
         </ul>
       </section>
@@ -101,8 +101,8 @@
             <tr><td>6</td><td>impersonationManager</td><td><code>begin</code>, <code>end</code>, <code>current</code></td><td>Live</td></tr>
             <tr><td>7</td><td>auditLogWriter</td><td><code>record</code></td><td>Live</td></tr>
             <tr><td>8</td><td>stockLedger</td><td><code>recordMovement</code>, <code>currentCount</code>, <code>recountToAbsolute</code></td><td>Live</td></tr>
-            <tr><td>9</td><td>driveClient</td><td>Drive API wrapper</td><td>In progress (Day 1)</td></tr>
-            <tr><td>10</td><td>imagePipeline</td><td>Upload session + image registry</td><td>Day 2</td></tr>
+            <tr><td>9</td><td>blobStorage</td><td><code>putImage</code>, <code>getImage</code>, <code>deleteImage</code> (Netlify Blobs)</td><td>Live</td></tr>
+            <tr><td>10</td><td>imagePipeline</td><td><code>uploadAndRegister</code>, <code>registerUploadedFile</code>, <code>proxyUrl</code>, <code>streamImage</code></td><td>Live</td></tr>
             <tr><td>11</td><td>exportEngine</td><td><code>run({profile, filter, workspace})</code></td><td>Day 2</td></tr>
             <tr><td>12</td><td>backupEngine</td><td><code>runWorkspace</code>, <code>runSystem</code></td><td>Day 2</td></tr>
             <tr><td>13</td><td>productService</td><td>CRUD + overlay + stock views</td><td>Live</td></tr>

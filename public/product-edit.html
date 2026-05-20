@@ -51,6 +51,34 @@
             </label>
           </div>
 
+          <h3 style="margin-top: 1.5rem;">Images</h3>
+          <div id="images-section">
+            <div id="images-row" class="images-row">
+              <div class="image-slot image-slot--primary">
+                <div id="primary-thumb-wrap" class="image-thumb image-thumb--empty">No primary image</div>
+                <div class="image-actions">
+                  <label class="image-btn">
+                    <input type="file" id="primary-file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden />
+                    <span id="primary-btn-label">Upload primary</span>
+                  </label>
+                </div>
+              </div>
+              <div class="image-slot image-slot--extras">
+                <div id="extras-thumbs" class="extras-thumbs"></div>
+                <div class="image-actions">
+                  <label class="image-btn">
+                    <input type="file" id="extra-file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden />
+                    <span>+ Add image</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <p class="muted-section" id="images-help">
+              Click any additional image to promote it to primary. JPEG/PNG/WebP/GIF/AVIF up to 5 MB.
+            </p>
+            <p class="muted-section" id="images-status"></p>
+          </div>
+
           <h3 style="margin-top: 1.5rem;">Pricing</h3>
           <div class="form-grid">
             <label>Price
@@ -155,7 +183,14 @@
     </div>
 
     <script type="module">
-      import { fetchMe, getJSON, postJSON, signOut } from '/assets/js/api.js';
+      import {
+        fetchMe,
+        getJSON,
+        postJSON,
+        signOut,
+        imageProxyUrl,
+        uploadProductImage,
+      } from '/assets/js/api.js';
       import { renderImpersonationBanner } from '/assets/js/banner.js';
 
       const params = new URLSearchParams(window.location.search);
@@ -298,6 +333,26 @@
 
       buildTabs(productTypeSelect.value);
 
+      // ============= Image state =============
+      //
+      // Two modes:
+      //  - Existing product (isNew=false): `serverImages` mirrors what's on
+      //    the product row; uploads fire immediately to the API.
+      //  - New product (isNew=true):       `pendingImages` holds File objects
+      //    until the user clicks Save; rendered via blob URLs from
+      //    URL.createObjectURL. On successful create, we flush them through
+      //    uploadProductImage sequentially before redirecting.
+      //
+      // Declared above the load block because fillForm() writes to
+      // serverImages — `let` has a TDZ that ignores function hoisting, so
+      // the binding has to be evaluated before any caller of fillForm.
+      const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+      // Matches MAX_IMAGE_UPLOAD_BYTES in api.js — must stay under Netlify
+      // Functions' 6 MB body limit with multipart-envelope headroom.
+      const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+      let serverImages = { primary: null, extras: [] };
+      let pendingImages = { primary: null, extras: [] }; // entries: { file, previewUrl }
+
       // ============= Load existing product (edit mode) =============
       if (!isNew) {
         document.getElementById('delete-btn').classList.remove('hidden');
@@ -312,6 +367,11 @@
 
       function fillForm(p, overlays) {
         document.getElementById('page-meta').textContent = `Last updated ${new Date(p.updatedAt).toLocaleString()}`;
+        serverImages = {
+          primary: p.primaryImageId || null,
+          extras: Array.isArray(p.extraImageIds) ? p.extraImageIds.slice() : [],
+        };
+        renderImages();
         form.sku.value = p.sku || '';
         form.name.value = p.name || '';
         form.description.value = p.description || '';
@@ -347,6 +407,180 @@
           `${p.stockCount} ${p.stockUnit || ''}`;
         const hintEl = document.getElementById('stock-history-hint');
         hintEl.textContent = 'Every movement is recorded in the ledger with your identity and the impersonation context (if any).';
+      }
+
+      // ============= Image section render + handlers =============
+
+      function validateImageFile(file) {
+        if (!ALLOWED_IMAGE_MIME.includes(file.type)) {
+          return `Unsupported type ${file.type}. Allowed: JPEG, PNG, WebP, GIF, AVIF.`;
+        }
+        if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
+          return `File must be 1 byte to ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))} MB.`;
+        }
+        return null;
+      }
+
+      function renderImages() {
+        const primaryWrap = document.getElementById('primary-thumb-wrap');
+        const extrasWrap = document.getElementById('extras-thumbs');
+        const btnLabel = document.getElementById('primary-btn-label');
+        primaryWrap.replaceChildren();
+        extrasWrap.replaceChildren();
+
+        // ----- Primary slot -----
+        const primaryImg = (() => {
+          if (isNew) {
+            return pendingImages.primary
+              ? { src: pendingImages.primary.previewUrl, alt: 'Primary (pending)' }
+              : null;
+          }
+          return serverImages.primary
+            ? { src: imageProxyUrl(productId, serverImages.primary, 'card'), alt: 'Primary product image' }
+            : null;
+        })();
+        if (primaryImg) {
+          const img = document.createElement('img');
+          img.src = primaryImg.src;
+          img.alt = primaryImg.alt;
+          primaryWrap.append(img);
+          primaryWrap.classList.remove('image-thumb--empty');
+          btnLabel.textContent = 'Replace primary';
+        } else {
+          primaryWrap.textContent = 'No primary image';
+          primaryWrap.classList.add('image-thumb--empty');
+          btnLabel.textContent = 'Upload primary';
+        }
+
+        // ----- Extras -----
+        const extras = isNew ? pendingImages.extras : serverImages.extras;
+        for (const entry of extras) {
+          const wrap = document.createElement('button');
+          wrap.type = 'button';
+          wrap.className = 'image-thumb image-thumb--clickable';
+          wrap.title = 'Make this the primary image';
+          const img = document.createElement('img');
+          if (isNew) {
+            img.src = entry.previewUrl;
+          } else {
+            img.src = imageProxyUrl(productId, entry, 'thumb');
+          }
+          wrap.append(img);
+          wrap.addEventListener('click', () => promote(entry));
+          extrasWrap.append(wrap);
+        }
+      }
+
+      function setImageStatus(msg, isError = false) {
+        const el = document.getElementById('images-status');
+        el.textContent = msg;
+        el.className = isError ? 'error-text' : 'muted-section';
+      }
+
+      async function handleImageUpload(file, requestedSlot) {
+        const invalid = validateImageFile(file);
+        if (invalid) { setImageStatus(invalid, true); return; }
+
+        // Slot resolution: first image always becomes primary; once a primary
+        // exists, only the "+ Add image" path can create extras. "Replace
+        // primary" still overwrites primary.
+        const hasPrimary = isNew ? !!pendingImages.primary : !!serverImages.primary;
+        const slot = !hasPrimary ? 'primary' : requestedSlot;
+
+        if (isNew) {
+          // Queue locally; the form's submit handler will flush on Save.
+          const entry = { file, previewUrl: URL.createObjectURL(file) };
+          if (slot === 'primary') {
+            if (pendingImages.primary) pendingImages.extras.push(pendingImages.primary);
+            pendingImages.primary = entry;
+          } else {
+            pendingImages.extras.push(entry);
+          }
+          renderImages();
+          setImageStatus(`Queued ${file.name}. Click Save to upload.`);
+          return;
+        }
+
+        // Existing product: upload immediately.
+        setImageStatus(`Uploading ${file.name}…`);
+        try {
+          const result = await uploadProductImage(workspaceId, productId, file, slot);
+          serverImages = {
+            primary: result.primaryImageId || null,
+            extras: result.extraImageIds || [],
+          };
+          renderImages();
+          setImageStatus(`Uploaded ${file.name}.`);
+        } catch (err) {
+          setImageStatus(err.message || String(err), true);
+        }
+      }
+
+      // Promote an extra to primary. For pending uploads, swap in the
+      // client-side queue. For server images, PATCH the product so the
+      // tuple change is atomic in one round trip.
+      async function promote(entry) {
+        if (isNew) {
+          if (pendingImages.primary === entry) return;
+          const newExtras = pendingImages.extras.filter((e) => e !== entry);
+          if (pendingImages.primary) newExtras.push(pendingImages.primary);
+          pendingImages.primary = entry;
+          pendingImages.extras = newExtras;
+          renderImages();
+          setImageStatus('Marked as primary. Will save on Save.');
+          return;
+        }
+        const fileId = entry;
+        if (serverImages.primary === fileId) return;
+        const newPrimary = fileId;
+        const newExtras = serverImages.extras.filter((f) => f !== fileId);
+        if (serverImages.primary) newExtras.push(serverImages.primary);
+        setImageStatus('Promoting…');
+        const res = await fetch(
+          `/api/workspaces/${workspaceId}/products/${productId}`,
+          {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              primaryImageId: newPrimary,
+              extraImageIds: newExtras,
+            }),
+          },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setImageStatus(data.detail || data.error || 'Promote failed', true);
+          return;
+        }
+        serverImages = {
+          primary: data.product.primaryImageId || null,
+          extras: data.product.extraImageIds || [],
+        };
+        renderImages();
+        setImageStatus('Set as primary.');
+      }
+
+      document.getElementById('primary-file').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+        handleImageUpload(file, 'primary');
+      });
+      document.getElementById('extra-file').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+        handleImageUpload(file, 'extra');
+      });
+
+      // First paint (for new products too — shows empty state with active buttons).
+      renderImages();
+
+      // Surface any per-file upload failures forwarded by the create flow.
+      const uploadErrorsParam = params.get('upload_errors');
+      if (uploadErrorsParam) {
+        setImageStatus(`Some images failed to upload: ${uploadErrorsParam}. Retry with the upload controls below.`, true);
       }
 
       // ============= Form submit (create or update) =============
@@ -408,7 +642,30 @@
           return;
         }
         if (isNew) {
-          window.location.href = `/product-edit.html?wsid=${workspaceId}&pid=${data.product.id}`;
+          const newProductId = data.product.id;
+          // Flush queued images sequentially. Per-file failures are surfaced
+          // but don't roll the product back — the user can retry from the
+          // edit screen on the redirect target.
+          const queue = [];
+          if (pendingImages.primary) queue.push({ file: pendingImages.primary.file, slot: 'primary' });
+          for (const ex of pendingImages.extras) queue.push({ file: ex.file, slot: 'extra' });
+          if (queue.length) setImageStatus(`Uploading ${queue.length} image${queue.length === 1 ? '' : 's'}…`);
+          const failures = [];
+          for (const item of queue) {
+            try {
+              await uploadProductImage(workspaceId, newProductId, item.file, item.slot);
+            } catch (err) {
+              failures.push(`${item.file.name}: ${err.message || err}`);
+            }
+          }
+          if (failures.length) {
+            // Leave the user on the new edit page so they can retry.
+            window.location.href =
+              `/product-edit.html?wsid=${workspaceId}&pid=${newProductId}` +
+              `&upload_errors=${encodeURIComponent(failures.join(' | '))}`;
+          } else {
+            window.location.href = `/product-edit.html?wsid=${workspaceId}&pid=${newProductId}`;
+          }
         } else {
           // refresh in place
           const fresh = await getJSON(`/api/workspaces/${workspaceId}/products/${productId}`);

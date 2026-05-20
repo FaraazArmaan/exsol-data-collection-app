@@ -58,7 +58,7 @@
     </div>
 
     <script type="module">
-      import { fetchMe, getJSON, postJSON, signOut } from '/assets/js/api.js';
+      import { fetchMe, getJSON, postJSON, signOut, imageProxyUrl } from '/assets/js/api.js';
       import { renderImpersonationBanner } from '/assets/js/banner.js';
 
       const params = new URLSearchParams(window.location.search);
@@ -208,7 +208,14 @@
           const tdThumb = document.createElement('td');
           const thumb = document.createElement('div');
           thumb.className = 'product-thumb';
-          thumb.textContent = (p.sku || '?').slice(0, 2).toUpperCase();
+          if (p.primaryImageId) {
+            const img = document.createElement('img');
+            img.src = imageProxyUrl(p.id, p.primaryImageId, 'thumb');
+            img.alt = p.name || p.sku || 'Product';
+            thumb.append(img);
+          } else {
+            thumb.textContent = (p.sku || '?').slice(0, 2).toUpperCase();
+          }
           tdThumb.append(thumb);
           tr.append(tdThumb);
 

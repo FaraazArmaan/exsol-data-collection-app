@@ -37,7 +37,8 @@ This is a living index — add new entries as new patterns or libraries enter th
 ## Infrastructure & runtimes
 
 - **[Netlify Functions documentation](https://docs.netlify.com/functions/overview/)** — Function format, config, deploy contexts, env vars, image CDN.
-- **[Netlify Image CDN](https://docs.netlify.com/image-cdn/overview/)** — Used (in Phase 5) to serve product images via `/.netlify/images?url=...`.
+- **[Netlify Image CDN](https://docs.netlify.com/image-cdn/overview/)** — Serves product images via `/.netlify/images?url=...`; edge-caches the upstream `/api/img/:pid/:key`.
+- **[Netlify Blobs](https://docs.netlify.com/blobs/overview/)** — Key-value blob storage used as the v1 file backend (see ADR-0006). API surface: `getStore`, `set`, `get`, `getWithMetadata`, `delete`. Auto-provisions per Netlify site; `netlify dev` provides a sandboxed local store.
 - **[Neon serverless driver](https://github.com/neondatabase/serverless)** — `@neondatabase/serverless` Pool implementation + WebSocket configuration notes.
 - **[Node.js native env-file support](https://nodejs.org/api/cli.html#--env-fileconfig)** — `--env-file` flag used in `npm run migrate` and `bootstrap:admin` scripts.
 

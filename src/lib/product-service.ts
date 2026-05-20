@@ -14,8 +14,8 @@ export type ProductCore = {
   productType?: ProductType;
   categoryId?: string | null;
   subCategoryId?: string | null;
-  primaryImageDriveId?: string | null;
-  extraImageDriveIds?: string[];
+  primaryImageId?: string | null;
+  extraImageIds?: string[];
   price: number;
   currency?: string;
   cost?: number | null;
@@ -184,7 +184,7 @@ export async function createProduct(
           `INSERT INTO products (
              workspace_id, sku, name, description, product_type,
              category_id, sub_category_id,
-             primary_image_drive_id, extra_image_drive_ids,
+             primary_image_id, extra_image_ids,
              price, currency, cost,
              stock_count, stock_unit,
              weight_g, dim_l_mm, dim_w_mm, dim_h_mm,
@@ -210,8 +210,8 @@ export async function createProduct(
             input.productType ?? null,
             input.categoryId ?? null,
             input.subCategoryId ?? null,
-            input.primaryImageDriveId ?? null,
-            input.extraImageDriveIds ?? null,
+            input.primaryImageId ?? null,
+            input.extraImageIds ?? null,
             input.price,
             input.currency ?? null,
             input.cost ?? null,
@@ -292,8 +292,8 @@ export async function updateProduct(
              product_type = COALESCE($5::product_type, product_type),
              category_id = $6,
              sub_category_id = $7,
-             primary_image_drive_id = $8,
-             extra_image_drive_ids = COALESCE($9, extra_image_drive_ids),
+             primary_image_id = $8,
+             extra_image_ids = COALESCE($9, extra_image_ids),
              price = COALESCE($10, price),
              currency = COALESCE($11, currency),
              cost = $12,
@@ -322,10 +322,10 @@ export async function updateProduct(
             patch.productType ?? null,
             patch.categoryId === undefined ? before.categoryId ?? null : patch.categoryId,
             patch.subCategoryId === undefined ? before.subCategoryId ?? null : patch.subCategoryId,
-            patch.primaryImageDriveId === undefined
-              ? before.primaryImageDriveId ?? null
-              : patch.primaryImageDriveId,
-            patch.extraImageDriveIds ?? null,
+            patch.primaryImageId === undefined
+              ? before.primaryImageId ?? null
+              : patch.primaryImageId,
+            patch.extraImageIds ?? null,
             patch.price ?? null,
             patch.currency ?? null,
             patch.cost === undefined ? before.cost ?? null : patch.cost,
@@ -589,8 +589,8 @@ function rowToProduct(row: Record<string, any>): ProductRow {
     productType: row.product_type,
     categoryId: row.category_id ?? undefined,
     subCategoryId: row.sub_category_id ?? undefined,
-    primaryImageDriveId: row.primary_image_drive_id ?? undefined,
-    extraImageDriveIds: row.extra_image_drive_ids ?? [],
+    primaryImageId: row.primary_image_id ?? undefined,
+    extraImageIds: row.extra_image_ids ?? [],
     price: Number(row.price),
     currency: row.currency,
     cost: row.cost == null ? undefined : Number(row.cost),

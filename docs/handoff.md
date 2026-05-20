@@ -6,6 +6,105 @@
 
 ---
 
+## 2026-05-20 (evening) — Module 10 done on Netlify Blobs, Drive abandoned
+
+### How to resume
+
+You finished Day 1 with Module 10 functionally complete on a different storage backend than originally planned. The pivot was forced by a fundamental Google Drive constraint (see ADR-0006). When you come back:
+
+1. **`cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"`**
+2. **`git pull --ff-only`** — verifies you're at the latest amended commit.
+3. **`npm run typecheck && npm test`** — should be 24 pass + 34 DB-gated skipping (unchanged baseline).
+4. **`npm run migrate:status`** — should show 009 applied. If you're on a fresh machine, `npm run migrate` will pick it up.
+5. **Smoke-test images end-to-end** before adding new modules on top — sign in, create a product, upload an image, refresh the workspace listing, re-open the product. Migration 009 invalidated any image references from the earlier Drive-based attempts; those products will 404 their thumbs but the rest of the row data is fine. Just re-upload.
+6. **Pick up at Module 11 `src/lib/export-engine.ts`.** XLSX via `exceljs`, CSV via `papaparse`. Sync vs async dispatch on `≤ 500 products OR ≤ 2 MB` threshold. **Use `blobStorage` (not `driveClient` — it's gone) for the file destination.** Async path: insert an `export_jobs` row, scheduled function builds the file and writes to Blobs under a separate store name (suggest `product-exports`), updates the job row with the key + status.
+7. **Then Module 12 `src/lib/backup-engine.ts`.** ZIP via `jszip`. Per-workspace and system backups both go to Blobs (suggest store names `workspace-backups` / `system-backups`).
+8. **Friday: production deployment.** No Drive service-account setup needed any more. Required prod env vars: `NEON_DATABASE_URL`, `JWT_SIGNING_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` (with prod URL in Authorized JavaScript Origins), `RESEND_API_KEY`, `ADMIN_GOOGLE_EMAIL`, `APP_BASE_URL`. **Netlify Blobs needs no env config** — it auto-provisions on the connected site.
+
+### Goal we are working towards
+
+Same v1 goal. Boss expects production by Friday. Today went long (Day 1 spilled into evening) because the originally-planned Drive integration is a non-starter on a consumer Gmail account, and we re-architected file storage mid-flight. Net result: Module 10 is done, infrastructure is simpler (Blobs > Drive for v1 needs), the future module path (11, 12) is faster than it would have been.
+
+### Current state of the code
+
+- **Git:** 7 commits on `main` after the amend. Latest amended commit covers Module 10 (Blobs-based) + UX polish + docs.
+- **Build:** `npm run typecheck` clean. `npm test` → 24 pass, 34 DB-gated skipping.
+- **Modules 1–10, 13 of 13** complete. **Module 9 (driveClient) was deleted entirely; the surface that was nominally there has been replaced by `blobStorage`.**
+- **Pending:** Module 11 (exportEngine), Module 12 (backupEngine), plus the file manager UI, audit log viewer, and the user-facing file manager originally deferred to v1.1.
+- **Storage backend:** Netlify Blobs via `@netlify/blobs`. No service-account JSON to manage, no shared folders, no CORS. Stores currently used: `product-images`. Future stores: `product-exports`, `workspace-backups`, `system-backups`.
+
+### What changed in this session (delta from the afternoon block)
+
+**Architectural pivot** (commit amended):
+
+- **Drive integration removed:** `src/lib/drive-client.ts` deleted. `googleapis` uninstalled. `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY` and `GOOGLE_DRIVE_ROOT_FOLDER_ID` removed from `.env`. Reason: service accounts have zero storage quota on consumer Gmail; creating files in a user's shared folder fails with "Service Accounts do not have storage quota." Google's official workarounds (Shared Drives, OAuth domain-wide delegation) both require paid Google Workspace.
+- **Netlify Blobs adopted:** `src/lib/blob-storage.ts` is the new file backend. `getStore({ name: 'product-images' })` from `@netlify/blobs`. Auto-works in `netlify dev` (sandboxed local store) and production (managed cloud store). No env vars.
+- **See ADR-0006** for the full decision record.
+
+**Schema** (migration 009):
+- `products.primary_image_drive_id` → `primary_image_id`
+- `products.extra_image_drive_ids` → `extra_image_ids`
+- Column type stays `text` / `text[]` — value is now an opaque storage key (`<wsid>_<pid>_<uuid>`) instead of a Drive file ID. Future backend swaps no longer require a column rename.
+
+**Module 10 (`src/lib/image-pipeline.ts`)**:
+- Surface: `uploadAndRegister(actor, productId, filename, mime, body, slot)`, `registerUploadedFile(actor, productId, imageKey, slot)`, `proxyUrl(productId, imageKey, variant)`, `streamImage(productId, imageKey)`.
+- The init/complete pair (resumable upload sessions) is gone — that path was tied to direct-to-Drive uploads which never worked due to Node's fetch stripping the `Origin` header on outgoing requests, blocking CORS preflight on the session URL.
+- Upload cap is **5 MB per file** (Netlify Functions body limit is 6 MB; we leave 1 MB headroom for multipart envelope). Documented in JSDoc + visible in UI.
+
+**Endpoints**:
+- **New:** `POST /api/workspaces/:wsid/products/:pid/images/upload` (multipart). The only image upload endpoint.
+- **New:** `GET /api/img/:pid/:fid` already existed, now reads from Blobs and returns the stored content-type (was `octet-stream` when reading from Drive).
+- **Removed:** `images/init.ts`, `images/complete.ts` (dead since the pivot).
+
+**UI**:
+- `public/product-edit.html` — Images section appears immediately on a new (unsaved) product. Picked files are queued locally with `URL.createObjectURL` previews. Single Save creates the product, then sequentially POSTs each queued image. Click an extra to promote it to primary (atomic local swap for new products, single PATCH for existing).
+- `public/workspace.html` — table thumbnails now render via `/.netlify/images?url=/api/img/...` proxy when `primaryImageId` is set; SKU-letter fallback otherwise.
+- `public/assets/js/api.js` — `uploadProductImage(workspaceId, productId, file, slot)` is now a single multipart POST. `imageProxyUrl(productId, imageKey, variant)` helper for the Image CDN URLs.
+- `public/assets/css/base.css` — **Generic `.hidden { display: none }` rule added.** Earlier the only `.hidden` rule was scoped to `.tab-panel.hidden`, which meant `class="hidden"` on `#food-section`, `#stock-absolute-label`, `#delete-btn` (and my new `#images-section`) did NOTHING. Latent bug since Phase 4. The Module 10 upload UI surfaced it because clicking an "invisible-but-actually-visible" upload button on a new product fired the upload with `productId === null`.
+
+### Files actively editing
+
+**None.** Working tree clean after the amend.
+
+### Pending Thursday (revised)
+
+- Module 11 `exportEngine` on Blobs (XLSX/CSV; sync vs async dispatch).
+- Module 12 `backupEngine` on Blobs (ZIP composition via `jszip`; per-workspace and system backups).
+- Audit log viewer UI (`workspace-audit.html`, `admin-audit.html`).
+- Optional: CSV bulk import UI.
+
+### Pending Friday
+
+- Production deployment: connect repo to Netlify site; set the prod env vars listed in step 8 above (notably NO Drive variables); cross-browser smoke test.
+- End-of-week handoff covering deployed vs. deferred.
+
+### Everything tried that failed and why
+
+This session had a real chain of failures all rooted in the wrong storage backend:
+
+1. **Drive resumable upload, browser PUT got "Failed to fetch"** — Google's resumable session URL is only CORS-allowed if the initiating PATCH includes an `Origin` header. Node's undici fetch silently drops `Origin` (forbidden request header per WHATWG spec), so the session URL Google returned was not CORS-enabled for the browser. Wasted ~20 min before I figured out fetch was stripping the header.
+2. **Tried to pivot to multipart-through-function (still on Drive)** — got past the CORS issue, but immediately hit **"Service Accounts do not have storage quota."** This is the real wall: service accounts can't OWN files; on Workspace you get Shared Drives, on consumer Gmail you get nothing.
+3. **`.hidden` was never a global rule.** I assumed Phase 4 had set it up. It hadn't — only `.tab-panel.hidden` worked. The Module 10 upload UI made this latent bug visible because of the `productId = null` crash that resulted.
+4. **`re.sub` in Python interpreted `\n` in the replacement string as a literal newline** when I tried to write the (then-needed) Drive service-account JSON into `.env`. Shredded the file across 50+ lines. Recovered via a lambda-replacement re-write. Generally instructive — Python's `re.sub` does this and it's easy to forget.
+5. **`let serverImages` declared after the load block that used it.** Classic TDZ. Function hoists, the function references the let, the let is in TDZ. Moved declaration above the load block.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing Day 2 of the ExSol Data Collection App production sprint.
+
+Please read docs/handoff.md (top block dated 2026-05-20 evening) and
+docs/adr/0006-pivot-file-storage-to-netlify-blobs.md for the storage
+context, then pick up at step 6 of "How to resume" — start
+src/lib/export-engine.ts (Module 11). Module 10 (imagePipeline on
+Blobs) is done. Use blobStorage, not driveClient (it no longer exists).
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-20 (afternoon) — Day 1 ahead of schedule, paused for resume
 
 ### How to resume

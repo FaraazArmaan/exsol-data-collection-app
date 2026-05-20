@@ -6,9 +6,9 @@
 
 ## Abstract
 
-ExSol Data Collection is a multi-tenant web application that lets a single operator (Admin) onboard businesses (Clients) and provision them isolated workspaces for collaborative product and stock-data maintenance. Each workspace supports role-scoped team members (Primary, Manager, Storekeeper), an append-only stock ledger, and per-marketplace JSONB overlays for catalog field heterogeneity. Tenant isolation is enforced server-side via Postgres Row-Level Security; admin access to client data is gated by a per-client access key plus auditable, time-boxed impersonation. The system is delivered as a static frontend on Netlify, TypeScript Netlify Functions, a Neon Postgres database, and Google Drive for file storage. This document describes the problem, the design, and the current implementation as of 2026-05-20.
+ExSol Data Collection is a multi-tenant web application that lets a single operator (Admin) onboard businesses (Clients) and provision them isolated workspaces for collaborative product and stock-data maintenance. Each workspace supports role-scoped team members (Primary, Manager, Storekeeper), an append-only stock ledger, and per-marketplace JSONB overlays for catalog field heterogeneity. Tenant isolation is enforced server-side via Postgres Row-Level Security; admin access to client data is gated by a per-client access key plus auditable, time-boxed impersonation. The system is delivered as a static frontend on Netlify, TypeScript Netlify Functions, a Neon Postgres database, and Netlify Blobs for file storage. This document describes the problem, the design, and the current implementation as of 2026-05-20.
 
-**Status.** Phase 4 of 5 complete. Auth, multi-tenant isolation, product CRUD, stock ledger, admin onboarding, and god-mode impersonation are operational on localhost. Phase 5 — file storage integration, image upload, exports, backups, and production deployment — is in progress. Target production release: Friday 2026-05-22.
+**Status.** Phase 5 partial. Auth, multi-tenant isolation, product CRUD, stock ledger, admin onboarding, god-mode impersonation, and product image storage (on Netlify Blobs) are operational on localhost. Exports, backups, and production deployment remain. Target production release: Friday 2026-05-22.
 
 ---
 
@@ -85,16 +85,16 @@ A naive stock model stores the count in a single column and overwrites it on eac
 │  - workspaceUnlockMgr   - impersonationManager                     │
 │  - auditLogWriter       - stockLedger                              │
 │  - productService       - workspace-actor (composition helper)     │
-│  - driveClient*         - imagePipeline*                           │
+│  - blobStorage          - imagePipeline                            │
 │  - exportEngine*        - backupEngine*       (* in development)   │
 └──────────────────────┬─────────────────────────────────────────────┘
                        │ talks to
                        ▼
 ┌──────────────────────────────────┐    ┌─────────────────────────────┐
-│  Neon Postgres                   │    │  Google Drive               │
-│  - 8 migrations, RLS-enforced    │    │  - service-account API      │
-│  - Pool via WebSocket            │    │  - per-workspace folder tree│
-│  - GUC-based context             │    │  - resumable upload         │
+│  Neon Postgres                   │    │  Netlify Blobs              │
+│  - 9 migrations, RLS-enforced    │    │  - product-images store     │
+│  - Pool via WebSocket            │    │  - opaque <wsid_pid_uuid>   │
+│  - GUC-based context             │    │    keys, multipart upload   │
 └──────────────────────────────────┘    └─────────────────────────────┘
 ```
 
@@ -128,7 +128,7 @@ The `permissionPolicy.can(actor, action, resource)` function is the single point
 | Static hosting | Netlify CDN |
 | Backend | Netlify Functions, TypeScript |
 | Database | Neon Postgres with Row-Level Security |
-| File storage | Google Drive (service-account API; Phase 5) |
+| File storage | Netlify Blobs (`product-images` store; multipart upload, ≤5 MB) |
 | Primary auth | Google Identity Services |
 | Fallback auth | Email + Argon2id-hashed password |
 | Session tokens | HS256 JWT, 15-minute access + 30-day refresh, HTTP-only cookies |
