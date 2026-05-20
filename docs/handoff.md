@@ -6,6 +6,98 @@
 
 ---
 
+## 2026-05-20 (afternoon) — Day 1 ahead of schedule, paused for resume
+
+### How to resume
+
+You've stopped mid-Day-1 after completing more than the day's plan. When you come back:
+
+1. **`cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"`**
+2. **`git pull --ff-only`** — verify local matches origin.
+3. **`npm run typecheck && npm test`** — confirm baseline green (24 pass, 34 DB-skipped).
+4. **Pick up at Module 10 `src/lib/image-pipeline.ts`.** Surface needed:
+   - `requestUploadSession(productId, filename, mime, size)` — calls `driveClient.ensurePath(['<Workspace>', 'Products', '<sku>'])` then `driveClient.requestUploadSession(folderId, ...)`. Returns `{ uploadUrl, fileId }` to the browser.
+   - `registerUploadedFile(productId, driveFileId, slot)` — stores the file ID on the product. `slot` is either `'primary'` (writes `primary_image_drive_id`) or `'extra'` (appends to `extra_image_drive_ids`).
+   - `proxyUrl(productId, driveFileId, variant)` — returns the Netlify Image CDN URL: `/.netlify/images?url=/api/img/<productId>/<driveFileId>&w=200&fit=cover` for `variant='thumb'`, `w=600&fit=cover` for `'card'`, `w=1600` for `'full'`.
+5. **Add an `/api/img/:pid/:fid` proxy endpoint** in `netlify/functions/img.ts` that streams bytes from Drive via `driveClient.getBytes` with appropriate cache headers.
+6. **Wire image upload UI into `public/product-edit.html`.** Replace the SKU-letter placeholder thumb. Use the resumable upload pattern: browser POSTs to a new function `image-upload-init` that returns the session URL, browser PUTs bytes directly, then POSTs to `image-upload-complete` to register the file ID.
+7. **After Module 10, move to Module 11 `src/lib/export-engine.ts`.** XLSX via `exceljs`, CSV via `papaparse`. Sync vs async dispatch on `≤ 500 products OR ≤ 2 MB` threshold. Use `db/migrations/006_files_exports_backups.sql`'s `export_jobs` table for async.
+8. **Then Module 12 `src/lib/backup-engine.ts`.** ZIP via `jszip` for per-workspace; `pg_dump` (or SQL-based dump if subprocess isn't available in Netlify Functions — verify) for system.
+9. **Friday: production deployment.** Connect repo to Netlify site, set production env vars (real `NEON_DATABASE_URL`, production `GOOGLE_OAUTH_CLIENT_ID` with the production URL added to Authorized JavaScript origins, `JWT_SIGNING_SECRET`, **`GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`** + **`GOOGLE_DRIVE_ROOT_FOLDER_ID`** [user must create the Drive service account before this step], `RESEND_API_KEY` if email wired by then, `ADMIN_GOOGLE_EMAIL`, `APP_BASE_URL`).
+10. **Evening email to boss is still pending.** Send before signing off for the day — list the GitHub commits and what's queued for Thursday.
+
+### Goal we are working towards
+
+Same v1 + deployed by Friday goal. Boss is reviewing daily. Morning email was sent committing to full scope. Today's progress exceeded the plan — Module 9 was scheduled to spill into Thursday but is fully done.
+
+### Current state of the code
+
+- **Git:** 6 commits on `main`, latest is `8ce82c7` "Day 1: add driveClient (Module 9)". All pushed.
+- **Build:** `npm run typecheck` passes. `npm test` → 24 pass, 34 DB-gated skipping cleanly.
+- **All 15 HTTP endpoints** now have try/catch wrappers + JSDoc. Netlify CLI 23.14 crash bug can no longer swallow uncaught throws.
+- **Modules 1–9, 13 of 13** complete. **Pending: 10 (imagePipeline), 11 (exportEngine), 12 (backupEngine).**
+- **Repo polish complete:** LICENSE (MIT), `/references/index.md` (curated external resources by category), `/spec/` (master `index.html` + `001-data-model.html` + style + README rules), README rewritten in systems-paper format.
+
+### Changes made during this session (afternoon delta only)
+
+**Try/catch + JSDoc on 15 endpoints** (commit `9960dfc`):
+- `auth-email-login.ts`, `auth-refresh.ts`, `auth-logout.ts`, `me.ts`, `config.ts`
+- `admin-workspaces.ts`, `admin-workspace-detail.ts`, `admin-workspace-unlock.ts`, `admin-workspace-rotate-key.ts`, `admin-impersonate.ts`
+- `workspace-products.ts`, `workspace-product-detail.ts`, `workspace-product-overlay.ts`, `workspace-stock-movements.ts`, `workspace-stock-views.ts`
+
+Each endpoint's body is now an inner `async handle()` function; the default export wraps it with `try { return await handle(...); } catch (err) { console.error(...); return json({error:'server_error', detail:...}, 500); }`. JSDoc headers describe path, methods, purpose, and access-control nuance.
+
+**Module 9 `driveClient`** (commit `8ce82c7`, `src/lib/drive-client.ts`):
+- Service-account JWT auth from `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`.
+- Exports: `rootFolderId`, `ensurePath`, `createFolder`, `requestUploadSession`, `getBytes`, `move`, `deleteFile`, `list`.
+- Retry policy: 5xx / 429 / network errors retry up to 5 times with exponential backoff (250ms → 8s cap).
+- `getBytes` returns a Web `ReadableStream<Uint8Array>` (converted from the Node Readable) so it can be returned directly from a Fetch-style Response without buffering.
+- All exports have JSDoc per boss directive #4.
+
+### Files actively editing
+
+**None.** Latest commit is clean. Resume point is creating `src/lib/image-pipeline.ts` (Module 10).
+
+### Everything tried that failed and why
+
+Two minor blips this session, both resolved:
+
+1. **Initial driveClient draft had an awkward leftover `reqEnv` import** used only to satisfy a `void` hack against TS strict-mode. Cleaned up; just use `process.env['GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY']` directly with explicit checks.
+2. **`existing[0].id` triggered `noUncheckedIndexedAccess`** since indexing might be undefined. Refactored to `const first = existing[0]; if (first?.id) return first.id;` — cleaner anyway.
+
+### Pending today (still)
+
+- **Evening email to boss** at ~7 PM IST. Summarize: 4 commits, all docs work + 15 endpoint wrappers + Module 9. Note we're ahead of the original plan. Use the warm, professional tone the morning email established.
+
+### Pending Thursday
+
+- Module 10 `imagePipeline` (most of it — small module given driveClient is done).
+- Module 11 `exportEngine` + exports tab on `workspace.html`.
+- Module 12 `backupEngine` + backups panel on `workspace.html`.
+- Audit log viewer UI (`workspace-audit.html` and `admin-audit.html`).
+- Image upload UI on `product-edit.html` (replaces the SKU-letter placeholder thumb).
+
+### Pending Friday
+
+- Production deployment (Netlify + custom domain + production OAuth + Drive service account).
+- Final cross-browser smoke test against the deployed URL.
+- End-of-week handoff covering what's deployed, what's deferred to v1.1.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing the ExSol Data Collection App production sprint.
+
+Please read docs/handoff.md (top block dated 2026-05-20 afternoon)
+and pick up at step 4 of "How to resume" — start src/lib/image-pipeline.ts
+(Module 10). driveClient (Module 9) is done; use it.
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-20 (mid-day) — Day 1 of production sprint, ready for /clear resume
 
 ### How to resume after /clear (read this first)
