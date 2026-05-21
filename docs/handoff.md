@@ -6,6 +6,91 @@
 
 ---
 
+## 2026-05-21 (Friday evening) — v1.1 #2 + #3 shipped (Dark mode + Resend invites)
+
+### How to resume
+
+Three of the four v1.1 features promised to Prateek for the 5 PM IST commit are now live in code (in Netlify Ready state, lock-mode prevents auto-publish until you click Publish in the dashboard).
+
+| # | Feature | Commit |
+|---|---------|--------|
+| 1 | Bulk CSV product import | `a2e68a3` |
+| 2 | Email invites via Resend (with feature flag) | `22770ba` |
+| 3 | Dark mode with manual toggle | `bb1229e` |
+| 4 | Per-marketplace structured field forms | **NOT STARTED** |
+
+Remaining for v1.1: only **#4** (per-marketplace structured field forms). Largest of the four, most scope-flexible. Schemas would live in `src/lib/marketplace-schemas/<name>.ts`. Best target: Meta Commerce + Amazon first (most used by ExSol clients).
+
+### What landed today (deltas from this afternoon's block)
+
+**v1.1 #3 (Dark mode) — commit `bb1229e`:**
+- `public/assets/css/base.css`: dark palette duplicated into `:root[data-theme="dark"]` (manual override). OS-pref block scoped `:root:not([data-theme="light"])` so manual light beats OS dark. `color-scheme` per theme so native form chrome follows. `input[type="search" | "number" | "url"]` + `select` picked up theme vars (were skipped before).
+- `public/assets/js/theme.js`: read/setTheme + auto-wires `#theme-toggle` on import. localStorage key `exsol-theme`.
+- Every `public/*.html`: tiny inline pre-paint `<script>` in `<head>` sets `data-theme` BEFORE first paint (no FOUC). Theme.js loaded via `<script type="module">`. Toggle button (☾/☀) inserted next to Sign out on each page; login + invite-accept pages put it top-right.
+
+**v1.1 #2 (Email invites) — commit `22770ba`:**
+- `db/migrations/011_invites.sql`: `invites` table + `invite_status` enum + RLS scoping invites to workspace members.
+- `src/lib/invite-manager.ts`: `createInvite`, `getInviteByToken`, `acceptInvite` (concurrent-safe via `WHERE status='pending' RETURNING`), `listInvites`, `revokeInvite`. 32-byte base64url token, SHA-256 hashed at rest.
+- `src/lib/email-sender.ts`: `sendInviteEmail` with three return shapes — `sent`, `no_api_key` (fallback link returned), `send_failed` (fallback link returned). Dynamic-import Resend SDK so unused-path bundle stays small.
+- `netlify/functions/workspace-invites.ts`: `POST/GET /api/workspaces/:wsid/invites`. POST creates the invite, attempts email send, returns `{ invite, email, link }` always — link is the fallback for the no-key/send-fail path, also returned on success for convenience.
+- `netlify/functions/invite-info.ts`: `GET /api/invites/:token` (public, token IS auth). Returns safe metadata + `usable` flag with auto-expiry transition.
+- `netlify/functions/invite-accept.ts`: `POST /api/invites/:token/accept`. Creates the user (or reuses existing email match), argon2id-hashes the password, accepts the invite, issues session cookies — user lands signed-in.
+- `public/invite-accept.html`: prefill page with invite metadata + name/password form. Error states for expired/revoked/already-accepted/missing tokens.
+- `public/admin-workspace.html`: new Invites card on the unlocked workspace view. Form + invites list. **Shows the fallback link prominently when `RESEND_API_KEY` is unset** with click-to-select on the link box.
+- `tests/invite-manager.test.ts`: 9 DB-gated tests — all green against the dev Neon branch.
+
+### Smoke-test results (against localhost:8888, Acme)
+
+- **Dark mode**: toggled on login → admin → workspace, persisted via localStorage; no flash on reload; native `<select>` chrome (dropdown arrow) follows the theme. ✓
+- **Invite flow**: created invite to `smoketest-invite@example.com` as manager → got the "Email not sent (RESEND_API_KEY not configured)" fallback with copy-able link → opened link in an isolated browser context → completed name + 14-char password → landed signed-in on `/me.html` showing "Acme Stores · Role: manager" ✓
+- Cleanup script removed the smoke user + invite + audit + refresh tokens.
+
+### Production env var to add when ready to enable email sending
+
+Netlify Site → Environment variables → add:
+
+| Var | Notes |
+|---|---|
+| `RESEND_API_KEY` | Your Resend account API key. Generate at resend.com → API Keys. |
+| `RESEND_FROM_EMAIL` | `ExSol <onboarding@yourdomain.com>` format. If unset, code defaults to `ExSol <onboarding@resend.dev>` (Resend's shared sandbox). Verify the sender domain in Resend before using a custom one. |
+
+Once both are set, the invite-create response flips from `{ sent: false, reason: 'no_api_key', fallbackLink }` to `{ sent: true, provider: 'resend', id }` automatically — no code change.
+
+### Lessons captured today
+
+1. **Netlify Functions v2 dispatches the first matching path.** `/products/:pid` greedily matches `/products/bulk`, so the new feature's path must avoid that collision (used `/products-bulk` instead). For invite endpoints I picked `/api/invites/:token` which doesn't conflict because no other `/api/invites/*` literal exists. Memory saved: `feedback-netlify-routing`.
+2. **`async function renderUnlocked` propagation**: adding `await` to a previously-sync function requires bubbling `await` up the call chain. Bit me in admin-workspace.html — caller had to become `await renderUnlocked(...)` too.
+3. **Pre-paint inline `<script>` in `<head>`** is the canonical fix for flash-of-wrong-theme. Synchronous, tiny, no `defer`/`async`.
+4. **Dynamic-import for optional SDKs**: `await import('resend')` inside `sendInviteEmail` means a tree-shaken build won't bundle Resend when the function never gets the api key. Saves cold-start time + bundle size on the no-key path.
+
+### Files actively editing
+
+**None.** Clean working tree after `22770ba`. Test DB has no residual smoke data (cleanup ran).
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing the ExSol Data Collection App v1.1 feature push.
+
+Please read docs/handoff.md (top block dated 2026-05-21 Friday evening).
+v1.1 #1, #2, #3 are done and pushed to main (Netlify Ready, unpublished).
+Boss-demoable URL is still v1.
+
+Only v1.1 #4 remains: per-marketplace structured field forms. Replace
+the current freeform JSON overlay editor on /product-edit.html with
+schema-driven forms. Schemas in src/lib/marketplace-schemas/<name>.ts.
+Start with Meta Commerce (highest priority) and Amazon. Use TDD;
+existing pattern is in tests/invite-manager.test.ts.
+
+When ready to enable email invites in prod: add RESEND_API_KEY and
+RESEND_FROM_EMAIL to Netlify env vars. No code change required.
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-21 (Friday late-afternoon) — v1.1 feature #1 shipped (Bulk CSV import)
 
 ### How to resume
