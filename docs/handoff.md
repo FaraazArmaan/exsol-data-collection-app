@@ -6,6 +6,67 @@
 
 ---
 
+## 2026-05-21 (Friday late-afternoon) — v1.1 feature #1 shipped (Bulk CSV import)
+
+### How to resume
+
+Commit `a2e68a3` on `main` adds **Bulk CSV product import**, the first of the four v1.1 features committed to Prateek for 5 PM IST. Built locally with TDD, smoke-tested against the dev Neon branch and Acme workspace. Pushed to `origin/main` — Netlify built to **Ready** state but **NOT published** (lock-mode intact). When you're ready to promote: Netlify dashboard → Deploys → click the new Ready deploy → **Publish deploy**.
+
+Remaining v1.1 features for the 5 PM IST commit:
+2. **Email invites for Secondary Users** — needs `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in Netlify env vars. New endpoints: `POST /api/workspaces/:wsid/invites`, `GET /api/invites/:token`. New page: `/invite-accept.html`. Migration: add `invites` table.
+3. **Dark mode** — CSS custom properties + `[data-theme="dark"]` selector in `public/assets/css/base.css` (already uses `--bg`/`--fg`/`--border`/`--accent` vars). Toggle button in top toolbar, persist in `localStorage`.
+4. **Per-marketplace structured field forms** — replace freeform JSON overlay editor. Schemas in `src/lib/marketplace-schemas/<name>.ts`. Start with Meta + Amazon.
+
+### What landed in commit a2e68a3
+
+- **`src/lib/product-service.ts`** — new `bulkCreateProducts(actor, rows[])` function. Returns `{ created, errors, summary }`. Iterates `createProduct` per row so partial success is the model (one bad row doesn't reject the batch). Audit events still get written per successful create.
+- **`netlify/functions/workspace-products-bulk.ts`** — `POST /api/workspaces/:wsid/products-bulk`. 1000-row cap. Hyphenated path is **deliberate** — `/products/bulk` collides with `/products/:pid` in `workspace-product-detail.ts` (Netlify's `:pid` greedily matches `bulk`). See the comment in the file.
+- **`public/workspace.html`** — `Import CSV` button next to `+ Add Product`. `<dialog>`-based modal with file upload, paste textarea, papaparse via ESM CDN (no bundler change needed), preview of first 5 rows, per-row issue flags, server-side error table on response. Reloads products + stock tiles after success.
+- **`public/assets/css/base.css`** — `.csv-dialog` + `.success-text` styles. Theme-aware via existing `--bg`/`--fg`/`--border` vars.
+- **`tests/product-service-bulk.test.ts`** — 6 DB-gated tests (skip without `TEST_DATABASE_URL`): happy path, partial failure, intra-batch dup SKU, pre-existing dup SKU, empty batch, audit-event coverage. All pass against the dev Neon branch.
+
+### Smoke-test results (against localhost:8888, Acme workspace)
+
+- **Run 1**: Imported a 4-row CSV with one bad row (empty SKU). Client-side validation flagged the bad row, button updated to `Import 3 rows`, server inserted 3, product list went 5→8, stock tiles re-rendered (Low Stock 0→2, Fast Movers 0→2). ✓
+- **Run 2**: Imported the same SMK-1/SMK-2/SMK-3 batch again + a NEW-1. Server reported `Imported 1 of 2. 1 row failed.` with `duplicate_sku` on row 1 (SMK-1). NEW-1 succeeded. ✓
+- Test products cleaned up via one-off Node script (deleted by SKU prefix from `products` + `stock_movements` + `audit_events`). ✓
+
+### Routing collision lesson (capture for the next features)
+
+`workspace-product-detail.ts` declares `path: '/api/workspaces/:wsid/products/:pid'`. Netlify Functions v2 dispatches the FIRST function whose path pattern matches the incoming URL — `:pid` matches any string including literal words like `bulk`. So `POST /api/workspaces/<wsid>/products/bulk` routed to the detail function and returned `method_not_allowed` (detail only accepts GET/PATCH/DELETE).
+
+**Rule for future endpoints under an existing collection**: don't use literal sub-paths under a `:param` route. Either use a sibling sub-resource (`/products-bulk`, `/invites`) or restructure the collection routes.
+
+### Files actively editing
+
+**None.** Clean working tree after `a2e68a3`. (The `scripts/cleanup-smk.mjs` helper was deleted after use — it's not in the repo.)
+
+### Everything tried that failed and why (this session only)
+
+- **Initial path `/api/workspaces/:wsid/products/bulk` collided with `/products/:pid`** — surfaced as `method_not_allowed` in the browser even though `curl` to `/products-bulk` returned 401 as expected. Renamed to `/products-bulk`. Documented in the function file's path comment.
+- **Tried to run the full test suite against the dev Neon branch** — `tests/tenancy.test.ts` failed because the dev DB has accumulated test fixtures (`X1`, `B1` products) from prior runs that don't clean up reliably. Not a regression from this work; the test was designed for a dedicated test DB. Continue running DB-gated tests on a clean branch when integrity matters.
+- **`netlify dev` route table was stale after adding a new function file mid-session** — restarting picked up the renamed `/products-bulk` correctly. If new endpoints don't dispatch, restart netlify dev.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing the ExSol Data Collection App v1.1 feature push.
+
+Please read docs/handoff.md (top block dated 2026-05-21 Friday
+late-afternoon). v1.1 feature #1 (Bulk CSV import) is done and pushed
+to main — sitting in Netlify Ready state, unpublished. Boss-demoable
+URL is still v1.
+
+Pick up at feature #2 — Email invites for Secondary Users via Resend.
+The current handoff block lists the endpoint surface + new migration.
+Use TDD; existing pattern is in tests/product-service-bulk.test.ts.
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-21 (Friday) — Production deployed, v1 live, lock-mode for v1.1 dev
 
 ### How to resume
