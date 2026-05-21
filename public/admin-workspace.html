@@ -59,7 +59,7 @@
         const data = await r.json();
         document.getElementById('ws-name').textContent = data.workspace.name;
         if (data.unlocked) {
-          renderUnlocked(data);
+          await renderUnlocked(data);
         } else {
           renderLocked(data.workspace);
         }
@@ -121,7 +121,7 @@
         });
       }
 
-      function renderUnlocked(data) {
+      async function renderUnlocked(data) {
         const ws = data.workspace;
         document.getElementById('ws-meta').textContent =
           `${data.productCount} products. Primary: ${ws.primary.name} <${ws.primary.email}>. ` +
@@ -164,6 +164,8 @@
         table.append(tbody);
         teamCard.append(table);
         contentEl.append(teamCard);
+
+        await renderInvitesCard(ws.id);
 
         const adminCard = document.createElement('div');
         adminCard.className = 'card';
@@ -285,6 +287,137 @@
         row.append(ack);
         modal.append(row);
         document.body.append(backdrop);
+      }
+
+      async function renderInvitesCard(workspaceId) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const h = document.createElement('h2');
+        h.textContent = 'Invites';
+        card.append(h);
+
+        // Invite form — built with createElement to avoid the innerHTML rule
+        const form = document.createElement('form');
+        form.style.cssText = 'display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem;';
+
+        const emailLabel = document.createElement('label');
+        emailLabel.style.cssText = 'flex:1;min-width:200px;';
+        emailLabel.append(document.createTextNode('Email'));
+        const emailIn = document.createElement('input');
+        emailIn.id = 'inv-email';
+        emailIn.type = 'email';
+        emailIn.required = true;
+        emailIn.placeholder = 'member@example.com';
+        emailLabel.append(emailIn);
+
+        const roleLabel = document.createElement('label');
+        roleLabel.append(document.createTextNode('Role'));
+        const roleSel = document.createElement('select');
+        roleSel.id = 'inv-role';
+        for (const [v, t] of [['manager', 'Manager'], ['storekeeper', 'Storekeeper']]) {
+          const o = document.createElement('option'); o.value = v; o.textContent = t; roleSel.append(o);
+        }
+        roleLabel.append(roleSel);
+
+        const submit = document.createElement('button');
+        submit.className = 'primary';
+        submit.type = 'submit';
+        submit.textContent = 'Send invite';
+
+        form.append(emailLabel, roleLabel, submit);
+        card.append(form);
+
+        const status = document.createElement('p');
+        status.className = 'muted-section';
+        card.append(status);
+
+        const list = document.createElement('div');
+        card.append(list);
+
+        const refresh = async () => {
+          list.replaceChildren();
+          try {
+            const data = await getJSON(`/api/workspaces/${encodeURIComponent(workspaceId)}/invites`);
+            if (!data.invites?.length) {
+              const p = document.createElement('p');
+              p.className = 'muted';
+              p.textContent = 'No invites yet.';
+              list.append(p);
+              return;
+            }
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const trh = document.createElement('tr');
+            ['Email', 'Role', 'Status', 'Created'].forEach((t) => {
+              const th = document.createElement('th'); th.textContent = t; trh.append(th);
+            });
+            thead.append(trh); table.append(thead);
+            const tbody = document.createElement('tbody');
+            for (const i of data.invites) {
+              const tr = document.createElement('tr');
+              const td = (t) => { const c = document.createElement('td'); c.textContent = t ?? ''; return c; };
+              tr.append(td(i.email));
+              tr.append(td(i.role));
+              const sTd = document.createElement('td');
+              const b = document.createElement('span'); b.className = 'badge'; b.textContent = i.status;
+              sTd.append(b);
+              tr.append(sTd);
+              tr.append(td(new Date(i.createdAt).toLocaleString()));
+              tbody.append(tr);
+            }
+            table.append(tbody);
+            list.append(table);
+          } catch (err) {
+            list.textContent = `Failed to load invites: ${err.message || err}`;
+          }
+        };
+
+        form.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          status.replaceChildren();
+          status.className = 'muted-section';
+          const email = emailIn.value.trim();
+          const role = roleSel.value;
+          const { ok, data } = await postJSON(
+            `/api/workspaces/${encodeURIComponent(workspaceId)}/invites`,
+            { email, role },
+          );
+          if (!ok) {
+            status.textContent = data.detail || data.error || 'Could not create invite.';
+            status.className = 'error-text';
+            return;
+          }
+          if (data.email.sent) {
+            status.textContent = `Invite sent to ${email}.`;
+            status.className = 'success-text';
+          } else {
+            const note = document.createElement('div');
+            note.style.cssText = 'padding:0.75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);';
+            const heading = document.createElement('strong');
+            heading.textContent = data.email.reason === 'no_api_key'
+              ? 'Email not sent (RESEND_API_KEY not configured)'
+              : 'Email send failed';
+            note.append(heading);
+            const p = document.createElement('p');
+            p.style.margin = '0.5rem 0';
+            p.className = 'muted';
+            p.textContent = 'Copy this link and share it with the invitee — it works the same as an emailed invite:';
+            note.append(p);
+            const linkBox = document.createElement('input');
+            linkBox.type = 'text';
+            linkBox.readOnly = true;
+            linkBox.value = data.link;
+            linkBox.style.cssText = 'width:100%;font-family:ui-monospace,Menlo,monospace;font-size:0.85rem;';
+            linkBox.addEventListener('click', () => linkBox.select());
+            note.append(linkBox);
+            status.append(note);
+          }
+          form.reset();
+          await refresh();
+        });
+
+        await refresh();
+        contentEl.append(card);
       }
 
       load();
