@@ -6,6 +6,93 @@
 
 ---
 
+## 2026-05-21 (Friday end-of-day) — Session close: v1.1 live in production
+
+### Production state at close
+
+**URL**: https://exsoldatacollectionapp.netlify.app (now serving commit `dfc50a1`, promoted via `netlify api restoreSiteDeploy` at 17:35 IST)
+
+**Auto-publish lock**: still ON. Future commits build to Ready and wait for manual promotion via dashboard or `restoreSiteDeploy` call.
+
+**Schema state**: prod Neon branch has 011 migrations applied (added `invites` table mid-session — see late-evening block).
+
+### What's live on prod (delta from morning v1)
+
+| Feature | Commit | Notes |
+|---|---|---|
+| v1.1 #1 Bulk CSV product import | `a2e68a3` | UI button on `workspace.html` → modal with paste/upload + preview + per-row error report |
+| v1.1 #3 Dark mode | `bb1229e` | Toggle button on every page header, OS-pref default, manual override persisted in localStorage |
+| v1.1 #2 Email invites for Secondary Users | `22770ba` | Live with **Resend feature flag OFF**. UI shows copy-paste link for the inviter; works as a fallback. Add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` env vars to enable automatic emails (no code change needed). |
+| v1.1 #5 Google sign-in on invite accept | `c41247f` | Bonus from `/grill-with-docs` session. ADR-0007 captures the strict-email-binding decision. |
+
+### What's NOT done from the morning Prateek commitment
+
+- **v1.1 #4 Per-marketplace structured field forms** — not started. Largest of the four; would replace the freeform JSON marketplace overlay editor on `/product-edit.html` with schema-driven forms. Schemas would live in `src/lib/marketplace-schemas/<name>.ts` (Meta + Amazon first, since most-used by ExSol clients). This is tomorrow's primary pickup.
+
+### Half-finished / not-functioning work
+
+**None.** Everything committed today is functioning end-to-end (verified via TDD tests against dev Neon + browser smoke against localhost + endpoint probes against prod URL post-promotion). No half-broken state to clean up tomorrow.
+
+### Outstanding non-code follow-ups
+
+1. **Add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` to Netlify** when you have a Resend account configured. Until then, invite emails are not automatically sent — the inviter sees a copy-paste link they can share manually. Either path delivers a working invite link.
+2. **Consider flagging `JWT_SIGNING_SECRET` as secret** (currently non-secret on Netlify). It's a true secret; harm if leaked. Lower urgency since the value isn't in any committed doc.
+
+### Commits pushed today (chronological)
+
+```
+a2e68a3 v1.1 #1: Bulk CSV product import (server + UI)
+ceeb7b7 Handoff: v1.1 #1 (Bulk CSV import) shipped, lock-mode intact
+bb1229e v1.1 #3: Dark mode with manual toggle + OS preference fallback
+22770ba v1.1 #2: Email invites for Secondary Users (with Resend feature flag)
+8ec50c0 Handoff: v1.1 #1/#2/#3 shipped, only #4 remains
+c41247f v1.1 #5: Google sign-in on invite acceptance (strict email binding)
+dfc50a1 Handoff: builds were silently failing, root-caused + fixed   ← currently published
+```
+
+**Build flakiness recovered**: every commit in this list initially failed Netlify builds because `GOOGLE_OAUTH_CLIENT_ID` was misconfigured as `is_secret: true` and the literal value appears in this handoff doc. Fixed mid-session (see late-evening block). No code rollbacks needed.
+
+### Tests
+
+39 → **43 passing** against dev Neon (24 permissions + 6 bulk + 9 invites + 4 Google-accept). DB-gated suites still skip on local without `TEST_DATABASE_URL`. No regressions.
+
+### Lessons added to project memory
+
+- `feedback-netlify-routing` — don't put literal sub-paths under `:param` Netlify routes
+- `feedback-migration-before-deploy` — dev and prod Neon branches are separate; run `migrate:status` against prod URL before promoting code that depends on a new migration
+
+(See `~/.claude/projects/<this-project>/memory/`.)
+
+### Updated CONTEXT.md glossary
+
+- **Sign-in identity** definition changed from "exactly one" to "at least one linked identity, auto-attached by verified-email match on first cross-method sign-in." The original `CONTEXT.md` "Flagged ambiguities" section now records this as a resolved drift.
+
+### Next-Claude prompt template (Saturday morning resume)
+
+```
+I'm continuing the ExSol Data Collection App v1.1 push.
+
+Please read docs/handoff.md (top block dated 2026-05-21 end-of-day).
+Production is LIVE at https://exsoldatacollectionapp.netlify.app with
+v1.1 features 1, 2, 3, and 5 shipped. The only remaining item from
+yesterday's Prateek commitment is v1.1 #4: per-marketplace structured
+field forms.
+
+Pick up at v1.1 #4. Replace the freeform JSON marketplace overlay
+editor on /product-edit.html with schema-driven forms. Schemas go in
+src/lib/marketplace-schemas/<name>.ts. Start with Meta Commerce and
+Amazon. Use TDD; existing pattern is in tests/invite-accept-google.test.ts.
+
+If RESEND_API_KEY hasn't been set yet, the invite email flow is still
+in copy-paste-link fallback mode. That's fine; no code change is
+needed to flip to email — just env vars.
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-21 (Friday late-evening) — Builds were silently failing; root-caused + fixed
 
 ### TL;DR
