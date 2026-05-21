@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sign in - ExSol</title>
     <link rel="stylesheet" href="/assets/css/base.css" />
+    <script>(function(){try{var t=localStorage.getItem('exsol-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+    <script type="module" src="/assets/js/theme.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div class="container">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+        <button id="theme-toggle" class="theme-toggle" type="button">☾</button>
+      </div>
       <h1>ExSol Data Collection</h1>
       <p class="muted">Sign in to continue.</p>
 

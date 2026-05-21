@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workspace - ExSol Admin</title>
     <link rel="stylesheet" href="/assets/css/base.css" />
+    <script>(function(){try{var t=localStorage.getItem('exsol-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+    <script type="module" src="/assets/js/theme.js"></script>
   </head>
   <body>
     <div class="container">
       <div class="row">
         <a href="/admin.html">&larr; All Clients</a>
         <div class="spacer"></div>
+        <button id="theme-toggle" class="theme-toggle" type="button">☾</button>
         <button id="signout">Sign out</button>
       </div>
 

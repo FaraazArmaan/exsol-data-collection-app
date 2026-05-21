@@ -10,8 +10,13 @@
   --radius: 8px;
 }
 
+/* Dark palette is shared between OS-preference and manual override.
+ * Manual override (data-theme attribute on <html>) wins over OS preference
+ * when set — see public/assets/js/theme.js + pre-paint inline script in
+ * each page <head>.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1115;
     --fg: #e5e7eb;
     --muted: #9ca3af;
@@ -20,6 +25,28 @@
     --surface: #161a22;
   }
 }
+:root[data-theme="dark"] {
+  --bg: #0f1115;
+  --fg: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #1f2937;
+  --accent: #3b82f6;
+  --surface: #161a22;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-size: 1rem;
+  line-height: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  padding: 0;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 * { box-sizing: border-box; }
 
@@ -53,7 +80,11 @@ h2 { font-size: 1.2rem; margin: 0 0 0.5rem; }
 label { display: block; font-size: 0.9rem; margin-top: 0.75rem; }
 input[type="email"],
 input[type="password"],
-input[type="text"] {
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="url"],
+select {
   width: 100%;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--border);
@@ -61,6 +92,15 @@ input[type="text"] {
   background: var(--bg);
   color: var(--fg);
   font: inherit;
+}
+/* Native form-control color-scheme hint so browser-rendered chrome
+ * (dropdown arrow, scrollbars, date pickers) follows the theme.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 button {

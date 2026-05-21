@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ExSol</title>
     <link rel="stylesheet" href="/assets/css/base.css" />
+    <script>(function(){try{var t=localStorage.getItem('exsol-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+    <script type="module" src="/assets/js/theme.js"></script>
   </head>
   <body>
     <div class="container">
       <div class="row">
         <h1 id="greeting">Loading...</h1>
         <div class="spacer"></div>
+        <button id="theme-toggle" class="theme-toggle" type="button">☾</button>
         <button id="signout">Sign out</button>
       </div>
 
