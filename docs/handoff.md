@@ -6,6 +6,60 @@
 
 ---
 
+## 2026-05-21 (Friday late-evening) — Builds were silently failing; root-caused + fixed
+
+### TL;DR
+
+All 6 commits I pushed today (`a2e68a3`, `bb1229e`, `22770ba`, `ceeb7b7`, `8ec50c0`, `c41247f`) **failed Netlify builds** with "Exposed secrets detected" — I incorrectly reported them as sitting in Ready state. The currently published deploy is still `60acdb4` (from yesterday morning). After fix, `c41247f` is now in **Ready** state on Netlify; v1.1 work can be promoted by clicking **Publish deploy**.
+
+### What went wrong
+
+`GOOGLE_OAUTH_CLIENT_ID` was flagged as `is_secret: true` in Netlify (probably from a misclick during the May-21 morning prod bring-up). Netlify's secret scanner runs on every build and flags any file in the repo containing the literal value of any secret-flagged env var. The handoff log itself (`docs/handoff.md` line 196 — the production env-var table I wrote in this morning's block) contains the client ID literal `505513053026-...apps.googleusercontent.com`. That triggered "Exposed secrets detected" → exit code 2 → every build today failed.
+
+### Why this is the wrong env var to flag as secret
+
+**Google OAuth client IDs are PUBLIC by design.** Every Google Sign-In implementation embeds them in client HTML — `/login.html` and `/invite-accept.html` both `<script>` against `accounts.google.com/gsi/client` with the client ID as a parameter. The truly-sensitive Google credential is the *client secret*, which we don't use (we use GIS credential-response flow, which is server-secret-free). So `GOOGLE_OAUTH_CLIENT_ID` should be a non-secret env var.
+
+### Fix applied (via netlify CLI)
+
+```bash
+netlify env:unset GOOGLE_OAUTH_CLIENT_ID
+netlify env:set GOOGLE_OAUTH_CLIENT_ID "505513053026-...apps.googleusercontent.com" --force
+# Then trigger fresh build:
+netlify api createSiteBuild --data '{"site_id":"..."}'
+```
+
+Verified post-fix: `is_secret: False`, scopes `builds,functions,post_processing,runtime`. Build `6a0ef2a610ebc12baf0131a7` for `c41247f` reached state `ready` and all new endpoints respond on the preview URL `https://6a0ef2a610ebc12baf0131a7--exsoldatacollectionapp.netlify.app`.
+
+### Lessons learned
+
+1. **`GOOGLE_OAUTH_CLIENT_ID` is now permanently non-secret** — the env var table in the production-deploy handoff block was already documenting it as `☐ no` (correctly), but the actual config drifted from the doc. Trust the doc, not Netlify's masked-input UI.
+2. **Verify deploy states after every push.** Don't trust "I committed therefore it's in Ready state." Either `netlify api listSiteDeploys` from CLI, or open the Deploys page in the dashboard and check the latest row's status badge. Lock-mode masks failures because a failed build also doesn't auto-publish — looks identical to a working build that's just waiting for manual publish.
+3. **The secret scanner is a feature, not a bug.** It would have prevented a genuine credential leak. But it relies on Netlify's env-var flagging being correct — a misflagged "secret" that's really public breaks builds without any code change. Periodically audit `is_secret` flags against the rule "would harm happen if a stranger read it." If the answer is no, unflag.
+
+### Updated production env vars (post-fix)
+
+| Var | Secret? | Notes |
+|---|---|---|
+| `NEON_DATABASE_URL` | ☐ no | unchanged |
+| `JWT_SIGNING_SECRET` | ☐ no | **probably should be flagged secret** — true secret, harm if leaked. Lower priority since values aren't in any doc currently. |
+| `GOOGLE_OAUTH_CLIENT_ID` | ☐ no | **fixed** — was incorrectly `☑ yes`, now non-secret |
+| `ADMIN_GOOGLE_EMAIL` | ☐ no | unchanged |
+| `APP_BASE_URL` | ☐ no | unchanged |
+| `NODE_ENV` | ☐ no | unchanged |
+
+### Files actively editing
+
+**None.** Working tree clean.
+
+### How to resume (Saturday or whenever next)
+
+1. **Promote today's v1.1 work to production**: Netlify dashboard → Deploys → click the latest deploy with state `ready` (commit `c41247f`) → **Publish deploy**. The boss-demoable URL flips to v1.1 + the new Google-on-invite feature in seconds. All 4 features (Bulk CSV, Resend invites with feature flag, Dark mode, Google sign-in on invite) become live simultaneously.
+2. **Optionally enable email sending**: add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` env vars (see the Friday-evening block above for the full step-by-step). Trigger another build after.
+3. **Next dev session**: only v1.1 #4 (per-marketplace structured field forms) remains from the original Prateek list. See the Friday-evening block.
+
+---
+
 ## 2026-05-21 (Friday evening) — v1.1 #2 + #3 shipped (Dark mode + Resend invites)
 
 ### How to resume
