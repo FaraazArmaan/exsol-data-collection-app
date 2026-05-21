@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/assets/css/base.css" />
     <script>(function(){try{var t=localStorage.getItem('exsol-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
     <script type="module" src="/assets/js/theme.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div class="container">
@@ -19,6 +20,13 @@
       <div class="card" id="form-card" hidden>
         <p>You've been invited to join <strong id="ws-name"></strong> as <strong id="role-name"></strong>.</p>
         <p class="muted">Email: <span id="invite-email"></span></p>
+
+        <div id="google-section" hidden>
+          <h3 style="margin:1rem 0 0.5rem;">Continue with Google</h3>
+          <p class="muted" id="google-status">Loading…</p>
+          <div id="google-signin-button"></div>
+          <div class="divider" style="margin: 1.5rem 0; text-align:center; color: var(--muted); font-size: 0.85rem;">or create a password</div>
+        </div>
 
         <form id="accept-form" autocomplete="on">
           <label>Your name
@@ -42,7 +50,7 @@
     </div>
 
     <script type="module">
-      import { postJSON, getJSON } from '/assets/js/api.js';
+      import { postJSON, getJSON, fetchConfig } from '/assets/js/api.js';
 
       const params = new URLSearchParams(window.location.search);
       const token = params.get('token');
@@ -82,10 +90,56 @@
             document.getElementById('ws-name').textContent = info.workspaceName;
             document.getElementById('role-name').textContent = info.role;
             document.getElementById('invite-email').textContent = info.email;
+            await wireGoogleButton(info.email);
           }
         } catch (err) {
           showError('Could not load invite', String(err.message || err));
         }
+      }
+
+      async function wireGoogleButton(inviteEmail) {
+        const section = document.getElementById('google-section');
+        const status = document.getElementById('google-status');
+        const cfg = await fetchConfig();
+        if (!cfg.googleClientId) {
+          // No Google client configured — leave the section hidden, password path is the only option.
+          return;
+        }
+        section.hidden = false;
+        const ready = () => {
+          if (typeof google === 'undefined' || !google.accounts?.id) {
+            setTimeout(ready, 100);
+            return;
+          }
+          google.accounts.id.initialize({
+            client_id: cfg.googleClientId,
+            callback: async (resp) => {
+              status.textContent = 'Accepting…';
+              status.className = 'muted';
+              const { ok, data } = await postJSON(
+                `/api/invites/${encodeURIComponent(token)}/accept-google`,
+                { idToken: resp.credential },
+              );
+              if (ok) {
+                window.location.href = data.redirectTo || '/me.html';
+                return;
+              }
+              if (data.error === 'email_mismatch') {
+                status.textContent = `That invite is for ${inviteEmail}, but you signed in as ${data.googleEmail}. Use that email in Google, or create a password below.`;
+                status.className = 'error-text';
+              } else {
+                status.textContent = data.detail || data.error || 'Google sign-in failed.';
+                status.className = 'error-text';
+              }
+            },
+          });
+          google.accounts.id.renderButton(
+            document.getElementById('google-signin-button'),
+            { theme: 'outline', size: 'large', text: 'continue_with' },
+          );
+          status.textContent = '';
+        };
+        ready();
       }
 
       document.getElementById('accept-form').addEventListener('submit', async (ev) => {

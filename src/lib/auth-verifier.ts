@@ -1,7 +1,6 @@
-import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { verify as argonVerify } from '@node-rs/argon2';
 import { pool } from './db.ts';
-import { opt } from './env.ts';
+import { verifyGoogleIdToken } from './google-verifier.ts';
 
 export type Credentials =
   | { provider: 'google'; idToken: string }
@@ -27,15 +26,6 @@ export type AuthError = {
   detail?: string;
 };
 
-let _client: OAuth2Client | null = null;
-function googleClient(): OAuth2Client {
-  if (_client) return _client;
-  const cid = opt('GOOGLE_OAUTH_CLIENT_ID');
-  if (!cid) throw new Error('GOOGLE_OAUTH_CLIENT_ID not configured');
-  _client = new OAuth2Client(cid);
-  return _client;
-}
-
 export async function verifyCredentials(
   cred: Credentials,
 ): Promise<AuthenticatedUser | AuthError> {
@@ -44,23 +34,9 @@ export async function verifyCredentials(
 }
 
 async function verifyGoogle(idToken: string): Promise<AuthenticatedUser | AuthError> {
-  const cid = opt('GOOGLE_OAUTH_CLIENT_ID');
-  if (!cid) return { kind: 'misconfigured', detail: 'no_google_client_id' };
-
-  let payload: TokenPayload | undefined;
-  try {
-    const ticket = await googleClient().verifyIdToken({ idToken, audience: cid });
-    payload = ticket.getPayload();
-  } catch (err) {
-    return { kind: 'invalid_token', detail: String((err as Error).message ?? err) };
-  }
-  if (!payload?.sub || !payload.email) return { kind: 'invalid_token' };
-  if (!payload.email_verified) return { kind: 'email_not_verified' };
-
-  const sub = payload.sub;
-  const email = payload.email.toLowerCase();
-  const name = payload.name ?? email;
-  const photoUrl = payload.picture ?? null;
+  const identity = await verifyGoogleIdToken(idToken);
+  if ('kind' in identity) return identity;
+  const { sub, email, name, photoUrl } = identity;
 
   const c = await pool().connect();
   try {

@@ -21,7 +21,7 @@ A given user can be Primary in one Workspace and Manager in another (e.g., a cha
 
 ## Auth
 
-- **Sign-in identity** — A verified Google account, or in the fallback flow a verified email+password. A user has exactly one sign-in identity.
+- **Sign-in identity** — One of two authentication factors a User can present: a verified Google account, or a verified email+password. A User has **at least one** linked sign-in identity; both may be linked simultaneously. Linking happens automatically by verified-email match on first sign-in with the second method (e.g., a user who accepts an invite via password and later signs in with Google whose email matches will have their `google_sub` auto-attached). _Avoid_: "sign-in method" (the LINK is the identity), "credential" (overloaded with passwords).
 - **Role** — `admin`, `primary`, or `secondary`. Determined by the DB record for the signed-in identity. Not stored in the JWT alone.
 
 ## Catalog
@@ -71,3 +71,7 @@ A given user can be Primary in one Workspace and Manager in another (e.g., a cha
 - **Local dev** — `netlify dev` running against the Neon `dev` branch + a sandboxed local Blobs store (auto-provisioned by `netlify dev`). The only environment that doesn't deploy anywhere.
 - **Deploy Preview** — Netlify-generated URL per feature branch, connected to an ephemeral Neon branch with isolated data. Used for review before merge.
 - **Production** — `main` branch auto-deployed by Netlify. Connected to Neon `main`, the production Blobs store (auto-provisioned per Netlify site), and production Google OAuth client.
+
+## Flagged ambiguities
+
+- **"sign-in identity" was originally "exactly one"** — resolved 2026-05-21: a User can have **both** a `password_hash` and a `google_sub` simultaneously; the second one is auto-attached on first sign-in by verified-email match. See updated definition above. The "exactly one" wording in earlier ADRs / handoff blocks is superseded.
