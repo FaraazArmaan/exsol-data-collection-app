@@ -24,8 +24,41 @@
         <h2 style="margin:0">Products</h2>
         <div class="spacer"></div>
         <a id="view-audit" href="#" class="image-btn">Audit log</a>
+        <button id="import-csv">Import CSV</button>
         <button id="add-product" class="primary">+ Add Product</button>
       </div>
+
+      <dialog id="csv-import-dialog" class="csv-dialog">
+        <h3 style="margin-top:0">Bulk import products from CSV</h3>
+        <p class="muted-section">
+          Required columns: <code>sku</code>, <code>name</code>, <code>price</code>.
+          Optional: <code>description</code>, <code>product_type</code> (<code>physical_goods</code> or <code>food_item</code>),
+          <code>currency</code>, <code>cost</code>, <code>stock_unit</code>, <code>weight_g</code>,
+          <code>barcode</code>, <code>hsn_code</code>, <code>gst_rate</code>, <code>status</code>,
+          <code>low_stock_threshold</code>, <code>dead_stock_days</code>.
+          First row must be the header. Up to 1000 rows per import.
+        </p>
+
+        <div class="form-grid">
+          <label>Upload .csv file
+            <input id="csv-file" type="file" accept=".csv,text/csv" />
+          </label>
+          <label>…or paste CSV text
+            <textarea id="csv-paste" rows="6" placeholder="sku,name,price&#10;ABC-1,Widget,100"></textarea>
+          </label>
+        </div>
+
+        <p class="muted-section" id="csv-parse-status"></p>
+        <div id="csv-preview"></div>
+        <div id="csv-result"></div>
+
+        <div class="row" style="margin-top:1rem">
+          <button id="csv-cancel">Close</button>
+          <div class="spacer"></div>
+          <button id="csv-clear">Clear</button>
+          <button id="csv-submit" class="primary" disabled>Import…</button>
+        </div>
+      </dialog>
 
       <div class="filters">
         <label class="grow">Search
@@ -543,6 +576,230 @@
       });
 
       await renderBackups();
+
+      // ============= CSV Import =============
+
+      // papaparse via CDN — keeps the bundle small; matches lib version in package.json
+      const Papa = (await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm')).default;
+
+      const csvDialog = document.getElementById('csv-import-dialog');
+      const csvFileInput = document.getElementById('csv-file');
+      const csvPasteInput = document.getElementById('csv-paste');
+      const csvParseStatus = document.getElementById('csv-parse-status');
+      const csvPreview = document.getElementById('csv-preview');
+      const csvResult = document.getElementById('csv-result');
+      const csvSubmit = document.getElementById('csv-submit');
+
+      let parsedRows = [];
+
+      function setParseStatus(msg, isError = false) {
+        csvParseStatus.textContent = msg;
+        csvParseStatus.className = isError ? 'error-text' : 'muted-section';
+      }
+
+      function parsePrice(v) {
+        if (v == null || v === '') return NaN;
+        const n = Number(String(v).replace(/[, ]/g, ''));
+        return n;
+      }
+
+      function rowToProduct(row, idx) {
+        const get = (k) => {
+          const v = row[k];
+          return v == null || v === '' ? undefined : String(v).trim();
+        };
+        const num = (k) => {
+          const v = get(k);
+          return v === undefined ? undefined : Number(v);
+        };
+        const sku = get('sku');
+        const name = get('name');
+        const price = parsePrice(row.price);
+        const localIssues = [];
+        if (!sku) localIssues.push('missing sku');
+        if (!name) localIssues.push('missing name');
+        if (!Number.isFinite(price) || price < 0) localIssues.push('invalid price');
+        return {
+          rowIndex: idx,
+          localIssues,
+          payload: {
+            sku,
+            name,
+            price,
+            description: get('description'),
+            productType: get('product_type'),
+            currency: get('currency'),
+            cost: num('cost'),
+            stockUnit: get('stock_unit'),
+            weightG: num('weight_g'),
+            barcode: get('barcode'),
+            hsnCode: get('hsn_code'),
+            gstRate: num('gst_rate'),
+            status: get('status'),
+            lowStockThreshold: num('low_stock_threshold'),
+            deadStockDays: num('dead_stock_days'),
+          },
+        };
+      }
+
+      function renderPreview(parsed) {
+        csvPreview.replaceChildren();
+        if (parsed.length === 0) return;
+
+        const summary = document.createElement('p');
+        const badCount = parsed.filter((r) => r.localIssues.length > 0).length;
+        summary.className = badCount > 0 ? 'error-text' : 'muted-section';
+        summary.textContent = `${parsed.length} rows parsed${badCount > 0 ? ` — ${badCount} have validation issues (will be skipped client-side)` : ''}.`;
+        csvPreview.append(summary);
+
+        const heading = document.createElement('p');
+        heading.className = 'muted-section';
+        heading.textContent = `Preview (first ${Math.min(parsed.length, 5)} rows):`;
+        csvPreview.append(heading);
+
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        ['#', 'SKU', 'Name', 'Price', 'Status', 'Issues'].forEach((h) => {
+          const th = document.createElement('th'); th.textContent = h; trh.append(th);
+        });
+        thead.append(trh);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        for (const r of parsed.slice(0, 5)) {
+          const tr = document.createElement('tr');
+          const td = (text) => { const c = document.createElement('td'); c.textContent = text ?? ''; return c; };
+          tr.append(td(String(r.rowIndex + 1)));
+          tr.append(td(r.payload.sku));
+          tr.append(td(r.payload.name));
+          tr.append(td(Number.isFinite(r.payload.price) ? r.payload.price : '—'));
+          tr.append(td(r.payload.status || 'draft'));
+          tr.append(td(r.localIssues.join('; ')));
+          tbody.append(tr);
+        }
+        table.append(tbody);
+        csvPreview.append(table);
+      }
+
+      function parseInput(text) {
+        const result = Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, '_'),
+        });
+        if (result.errors.length > 0) {
+          const first = result.errors[0];
+          setParseStatus(`Parse warning on row ${first.row}: ${first.message}`, true);
+        } else {
+          setParseStatus(`Parsed ${result.data.length} rows.`);
+        }
+        parsedRows = result.data.map((r, i) => rowToProduct(r, i));
+        renderPreview(parsedRows);
+        const validCount = parsedRows.filter((r) => r.localIssues.length === 0).length;
+        csvSubmit.disabled = validCount === 0;
+        csvSubmit.textContent = validCount === 0 ? 'Import…' : `Import ${validCount} row${validCount === 1 ? '' : 's'}`;
+      }
+
+      document.getElementById('import-csv').addEventListener('click', () => {
+        csvResult.replaceChildren();
+        csvPreview.replaceChildren();
+        csvParseStatus.textContent = '';
+        csvDialog.showModal();
+      });
+
+      document.getElementById('csv-cancel').addEventListener('click', () => csvDialog.close());
+
+      document.getElementById('csv-clear').addEventListener('click', () => {
+        csvFileInput.value = '';
+        csvPasteInput.value = '';
+        csvPreview.replaceChildren();
+        csvResult.replaceChildren();
+        parsedRows = [];
+        csvSubmit.disabled = true;
+        csvSubmit.textContent = 'Import…';
+        setParseStatus('');
+      });
+
+      csvFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        csvPasteInput.value = text;
+        parseInput(text);
+      });
+
+      csvPasteInput.addEventListener('input', () => {
+        const text = csvPasteInput.value;
+        if (text.trim().length === 0) {
+          parsedRows = [];
+          csvSubmit.disabled = true;
+          csvPreview.replaceChildren();
+          setParseStatus('');
+          return;
+        }
+        parseInput(text);
+      });
+
+      csvSubmit.addEventListener('click', async () => {
+        const valid = parsedRows.filter((r) => r.localIssues.length === 0);
+        if (valid.length === 0) return;
+        csvSubmit.disabled = true;
+        csvSubmit.textContent = 'Importing…';
+        csvResult.replaceChildren();
+        try {
+          const { ok, data } = await postJSON(
+            `/api/workspaces/${encodeURIComponent(workspaceId)}/products-bulk`,
+            { products: valid.map((r) => r.payload) },
+          );
+          if (!ok) {
+            const p = document.createElement('p');
+            p.className = 'error-text';
+            p.textContent = data.detail || data.error || 'Import failed.';
+            csvResult.append(p);
+            return;
+          }
+          const summary = document.createElement('p');
+          summary.className = data.summary.failed === 0 ? 'success-text' : 'muted-section';
+          summary.textContent = `Imported ${data.summary.succeeded} of ${data.summary.total}.${data.summary.failed > 0 ? ` ${data.summary.failed} row${data.summary.failed === 1 ? '' : 's'} failed.` : ''}`;
+          csvResult.append(summary);
+
+          if (data.errors.length > 0) {
+            const errTable = document.createElement('table');
+            const eth = document.createElement('thead');
+            const ethr = document.createElement('tr');
+            ['Row', 'Error', 'Detail'].forEach((h) => {
+              const th = document.createElement('th'); th.textContent = h; ethr.append(th);
+            });
+            eth.append(ethr);
+            errTable.append(eth);
+            const etb = document.createElement('tbody');
+            for (const e of data.errors) {
+              const tr = document.createElement('tr');
+              const td = (text) => { const c = document.createElement('td'); c.textContent = text ?? ''; return c; };
+              const sourceIdx = valid[e.row]?.rowIndex;
+              tr.append(td(sourceIdx == null ? '?' : String(sourceIdx + 1)));
+              tr.append(td(e.error));
+              tr.append(td(e.detail || ''));
+              etb.append(tr);
+            }
+            errTable.append(etb);
+            csvResult.append(errTable);
+          }
+
+          if (data.summary.succeeded > 0) {
+            await loadProducts();
+            await loadTiles();
+          }
+        } catch (err) {
+          const p = document.createElement('p');
+          p.className = 'error-text';
+          p.textContent = `Import failed: ${err.message || err}`;
+          csvResult.append(p);
+        } finally {
+          csvSubmit.disabled = false;
+          csvSubmit.textContent = 'Import…';
+        }
+      });
     </script>
   </body>
 </html>

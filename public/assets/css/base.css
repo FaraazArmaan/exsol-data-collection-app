@@ -379,3 +379,20 @@ textarea {
 }
 .image-btn:hover { border-color: var(--accent); color: var(--accent); }
 .image-actions { display: flex; gap: 0.5rem; }
+
+.csv-dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: min(90vw, 720px);
+  background: var(--bg);
+  color: var(--fg);
+}
+.csv-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+.csv-dialog textarea {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.85rem;
+  width: 100%;
+}
+.csv-dialog table { font-size: 0.85rem; margin-top: 0.5rem; }
+.success-text { color: #047857; }

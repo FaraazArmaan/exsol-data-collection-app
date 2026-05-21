@@ -260,6 +260,51 @@ export async function createProduct(
   );
 }
 
+export type BulkRowError = {
+  row: number;
+  error: 'invalid_input' | 'duplicate_sku';
+  detail?: string;
+};
+
+export type BulkCreateResult = {
+  created: ProductRow[];
+  errors: BulkRowError[];
+  summary: { total: number; succeeded: number; failed: number };
+};
+
+export async function bulkCreateProducts(
+  actor: ActorContext,
+  rows: ProductCore[],
+): Promise<BulkCreateResult> {
+  if (!actor.workspaceId) throw new Error('workspaceId required');
+  const created: ProductRow[] = [];
+  const errors: BulkRowError[] = [];
+
+  if (rows.length === 0) {
+    return { created, errors, summary: { total: 0, succeeded: 0, failed: 0 } };
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!;
+    const result = await createProduct(actor, row);
+    if ('error' in result) {
+      errors.push({
+        row: i,
+        error: result.error,
+        detail: 'detail' in result ? result.detail : undefined,
+      });
+    } else {
+      created.push(result);
+    }
+  }
+
+  return {
+    created,
+    errors,
+    summary: { total: rows.length, succeeded: created.length, failed: errors.length },
+  };
+}
+
 export type UpdateError =
   | { error: 'duplicate_sku' }
   | { error: 'invalid_input'; detail: string }
