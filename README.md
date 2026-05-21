@@ -8,7 +8,7 @@
 
 ExSol Data Collection is a multi-tenant web application that lets a single operator (Admin) onboard businesses (Clients) and provision them isolated workspaces for collaborative product and stock-data maintenance. Each workspace supports role-scoped team members (Primary, Manager, Storekeeper), an append-only stock ledger, and per-marketplace JSONB overlays for catalog field heterogeneity. Tenant isolation is enforced server-side via Postgres Row-Level Security; admin access to client data is gated by a per-client access key plus auditable, time-boxed impersonation. The system is delivered as a static frontend on Netlify, TypeScript Netlify Functions, a Neon Postgres database, and Netlify Blobs for file storage. This document describes the problem, the design, and the current implementation as of 2026-05-20.
 
-**Status.** Phase 5 partial. Auth, multi-tenant isolation, product CRUD, stock ledger, admin onboarding, god-mode impersonation, and product image storage (on Netlify Blobs) are operational on localhost. Exports, backups, and production deployment remain. Target production release: Friday 2026-05-22.
+**Status.** v1 live in production at **https://exsoldatacollectionapp.netlify.app** since 2026-05-21. All 13 modules operational: auth (Google + email/password), multi-tenant isolation via Postgres RLS, product CRUD, stock ledger, admin onboarding, god-mode impersonation, product image storage on Netlify Blobs, ZIP-wrapped XLSX/CSV exports, workspace + system backups, audit log viewers. Netlify auto-publish is locked during the v1.1 feature push; pushes to `main` queue as Ready deploys requiring manual promotion. v1.1 scope: bulk CSV import, email invites (Resend), dark mode, per-marketplace structured field forms.
 
 ---
 
@@ -176,24 +176,27 @@ Admin, after unlocking a workspace, can impersonate any member with a written re
 
 DB-gated tests skip cleanly when a test database isn't configured. To run them, point `TEST_DATABASE_URL` at a Neon dev branch and re-run `npm test`. The `permissionPolicy` suite is table-driven and exercises every (role × action × resource) combination plus god-mode impersonation rules.
 
-### 5.2 What works end-to-end on localhost
+### 5.2 What works end-to-end in production
 
-- Google sign-in landing the admin on the admin dashboard.
-- Email + password fallback for non-Google admin accounts.
-- Onboarding a Client (workspace + Primary user + access key).
+Verified on `https://exsoldatacollectionapp.netlify.app` and on localhost:
+
+- Google sign-in (GIS credential-response flow) and email + password fallback both landing the admin on the admin dashboard.
+- Onboarding a Client (workspace + Primary user + one-time access key).
 - Per-Client unlock with rate-limited failure handling.
-- God-mode impersonation start/end with banner.
-- Product CRUD and marketplace overlay editing.
+- God-mode impersonation start/end with persistent banner and dual-attribution audit trail.
+- Product CRUD and marketplace overlay editing (overlays accept freeform JSON for now).
 - Stock movement recording (delta and absolute-recount modes).
+- Image upload (multipart to `/api/workspaces/:wsid/products/:pid/images/upload`) with thumbnails served via Netlify Image CDN proxy.
+- Exports as ZIP archives containing the inner file (XLSX, CSV, or Meta catalog CSV) plus `manifest.json`.
+- Workspace backups (per-workspace data + images in a ZIP) and system backups (full schema + all-workspace data).
+- Audit log viewers (`/workspace-audit.html` and `/admin-audit.html`) with action-prefix / actor / resource / date filtering and expandable diff per row.
 
 ### 5.3 Known limitations
 
-- Image upload UI is a placeholder (Phase 5).
-- Marketplace overlays accept freeform JSON (structured per-marketplace forms come in v1.1).
-- No exports yet (Phase 5).
-- No backups yet (Phase 5).
-- No audit log viewer UI yet (data captured; viewer in Phase 5).
-- Not yet deployed to a public URL.
+- Marketplace overlays still accept freeform JSON (structured per-marketplace forms are a v1.1 item).
+- Async export worker not yet implemented; exports are sync-only with a 500-row / 2 MB cap (v1.1 candidate).
+- Email invite flow not yet wired (`RESEND_*` env vars unset; v1.1 item).
+- No dark mode toggle (v1.1 item).
 
 ---
 

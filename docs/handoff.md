@@ -6,6 +6,114 @@
 
 ---
 
+## 2026-05-21 (Friday) — Production deployed, v1 live, lock-mode for v1.1 dev
+
+### How to resume
+
+v1 is live at **https://exsoldatacollectionapp.netlify.app** — both Google sign-in (`theexsolenterprise@gmail.com`) and email+password fallback (`admin@example.com` / `admin1234`) work. **Netlify auto-publish is LOCKED**: pushes to `main` still build, but stay in "Ready" state until you manually click **Publish deploy** in the Netlify dashboard. This keeps the boss-demoable URL stable during v1.1 iteration.
+
+1. `cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"`
+2. `git pull --ff-only` — should be at the latest commit on `main`.
+3. `npm run typecheck && npm test` — baseline green (24 pass, DB-gated skipping).
+4. `npm run dev` — localhost on port 8888. Dev DB unchanged.
+5. **Build v1.1 features locally first.** Smoke-test in the browser at `localhost:8888`. Only push to `main` once a feature is solid.
+6. Ship a feature to prod:
+   - `git push origin main` → Netlify auto-builds (~30s) into a **Ready** deploy.
+   - Verify against the deploy preview URL Netlify generates for that build (under the deploy detail page).
+   - In **Deploys** page, click the new Ready deploy → click **Publish deploy** to promote.
+   - The boss-demoable URL now reflects the new build.
+
+### v1.1 feature priority (committed to Prateek for 5 PM IST today)
+
+1. **Bulk CSV import for products** — paste a CSV, parse client-side with `papaparse` (already in deps), POST validated rows to a new `/api/workspaces/:wsid/products/bulk` endpoint. Reuse `product-service` validation. UI lives on `workspace.html` (button + modal) or a new `products-import.html`.
+2. **Email invites for Secondary Users** — `RESEND_API_KEY` + `RESEND_FROM_EMAIL` need to be set in Netlify env vars; `resend` SDK is already in deps. Build `POST /api/workspaces/:wsid/invites` (create + email), `GET /api/invites/:token` (prefill signup), and `/invite-accept.html` for the accept flow.
+3. **Dark mode** — toggle in top toolbar; persists in `localStorage`. Add CSS custom properties + a `[data-theme="dark"]` selector to `public/assets/css/base.css`. Audit existing colors first — many already use variables.
+4. **Per-marketplace structured field forms** — current overlay editor accepts raw JSON. Replace with per-marketplace JSON-schema-driven forms. Schemas in `src/lib/marketplace-schemas/<name>.ts`. Start with Meta Commerce + Amazon since those are most-used.
+
+### Production state (snapshot)
+
+- **URL:** https://exsoldatacollectionapp.netlify.app
+- **Repo:** `github.com/FaraazArmaan/exsol-data-collection-app` (`main`)
+- **Neon prod branch:** cloned from dev via Standard clone earlier today. Pooled endpoint `ep-dawn-bird-aojs8xxb-pooler.c-2.ap-southeast-1.aws.neon.tech` (Singapore, `ap-southeast-1`). Schema at HEAD (10 migrations all APPLIED). Data: Acme + Papa workspaces carried over.
+- **Admin user:** `theexsolenterprise@gmail.com` (Google + email/pw both).
+- **Seeded workspaces:** Acme (5 products, access key `FNTK9BCHS64P`), Papa. From dev clone.
+- **Storage:** Netlify Blobs auto-provisioned. Stores in use: `product-images`, `product-exports`, `workspace-backups`, `system-backups`.
+
+### Production env vars (Netlify Site → Environment variables)
+
+Six vars set. **Only 2 are secret-flagged** (deliberate — see Lessons learned):
+
+| Var | Secret? | Value |
+|---|---|---|
+| `NEON_DATABASE_URL` | ☐ no | Full pooled URL ending in `neon.tech/neondb?sslmode=require&channel_binding=require` |
+| `JWT_SIGNING_SECRET` | ☑ yes | 64-char hex (`8784...fc21`, generated 2026-05-21 fresh for prod) |
+| `GOOGLE_OAUTH_CLIENT_ID` | ☐ no | `505513053026-5iiamcpe1unla0uidv5r6avgpqgadkpt.apps.googleusercontent.com` |
+| `ADMIN_GOOGLE_EMAIL` | ☐ no | `theexsolenterprise@gmail.com` |
+| `APP_BASE_URL` | ☐ no | `https://exsoldatacollectionapp.netlify.app` |
+| `NODE_ENV` | ☐ no | `production` |
+
+Deliberately NOT set: `GOOGLE_OAUTH_CLIENT_SECRET` (app uses GIS ID-token verification, no server-side code exchange — `src/lib/env.ts:6` lists it but no code reads it; worth deleting from the enum in a cleanup pass), all `GOOGLE_DRIVE_*` (ADR-0006), `RESEND_*` (v1.1 item #2 will add).
+
+### Google OAuth Console state
+
+`https://exsoldatacollectionapp.netlify.app` is added to:
+- **Authorized JavaScript origins** (required for GIS popup to render)
+- **Authorized redirect URIs** (defense-in-depth even though credential-response flow doesn't use them)
+
+`http://localhost:8888` is also retained for `netlify dev`.
+
+### Lessons learned today (apply in v1.1 + future deploys)
+
+1. **Don't flag the DB URL as secret during initial bring-up.** Secret-mode env vars are write-only — you can't visually verify what you pasted. A single missing character (`neon.tec` instead of `neon.tech`) cost ~90 minutes of black-box debugging because the masked field hid the truncation. The DB URL doesn't appear in any bundled artifact, so the exposed-secret scanner won't flag it. Leave it non-secret until prod is stable; only flip to secret if compliance demands it.
+2. **Netlify's exposed-secrets scanner reads bundled function code too,** not just `public/`. Marking `NODE_ENV=production` as secret failed the build because dependency bundles (`exceljs`, `papaparse`, `@neondatabase/serverless`) contain literal `"production"` strings for prod-mode checks. Rule of thumb: only flag values that would cause harm if a stranger read them. `NODE_ENV` doesn't pass that test, neither do `APP_BASE_URL`, `GOOGLE_OAUTH_CLIENT_ID`, or `ADMIN_GOOGLE_EMAIL`.
+3. **The Netlify Observability page is the verification mechanism for prod debugging.** Request-level traces show timing, status, and request/response details. Function logs (under **Logs & metrics → Functions**) show stdout/stderr. "No log" in the request detail panel = ingestion delay, not a missing error. Use the aggregated function log view when the request panel is empty.
+4. **`/api/me` with no cookie short-circuits BEFORE touching the DB** — it returns `{user:null}` without a query. So it's NOT a reliable smoke test for "is the DB connection working." v1.1 punch-list candidate: add `GET /api/health` that runs `SELECT 1` so we have a single endpoint that proves end-to-end including DB.
+5. **Secret env vars can't be downgraded to non-secret;** delete + recreate is the only path. If a Secret value is broken, fastest debug is: delete the var, recreate it as non-secret (so you can see + verify), test, only flip back to secret after confirmed working.
+6. **Netlify GitHub App is per-repo allowlisted by default.** If a repo doesn't appear in the picker: GitHub Settings → Applications → Netlify → Configure → add the repo to "Selected repositories." Took ~5 min to discover today after connecting the wrong repo initially.
+
+### Deploy flow quirks captured today
+
+- Initially connected the **wrong GitHub repo** to Netlify. Fix: Site configuration → Build & deploy → Continuous deployment → Link to different repository. **Env vars persist across repo relinks; site slug persists.** Always relink rather than delete+recreate.
+- The Neon dev branch is confusingly named `production`. The actual prod branch was cloned from it via Neon → Branches → New Branch → **Standard** (copy-on-write clone with data). Worth renaming dev `production` → `development` later for clarity. Branch IDs are stable under any name.
+- `npm run migrate:status` against a freshly-cloned prod branch shows ALL migrations APPLIED because the `_migrations` system table is included in the Standard clone. No additional migrate run needed for branch clones.
+- `bootstrap-admin.ts` is fully idempotent — running against a clone that already contains the admin row just prints "Admin already exists." Safe to re-run anytime.
+
+### Files actively editing
+
+**None.** Working tree clean.
+
+### Everything tried that failed and why (this session only)
+
+- **Pasted `NEON_DATABASE_URL` with a truncated hostname** (`.neon.tec` missing the trailing `h`). Secret-mode masking hid the typo; sign-in flows 500'd with `getaddrinfo ENOTFOUND ...neon.tec` for ~90 minutes before we deleted the var and recreated it as non-secret with visual verification.
+- **Flagged `NODE_ENV=production` as secret** during initial .env import. Build failed with "Exposed secrets detected" because the literal string `"production"` appears in bundled dependency code. Recreated as non-secret.
+- **Selected wrong site slug.** Picked `exsoldatacollectionapp` (no hyphens) — readable but less idiomatic than `exsol-data-collection`. Kept it for the deploy; not worth changing now.
+- **Connected wrong GitHub repo to Netlify.** Fixed by relinking (no site recreation needed).
+- **GitHub App didn't have access to the right repo** initially. Fixed by going to GitHub Settings → Applications → Netlify → Configure → adding the repo to allowlist.
+
+### Next-Claude prompt template (paste this after `/clear`)
+
+```
+I'm continuing the ExSol Data Collection App v1.1 feature push.
+
+Please read docs/handoff.md (top block dated 2026-05-21 Friday).
+Production v1 is LIVE at https://exsoldatacollectionapp.netlify.app
+with Netlify auto-publish LOCKED (push-to-main builds queue, manual
+publish promotes). Today's work: v1.1 features in priority order:
+  1. Bulk CSV product import
+  2. Email invites via Resend
+  3. Dark mode
+  4. Per-marketplace structured field forms
+
+Pick up at feature #1 (bulk CSV import). The handoff lists the
+endpoint surface + libraries. Use TDD if comfortable; test suite is
+at tests/ (24 pass + DB-gated tests skipping without TEST_DATABASE_URL).
+
+Project root: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App
+GitHub: https://github.com/FaraazArmaan/exsol-data-collection-app
+```
+
+---
+
 ## 2026-05-20 (late evening) — All 13 modules + audit UI done, Friday is deploy day
 
 ### How to resume
