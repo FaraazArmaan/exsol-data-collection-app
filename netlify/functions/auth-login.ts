@@ -1,0 +1,62 @@
+import type { Context } from '@netlify/functions';
+import { z } from 'zod';
+import { db } from './_shared/db';
+import { verifyPassword } from './_shared/argon';
+import { mintSession, cookieHeader } from './_shared/session';
+import { jsonError, jsonOk } from './_shared/http';
+import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
+
+const Body = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+interface AdminRow {
+  id: string;
+  email: string;
+  password_hash: string | null;
+  display_name: string;
+  is_bootstrap: boolean;
+}
+
+export default async (req: Request, _ctx: Context) => {
+  if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+
+  const ip = extractIp(req);
+  const sql = db();
+  const limit = await checkRateLimit(sql, { email: parsed.data.email, ip });
+  if (!limit.allowed) {
+    return jsonError(
+      429,
+      'too_many_attempts',
+      { reason: limit.reason },
+      { 'Retry-After': String(limit.retryAfterSec ?? 300) },
+    );
+  }
+
+  const rows = (await sql`
+    SELECT id, email, password_hash, display_name, is_bootstrap
+    FROM public.admins
+    WHERE email = ${parsed.data.email}
+    LIMIT 1
+  `) as AdminRow[];
+  const admin = rows[0];
+  if (!admin?.password_hash) {
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+  const ok = await verifyPassword(parsed.data.password, admin.password_hash);
+  if (!ok) {
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+
+  await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
+  const token = await mintSession({ sub: admin.id, email: admin.email });
+  return jsonOk(
+    { admin: { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap } },
+    { headers: { 'Set-Cookie': cookieHeader(token) } },
+  );
+};

@@ -1,11 +1,11 @@
 import { isIP } from 'node:net';
-import type { NeonQueryFunction } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 
 const WINDOW_SECONDS = 5 * 60;
 const EMAIL_THRESHOLD = 10;
 const IP_THRESHOLD = 20;
 
-type SQL = NeonQueryFunction<false, false>;
+type SQL = ReturnType<typeof neon>;
 
 export interface RateLimitInput {
   email: string;
