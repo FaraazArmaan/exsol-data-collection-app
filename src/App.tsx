@@ -1,8 +1,11 @@
+import { RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './lib/auth-context';
+import { router } from './lib/router';
+
 export default function App() {
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: 24 }}>
-      <h1>ExSol AMS</h1>
-      <p>scaffold ready — Phase 1.</p>
-    </main>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   );
 }
