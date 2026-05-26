@@ -1,16 +1,16 @@
 [build]
-  publish = "public"
-  command = "echo 'static frontend - no build step'"
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+[build.environment]
+  NODE_VERSION = "20"
+  SECRETS_SCAN_OMIT_KEYS = "GOOGLE_OAUTH_CLIENT_ID"
 
-[dev]
-  framework = "#static"
-  publish = "public"
-  port = 8888
-  targetPort = 3999
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 [[redirects]]
   from = "/*"
