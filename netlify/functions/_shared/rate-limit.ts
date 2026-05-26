@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 const WINDOW_SECONDS = 5 * 60;
@@ -23,6 +24,13 @@ export interface RateLimitDecision {
  * Check whether a login attempt for (email, ip) should be allowed.
  * Counts failed attempts inside the last WINDOW_SECONDS. Blocks if
  * either dimension exceeds its threshold.
+ *
+ * Accepted slop: there is a small read-then-write race between this
+ * function and logAttempt (concurrent requests can both pass the check
+ * before either records its failure). With argon2's ~100 ms verify cost
+ * the attacker's max win is a handful of extra attempts per burst, far
+ * below the brute-force economy. Closing the race would require
+ * SERIALIZABLE isolation or row-level locking — not worth the cost.
  */
 export async function checkRateLimit(sql: SQL, input: RateLimitInput): Promise<RateLimitDecision> {
   const rows = (await sql`
@@ -60,13 +68,19 @@ export async function logAttempt(sql: SQL, input: RateLimitInput & { outcome: 'f
 /**
  * Extract the client IP from Netlify-set headers. Falls back through
  * x-nf-client-connection-ip → x-forwarded-for (first value).
- * Returns null if no header is present (e.g., during local tests).
+ * Returns null if no header is present OR if the value is not a valid
+ * IPv4/IPv6 address — anything else would crash the `::inet` cast in
+ * checkRateLimit/logAttempt and produce a 500 (trivial DoS vector via
+ * header injection).
  */
 export function extractIp(req: Request): string | null {
   const nf = req.headers.get('x-nf-client-connection-ip');
-  if (nf) return nf.trim();
+  if (nf) {
+    const trimmed = nf.trim();
+    return isIP(trimmed) ? trimmed : null;
+  }
   const xff = req.headers.get('x-forwarded-for');
   if (!xff) return null;
   const first = xff.split(',')[0]?.trim();
-  return first || null;
+  return first && isIP(first) ? first : null;
 }

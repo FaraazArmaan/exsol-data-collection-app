@@ -33,6 +33,11 @@ export async function verifySession(token: string): Promise<SessionClaims> {
   return payload as unknown as SessionClaims;
 }
 
+// NB: callers must run verifySession() first. shouldRefresh() returns true
+// for already-expired tokens (exp - now is negative, < threshold), but
+// jwtVerify enforces expiry, so an expired token never reaches here in
+// practice. Calling shouldRefresh in isolation on an expired claims object
+// would do the wrong thing.
 export function shouldRefresh(claims: SessionClaims, nowSec = Math.floor(Date.now() / 1000)): boolean {
   return claims.exp - nowSec < REFRESH_THRESHOLD_SECONDS;
 }
