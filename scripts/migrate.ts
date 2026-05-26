@@ -1,11 +1,13 @@
 #!/usr/bin/env tsx
-import { neon, NeonQueryPromise } from '@neondatabase/serverless';
+import { neon, type NeonQueryFunction, type NeonQueryPromise } from '@neondatabase/serverless';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const MIGRATIONS_DIR = join(process.cwd(), 'db', 'migrations');
 
-async function ensureMigrationsTable(sql: ReturnType<typeof neon>) {
+type SQL = NeonQueryFunction<false, false>;
+
+async function ensureMigrationsTable(sql: SQL) {
   await sql`
     CREATE TABLE IF NOT EXISTS public.schema_migrations (
       version text PRIMARY KEY,
@@ -14,17 +16,24 @@ async function ensureMigrationsTable(sql: ReturnType<typeof neon>) {
   `;
 }
 
-async function applied(sql: ReturnType<typeof neon>): Promise<Set<string>> {
-  const rows = await sql<{ version: string }[]>`SELECT version FROM public.schema_migrations`;
+async function applied(sql: SQL): Promise<Set<string>> {
+  const rows = (await sql`SELECT version FROM public.schema_migrations`) as { version: string }[];
   return new Set(rows.map((r) => r.version));
 }
 
 // Split a migration file body into individual SQL statements.
-// Naive split on terminal-semicolon-at-end-of-line — sufficient for migrations
-// 001–004 which are clean DDL with no $$-quoted bodies or semicolon-in-string
-// literals. Revisit if future migrations need PL/pgSQL functions.
+// Naive split on terminal-semicolon-at-end-of-line. Cannot safely tokenize
+// $$-quoted PL/pgSQL bodies (the inner ; would be split as a statement
+// boundary). Convention: a migration file containing $$ must be a single
+// statement — we detect $$ and skip splitting, passing the whole body
+// through. Multi-statement files that need PL/pgSQL must be split across
+// numbered files (e.g., 005_function.sql + 006_trigger.sql).
 function splitStatements(body: string): string[] {
-  return body
+  const trimmed = body.trim();
+  if (trimmed.includes('$$')) {
+    return [trimmed];
+  }
+  return trimmed
     .split(/;\s*(?:\r?\n|$)/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && !/^--/.test(s));
@@ -54,10 +63,12 @@ async function main() {
     const statements = splitStatements(body);
     console.log(`→ applying ${version} (${statements.length} statement${statements.length === 1 ? '' : 's'})`);
     // @neondatabase/serverless v0.10 has no sql.unsafe(); use transaction() for atomicity.
-    // The cast is needed because the ordinary-function form of sql() returns
-    // NeonQueryPromise<...> which TS does not infer as the transaction array
-    // element type without help.
-    await sql.transaction(statements.map((stmt) => sql(stmt)) as NeonQueryPromise<boolean, boolean, unknown>[]);
+    // The dynamic-string sql(stmt) overload infers NeonQueryPromise<boolean, boolean>
+    // (widened generics from the optional overrides), while transaction() demands
+    // the <false, false> form returned by neon(url) with default options. Runtime
+    // types match — this cast just makes TS see through the overload widening.
+    const queries = statements.map((stmt) => sql(stmt)) as unknown as NeonQueryPromise<false, false>[];
+    await sql.transaction(queries);
     await sql`INSERT INTO public.schema_migrations (version) VALUES (${version})`;
     console.log(`✓ ${version}`);
   }
