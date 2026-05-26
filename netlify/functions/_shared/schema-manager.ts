@@ -20,6 +20,7 @@ export interface CreateSchemaInput {
   actorAdminId: string;
   template: TemplateDef;
   clientName: string;
+  schemaName?: string; // optional: caller pre-generates so they can store it before this runs
 }
 
 export async function createClientSchema(
@@ -28,7 +29,8 @@ export async function createClientSchema(
   assertUuid(input.clientId, 'clientId');
   assertUuid(input.actorAdminId, 'actorAdminId');
 
-  const schemaName = generateSchemaName();
+  const schemaName = input.schemaName ?? generateSchemaName();
+  if (!isValidSchemaName(schemaName)) throw new Error('invalid_schema_name');
   const ddl = generateCreateSchema(schemaName, input.template);
   const sql = db();
   const ddlStmts = splitStatements(ddl);
