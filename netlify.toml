@@ -12,6 +12,13 @@
   # skipped → exit code 127 (command not found) on Netlify.
   NPM_FLAGS = "--include=dev"
 
+[functions]
+  # Don't bundle native modules — esbuild can pull in their JS wrappers
+  # but can't ship the platform-specific .node binaries. Listed modules
+  # are installed into the function's node_modules at deploy time so
+  # their prebuild binaries are present at runtime.
+  external_node_modules = ["@node-rs/argon2"]
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
