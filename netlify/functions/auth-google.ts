@@ -20,6 +20,23 @@ export default async (req: Request, _ctx: Context) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
+  const ip = extractIp(req);
+  const sql = db();
+
+  // IP-only rate-limit BEFORE the Google RPC. Email isn't known yet,
+  // so we can only defend against per-IP token-spam (which would
+  // otherwise cost a Google roundtrip per request and pressure our
+  // OAuth client quota).
+  const ipCheck = await checkRateLimit(sql, { email: null, ip });
+  if (!ipCheck.allowed) {
+    return jsonError(
+      429,
+      'too_many_attempts',
+      { reason: ipCheck.reason },
+      { 'Retry-After': String(ipCheck.retryAfterSec ?? 300) },
+    );
+  }
+
   let profile;
   try {
     profile = await verifyGoogleIdToken(parsed.data.idToken);
@@ -28,17 +45,14 @@ export default async (req: Request, _ctx: Context) => {
   }
   if (!profile.emailVerified) return jsonError(401, 'unauthorized');
 
-  const ip = extractIp(req);
-  const sql = db();
-
-  // Check rate limit using the verified Google email and IP.
-  const limit = await checkRateLimit(sql, { email: profile.email, ip });
-  if (!limit.allowed) {
+  // Full rate-limit now that we have the verified email.
+  const fullCheck = await checkRateLimit(sql, { email: profile.email, ip });
+  if (!fullCheck.allowed) {
     return jsonError(
       429,
       'too_many_attempts',
-      { reason: limit.reason },
-      { 'Retry-After': String(limit.retryAfterSec ?? 300) },
+      { reason: fullCheck.reason },
+      { 'Retry-After': String(fullCheck.retryAfterSec ?? 300) },
     );
   }
 
@@ -56,11 +70,15 @@ export default async (req: Request, _ctx: Context) => {
     return jsonError(401, 'unauthorized');
   }
 
-  // Bind google_sub on first successful sign-in if missing.
+  // First-bind only: never overwrite an existing google_sub. If a
+  // different Google account ever needs to be bound (e.g., admin
+  // changed Google accounts), that must go through an admin tool
+  // that explicitly clears the binding first.
+  // (updated_at is set automatically by admins_set_updated_at trigger.)
   await sql`
     UPDATE public.admins
-       SET google_sub = ${profile.sub}, updated_at = now()
-     WHERE id = ${admin.id} AND google_sub IS DISTINCT FROM ${profile.sub}
+       SET google_sub = ${profile.sub}
+     WHERE id = ${admin.id} AND google_sub IS NULL
   `;
 
   await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });

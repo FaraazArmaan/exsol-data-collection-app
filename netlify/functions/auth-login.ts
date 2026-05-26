@@ -43,12 +43,14 @@ export default async (req: Request, _ctx: Context) => {
     LIMIT 1
   `) as AdminRow[];
   const admin = rows[0];
-  if (!admin?.password_hash) {
-    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
-    return jsonError(401, 'unauthorized');
-  }
-  const ok = await verifyPassword(parsed.data.password, admin.password_hash);
-  if (!ok) {
+
+  // verifyPassword equalizes timing on all failure paths: when admin
+  // doesn't exist or has no password_hash (Google-only), it runs a
+  // verify against a precomputed dummy hash so the response latency
+  // doesn't leak whether the email has a password account. Prevents
+  // account enumeration.
+  const ok = await verifyPassword(parsed.data.password, admin?.password_hash ?? null);
+  if (!ok || !admin) {
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
     return jsonError(401, 'unauthorized');
   }

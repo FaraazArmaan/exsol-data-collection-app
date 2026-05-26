@@ -1,14 +1,19 @@
 import { isIP } from 'node:net';
-import { neon } from '@neondatabase/serverless';
+import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 const WINDOW_SECONDS = 5 * 60;
 const EMAIL_THRESHOLD = 10;
 const IP_THRESHOLD = 20;
 
-type SQL = ReturnType<typeof neon>;
+type SQL = NeonQueryFunction<false, false>;
 
 export interface RateLimitInput {
-  email: string;
+  // email is nullable so callers can do an IP-only check before they
+  // know the email (e.g., auth-google before token verification).
+  // SQL `email = NULL` always evaluates to NULL, so the email-count
+  // filter naturally returns 0 — the email-threshold check is
+  // additionally short-circuited below for clarity.
+  email: string | null;
   ip: string | null;
 }
 
@@ -42,7 +47,7 @@ export async function checkRateLimit(sql: SQL, input: RateLimitInput): Promise<R
       AND outcome = 'failed'
   `) as { email_count: number; ip_count: number }[];
   const row = rows[0]!;
-  if (row.email_count >= EMAIL_THRESHOLD) {
+  if (input.email !== null && row.email_count >= EMAIL_THRESHOLD) {
     return { allowed: false, reason: 'email_throttled', retryAfterSec: WINDOW_SECONDS };
   }
   if (input.ip && row.ip_count >= IP_THRESHOLD) {

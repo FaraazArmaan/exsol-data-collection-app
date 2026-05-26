@@ -7,4 +7,7 @@ describe('argon', () => {
     expect(await verifyPassword('hunter2', h)).toBe(true);
     expect(await verifyPassword('wrong', h)).toBe(false);
   });
+  it('returns false for null hash (constant-time dummy verify)', async () => {
+    expect(await verifyPassword('anything', null)).toBe(false);
+  });
 });
