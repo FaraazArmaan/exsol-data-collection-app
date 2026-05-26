@@ -1,16 +1,24 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
+import { Sidebar } from '../modules/ams/components/Sidebar';
+import AdminDashboard from '../modules/ams/pages/AdminDashboard';
+import AdminSettings from '../modules/ams/pages/AdminSettings';
+
+function ShellLayout() {
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <main className="main"><Outlet /></main>
+    </div>
+  );
+}
 
 function RequireAdmin() {
   const { admin, loading } = useAuth();
   if (loading) return <p style={{ padding: 24 }}>Loading…</p>;
   if (!admin) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
-  return <Outlet />;
-}
-
-function Placeholder({ label }: { label: string }) {
-  return <main style={{ padding: 24 }}><h2>{label}</h2><p>Coming in Phase 4.</p></main>;
+  return <ShellLayout />;
 }
 
 export const router = createBrowserRouter([
@@ -18,8 +26,8 @@ export const router = createBrowserRouter([
   {
     element: <RequireAdmin />,
     children: [
-      { path: '/', element: <Placeholder label="Admin Dashboard" /> },
-      { path: '/settings', element: <Placeholder label="Admin Settings" /> },
+      { path: '/', element: <AdminDashboard /> },
+      { path: '/settings', element: <AdminSettings /> },
     ],
   },
 ]);

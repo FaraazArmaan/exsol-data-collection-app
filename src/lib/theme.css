@@ -1,0 +1,35 @@
+/* src/lib/theme.css — loaded once in main.tsx */
+:root {
+  /* Surfaces */
+  --bg-base:        #161616;
+  --bg-surface:     #1f1f1f;
+  --bg-elevated:    #2a2a2a;
+
+  /* Lines */
+  --border-subtle:  #2e2e2e;
+  --border-default: #3a3a3a;
+  --border-strong:  #4a4a4a;
+
+  /* Text */
+  --text-primary:   #ece8df;
+  --text-secondary: #a8a39a;
+  --text-muted:     #6b6862;
+  --text-on-accent: #161616;
+
+  /* Accent */
+  --accent:         #ece8df;
+  --accent-hover:   #ffffff;
+
+  /* Feedback */
+  --danger:         #c97064;
+  --success:        #7fa97f;
+
+  /* Geometry */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Type */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
