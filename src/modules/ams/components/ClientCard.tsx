@@ -35,7 +35,7 @@ export function ClientCard({ client, onDeleted }: Props) {
         {client.schema_name}
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
-        <Link to={`/clients/${client.id}/settings`} className="btn btn-secondary">open →</Link>
+        <Link to={`/clients/${client.id}`} className="btn btn-secondary">open →</Link>
         <button className="btn btn-danger" onClick={handleDelete} disabled={busy}>
           {busy ? 'Deleting…' : 'Delete'}
         </button>

@@ -4,16 +4,8 @@ import LoginPage from '../modules/login/pages/LoginPage';
 import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
+import ClientDashboard from '../modules/ams/pages/ClientDashboard';
 import ClientSettings from '../modules/ams/pages/ClientSettings';
-
-function ClientDashboardStub() {
-  return (
-    <section>
-      <h1>Client Dashboard</h1>
-      <p className="muted">Coming in Phase 9. For now, use the Settings link in the sidebar to manage buckets.</p>
-    </section>
-  );
-}
 
 function ShellLayout() {
   return (
@@ -38,7 +30,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <AdminDashboard /> },
       { path: '/settings', element: <AdminSettings /> },
-      { path: '/clients/:clientId', element: <ClientDashboardStub /> },
+      { path: '/clients/:clientId', element: <ClientDashboard /> },
       { path: '/clients/:clientId/settings', element: <ClientSettings /> },
     ],
   },

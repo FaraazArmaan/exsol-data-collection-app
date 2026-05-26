@@ -27,9 +27,9 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, name, template_key, schema_name FROM public.clients
+    SELECT id, name, template_key, schema_name, created_at FROM public.clients
     WHERE id = ${clientId}::uuid LIMIT 1
-  `) as { id: string; name: string; template_key: string; schema_name: string }[];
+  `) as { id: string; name: string; template_key: string; schema_name: string; created_at: string }[];
   const client = rows[0];
   if (!client) return jsonError(404, 'not_found');
   if (!isValidSchemaName(client.schema_name)) return jsonError(500, 'bad_schema_name');
@@ -50,5 +50,14 @@ export default async (req: Request, _ctx: Context) => {
     });
   }
 
-  return jsonOk({ client: { id: client.id, name: client.name }, buckets });
+  return jsonOk({
+    client: {
+      id: client.id,
+      name: client.name,
+      template_key: client.template_key,
+      template_label: template.label,
+      created_at: client.created_at,
+    },
+    buckets,
+  });
 };

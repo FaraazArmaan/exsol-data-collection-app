@@ -43,8 +43,16 @@ export interface BucketUser {
   [key: string]: unknown; // custom columns
 }
 
+export interface ClientHeader {
+  id: string;
+  name: string;
+  template_key: string;
+  template_label: string;
+  created_at: string;
+}
+
 export const getClientBuckets = (clientId: string) =>
-  apiFetch<{ client: { id: string; name: string }; buckets: BucketSummary[] }>(
+  apiFetch<{ client: ClientHeader; buckets: BucketSummary[] }>(
     `/api/clients-buckets?client=${encodeURIComponent(clientId)}`,
   );
 
