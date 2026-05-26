@@ -433,4 +433,34 @@ describe('schema-manager + Bucket integration', () => {
     ).rejects.toThrow(); // PG will throw "schema does not exist"
   });
 
+  // ── Test 10: dropClientSchema with clientId=null (orphan-schema cleanup) ──
+  // Code path covers the NULL::uuid binding in the audit log INSERT. Test 9
+  // never reaches that line because DROP SCHEMA fails first on a missing
+  // schema; this test drops a REAL schema with clientId=null so the audit
+  // INSERT actually runs.
+  it('dropClientSchema with clientId=null drops the schema and writes NULL client_id audit row', async () => {
+    await dropClientSchema({
+      schemaName: testSchemaName,
+      clientId: null,
+      actorAdminId,
+    });
+
+    const goneRows = (await sql`
+      SELECT schema_name FROM information_schema.schemata
+      WHERE schema_name = ${testSchemaName}
+    `) as { schema_name: string }[];
+    expect(goneRows).toHaveLength(0);
+
+    const dropLogRows = (await sql`
+      SELECT op, client_id FROM public.schema_ops_log
+      WHERE schema_name = ${testSchemaName} AND op = 'drop_schema'
+    `) as { op: string; client_id: string | null }[];
+    expect(dropLogRows).toHaveLength(1);
+    expect(dropLogRows[0]!.client_id).toBeNull();
+
+    // Remove from afterEach stragglers since we already dropped.
+    const idx = createdSchemas.indexOf(testSchemaName);
+    if (idx >= 0) createdSchemas.splice(idx, 1);
+  });
+
 });

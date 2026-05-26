@@ -1,5 +1,5 @@
 import { db } from './db';
-import { safeQuoteIdent, safeQuoteSchema } from './identifier';
+import { assertUuid, safeQuoteIdent, safeQuoteSchema } from './identifier';
 import type { RoleDef, TemplateDef, ColumnDef } from './templates';
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ export class Bucket {
     actorAdminId: string;
     values: Record<string, unknown>;
   }): Promise<BucketRow> {
-    assertUuid(input.actorAdminId);
+    assertUuid(input.actorAdminId, 'actorAdminId');
     const role = findRole(this.template, this.roleKey);
 
     // Enforce singleton cardinality before insert.
@@ -110,7 +110,7 @@ export class Bucket {
   }
 
   async update(userId: string, values: Record<string, unknown>): Promise<BucketRow> {
-    assertUuid(userId);
+    assertUuid(userId, 'userId');
     const role = findRole(this.template, this.roleKey);
     const { setClauses, params } = this.buildUpdate(role, values);
 
@@ -139,7 +139,7 @@ export class Bucket {
   }
 
   async remove(userId: string): Promise<void> {
-    assertUuid(userId);
+    assertUuid(userId, 'userId');
     const sql = db();
     // DELETE with parameterized id; fq() is already quoted identifier.
     // Cannot use tagged template here because we need to embed fq() as raw SQL
@@ -224,12 +224,3 @@ export class Bucket {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Module-level UUID guard
-// ---------------------------------------------------------------------------
-
-function assertUuid(s: string): void {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
-    throw new Error('invalid_uuid');
-  }
-}

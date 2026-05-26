@@ -1,13 +1,8 @@
 import type { NeonQueryPromise } from '@neondatabase/serverless';
 import { db } from './db';
 import { generateCreateSchema, generateDropSchema } from './template-ddl';
-import { generateSchemaName, isValidSchemaName } from './identifier';
+import { assertUuid, generateSchemaName, isValidSchemaName } from './identifier';
 import type { TemplateDef } from './templates';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function assertUuid(s: string, field: string): void {
-  if (!UUID_RE.test(s)) throw new Error(`invalid_uuid:${field}`);
-}
 
 // Split a multi-statement DDL string into individual statements.
 // Template DDL never contains $$-quoted bodies (those only appear in
