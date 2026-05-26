@@ -6,6 +6,11 @@
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_OMIT_KEYS = "GOOGLE_OAUTH_CLIENT_ID"
+  # Force npm to install devDependencies even when NODE_ENV=production.
+  # The build script (`tsc --noEmit && vite build`) relies on dev-only
+  # binaries (tsc, vite, @vitejs/plugin-react) that would otherwise be
+  # skipped → exit code 127 (command not found) on Netlify.
+  NPM_FLAGS = "--include=dev"
 
 [[redirects]]
   from = "/api/*"
