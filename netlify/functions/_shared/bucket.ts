@@ -102,11 +102,22 @@ export class Bucket {
     );
     const sql = db();
     // INSERT with parameterized values; fq() is already quoted identifier.
-    const rows = (await sql(
-      `INSERT INTO ${this.fq()} (${columns}) VALUES (${placeholders}) RETURNING ${selectColumns(role)}`,
-      params,
-    )) as unknown as BucketRow[];
-    return rows[0]!;
+    try {
+      const rows = (await sql(
+        `INSERT INTO ${this.fq()} (${columns}) VALUES (${placeholders}) RETURNING ${selectColumns(role)}`,
+        params,
+      )) as unknown as BucketRow[];
+      return rows[0]!;
+    } catch (e: unknown) {
+      // PG error code 23505 = unique_violation. For singleton roles this means
+      // the role_singleton index rejected a second row — convert to CardinalityError
+      // so callers see the same shape regardless of whether the app-level check
+      // or the DB-level constraint caught the race.
+      if (role.cardinality === 'singleton' && isUniqueViolation(e)) {
+        throw new CardinalityError(this.roleKey);
+      }
+      throw e;
+    }
   }
 
   async update(userId: string, values: Record<string, unknown>): Promise<BucketRow> {
@@ -222,5 +233,24 @@ export class Bucket {
 
     return { setClauses, params };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Module-level helpers
+// ---------------------------------------------------------------------------
+
+function isUniqueViolation(e: unknown): boolean {
+  // neon-serverless surfaces PG errors with a `code` property.
+  // Also defensive against the case where the error is a generic Error
+  // whose message contains "duplicate key value violates unique constraint".
+  if (e && typeof e === 'object') {
+    const code = (e as { code?: unknown }).code;
+    if (code === '23505') return true;
+    const msg = (e as { message?: unknown }).message;
+    if (typeof msg === 'string' && /duplicate key value violates unique constraint/i.test(msg)) {
+      return true;
+    }
+  }
+  return false;
 }
 
