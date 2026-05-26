@@ -2,20 +2,23 @@ import { useEffect, useState } from 'react';
 import { listBucketUsers, deleteBucketUser, type BucketSummary, type BucketUser } from '../api';
 import { AddUserModal } from './AddUserModal';
 import { EditUserModal } from './EditUserModal';
+import { LoginManageModal } from './LoginManageModal';
 
 interface Props {
   clientId: string;
+  clientSlug: string;
   bucket: BucketSummary;
   initialOpen: boolean;
   onChange: () => void;
 }
 
-export function BucketPanel({ clientId, bucket, initialOpen, onChange }: Props) {
+export function BucketPanel({ clientId, clientSlug, bucket, initialOpen, onChange }: Props) {
   const [open, setOpen] = useState(initialOpen);
   const [users, setUsers] = useState<BucketUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingUser, setEditingUser] = useState<BucketUser | null>(null);
+  const [loginUser, setLoginUser] = useState<BucketUser | null>(null);
 
   async function refreshUsers() {
     setLoading(true);
@@ -93,7 +96,15 @@ export function BucketPanel({ clientId, bucket, initialOpen, onChange }: Props) 
                     {listColumns.map((c) => (
                       <td key={c.key} style={{ padding: '6px 8px' }}>{formatCell(u[c.key], c.type)}</td>
                     ))}
-                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ padding: '0 4px', fontSize: 13 }}
+                        onClick={() => setLoginUser(u)}
+                        title={u.email ? 'Manage login' : 'Add an email first'}
+                      >
+                        🔑
+                      </button>
                       <button className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 13 }} onClick={() => handleDelete(u)}>
                         × delete
                       </button>
@@ -117,6 +128,7 @@ export function BucketPanel({ clientId, bucket, initialOpen, onChange }: Props) 
       {showAdd && (
         <AddUserModal
           clientId={clientId}
+          clientSlug={clientSlug}
           bucket={bucket}
           onClose={() => setShowAdd(false)}
           onCreated={async () => { setShowAdd(false); await refreshUsers(); onChange(); }}
@@ -129,6 +141,16 @@ export function BucketPanel({ clientId, bucket, initialOpen, onChange }: Props) 
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSaved={async () => { setEditingUser(null); await refreshUsers(); onChange(); }}
+        />
+      )}
+      {loginUser && (
+        <LoginManageModal
+          clientId={clientId}
+          clientSlug={clientSlug}
+          role={bucket.role}
+          user={loginUser}
+          onClose={() => setLoginUser(null)}
+          onChanged={() => { onChange(); }}
         />
       )}
     </div>

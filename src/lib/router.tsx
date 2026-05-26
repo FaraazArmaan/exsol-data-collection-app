@@ -6,6 +6,10 @@ import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
 import ClientDashboard from '../modules/ams/pages/ClientDashboard';
 import ClientSettings from '../modules/ams/pages/ClientSettings';
+import UserLogin from '../modules/user-portal/pages/UserLogin';
+import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
+import UserAccount from '../modules/user-portal/pages/UserAccount';
+import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/UserPortalRoutes';
 
 function ShellLayout() {
   return (
@@ -25,6 +29,22 @@ function RequireAdmin() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // User portal — distinct visual shell, separate auth context.
+  {
+    path: '/c/:slug',
+    element: <UserPortalLayout />,
+    children: [
+      { path: 'login', element: <UserLogin /> },
+      {
+        element: <RequireBucketUser />,
+        children: [
+          { index: true, element: <UserAccount /> },
+          { path: 'change-password', element: <UserChangePassword /> },
+        ],
+      },
+    ],
+  },
+  // Admin
   {
     element: <RequireAdmin />,
     children: [

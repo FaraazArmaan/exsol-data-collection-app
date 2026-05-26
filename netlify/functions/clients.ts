@@ -4,7 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { TEMPLATES } from './_shared/templates';
-import { generateSchemaName } from './_shared/identifier';
+import { generateSchemaName, deriveSlug } from './_shared/identifier';
 import { createClientSchema } from './_shared/schema-manager';
 
 const CreateBody = z.object({
@@ -18,6 +18,7 @@ interface ClientRow {
   template_key: string;
   template_version_applied: number;
   schema_name: string;
+  slug: string;
   created_at: string;
 }
 
@@ -34,7 +35,7 @@ export default async (req: Request, _ctx: Context) => {
 
   if (req.method === 'GET') {
     const rows = (await sql`
-      SELECT id, name, template_key, template_version_applied, schema_name, created_at
+      SELECT id, name, template_key, template_version_applied, schema_name, slug, created_at
       FROM public.clients
       ORDER BY created_at DESC
     `) as ClientRow[];
@@ -52,9 +53,22 @@ export default async (req: Request, _ctx: Context) => {
     // createClientSchema runs (which needs it for the audit log FK).
     const schemaName = generateSchemaName();
 
+    // Derive slug; if a collision happens, retry with -2, -3, ... suffixes.
+    const baseSlug = deriveSlug(parsed.data.name);
+    let slug = baseSlug;
+    let suffix = 2;
+    // Reasonable retry ceiling — practically we never hit this.
+    for (let i = 0; i < 25; i++) {
+      const existing = (await sql`
+        SELECT 1 FROM public.clients WHERE slug = ${slug} LIMIT 1
+      `) as unknown[];
+      if (existing.length === 0) break;
+      slug = `${baseSlug}-${suffix++}`;
+    }
+
     const inserted = (await sql`
-      INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, created_by)
-      VALUES (${parsed.data.name}, ${template.key}, ${template.version}, ${schemaName}, ${actor.admin.id})
+      INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, slug, created_by)
+      VALUES (${parsed.data.name}, ${template.key}, ${template.version}, ${schemaName}, ${slug}, ${actor.admin.id})
       RETURNING id
     `) as { id: string }[];
     const clientId = inserted[0]!.id;
@@ -86,6 +100,7 @@ export default async (req: Request, _ctx: Context) => {
           template_key: template.key,
           template_version_applied: template.version,
           schema_name: schemaName,
+          slug,
         },
       },
       { status: 201 },

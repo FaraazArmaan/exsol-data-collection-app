@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { addBucketUser, type BucketSummary, type BucketColumn } from '../api';
+import { generateTempPassword } from '../../../lib/random-password';
 
 interface Props {
   clientId: string;
@@ -22,24 +23,46 @@ function initialValues(bucket: BucketSummary): Record<string, unknown> {
   return vals;
 }
 
-export function AddUserModal({ clientId, bucket, onClose, onCreated }: Props) {
+interface Props2 extends Props { clientSlug?: string }
+
+export function AddUserModal({ clientId, bucket, onClose, onCreated, clientSlug }: Props2) {
   const [values, setValues] = useState(() => initialValues(bucket));
+  const [createLogin, setCreateLogin] = useState(false);
+  const [tempPassword, setTempPassword] = useState(() => generateTempPassword());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [postCreate, setPostCreate] = useState<null | { tempPassword: string; email: string }>(null);
 
   function setField(k: string, v: unknown) {
     setValues((prev) => ({ ...prev, [k]: v }));
   }
+
+  const hasEmail = typeof values.email === 'string' && (values.email as string).trim().length > 0;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
 
+    if (createLogin && !hasEmail) {
+      setSubmitting(false);
+      setError('Email is required when creating a login.');
+      return;
+    }
+    if (createLogin && tempPassword.length < 8) {
+      setSubmitting(false);
+      setError('Temporary password must be at least 8 characters.');
+      return;
+    }
+
     // Normalize empty strings to null for optional fields so the server sees a true absence.
     const payload: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(values)) {
       payload[k] = v === '' ? null : v;
+    }
+    if (createLogin) {
+      payload.create_login = true;
+      payload.temp_password = tempPassword;
     }
 
     const r = await addBucketUser(clientId, bucket.role, payload);
@@ -47,6 +70,8 @@ export function AddUserModal({ clientId, bucket, onClose, onCreated }: Props) {
     if (!r.ok) {
       if (r.error.code === 'conflict') {
         setError('This singleton role is already filled.');
+      } else if (r.error.code === 'email_already_has_login_in_this_client') {
+        setError('This email already has a login in this client. Use Reset password on the existing row instead.');
       } else if (r.error.code === 'validation_failed') {
         setError(`Validation failed: ${typeof r.error.details === 'string' ? r.error.details : 'check required fields'}`);
       } else {
@@ -54,7 +79,31 @@ export function AddUserModal({ clientId, bucket, onClose, onCreated }: Props) {
       }
       return;
     }
+    if (createLogin && r.data.login_created) {
+      setPostCreate({ tempPassword, email: String(values.email) });
+      return;
+    }
     onCreated();
+  }
+
+  if (postCreate) {
+    const loginUrl = clientSlug
+      ? `${window.location.origin}/c/${clientSlug}/login`
+      : `${window.location.origin}/c/<slug>/login`;
+    return (
+      <FormModalShell title="Login created" onClose={() => { onCreated(); }}>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Share this with the user. They'll be prompted to change the password on first login.
+          You can re-view the password up to 3 times from this user's row.
+        </p>
+        <CredentialRevealRow label="Login URL" value={loginUrl} />
+        <CredentialRevealRow label="Email" value={postCreate.email} />
+        <CredentialRevealRow label="Temp password" value={postCreate.tempPassword} mono />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <button type="button" className="btn btn-primary" onClick={() => onCreated()}>Done</button>
+        </div>
+      </FormModalShell>
+    );
   }
 
   return (
@@ -64,6 +113,45 @@ export function AddUserModal({ clientId, bucket, onClose, onCreated }: Props) {
         {bucket.columns.map((c) => (
           <DynamicField key={c.key} column={c} value={values[c.key]} setValue={(v) => setField(c.key, v)} />
         ))}
+
+        <fieldset style={{ border: '1px solid var(--border-subtle)', borderRadius: 6, padding: 12, marginTop: 12 }}>
+          <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={createLogin}
+              onChange={(e) => setCreateLogin(e.target.checked)}
+              disabled={!hasEmail}
+            />
+            <span>Create login for this user</span>
+          </label>
+          {!hasEmail && (
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
+              Fill in an email above to enable.
+            </p>
+          )}
+          {createLogin && hasEmail && (
+            <div style={{ marginTop: 8 }}>
+              <label>Temporary password
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={tempPassword}
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    style={{ flex: 1, fontFamily: 'var(--font-mono)' }}
+                    minLength={8}
+                  />
+                  <button type="button" className="btn btn-ghost" onClick={() => setTempPassword(generateTempPassword())}>
+                    Regenerate
+                  </button>
+                </div>
+              </label>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
+                User will be forced to change this on first login. You'll be able to re-view it up to 3 times.
+              </p>
+            </div>
+          )}
+        </fieldset>
+
         {error && <p className="error">{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
@@ -73,6 +161,32 @@ export function AddUserModal({ clientId, bucket, onClose, onCreated }: Props) {
         </div>
       </form>
     </FormModalShell>
+  );
+}
+
+export function CredentialRevealRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // clipboard might be unavailable in non-secure contexts; user can select manually
+    }
+  }
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <code style={{
+          flex: 1, padding: '6px 8px', border: '1px solid var(--border-subtle)', borderRadius: 4,
+          fontFamily: mono ? 'var(--font-mono)' : undefined, fontSize: mono ? 14 : 13,
+          background: 'var(--bg-elevated, #1a1a1a)', wordBreak: 'break-all',
+        }}>{value}</code>
+        <button type="button" className="btn btn-ghost" onClick={copy}>{copied ? '✓ copied' : 'copy'}</button>
+      </div>
+    </div>
   );
 }
 

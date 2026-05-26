@@ -39,6 +39,27 @@ export function generateSchemaName(rand: () => string = defaultHex): string {
   return `client_${rand()}`;
 }
 
+const SLUG_FORMAT = /^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/;
+
+/**
+ * Derives a URL-safe slug from a free-text name. Lowercased, non-alphanumeric
+ * runs collapsed to a single hyphen, leading/trailing hyphens trimmed. If the
+ * result is too short to satisfy SLUG_FORMAT (≥2 chars, starts+ends alnum)
+ * falls back to a prefixed hex string.
+ */
+export function deriveSlug(name: string, rand: () => string = defaultHex): string {
+  let s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (s.length > 60) s = s.slice(0, 60).replace(/-+$/g, '');
+  if (s.length < 2 || !SLUG_FORMAT.test(s)) {
+    s = `c-${rand().slice(0, 8)}`;
+  }
+  return s;
+}
+
+export function isValidSlug(s: string): boolean {
+  return typeof s === 'string' && SLUG_FORMAT.test(s);
+}
+
 function defaultHex(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);

@@ -19,8 +19,9 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, schema_name FROM public.clients WHERE id = ${id} LIMIT 1
-  `) as { id: string; schema_name: string }[];
+    SELECT id, name, schema_name, slug, template_key, created_at
+    FROM public.clients WHERE id = ${id} LIMIT 1
+  `) as { id: string; name: string; schema_name: string; slug: string; template_key: string; created_at: string }[];
   const client = rows[0];
   if (!client) return jsonError(404, 'not_found');
 

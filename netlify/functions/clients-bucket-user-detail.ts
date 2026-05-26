@@ -55,6 +55,14 @@ export default async (req: Request, _ctx: Context) => {
 
   if (req.method === 'DELETE') {
     try {
+      // Delete the credential row first (if any). Order matters: if bucket.remove
+      // fails, leaving a credential row pointing at a now-missing bucket-user is
+      // worse than a missing credential row pointing at a still-present bucket-user.
+      // Either way the credential's bucket_user_id FK is logical, not enforced.
+      await sql`
+        DELETE FROM public.bucket_user_credentials
+        WHERE client_id = ${clientId}::uuid AND role_key = ${roleKey} AND bucket_user_id = ${userId}::uuid
+      `;
       await bucket.remove(userId);
       return jsonOk({ ok: true });
     } catch (e: unknown) {

@@ -6,6 +6,7 @@ import { BucketPanel } from '../components/BucketPanel';
 export default function ClientSettings() {
   const { clientId } = useParams<{ clientId: string }>();
   const [clientName, setClientName] = useState<string>('');
+  const [clientSlug, setClientSlug] = useState<string>('');
   const [buckets, setBuckets] = useState<BucketSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export default function ClientSettings() {
       return;
     }
     setClientName(r.data.client.name);
+    setClientSlug(r.data.client.slug);
     setBuckets(r.data.buckets);
   }
 
@@ -44,6 +46,7 @@ export default function ClientSettings() {
         <BucketPanel
           key={bucket.role}
           clientId={clientId}
+          clientSlug={clientSlug}
           bucket={bucket}
           initialOpen={i < 2}
           onChange={refresh}

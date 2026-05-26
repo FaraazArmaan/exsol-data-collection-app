@@ -99,9 +99,10 @@ beforeEach(async () => {
   );
   const pregenSchema = generateSchemaName();
 
+  const testSlug = `test-shop-${pregenSchema.slice(-8)}`;
   const clientRows = (await sql`
-    INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, created_by)
-    VALUES ('Test Shop (integration)', 'shop', 1, ${pregenSchema}, ${actorAdminId})
+    INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, slug, created_by)
+    VALUES ('Test Shop (integration)', 'shop', 1, ${pregenSchema}, ${testSlug}, ${actorAdminId})
     RETURNING id
   `) as { id: string }[];
   testClientId = clientRows[0]!.id;
@@ -269,9 +270,10 @@ describe('schema-manager + Bucket integration', () => {
       '../../netlify/functions/_shared/identifier'
     );
     const clinicPregenSchema = generateSchemaName();
+    const clinicSlug = `test-clinic-${clinicPregenSchema.slice(-8)}`;
     const clinicClientRows = (await sql`
-      INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, created_by)
-      VALUES ('Test Clinic (integration)', 'clinic', 1, ${clinicPregenSchema}, ${actorAdminId})
+      INSERT INTO public.clients (name, template_key, template_version_applied, schema_name, slug, created_by)
+      VALUES ('Test Clinic (integration)', 'clinic', 1, ${clinicPregenSchema}, ${clinicSlug}, ${actorAdminId})
       RETURNING id
     `) as { id: string }[];
     const clinicClientId = clinicClientRows[0]!.id;

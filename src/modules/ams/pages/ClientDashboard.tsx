@@ -35,6 +35,8 @@ export default function ClientDashboard() {
 
   const created = new Date(client.created_at);
 
+  const loginUrl = `${window.location.origin}/c/${client.slug}/login`;
+
   return (
     <section>
       <header style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
@@ -46,6 +48,18 @@ export default function ClientDashboard() {
         </div>
         <Link to={`/clients/${clientId}/settings`} className="btn btn-primary">Manage buckets</Link>
       </header>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>User login URL</h3>
+        <p className="muted" style={{ marginTop: 0, fontSize: 12 }}>
+          Share this URL with users (owners, employees, etc.) you've created logins for.
+        </p>
+        <code style={{
+          display: 'block', padding: '8px 10px', border: '1px solid var(--border-subtle)',
+          borderRadius: 4, fontSize: 13, wordBreak: 'break-all',
+          background: 'var(--bg-elevated, #1a1a1a)',
+        }}>{loginUrl}</code>
+      </div>
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Buckets</h3>

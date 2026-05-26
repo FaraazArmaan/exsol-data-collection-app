@@ -53,8 +53,81 @@ export function clearCookieHeader(): string {
 }
 
 export function readCookieToken(req: Request): string | null {
+  return readNamedCookie(req, 'session');
+}
+
+// ---------------------------------------------------------------------------
+// Bucket-user session — independent from admin. Same signing key, but the
+// `kind` claim is enforced on verify so an admin token cannot pose as a
+// bucket-user token or vice versa.
+// ---------------------------------------------------------------------------
+
+const BU_TTL_SECONDS = 24 * 60 * 60;
+const BU_REFRESH_THRESHOLD_SECONDS = 12 * 60 * 60;
+const BU_COOKIE = 'bu_session';
+
+export interface BucketUserClaims {
+  sub: string;
+  email: string;
+  kind: 'bucket_user';
+  client_id: string;
+  role_key: string;
+  iat: number;
+  exp: number;
+}
+
+export async function mintBucketUserSession(input: {
+  sub: string; email: string; client_id: string; role_key: string;
+}): Promise<string> {
+  return new SignJWT({
+    email: input.email,
+    kind: 'bucket_user',
+    client_id: input.client_id,
+    role_key: input.role_key,
+  })
+    .setProtectedHeader({ alg: ALG })
+    .setSubject(input.sub)
+    .setIssuedAt()
+    .setExpirationTime(`${BU_TTL_SECONDS}s`)
+    .sign(secret());
+}
+
+export async function verifyBucketUserSession(token: string): Promise<BucketUserClaims> {
+  const { payload } = await jwtVerify(token, secret(), { algorithms: [ALG] });
+  if (
+    typeof payload.sub !== 'string' ||
+    typeof payload.email !== 'string' ||
+    payload.kind !== 'bucket_user' ||
+    typeof payload.client_id !== 'string' ||
+    typeof payload.role_key !== 'string'
+  ) {
+    throw new Error('invalid claims');
+  }
+  return payload as unknown as BucketUserClaims;
+}
+
+export function shouldRefreshBucketUser(claims: BucketUserClaims, nowSec = Math.floor(Date.now() / 1000)): boolean {
+  return claims.exp - nowSec < BU_REFRESH_THRESHOLD_SECONDS;
+}
+
+export function buCookieHeader(token: string): string {
+  const secure = env().COOKIE_SECURE ? '; Secure' : '';
+  return `${BU_COOKIE}=${token}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${BU_TTL_SECONDS}`;
+}
+
+export function clearBuCookieHeader(): string {
+  const secure = env().COOKIE_SECURE ? '; Secure' : '';
+  return `${BU_COOKIE}=; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=0`;
+}
+
+export function readBuCookieToken(req: Request): string | null {
+  return readNamedCookie(req, BU_COOKIE);
+}
+
+function readNamedCookie(req: Request, name: string): string | null {
   const cookie = req.headers.get('cookie');
   if (!cookie) return null;
-  const match = cookie.split(/;\s*/).find((c) => c.startsWith('session='));
-  return match ? match.slice('session='.length) : null;
+  const prefix = `${name}=`;
+  const match = cookie.split(/;\s*/).find((c) => c.startsWith(prefix));
+  return match ? match.slice(prefix.length) : null;
 }

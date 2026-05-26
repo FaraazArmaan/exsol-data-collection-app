@@ -2,7 +2,7 @@ import { apiFetch, type Result } from '../../lib/api-client';
 
 export interface ClientSummary {
   id: string; name: string; template_key: string;
-  template_version_applied: number; schema_name: string; created_at: string;
+  template_version_applied: number; schema_name: string; slug: string; created_at: string;
 }
 
 export const listClients = () => apiFetch<{ clients: ClientSummary[] }>('/api/clients');
@@ -46,6 +46,7 @@ export interface BucketUser {
 export interface ClientHeader {
   id: string;
   name: string;
+  slug: string;
   template_key: string;
   template_label: string;
   created_at: string;
@@ -62,9 +63,35 @@ export const listBucketUsers = (clientId: string, role: string) =>
   );
 
 export const addBucketUser = (clientId: string, role: string, values: Record<string, unknown>) =>
-  apiFetch<{ user: BucketUser }>(
+  apiFetch<{ user: BucketUser; login_created?: boolean }>(
     `/api/clients-bucket-users?client=${encodeURIComponent(clientId)}&role=${encodeURIComponent(role)}`,
     { method: 'POST', body: JSON.stringify(values) },
+  );
+
+export interface BucketUserCredentialStatus {
+  has_credential: boolean;
+  email?: string;
+  must_change_password?: boolean;
+  last_login_at?: string | null;
+  temp_password_plain?: string | null;
+  temp_password_views_left?: number | null;
+}
+
+export const getBucketUserCredential = (clientId: string, role: string, userId: string) =>
+  apiFetch<BucketUserCredentialStatus>(
+    `/api/bucket-user-credential?client=${encodeURIComponent(clientId)}&role=${encodeURIComponent(role)}&user=${encodeURIComponent(userId)}`,
+  );
+
+export const resetBucketUserCredential = (clientId: string, role: string, userId: string, tempPassword: string) =>
+  apiFetch<{ ok: true }>(
+    `/api/bucket-user-credential?client=${encodeURIComponent(clientId)}&role=${encodeURIComponent(role)}&user=${encodeURIComponent(userId)}`,
+    { method: 'POST', body: JSON.stringify({ temp_password: tempPassword }) },
+  );
+
+export const deleteBucketUserCredential = (clientId: string, role: string, userId: string) =>
+  apiFetch<{ ok: true }>(
+    `/api/bucket-user-credential?client=${encodeURIComponent(clientId)}&role=${encodeURIComponent(role)}&user=${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
   );
 
 export const updateBucketUser = (clientId: string, role: string, userId: string, values: Record<string, unknown>) =>

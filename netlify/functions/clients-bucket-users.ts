@@ -9,6 +9,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { TEMPLATES } from './_shared/templates';
 import { isValidSchemaName, isValidIdentifier } from './_shared/identifier';
 import { Bucket, CardinalityError } from './_shared/bucket';
+import { hashPassword } from './_shared/argon';
 
 export default async (req: Request, _ctx: Context) => {
   let actor;
@@ -46,15 +47,59 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method === 'POST') {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') return jsonError(400, 'validation_failed', 'body required');
+
+    // Pull auth-specific fields out before passing to Bucket.add(); bucket
+    // template validation would otherwise reject them as unknown columns.
+    const { create_login: createLogin, temp_password: tempPassword, ...bucketValues } =
+      body as Record<string, unknown>;
+
+    if (createLogin) {
+      if (typeof tempPassword !== 'string' || tempPassword.length < 8) {
+        return jsonError(400, 'validation_failed', 'temp_password (>=8 chars) required when create_login is true');
+      }
+      if (!bucketValues.email || typeof bucketValues.email !== 'string') {
+        return jsonError(400, 'validation_failed', 'email required when create_login is true');
+      }
+    }
+
+    let user;
     try {
-      const user = await bucket.add({ actorAdminId: actor.admin.id, values: body as Record<string, unknown> });
-      return jsonOk({ user }, { status: 201 });
+      user = await bucket.add({ actorAdminId: actor.admin.id, values: bucketValues });
     } catch (e: unknown) {
       if (e instanceof CardinalityError) return jsonError(409, 'conflict', { role: e.roleKey });
       const msg = (e as Error)?.message ?? 'unknown';
       if (msg.startsWith('validation_failed:')) return jsonError(400, 'validation_failed', msg);
       throw e;
     }
+
+    if (createLogin) {
+      try {
+        const pwdHash = await hashPassword(tempPassword as string);
+        await sql`
+          INSERT INTO public.bucket_user_credentials (
+            client_id, role_key, bucket_user_id, email,
+            password_hash, must_change_password,
+            temp_password_plain, temp_password_views_left,
+            created_by_admin
+          ) VALUES (
+            ${clientId}::uuid, ${roleKey}, ${user.id}::uuid, ${bucketValues.email as string},
+            ${pwdHash}, true,
+            ${tempPassword as string}, 3,
+            ${actor.admin.id}::uuid
+          )
+        `;
+      } catch (e: unknown) {
+        // Roll back the bucket-user row so we don't leave an orphan.
+        try { await bucket.remove(user.id); } catch (cleanupErr) {
+          console.error('clients-bucket-users: cleanup after credential insert failed', user.id, cleanupErr);
+        }
+        const code = (e as { code?: string })?.code;
+        if (code === '23505') return jsonError(409, 'email_already_has_login_in_this_client');
+        throw e;
+      }
+    }
+
+    return jsonOk({ user, login_created: !!createLogin }, { status: 201 });
   }
 
   return jsonError(405, 'method_not_allowed');
