@@ -3600,7 +3600,350 @@ describe('user-node auth', () => {
 });
 ```
 
-### Task 4.8: Run Phase 4 tests + commit
+### Task 4.8: Create the unified `/api/login` endpoint
+
+**Files:**
+- Create: `netlify/functions/login.ts`
+- Modify: `tests/integration/user-node-auth.test.ts` (append tests)
+
+The unified login tries admin auth first, then bucket-user auth across all clients the email belongs to. After password verification, returns one of three response shapes: `admin` (single match), `bucket_user` (single bucket-user match), or `choice` (multiple bucket-user matches; UI shows picker, re-POSTs with `client` slug to disambiguate).
+
+- [ ] **Step 1: Write failing tests**
+
+Append to `tests/integration/user-node-auth.test.ts`:
+
+```typescript
+import loginUnifiedHandler from '../../netlify/functions/login';
+
+// ── New cases for unified /api/login ──────────────────────────────
+
+test('unified login: admin path returns kind:admin and sets session cookie', async () => {
+  // ADMIN_EMAIL is already inserted with ADMIN_PASSWORD in beforeAll.
+  // Make sure no bucket-user credential for ADMIN_EMAIL exists in this test client.
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+    }), CTX,
+  );
+  expect(r.status).toBe(200);
+  const setCookie = r.headers.get('set-cookie') ?? '';
+  expect(setCookie).toContain('session=');
+  const body = await r.json() as { kind: string; admin?: { email: string } };
+  expect(body.kind).toBe('admin');
+  expect(body.admin?.email).toBe(ADMIN_EMAIL);
+});
+
+test('unified login: single bucket-user match returns kind:bucket_user and sets bu_session', async () => {
+  const email = `unified-single-${Date.now()}@example.com`;
+  await createNodeWithLogin(email, 'unified-pass-1');
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'unified-pass-1' }),
+    }), CTX,
+  );
+  expect(r.status).toBe(200);
+  expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+  const body = await r.json() as { kind: string; user: { must_change_password: boolean }; client: { slug: string } };
+  expect(body.kind).toBe('bucket_user');
+  expect(body.user.must_change_password).toBe(true);
+  expect(body.client.slug).toBe(testClientSlug);
+});
+
+test('unified login: multiple bucket-user matches returns kind:choice', async () => {
+  // Create a SECOND client + give it the same email as a bucket-user.
+  const sharedEmail = `unified-multi-${Date.now()}@example.com`;
+  await createNodeWithLogin(sharedEmail, 'unified-pass-multi');
+  // Spin up a 2nd client + role + level + bucket-user with same email + same password.
+  const cr2 = await clientsHandler(new Request('http://localhost/api/clients', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ name: `Second Client ${Date.now()}` }),
+  }), CTX);
+  const c2 = (await cr2.json() as { client: { id: string; slug: string } }).client;
+  createdClients.push(c2.id);
+  const r2 = await clientRolesHandler(new Request(`http://localhost/api/client-roles?client=${c2.id}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+  }), CTX);
+  const role2 = (await r2.json() as { role: { id: string } }).role.id;
+  await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${c2.id}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ level_number: 1, allowed_role_ids: [role2] }),
+  }), CTX);
+  await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${c2.id}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({
+      role_id: role2, level_number: 1, parent_id: null,
+      display_name: 'Multi', email: sharedEmail,
+      create_login: true, temp_password: 'unified-pass-multi', // same pwd
+    }),
+  }), CTX);
+
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sharedEmail, password: 'unified-pass-multi' }),
+    }), CTX,
+  );
+  expect(r.status).toBe(200);
+  // Multi-match: no cookie set yet.
+  expect(r.headers.get('set-cookie') ?? '').not.toContain('bu_session=');
+  const body = await r.json() as { kind: string; clients: Array<{ slug: string }> };
+  expect(body.kind).toBe('choice');
+  expect(body.clients.length).toBeGreaterThanOrEqual(2);
+});
+
+test('unified login: disambiguation with `client` slug returns kind:bucket_user', async () => {
+  const sharedEmail = `unified-disamb-${Date.now()}@example.com`;
+  await createNodeWithLogin(sharedEmail, 'disamb-pass');
+  // Disambiguate by passing the client slug.
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sharedEmail, password: 'disamb-pass', client: testClientSlug }),
+    }), CTX,
+  );
+  expect(r.status).toBe(200);
+  expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+  const body = await r.json() as { kind: string; client: { slug: string } };
+  expect(body.kind).toBe('bucket_user');
+  expect(body.client.slug).toBe(testClientSlug);
+});
+
+test('unified login: wrong password returns 401 unauthorized', async () => {
+  const email = `unified-wrong-${Date.now()}@example.com`;
+  await createNodeWithLogin(email, 'correct-pass');
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'wrong-pass' }),
+    }), CTX,
+  );
+  expect(r.status).toBe(401);
+});
+
+test('unified login: unknown email returns 401 unauthorized', async () => {
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'nobody-here@example.com', password: 'whatever' }),
+    }), CTX,
+  );
+  expect(r.status).toBe(401);
+});
+
+test('unified login: admin precedence wins over bucket-user with same email', async () => {
+  // Insert an admin row with email matching an existing bucket-user.
+  // We'll directly INSERT the admin since the admin-team endpoint requires admin auth.
+  const collidingEmail = `unified-collide-${Date.now()}@example.com`;
+  const tempHash = await hashPassword('admin-wins-pass');
+  await sql`
+    INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+    VALUES (${collidingEmail}, ${tempHash}, 'Collide Admin', false)
+  `;
+  // Also create a bucket-user with the same email.
+  await createNodeWithLogin(collidingEmail, 'bucket-pass-different');
+
+  // POST with the ADMIN's password — must succeed as admin (kind:admin), not bucket.
+  const r = await loginUnifiedHandler(
+    new Request('http://localhost/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: collidingEmail, password: 'admin-wins-pass' }),
+    }), CTX,
+  );
+  expect(r.status).toBe(200);
+  const body = await r.json() as { kind: string };
+  expect(body.kind).toBe('admin');
+
+  // Cleanup.
+  await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
+});
+```
+
+- [ ] **Step 2: Run tests — they fail (handler missing)**
+
+Run: `npx vitest run tests/integration/user-node-auth.test.ts`
+Expected: 7 new tests fail.
+
+- [ ] **Step 3: Implement `netlify/functions/login.ts`**
+
+```typescript
+// POST /api/login
+//   Body: { email, password, client?: <slug> }
+//
+// Tries admin auth first (admin always wins). Falls through to bucket-user
+// credential lookup. Returns one of:
+//   - { kind: 'admin', admin: {...} }     + Set-Cookie: session=<admin JWT>
+//   - { kind: 'bucket_user', user, client } + Set-Cookie: bu_session=<JWT>
+//   - { kind: 'choice', clients: [...] }    (no cookie; UI shows picker)
+//
+// Disambiguation: pass `client: <slug>` in body to narrow a multi-match.
+
+import type { Context } from '@netlify/functions';
+import { z } from 'zod';
+import { db } from './_shared/db';
+import { verifyPassword } from './_shared/argon';
+import {
+  mintSession, cookieHeader,
+  mintBucketUserSession, buCookieHeader,
+} from './_shared/session';
+import { jsonError, jsonOk } from './_shared/http';
+import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
+
+const Body = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+  client: z.string().min(1).max(80).optional(),
+});
+
+interface AdminRow {
+  id: string;
+  email: string;
+  password_hash: string | null;
+  display_name: string;
+  is_bootstrap: boolean;
+}
+
+interface BUCredRow {
+  id: string;
+  client_id: string;
+  user_node_id: string;
+  email: string;
+  password_hash: string;
+  must_change_password: boolean;
+}
+
+interface ClientRow {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+const MAX_CREDS_TO_VERIFY = 5;  // safety cap on argon2 verifies per request
+
+export default async (req: Request, _ctx: Context) => {
+  if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+
+  const ip = extractIp(req);
+  const sql = db();
+  const limit = await checkRateLimit(sql, { email: parsed.data.email, ip });
+  if (!limit.allowed) {
+    return jsonError(429, 'too_many_attempts',
+      { reason: limit.reason },
+      { 'Retry-After': String(limit.retryAfterSec ?? 300) });
+  }
+
+  // Step 1: admin precedence.
+  const adminRows = (await sql`
+    SELECT id, email, password_hash, display_name, is_bootstrap
+    FROM public.admins WHERE email = ${parsed.data.email} LIMIT 1
+  `) as AdminRow[];
+  if (adminRows.length > 0) {
+    const admin = adminRows[0]!;
+    const ok = await verifyPassword(parsed.data.password, admin.password_hash);
+    if (!ok) {
+      await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+      return jsonError(401, 'unauthorized');
+    }
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
+    const token = await mintSession({ sub: admin.id, email: admin.email });
+    return jsonOk(
+      { kind: 'admin', admin: { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap } },
+      { headers: { 'Set-Cookie': cookieHeader(token) } },
+    );
+  }
+
+  // Step 2: bucket-user credentials. Optionally narrowed by `client` slug.
+  let credRows: BUCredRow[];
+  let clientRowsForChoice: ClientRow[] = [];
+
+  if (parsed.data.client) {
+    // Disambiguation call — narrow to the picked client.
+    const c = (await sql`SELECT id, slug, name FROM public.clients WHERE slug = ${parsed.data.client} LIMIT 1`) as ClientRow[];
+    if (c.length === 0) {
+      // Equalize timing then 401.
+      await verifyPassword(parsed.data.password, null);
+      await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+      return jsonError(401, 'unauthorized');
+    }
+    credRows = (await sql`
+      SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+      FROM public.user_node_credentials
+      WHERE email = ${parsed.data.email} AND client_id = ${c[0]!.id}::uuid
+      LIMIT 1
+    `) as BUCredRow[];
+    clientRowsForChoice = c;
+  } else {
+    // Open lookup across ALL clients for this email.
+    credRows = (await sql`
+      SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+      FROM public.user_node_credentials
+      WHERE email = ${parsed.data.email}
+      ORDER BY created_at
+      LIMIT ${MAX_CREDS_TO_VERIFY}
+    `) as BUCredRow[];
+  }
+
+  if (credRows.length === 0) {
+    // Equalize timing then 401.
+    await verifyPassword(parsed.data.password, null);
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+
+  // Verify password against each candidate credential.
+  const verified: BUCredRow[] = [];
+  for (const cred of credRows) {
+    if (await verifyPassword(parsed.data.password, cred.password_hash)) {
+      verified.push(cred);
+    }
+  }
+
+  if (verified.length === 0) {
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+
+  await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
+
+  if (verified.length === 1) {
+    const cred = verified[0]!;
+    const c = clientRowsForChoice.length > 0
+      ? clientRowsForChoice[0]!
+      : ((await sql`SELECT id, slug, name FROM public.clients WHERE id = ${cred.client_id}::uuid LIMIT 1`) as ClientRow[])[0]!;
+    await sql`UPDATE public.user_node_credentials SET last_login_at = now() WHERE id = ${cred.id}`;
+    const token = await mintBucketUserSession({
+      sub: cred.user_node_id, email: cred.email, client_id: cred.client_id,
+    });
+    return jsonOk(
+      {
+        kind: 'bucket_user',
+        user: { id: cred.user_node_id, email: cred.email, must_change_password: cred.must_change_password },
+        client: { id: c.id, slug: c.slug, name: c.name },
+      },
+      { headers: { 'Set-Cookie': buCookieHeader(token) } },
+    );
+  }
+
+  // Multi-match → return choice. No cookie set.
+  const clientIds = verified.map((v) => v.client_id);
+  const clients = (await sql`
+    SELECT id, slug, name FROM public.clients WHERE id = ANY(${clientIds}::uuid[])
+    ORDER BY name
+  `) as ClientRow[];
+  return jsonOk({ kind: 'choice', clients });
+};
+```
+
+- [ ] **Step 4: Run tests — should pass**
+
+Run: `npx vitest run tests/integration/user-node-auth.test.ts`
+Expected: all tests pass (original + 7 new).
+
+### Task 4.9: Run full Phase 4 tests + commit
 
 - [ ] **Step 1: Full suite**
 
@@ -3615,8 +3958,9 @@ git add netlify/functions/_shared/session.ts \
         netlify/functions/u-me.ts \
         netlify/functions/u-change-password.ts \
         netlify/functions/user-node-credential.ts \
+        netlify/functions/login.ts \
         tests/integration/user-node-auth.test.ts
-git commit -m "phase 4: rekey credentials, u-portal endpoints, JWT claim shape (role_key dropped)"
+git commit -m "phase 4: rekey credentials + unified /api/login (admin precedence + multi-client picker)"
 ```
 
 ---
@@ -4109,7 +4453,170 @@ function ConfigureInner({ clientId }: { clientId: string }) {
 }
 ```
 
-### Task 5.7: Browser smoke + commit Phase 5
+### Task 5.7: Rewire `LoginPage` to use unified `/api/login`
+
+The existing v2 `LoginPage` calls `/api/auth-login` directly via `auth-context`. The unified design wants `LoginPage` to call `/api/login` and branch on `response.kind` (admin / bucket_user / choice).
+
+**Files:**
+- Modify: `src/modules/login/pages/LoginPage.tsx`
+- Modify: `src/lib/auth-context.tsx`
+- Modify: `src/modules/login/api.ts` (or wherever the login mutation lives)
+
+- [ ] **Step 1: Read the current LoginPage + auth-context**
+
+Run: `cat src/modules/login/pages/LoginPage.tsx && echo "---" && cat src/lib/auth-context.tsx && echo "---" && find src/modules/login -name "*.ts" -o -name "*.tsx" | xargs ls`
+
+- [ ] **Step 2: Add a unified-login API helper**
+
+If `src/modules/login/api.ts` exists, append to it. Otherwise create it.
+
+```typescript
+// src/modules/login/api.ts (or append to existing)
+import { apiFetch } from '../../lib/api-client';
+
+export type UnifiedLoginResponse =
+  | { kind: 'admin';        admin: { id: string; email: string; display_name: string; is_bootstrap: boolean } }
+  | { kind: 'bucket_user';  user: { id: string; email: string; must_change_password: boolean };
+                            client: { id: string; slug: string; name: string } }
+  | { kind: 'choice';       clients: Array<{ id: string; slug: string; name: string }> };
+
+export const unifiedLogin = (email: string, password: string, client?: string) =>
+  apiFetch<UnifiedLoginResponse>('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, ...(client ? { client } : {}) }),
+  });
+```
+
+- [ ] **Step 3: Rewrite `LoginPage.tsx` to handle all three response shapes**
+
+```tsx
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../lib/auth-context';
+import { unifiedLogin, type UnifiedLoginResponse } from '../api';
+
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const { refresh: refreshAdminAuth } = useAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Picker state — only populated when server responds with kind:'choice'.
+  const [pickerClients, setPickerClients] = useState<Array<{ id: string; slug: string; name: string }> | null>(null);
+
+  async function attempt(emailVal: string, passwordVal: string, clientSlug?: string) {
+    setError(null);
+    setSubmitting(true);
+    const r = await unifiedLogin(emailVal, passwordVal, clientSlug);
+    setSubmitting(false);
+    if (!r.ok) {
+      setError(r.error.code === 'too_many_attempts'
+        ? 'Too many attempts. Try again in a few minutes.'
+        : 'Invalid email or password.');
+      return;
+    }
+    await handleSuccess(r.data);
+  }
+
+  async function handleSuccess(data: UnifiedLoginResponse) {
+    if (data.kind === 'admin') {
+      await refreshAdminAuth();
+      navigate('/', { replace: true });
+      return;
+    }
+    if (data.kind === 'bucket_user') {
+      const slug = data.client.slug;
+      const dest = data.user.must_change_password ? `/c/${slug}/change-password` : `/c/${slug}/`;
+      navigate(dest, { replace: true });
+      return;
+    }
+    // kind: 'choice' — show picker.
+    setPickerClients(data.clients);
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    await attempt(email.trim(), password);
+  }
+
+  async function pick(slug: string) {
+    setPickerClients(null);
+    await attempt(email.trim(), password, slug);
+  }
+
+  function cancelPicker() {
+    setPickerClients(null);
+    setPassword('');
+  }
+
+  if (pickerClients) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" style={{ width: 'min(420px, 92vw)' }}>
+          <h1 style={{ marginBottom: 4 }}>Sign in to which workspace?</h1>
+          <p className="muted" style={{ marginTop: 0 }}>You have access to multiple workspaces with this email.</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0' }}>
+            {pickerClients.map((c) => (
+              <li key={c.id} style={{ marginBottom: 6 }}>
+                <button className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }} onClick={() => pick(c.slug)}>
+                  <strong>{c.name}</strong>
+                  <span className="muted" style={{ marginLeft: 8, fontSize: 12, fontFamily: 'var(--font-mono)' }}>{c.slug}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button className="btn btn-ghost" onClick={cancelPicker} style={{ marginTop: 8 }}>← Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div className="card" style={{ width: 'min(420px, 92vw)' }}>
+        <h1 style={{ marginBottom: 4 }}>Sign in</h1>
+        <p className="muted" style={{ marginTop: 0 }}>Admins, owners, employees, and customers all sign in here.</p>
+        <form onSubmit={onSubmit}>
+          <label>Email
+            <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label>Password
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <div style={{ marginTop: 12 }}>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Signing in…' : 'Sign in'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Verify auth-context still works**
+
+The unified endpoint sets `session=` for admin AND the existing `AuthProvider.refresh()` reads `/api/auth-me` which checks that cookie. No changes needed to `auth-context.tsx`.
+
+For bucket-user sessions, `bu_session=` is set; the user lands on `/c/<slug>/...` where `UserAuthProvider` (already in place) reads `/api/u-me` with that cookie.
+
+- [ ] **Step 5: Typecheck + dev smoke**
+
+Run: `npm run typecheck`
+
+Browser-side smoke:
+  1. Open http://localhost:8888/login
+  2. Sign in as bootstrap admin → lands on `/` (admin dashboard)
+  3. Sign out (via /settings)
+  4. Sign in as a bucket-user you created in Phase 6 setup (e.g., joe@joe.com) → lands on `/c/joe/change-password` or `/c/joe/`
+  5. (Multi-client test requires Phase 6 setup; verify in Phase 7 if not feasible yet.)
+
+### Task 5.8: Browser smoke + commit Phase 5
 
 - [ ] **Step 1: Run dev server**
 
@@ -4118,7 +4625,7 @@ Run: `npm run dev`
 
 - [ ] **Step 2: Manual smoke**
 
-  1. Log in as bootstrap admin
+  1. Log in as bootstrap admin via the unified `/login` page
   2. Create a test client
   3. Click into the client (lands on AccessDashboard stub)
   4. Click "Configure structure →"
@@ -4135,8 +4642,10 @@ git add src/modules/ams/api.ts \
         src/modules/ams/components/RoleEditor.tsx \
         src/modules/ams/components/LevelEditor.tsx \
         src/modules/ams/components/CardinalityEditor.tsx \
-        src/modules/ams/pages/ConfigureStructure.tsx
-git commit -m "phase 5: ConfigureStructure page with role/level/cardinality editors"
+        src/modules/ams/pages/ConfigureStructure.tsx \
+        src/modules/login/pages/LoginPage.tsx \
+        src/modules/login/api.ts
+git commit -m "phase 5: ConfigureStructure page + unified LoginPage with multi-client picker"
 ```
 
 ---

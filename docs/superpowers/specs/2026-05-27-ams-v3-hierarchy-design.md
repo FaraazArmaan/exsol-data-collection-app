@@ -331,13 +331,81 @@ Errors:
 
 | Endpoint | Change |
 | --- | --- |
-| `u-login` | Look up credential by `(client_id, email)`; mint JWT with `node_id` |
+| `u-login` | Look up credential by `(client_id, email)`; mint JWT with `node_id`. **Kept as deep-link path** (`/c/<slug>/login`) but no longer the primary login surface. |
 | `u-me` | Join `user_nodes` + `client_roles` + `client_levels`; return `{display_name, email, role: {label, color}, level_number, must_change_password, client}` |
 | `u-change-password` | Update by `user_node_credentials.id`; same wipe-temp behavior |
 | `u-logout` | Unchanged |
 | `u-client-by-slug` | Unchanged |
 
 JWT claim shape changes from `{sub: bucket_user_id, kind, client_id, role_key}` → `{sub: user_node_id, kind, client_id}`. `role_key` drops out (derived via the `u-me` join) and the redundant `node_id` claim is dropped (it equals `sub`).
+
+### Unified login endpoint (`/api/login`) — single sign-in surface
+
+The main `/login` page accepts ANY email + password and figures out whether the user is an admin, a bucket-user, or both. The per-client deep link (`/c/<slug>/login`) stays available as an alternative for marketing materials, QR codes, etc. — but isn't required for first login.
+
+**Precedence rule:** admin always wins. If the email exists in `public.admins`, the request is treated as an admin login (no bucket-user paths considered). This matches "least surprise" — admins are the more privileged identity, and an admin who happens to also be a bucket-user under one of their own clients (testing) wouldn't expect to accidentally sign in as the customer.
+
+**Multi-client picker:** after password verification succeeds, if the email is registered to multiple clients (≥ 2 credential rows), the response returns `{kind: 'choice', clients: [{id, slug, name}]}` and the client UI shows a picker. The user picks one, and the client UI re-POSTs `/api/login` with `{email, password, client: <slug>}` to disambiguate. Password is held in React form state across the picker, so the user does NOT re-type it. On the second POST, the server verifies password again (cheap argon2 cost) and returns the bucket-user session for the picked client.
+
+**Endpoint shape:**
+
+```
+POST /api/login
+Body: { email, password, client?: <slug> }
+  - client is optional; only provided on the disambiguation POST after picker
+
+Response shapes:
+  - 200 { kind: 'admin', admin: { id, email, display_name, is_bootstrap } }
+    Headers: Set-Cookie: session=<admin JWT>
+    UI: navigate to '/'
+
+  - 200 { kind: 'bucket_user',
+          user: { id, email, must_change_password },
+          client: { id, slug, name } }
+    Headers: Set-Cookie: bu_session=<bucket-user JWT>
+    UI: navigate to `/c/<slug>/change-password` if must_change_password else `/c/<slug>/`
+
+  - 200 { kind: 'choice',
+          clients: [{ id, slug, name }, ...] }
+    No cookie set. UI shows picker; user picks; client re-POSTs with `client` set.
+
+  - 401 { error: { code: 'unauthorized' } }
+    Email not found in admins OR credentials. Constant-time semantics: argon2 verify
+    runs against a dummy hash on the not-found path (same defense as auth-login).
+```
+
+**Server logic:**
+
+```
+1. Validate body shape; 400 on schema fail.
+2. Look up admin row by email.
+3. If admin exists AND verifyPassword(plain, admin.password_hash) is true:
+     - Mint admin session, set 'session' cookie, return {kind:'admin', admin}.
+4. Else if admin exists (but password wrong):
+     - Run dummy verify to equalize timing. Return 401 unauthorized.
+5. Else (no admin row), look up bucket-user credentials by email (ALL clients).
+6. If credentials.length == 0: dummy verify; return 401.
+7. If credentials.length >= 1:
+     - Run verifyPassword against the first credential's hash.
+       (All credentials with the same email may have DIFFERENT passwords —
+       the picker step is gated by ONE successful verify; the client param on
+       the disambiguation call re-narrows to that client's specific hash.)
+     - Actually correct behavior: we cannot use one password across credentials,
+       because each (client, email) is independent. So:
+         a. If `client` param is provided in body: filter credentials by that
+            client's slug, verify against THAT credential's hash specifically.
+            On success → mint bu_session for that client.
+         b. If `client` param is NOT provided: iterate credentials; verify
+            password against each; collect the credentials where verify passes.
+            - 0 verified → 401 unauthorized
+            - 1 verified → mint bu_session, return single bucket_user payload
+            - N>1 verified → return {kind:'choice', clients: [...]}
+8. Always log to login_attempts table (same throttle as auth-login).
+```
+
+**Concurrency / cost note.** Iterating verifications across multiple credentials is O(N argon2 verifies). Each argon2 verify is ~50ms. For a person registered to 3 clients, that's ~150ms total — acceptable. For ≥10, this becomes noticeable. Mitigation: if the same email is registered to >5 clients with different passwords, we'd hard-cap iteration at 5 (deterministic order by `created_at`); pragmatically this is unlikely. Documented as a v1 limitation.
+
+**Rate-limit reuse.** Failed verifies count toward the same `login_attempts` table that `auth-login` already throttles (10/email/5min, 20/IP/5min). A spammer can't probe more than 10 wrong passwords per email regardless of how many clients claim that email.
 
 ## UI architecture
 
@@ -346,13 +414,33 @@ JWT claim shape changes from `{sub: bucket_user_id, kind, client_id, role_key}` 
 | Route | Page |
 | --- | --- |
 | `/` | AdminDashboard (lists clients) |
-| `/login` | LoginPage (admin) |
+| `/login` | **LoginPage (unified)** — admin OR bucket-user; picker shown when ambiguous |
 | `/settings` | AdminSettings (admin team) |
 | `/clients/:id` | **AccessDashboard** (new — merges old ClientDashboard) |
 | `/clients/:id/configure` | **ConfigureStructure** (new) |
-| `/c/:slug/login` | UserLogin (unchanged) |
+| `/c/:slug/login` | UserLogin (kept as deep link; uses `u-login` endpoint) |
 | `/c/:slug/` | UserAccount (unchanged) |
 | `/c/:slug/change-password` | UserChangePassword (unchanged) |
+
+### Unified LoginPage behaviour
+
+The page has two visual states inside one component:
+
+**State 1: email + password form** (default)
+- Heading: "Sign in"
+- Email + Password fields, "Sign in" submit button
+- On submit → POST `/api/login` with `{email, password}`
+- Branches on response `kind`:
+  - `admin` → navigate to `/`
+  - `bucket_user` (single match) → navigate to `/c/<slug>/change-password` or `/c/<slug>/` based on `must_change_password`
+  - `choice` → transition to State 2 (picker), keep email + password held in React state
+
+**State 2: client picker**
+- Heading: "Sign in to which workspace?"
+- Lists each client by name; clickable rows
+- On click → POST `/api/login` again with `{email, password, client: <slug>}` (re-uses the held password — user does NOT re-type)
+- On the disambiguation response (always `kind: 'bucket_user'` if verified), navigate as above
+- "Cancel" button → return to State 1, clear held password
 
 ### Pages
 
