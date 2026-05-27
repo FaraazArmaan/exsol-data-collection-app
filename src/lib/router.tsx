@@ -4,8 +4,8 @@ import LoginPage from '../modules/login/pages/LoginPage';
 import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
-import ClientDashboard from '../modules/ams/pages/ClientDashboard';
-import ClientSettings from '../modules/ams/pages/ClientSettings';
+import AccessDashboard from '../modules/ams/pages/AccessDashboard';
+import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
 import UserAccount from '../modules/user-portal/pages/UserAccount';
@@ -29,7 +29,6 @@ function RequireAdmin() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
-  // User portal — distinct visual shell, separate auth context.
   {
     path: '/c/:slug',
     element: <UserPortalLayout />,
@@ -44,14 +43,13 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // Admin
   {
     element: <RequireAdmin />,
     children: [
       { path: '/', element: <AdminDashboard /> },
       { path: '/settings', element: <AdminSettings /> },
-      { path: '/clients/:clientId', element: <ClientDashboard /> },
-      { path: '/clients/:clientId/settings', element: <ClientSettings /> },
+      { path: '/clients/:clientId', element: <AccessDashboard /> },
+      { path: '/clients/:clientId/configure', element: <ConfigureStructure /> },
     ],
   },
 ]);

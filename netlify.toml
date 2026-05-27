@@ -3,6 +3,16 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[dev]
+  # Tell netlify dev explicitly how to start the SPA — otherwise its framework
+  # detector picks `npm run build` (which is a one-shot tsc+vite build) and
+  # exits the moment that succeeds, shutting Netlify Dev down.
+  command = "npx vite"
+  targetPort = 5173
+  port = 8888
+  publish = "dist"
+  framework = "#custom"
+
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_OMIT_KEYS = "GOOGLE_OAUTH_CLIENT_ID"

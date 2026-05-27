@@ -51,12 +51,23 @@ The migration runner (`scripts/migrate.ts`) detects `$$` and skips the `;` split
 
 **Files:**
 - Create: `db/migrations/011_drop_template_columns.sql`
+- Create: `db/migrations/011b_drop_schema_name.sql`
 
-- [ ] **Step 1: Write the migration**
+- [ ] **Step 1: Write 011 (drop template columns)**
 
 ```sql
 ALTER TABLE public.clients DROP COLUMN template_key;
 ALTER TABLE public.clients DROP COLUMN template_version_applied;
+```
+
+- [ ] **Step 2: Write 011b (drop schema_name)**
+
+`public.clients.schema_name` is NOT NULL + UNIQUE + CHECK in migration 003. The v3 client-create flow (Task 1.14) drops `schema_name` from the INSERT — so the column must go too, or inserts fail with `null value in column "schema_name" violates not-null constraint`.
+
+```sql
+ALTER TABLE public.clients DROP CONSTRAINT IF EXISTS clients_schema_name_format;
+
+ALTER TABLE public.clients DROP COLUMN IF EXISTS schema_name
 ```
 
 ### Task 1.3: Write migration 012 — drop bucket_user_credentials
@@ -274,62 +285,25 @@ rm netlify/functions/clients-bucket-user-detail.ts
 rm netlify/functions/bucket-user-credential.ts
 ```
 
-### Task 1.12: Delete v2 shared modules
+### Task 1.12: Defer v2 shared module deletions to Phase 4
 
-- [ ] **Step 1: Delete files**
+**Originally** this task deleted `_shared/templates.ts`, `_shared/template-ddl.ts`, `_shared/schema-manager.ts`, `_shared/bucket.ts`. **Deferred** because `u-me.ts`, `u-login.ts`, and `u-change-password.ts` still import from them until Phase 4 rewires those endpoints. Deleting in Phase 1 would break typecheck (Task 1.27).
 
-```bash
-rm netlify/functions/_shared/templates.ts
-rm netlify/functions/_shared/template-ddl.ts
-rm netlify/functions/_shared/schema-manager.ts
-rm netlify/functions/_shared/bucket.ts
-```
+These modules will be deleted in Phase 4 after Task 4.5 (the last u-* rewrite). See "Task 4.X: Delete v2 shared modules and unit tests" added at the end of Phase 4 below.
 
-### Task 1.13: Trim identifier.ts
+- [ ] **Step 1: Skip — no action**
 
-**Files:**
-- Modify: `netlify/functions/_shared/identifier.ts`
+Files stay in place. They become orphans (no imports from surviving code) only after Phase 4 completes.
 
-- [ ] **Step 1: Read current file to get exact contents**
+### Task 1.13: Defer identifier.ts trim to Phase 4
 
-Run: `cat netlify/functions/_shared/identifier.ts`
+**Originally** this task trimmed `_shared/identifier.ts` to keep only `assertUuid`, `isValidUuid`, `deriveSlug`, `isValidSlug` (removing `safeQuoteSchema`, `safeQuoteIdent`, `isValidSchemaName`, `generateSchemaName`). **Deferred** because `u-me.ts`, `_shared/bucket.ts`, and `_shared/schema-manager.ts` still use those helpers until Phase 4.
 
-- [ ] **Step 2: Rewrite the file keeping only `assertUuid`, `isValidUuid`, `deriveSlug`, `isValidSlug`**
+The trim moves to Phase 4's new cleanup task. See "Task 4.X" below.
 
-```typescript
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+- [ ] **Step 1: Skip — no action**
 
-export function isValidUuid(s: string): boolean {
-  return typeof s === 'string' && UUID_RE.test(s);
-}
-
-export function assertUuid(s: string, field?: string): void {
-  if (!isValidUuid(s)) {
-    throw new Error(field ? `invalid_uuid:${field}` : 'invalid_uuid');
-  }
-}
-
-const SLUG_FORMAT = /^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/;
-
-function defaultHex(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-export function deriveSlug(name: string, rand: () => string = defaultHex): string {
-  let s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  if (s.length > 60) s = s.slice(0, 60).replace(/-+$/g, '');
-  if (s.length < 2 || !SLUG_FORMAT.test(s)) {
-    s = `c-${rand().slice(0, 8)}`;
-  }
-  return s;
-}
-
-export function isValidSlug(s: string): boolean {
-  return typeof s === 'string' && SLUG_FORMAT.test(s);
-}
-```
+`identifier.ts` stays full-fat. New code in Phase 2 only needs the surviving helpers (assertUuid, deriveSlug, isValidSlug); the v2 helpers remain unused-by-new-code but referenced-by-old-code, which is fine.
 
 ### Task 1.14: Update clients.ts — drop template + schema creation
 
@@ -3943,7 +3917,125 @@ export default async (req: Request, _ctx: Context) => {
 Run: `npx vitest run tests/integration/user-node-auth.test.ts`
 Expected: all tests pass (original + 7 new).
 
-### Task 4.9: Run full Phase 4 tests + commit
+### Task 4.9: Delete v2 shared modules + trim identifier.ts (deferred from Phase 1)
+
+By this point, no surviving code references `_shared/templates.ts`, `_shared/template-ddl.ts`, `_shared/schema-manager.ts`, `_shared/bucket.ts`, or the v2 helpers in `identifier.ts`. Now they can be safely removed.
+
+**Files:**
+- Delete: `netlify/functions/_shared/templates.ts`
+- Delete: `netlify/functions/_shared/template-ddl.ts`
+- Delete: `netlify/functions/_shared/schema-manager.ts`
+- Delete: `netlify/functions/_shared/bucket.ts`
+- Delete: `tests/unit/templates.test.ts`
+- Delete: `tests/unit/template-ddl.test.ts`
+- Delete: `tests/unit/__snapshots__/template-ddl.test.ts.snap`
+- Modify: `netlify/functions/_shared/identifier.ts` (trim)
+- Modify: `tests/unit/identifier.test.ts` (cover only surviving exports)
+
+- [ ] **Step 1: Search for any remaining references**
+
+Run: `grep -rn "from.*_shared/templates\|from.*_shared/template-ddl\|from.*_shared/schema-manager\|from.*_shared/bucket\|safeQuoteSchema\|safeQuoteIdent\|isValidSchemaName\|generateSchemaName\|TEMPLATES\b" netlify/ src/ tests/`
+
+Expected: NO matches in `netlify/functions/*.ts` (excluding `_shared/` itself), `src/`, or `tests/integration/`. Matches only inside the files being deleted/modified are expected.
+
+If you see any unexpected match, STOP and report — there's a still-used reference the plan missed.
+
+- [ ] **Step 2: Delete the four shared modules + two unit tests + snapshot**
+
+```bash
+rm netlify/functions/_shared/templates.ts
+rm netlify/functions/_shared/template-ddl.ts
+rm netlify/functions/_shared/schema-manager.ts
+rm netlify/functions/_shared/bucket.ts
+rm tests/unit/templates.test.ts
+rm tests/unit/template-ddl.test.ts
+rm -f tests/unit/__snapshots__/template-ddl.test.ts.snap
+```
+
+- [ ] **Step 3: Trim `identifier.ts` to UUID + slug helpers only**
+
+```typescript
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(s: string): boolean {
+  return typeof s === 'string' && UUID_RE.test(s);
+}
+
+export function assertUuid(s: string, field?: string): void {
+  if (!isValidUuid(s)) {
+    throw new Error(field ? `invalid_uuid:${field}` : 'invalid_uuid');
+  }
+}
+
+const SLUG_FORMAT = /^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/;
+
+function defaultHex(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function deriveSlug(name: string, rand: () => string = defaultHex): string {
+  let s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (s.length > 60) s = s.slice(0, 60).replace(/-+$/g, '');
+  if (s.length < 2 || !SLUG_FORMAT.test(s)) {
+    s = `c-${rand().slice(0, 8)}`;
+  }
+  return s;
+}
+
+export function isValidSlug(s: string): boolean {
+  return typeof s === 'string' && SLUG_FORMAT.test(s);
+}
+```
+
+- [ ] **Step 4: Rewrite `tests/unit/identifier.test.ts` to cover only surviving exports**
+
+```typescript
+import { describe, expect, test } from 'vitest';
+import { assertUuid, deriveSlug, isValidSlug, isValidUuid } from '../../netlify/functions/_shared/identifier';
+
+describe('identifier helpers', () => {
+  test('isValidUuid accepts canonical v4', () => {
+    expect(isValidUuid('00000000-0000-0000-0000-000000000000')).toBe(true);
+    expect(isValidUuid('aBcDeF12-3456-7890-1234-567890abcdef')).toBe(true);
+  });
+  test('isValidUuid rejects non-uuid', () => {
+    expect(isValidUuid('not-a-uuid')).toBe(false);
+    expect(isValidUuid('')).toBe(false);
+  });
+  test('assertUuid throws with field hint', () => {
+    expect(() => assertUuid('bad', 'clientId')).toThrow('invalid_uuid:clientId');
+  });
+  test('deriveSlug lowercases + hyphenates + trims', () => {
+    expect(deriveSlug("Joe's Hardware!!")).toBe('joe-s-hardware');
+    expect(deriveSlug('  Bistro Verde  ')).toBe('bistro-verde');
+  });
+  test('deriveSlug falls back to prefix when input is degenerate', () => {
+    const out = deriveSlug('!!!', () => 'abcd1234');
+    expect(out).toMatch(/^c-abcd1234$/);
+  });
+  test('isValidSlug enforces 2-60 alphanumeric+hyphen, alnum endpoints', () => {
+    expect(isValidSlug('ab')).toBe(true);
+    expect(isValidSlug('joes-hardware-2')).toBe(true);
+    expect(isValidSlug('-leading')).toBe(false);
+    expect(isValidSlug('trailing-')).toBe(false);
+    expect(isValidSlug('a')).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 5: Typecheck**
+
+Run: `npm run typecheck`
+Expected: no errors.
+
+- [ ] **Step 6: Run the unit tests touched by this task**
+
+Run: `npx vitest run tests/unit/identifier.test.ts`
+Expected: 6 tests passing.
+
+### Task 4.10: Run full Phase 4 tests + commit
 
 - [ ] **Step 1: Full suite**
 
@@ -3954,13 +4046,22 @@ Run: `npm run typecheck && npx vitest run --reporter=dot`
 ```bash
 git add netlify/functions/_shared/session.ts \
         netlify/functions/_shared/permissions.ts \
+        netlify/functions/_shared/identifier.ts \
         netlify/functions/u-login.ts \
         netlify/functions/u-me.ts \
         netlify/functions/u-change-password.ts \
         netlify/functions/user-node-credential.ts \
         netlify/functions/login.ts \
-        tests/integration/user-node-auth.test.ts
-git commit -m "phase 4: rekey credentials + unified /api/login (admin precedence + multi-client picker)"
+        tests/integration/user-node-auth.test.ts \
+        tests/unit/identifier.test.ts
+git add -u netlify/functions/_shared/templates.ts \
+           netlify/functions/_shared/template-ddl.ts \
+           netlify/functions/_shared/schema-manager.ts \
+           netlify/functions/_shared/bucket.ts \
+           tests/unit/templates.test.ts \
+           tests/unit/template-ddl.test.ts \
+           tests/unit/__snapshots__/template-ddl.test.ts.snap || true
+git commit -m "phase 4: rekey credentials, unified /api/login, delete deferred v2 shared modules"
 ```
 
 ---

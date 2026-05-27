@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TEMPLATES } from '../../../../netlify/functions/_shared/templates';
 import { deleteClient, type ClientSummary } from '../api';
 
 interface Props {
@@ -10,18 +9,14 @@ interface Props {
 
 export function ClientCard({ client, onDeleted }: Props) {
   const [busy, setBusy] = useState(false);
-  const templateLabel = TEMPLATES[client.template_key]?.label ?? client.template_key;
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
-    if (!confirm(`Delete client "${client.name}"? This drops the database schema and all data permanently.`)) return;
+    if (!confirm(`Delete client "${client.name}"? This drops ALL its users, roles, and login credentials permanently.`)) return;
     setBusy(true);
     const r = await deleteClient(client.id);
     setBusy(false);
-    if (!r.ok) {
-      alert(`Delete failed: ${r.error.code}`);
-      return;
-    }
+    if (!r.ok) { alert(`Delete failed: ${r.error.code}`); return; }
     onDeleted();
   }
 
@@ -29,11 +24,8 @@ export function ClientCard({ client, onDeleted }: Props) {
     <article className="card">
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontSize: 16 }}>{client.name}</h3>
-        <span className="muted" style={{ fontSize: 11 }}>{templateLabel}</span>
+        <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>{client.slug}</span>
       </header>
-      <p className="muted" style={{ margin: '0 0 16px', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-        {client.schema_name}
-      </p>
       <div style={{ display: 'flex', gap: 8 }}>
         <Link to={`/clients/${client.id}`} className="btn btn-secondary">open →</Link>
         <button className="btn btn-danger" onClick={handleDelete} disabled={busy}>
