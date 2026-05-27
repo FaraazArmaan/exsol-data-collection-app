@@ -13,7 +13,7 @@ export default function UserAccount() {
       <header style={{ marginBottom: 16 }}>
         <h1 style={{ margin: 0, fontSize: 22 }}>Hello, {user.display_name}</h1>
         <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-          {client.name} · {user.role_label}
+          {client.name} · {user.role.label}
         </p>
       </header>
 
@@ -23,7 +23,7 @@ export default function UserAccount() {
           Email: <strong>{user.email}</strong>
         </p>
         <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-          Role: <strong>{user.role_label}</strong>
+          Role: <strong>{user.role.label}</strong>
         </p>
       </div>
 

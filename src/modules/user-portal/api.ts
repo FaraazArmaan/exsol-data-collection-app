@@ -4,8 +4,11 @@ export interface UserPortalUser {
   id: string;
   display_name: string;
   email: string | null;
-  role_key: string;
-  role_label: string;
+  phone: string | null;
+  notes: string | null;
+  fields: Record<string, unknown>;
+  level_number: number | null;
+  role: { key: string; label: string; color: string };
   must_change_password: boolean;
 }
 
@@ -19,7 +22,7 @@ export const getClientBySlug = (slug: string) =>
   apiFetch<{ client: UserPortalClient }>(`/api/u-client-by-slug?slug=${encodeURIComponent(slug)}`);
 
 export const userLogin = (slug: string, email: string, password: string) =>
-  apiFetch<{ user: { id: string; email: string; role_key: string; must_change_password: boolean }; client: UserPortalClient }>(
+  apiFetch<{ user: { id: string; email: string; must_change_password: boolean }; client: UserPortalClient }>(
     `/api/u-login?client=${encodeURIComponent(slug)}`,
     { method: 'POST', body: JSON.stringify({ email, password }) },
   );

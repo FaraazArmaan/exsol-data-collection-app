@@ -1,0 +1,13 @@
+import { apiFetch } from '../../lib/api-client';
+
+export type UnifiedLoginResponse =
+  | { kind: 'admin';        admin: { id: string; email: string; display_name: string; is_bootstrap: boolean } }
+  | { kind: 'bucket_user';  user: { id: string; email: string; must_change_password: boolean };
+                            client: { id: string; slug: string; name: string } }
+  | { kind: 'choice';       clients: Array<{ id: string; slug: string; name: string }> };
+
+export const unifiedLogin = (email: string, password: string, client?: string) =>
+  apiFetch<UnifiedLoginResponse>('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, ...(client ? { client } : {}) }),
+  });
