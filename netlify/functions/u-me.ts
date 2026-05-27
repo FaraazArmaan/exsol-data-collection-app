@@ -1,5 +1,5 @@
 // GET /api/u-me  — returns the authenticated bucket user's identity from
-// the bu_session cookie + a fresh load of the bucket row (so display_name
+// the bu_session cookie + a fresh load of the user_node row (so display_name
 // reflects any admin edits).
 
 import type { Context } from '@netlify/functions';
@@ -9,8 +9,6 @@ import {
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
-import { isValidSchemaName, safeQuoteSchema, safeQuoteIdent } from './_shared/identifier';
-import { TEMPLATES } from './_shared/templates';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');
@@ -22,27 +20,25 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const sql = db();
-  const clientRows = (await sql`
-    SELECT id, slug, name, schema_name, template_key
-    FROM public.clients WHERE id = ${actor.credential.client_id} LIMIT 1
-  `) as { id: string; slug: string; name: string; schema_name: string; template_key: string }[];
-  const client = clientRows[0];
-  if (!client) return jsonError(404, 'client_not_found');
-  if (!isValidSchemaName(client.schema_name)) return jsonError(500, 'bad_schema_name');
-
-  const template = TEMPLATES[client.template_key];
-  if (!template) return jsonError(500, 'template_missing');
-  const role = template.roles.find((r) => r.key === actor.credential.role_key);
-  if (!role) return jsonError(500, 'role_missing');
-
-  const schemaId = safeQuoteSchema(client.schema_name);
-  const tableId = safeQuoteIdent(actor.credential.role_key);
-  const bucketRows = (await sql(
-    `SELECT id, display_name, email FROM ${schemaId}.${tableId} WHERE id = $1 LIMIT 1`,
-    [actor.credential.bucket_user_id],
-  )) as unknown as { id: string; display_name: string; email: string | null }[];
-  const bucketRow = bucketRows[0];
-  if (!bucketRow) return jsonError(404, 'bucket_user_not_found');
+  const rows = (await sql`
+    SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
+           n.display_name, n.email, n.phone, n.notes, n.fields,
+           r.key AS role_key, r.label AS role_label, r.color AS role_color,
+           c.slug AS client_slug, c.name AS client_name
+    FROM public.user_nodes n
+    JOIN public.client_roles r ON r.id = n.role_id
+    JOIN public.clients c ON c.id = n.client_id
+    WHERE n.id = ${actor.claims.sub}::uuid AND n.client_id = ${actor.claims.client_id}::uuid
+    LIMIT 1
+  `) as Array<{
+    id: string; client_id: string; parent_id: string | null; level_number: number | null;
+    role_id: string; display_name: string; email: string | null; phone: string | null;
+    notes: string | null; fields: Record<string, unknown>;
+    role_key: string; role_label: string; role_color: string;
+    client_slug: string; client_name: string;
+  }>;
+  if (rows.length === 0) return jsonError(404, 'user_node_not_found');
+  const row = rows[0]!;
 
   const headers: Record<string, string> = {};
   if (shouldRefreshBucketUser(actor.claims)) {
@@ -50,20 +46,22 @@ export default async (req: Request, _ctx: Context) => {
       sub: actor.claims.sub,
       email: actor.claims.email,
       client_id: actor.claims.client_id,
-      role_key: actor.claims.role_key,
     });
     headers['Set-Cookie'] = buCookieHeader(fresh);
   }
 
   return jsonOk({
     user: {
-      id: bucketRow.id,
-      display_name: bucketRow.display_name,
-      email: bucketRow.email,
-      role_key: actor.credential.role_key,
-      role_label: role.label,
+      id: row.id,
+      display_name: row.display_name,
+      email: row.email,
+      phone: row.phone,
+      notes: row.notes,
+      fields: row.fields,
+      level_number: row.level_number,
+      role: { key: row.role_key, label: row.role_label, color: row.role_color },
       must_change_password: actor.credential.must_change_password,
     },
-    client: { id: client.id, slug: client.slug, name: client.name },
+    client: { id: row.client_id, slug: row.client_slug, name: row.client_name },
   }, { headers });
 };

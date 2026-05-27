@@ -152,11 +152,13 @@ async function handleCreate(
         return await maybeCreateCredential(sql, clientId, node, data, adminId);
       } catch (e: unknown) {
         const msg = (e as Error)?.message ?? '';
+        const code = (e as { code?: string })?.code;
         if (msg.startsWith('cardinality_exceeded')) {
           return jsonError(409, 'cardinality_exceeded', { max: cap });
         }
         if (msg.includes('parent_level_mismatch')) return jsonError(400, 'parent_level_mismatch');
         if (msg.includes('cross_client_parent')) return jsonError(400, 'cross_client_parent');
+        if (code === '23505') return jsonError(409, 'email_already_in_use_in_this_client');
         throw e;
       }
     }
@@ -187,8 +189,10 @@ async function handleCreate(
     return await maybeCreateCredential(sql, clientId, rows[0]!, data, adminId);
   } catch (e: unknown) {
     const msg = (e as Error)?.message ?? '';
+    const code = (e as { code?: string })?.code;
     if (msg.includes('parent_level_mismatch')) return jsonError(400, 'parent_level_mismatch');
     if (msg.includes('cross_client_parent')) return jsonError(400, 'cross_client_parent');
+    if (code === '23505') return jsonError(409, 'email_already_in_use_in_this_client');
     throw e;
   }
 }

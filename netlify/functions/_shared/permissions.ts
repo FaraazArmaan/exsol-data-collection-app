@@ -11,11 +11,10 @@ export interface AdminRecord {
   is_bootstrap: boolean;
 }
 
-export interface BucketUserCredentialRecord {
+export interface UserNodeCredentialRecord {
   id: string;
   client_id: string;
-  role_key: string;
-  bucket_user_id: string;
+  user_node_id: string;
   email: string;
   must_change_password: boolean;
   last_login_at: string | null;
@@ -48,7 +47,7 @@ export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; 
 }
 
 export async function requireBucketUser(req: Request): Promise<{
-  credential: BucketUserCredentialRecord;
+  credential: UserNodeCredentialRecord;
   claims: BucketUserClaims;
 }> {
   const token = readBuCookieToken(req);
@@ -61,14 +60,13 @@ export async function requireBucketUser(req: Request): Promise<{
   }
   const sql = db();
   const rows = (await sql`
-    SELECT id, client_id, role_key, bucket_user_id, email,
+    SELECT id, client_id, user_node_id, email,
            must_change_password, last_login_at, created_at
-    FROM public.bucket_user_credentials
-    WHERE bucket_user_id = ${claims.sub}
-      AND client_id = ${claims.client_id}
-      AND role_key = ${claims.role_key}
+    FROM public.user_node_credentials
+    WHERE user_node_id = ${claims.sub}::uuid
+      AND client_id = ${claims.client_id}::uuid
     LIMIT 1
-  `) as BucketUserCredentialRecord[];
+  `) as UserNodeCredentialRecord[];
   const credential = rows[0];
   if (!credential) throw new UnauthorizedError('credential_not_found');
   return { credential, claims };

@@ -32,7 +32,7 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT password_hash FROM public.bucket_user_credentials
+    SELECT password_hash FROM public.user_node_credentials
     WHERE id = ${actor.credential.id} LIMIT 1
   `) as { password_hash: string }[];
   const cred = rows[0];
@@ -43,7 +43,7 @@ export default async (req: Request, _ctx: Context) => {
 
   const newHash = await hashPassword(parsed.data.new_password);
   await sql`
-    UPDATE public.bucket_user_credentials
+    UPDATE public.user_node_credentials
     SET password_hash = ${newHash},
         must_change_password = false,
         temp_password_plain = NULL,

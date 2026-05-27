@@ -20,8 +20,7 @@ const Body = z.object({
 interface CredentialRow {
   id: string;
   client_id: string;
-  role_key: string;
-  bucket_user_id: string;
+  user_node_id: string;
   email: string;
   password_hash: string;
   must_change_password: boolean;
@@ -44,9 +43,9 @@ export default async (req: Request, _ctx: Context) => {
   if (!client) return jsonError(404, 'client_not_found');
 
   const credRows = (await sql`
-    SELECT id, client_id, role_key, bucket_user_id, email, password_hash, must_change_password
-    FROM public.bucket_user_credentials
-    WHERE client_id = ${client.id} AND email = ${parsed.data.email}
+    SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+    FROM public.user_node_credentials
+    WHERE client_id = ${client.id}::uuid AND email = ${parsed.data.email}
     LIMIT 1
   `) as CredentialRow[];
   const credential = credRows[0];
@@ -54,30 +53,19 @@ export default async (req: Request, _ctx: Context) => {
   const ok = await verifyPassword(parsed.data.password, credential?.password_hash ?? null);
   if (!ok || !credential) return jsonError(401, 'unauthorized');
 
-  await sql`
-    UPDATE public.bucket_user_credentials
-    SET last_login_at = now()
-    WHERE id = ${credential.id}
-  `;
-
-  // Pull the bucket user row for display_name. The schema name is derived
-  // from the client; rather than re-querying that, we accept the small cost
-  // of returning what the UI already has from /api/u-me on next refresh.
-  // For the login response we only need the minimal user shape.
+  await sql`UPDATE public.user_node_credentials SET last_login_at = now() WHERE id = ${credential.id}`;
 
   const token = await mintBucketUserSession({
-    sub: credential.bucket_user_id,
+    sub: credential.user_node_id,
     email: credential.email,
     client_id: client.id,
-    role_key: credential.role_key,
   });
 
   return jsonOk(
     {
       user: {
-        id: credential.bucket_user_id,
+        id: credential.user_node_id,
         email: credential.email,
-        role_key: credential.role_key,
         must_change_password: credential.must_change_password,
       },
       client: { id: client.id, slug, name: client.name },

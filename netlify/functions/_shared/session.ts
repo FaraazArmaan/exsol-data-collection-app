@@ -67,23 +67,21 @@ const BU_REFRESH_THRESHOLD_SECONDS = 12 * 60 * 60;
 const BU_COOKIE = 'bu_session';
 
 export interface BucketUserClaims {
-  sub: string;
+  sub: string;            // user_node_id
   email: string;
   kind: 'bucket_user';
   client_id: string;
-  role_key: string;
   iat: number;
   exp: number;
 }
 
 export async function mintBucketUserSession(input: {
-  sub: string; email: string; client_id: string; role_key: string;
+  sub: string; email: string; client_id: string;
 }): Promise<string> {
   return new SignJWT({
     email: input.email,
     kind: 'bucket_user',
     client_id: input.client_id,
-    role_key: input.role_key,
   })
     .setProtectedHeader({ alg: ALG })
     .setSubject(input.sub)
@@ -98,8 +96,7 @@ export async function verifyBucketUserSession(token: string): Promise<BucketUser
     typeof payload.sub !== 'string' ||
     typeof payload.email !== 'string' ||
     payload.kind !== 'bucket_user' ||
-    typeof payload.client_id !== 'string' ||
-    typeof payload.role_key !== 'string'
+    typeof payload.client_id !== 'string'
   ) {
     throw new Error('invalid claims');
   }

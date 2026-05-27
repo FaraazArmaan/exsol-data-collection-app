@@ -1,0 +1,374 @@
+import type { Context } from '@netlify/functions';
+import { neon } from '@neondatabase/serverless';
+import { hashPassword } from '../../netlify/functions/_shared/argon';
+import loginHandler from '../../netlify/functions/auth-login';
+import clientsHandler from '../../netlify/functions/clients';
+import clientRolesHandler from '../../netlify/functions/client-roles';
+import clientLevelsHandler from '../../netlify/functions/client-levels';
+import userNodesHandler from '../../netlify/functions/user-nodes';
+import userNodesDetailHandler from '../../netlify/functions/user-nodes-detail';
+import userNodeCredentialHandler from '../../netlify/functions/user-node-credential';
+import uClientBySlugHandler from '../../netlify/functions/u-client-by-slug';
+import uLoginHandler from '../../netlify/functions/u-login';
+import uMeHandler from '../../netlify/functions/u-me';
+import uChangePasswordHandler from '../../netlify/functions/u-change-password';
+import authMeHandler from '../../netlify/functions/auth-me';
+import loginUnifiedHandler from '../../netlify/functions/login';
+
+const ADMIN_EMAIL = 'user-node-auth-test@example.com';
+const ADMIN_PASSWORD = 'user-node-auth-pw';
+const CTX = {} as Context;
+
+let sql: ReturnType<typeof neon>;
+let cookie: string;
+let testClientId: string;
+let testClientSlug: string;
+let roleId: string;
+const createdClients: string[] = [];
+
+async function adminLogin() {
+  await sql`DELETE FROM public.login_attempts WHERE email = ${ADMIN_EMAIL}`;
+  const r = await loginHandler(
+    new Request('http://localhost/api/auth-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+    }), CTX,
+  );
+  return r.headers.get('set-cookie')!.split(';')[0]!;
+}
+
+async function createNodeWithLogin(email: string, tempPassword: string): Promise<string> {
+  const r = await userNodesHandler(
+    new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({
+        role_id: roleId, level_number: 1, parent_id: null,
+        display_name: 'Test User', email,
+        create_login: true, temp_password: tempPassword,
+      }),
+    }), CTX,
+  );
+  if (r.status !== 201) throw new Error(`create+login failed: ${r.status} ${await r.text()}`);
+  return (await r.json() as { node: { id: string } }).node.id;
+}
+
+beforeAll(async () => {
+  sql = neon(process.env.DATABASE_URL!);
+  const h = await hashPassword(ADMIN_PASSWORD);
+  await sql`
+    INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+    VALUES (${ADMIN_EMAIL}, ${h}, 'UN Auth Admin', false)
+    ON CONFLICT (email) DO UPDATE SET password_hash = ${h}, display_name = 'UN Auth Admin'
+  `;
+});
+
+beforeEach(async () => {
+  cookie = await adminLogin();
+  const cr = await clientsHandler(
+    new Request('http://localhost/api/clients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ name: `UN Auth Test ${Date.now()}` }),
+    }), CTX,
+  );
+  const created = (await cr.json() as { client: { id: string; slug: string } }).client;
+  testClientId = created.id;
+  testClientSlug = created.slug;
+  createdClients.push(testClientId);
+
+  const rr = await clientRolesHandler(
+    new Request(`http://localhost/api/client-roles?client=${testClientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+    }), CTX,
+  );
+  roleId = (await rr.json() as { role: { id: string } }).role.id;
+  await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+  }), CTX);
+});
+
+afterAll(async () => {
+  for (const id of createdClients) {
+    try { await sql`DELETE FROM public.clients WHERE id = ${id}`; } catch { /* */ }
+  }
+});
+
+describe('user-node auth', () => {
+  test('u-client-by-slug returns the client for a valid slug', async () => {
+    const r = await uClientBySlugHandler(
+      new Request(`http://localhost/api/u-client-by-slug?slug=${testClientSlug}`, { method: 'GET' }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+  });
+
+  test('u-client-by-slug 404 for unknown slug', async () => {
+    const r = await uClientBySlugHandler(
+      new Request('http://localhost/api/u-client-by-slug?slug=does-not-exist-xyz', { method: 'GET' }),
+      CTX,
+    );
+    expect(r.status).toBe(404);
+  });
+
+  test('create node with create_login adds credential row', async () => {
+    const email = `un-login-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'temp-pass-1');
+    const rows = (await sql`
+      SELECT must_change_password, temp_password_views_left
+      FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { must_change_password: boolean; temp_password_views_left: number }[];
+    expect(rows[0]!.must_change_password).toBe(true);
+    expect(rows[0]!.temp_password_views_left).toBe(3);
+  });
+
+  test('u-login happy path', async () => {
+    const email = `un-happy-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'happy-pass-1');
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'happy-pass-1' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie')).toContain('bu_session=');
+    const body = await r.json() as { user: { must_change_password: boolean } };
+    expect(body.user.must_change_password).toBe(true);
+  });
+
+  test('u-login wrong password → 401', async () => {
+    const email = `un-wrong-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'correct-pass-1');
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'wrong-pass' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+  });
+
+  test('u-change-password clears must_change_password and wipes plain', async () => {
+    const email = `un-change-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'change-me-1');
+    const lr = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'change-me-1' }),
+      }), CTX,
+    );
+    const buCookie = lr.headers.get('set-cookie')!.split(';')[0]!;
+    const cr = await uChangePasswordHandler(
+      new Request('http://localhost/api/u-change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+        body: JSON.stringify({ current_password: 'change-me-1', new_password: 'new-strong-pass' }),
+      }), CTX,
+    );
+    expect(cr.status).toBe(200);
+    const rows = (await sql`
+      SELECT must_change_password, temp_password_plain FROM public.user_node_credentials
+      WHERE user_node_id = ${nodeId}
+    `) as { must_change_password: boolean; temp_password_plain: string | null }[];
+    expect(rows[0]!.must_change_password).toBe(false);
+    expect(rows[0]!.temp_password_plain).toBeNull();
+  });
+
+  test('GET credential decrements views_left; at 0 plaintext wiped', async () => {
+    const email = `un-views-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'views-test-1');
+    const url = `http://localhost/api/user-node-credential?node=${nodeId}`;
+    for (let i = 0; i < 3; i++) {
+      const r = await userNodeCredentialHandler(new Request(url, { method: 'GET', headers: { cookie } }), CTX);
+      expect(r.status).toBe(200);
+      const body = await r.json() as { temp_password_plain: string | null; temp_password_views_left: number | null };
+      expect(body.temp_password_plain).toBe('views-test-1');
+      expect(body.temp_password_views_left).toBe(2 - i);
+    }
+    const r4 = await userNodeCredentialHandler(new Request(url, { method: 'GET', headers: { cookie } }), CTX);
+    const body4 = await r4.json() as { temp_password_plain: string | null };
+    expect(body4.temp_password_plain).toBeNull();
+  });
+
+  test('bu_session cookie cannot auth admin /api/auth-me', async () => {
+    const email = `un-kind-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'kind-test-1');
+    const lr = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'kind-test-1' }),
+      }), CTX,
+    );
+    const buCookie = lr.headers.get('set-cookie')!.split(';')[0]!;
+    const me = await authMeHandler(new Request('http://localhost/api/auth-me', { headers: { cookie: buCookie } }), CTX);
+    expect(me.status).toBe(401);
+  });
+
+  test('admin cookie cannot auth /api/u-me', async () => {
+    const adminToken = cookie.replace(/^session=/, '');
+    const forged = `bu_session=${adminToken}`;
+    const r = await uMeHandler(new Request('http://localhost/api/u-me', { headers: { cookie: forged } }), CTX);
+    expect(r.status).toBe(401);
+  });
+
+  test('duplicate email-per-client returns 409', async () => {
+    const email = `un-dup-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'first-pass-1');
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 1, parent_id: null,
+          display_name: 'Dup', email,
+          create_login: true, temp_password: 'second-pass-1',
+        }),
+      }), CTX,
+    );
+    expect(r.status).toBe(409);
+  });
+
+  test('deleting a node cascades the credential', async () => {
+    const email = `un-cascade-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'cascade-1');
+    await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeId}`, { method: 'DELETE', headers: { cookie } }),
+      CTX,
+    );
+    const remaining = (await sql`SELECT id FROM public.user_node_credentials WHERE user_node_id = ${nodeId}`) as unknown[];
+    expect(remaining).toHaveLength(0);
+  });
+
+  // ── New cases for unified /api/login ──────────────────────────────
+
+  test('unified login: admin path returns kind:admin and sets session cookie', async () => {
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const setCookie = r.headers.get('set-cookie') ?? '';
+    expect(setCookie).toContain('session=');
+    const body = await r.json() as { kind: string; admin?: { email: string } };
+    expect(body.kind).toBe('admin');
+    expect(body.admin?.email).toBe(ADMIN_EMAIL);
+  });
+
+  test('unified login: single bucket-user match returns kind:bucket_user and sets bu_session', async () => {
+    const email = `unified-single-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'unified-pass-1');
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'unified-pass-1' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+    const body = await r.json() as { kind: string; user: { must_change_password: boolean }; client: { slug: string } };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.user.must_change_password).toBe(true);
+    expect(body.client.slug).toBe(testClientSlug);
+  });
+
+  test('unified login: multiple bucket-user matches returns kind:choice', async () => {
+    const sharedEmail = `unified-multi-${Date.now()}@example.com`;
+    await createNodeWithLogin(sharedEmail, 'unified-pass-multi');
+    const cr2 = await clientsHandler(new Request('http://localhost/api/clients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ name: `Second Client ${Date.now()}` }),
+    }), CTX);
+    const c2 = (await cr2.json() as { client: { id: string; slug: string } }).client;
+    createdClients.push(c2.id);
+    const r2 = await clientRolesHandler(new Request(`http://localhost/api/client-roles?client=${c2.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+    }), CTX);
+    const role2 = (await r2.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${c2.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ level_number: 1, allowed_role_ids: [role2] }),
+    }), CTX);
+    await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${c2.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({
+        role_id: role2, level_number: 1, parent_id: null,
+        display_name: 'Multi', email: sharedEmail,
+        create_login: true, temp_password: 'unified-pass-multi',
+      }),
+    }), CTX);
+
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sharedEmail, password: 'unified-pass-multi' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie') ?? '').not.toContain('bu_session=');
+    const body = await r.json() as { kind: string; clients: Array<{ slug: string }> };
+    expect(body.kind).toBe('choice');
+    expect(body.clients.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('unified login: disambiguation with `client` slug returns kind:bucket_user', async () => {
+    const sharedEmail = `unified-disamb-${Date.now()}@example.com`;
+    await createNodeWithLogin(sharedEmail, 'disamb-pass');
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sharedEmail, password: 'disamb-pass', client: testClientSlug }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+    const body = await r.json() as { kind: string; client: { slug: string } };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.client.slug).toBe(testClientSlug);
+  });
+
+  test('unified login: wrong password returns 401 unauthorized', async () => {
+    const email = `unified-wrong-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'correct-pass');
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'wrong-pass' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+  });
+
+  test('unified login: unknown email returns 401 unauthorized', async () => {
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'nobody-here@example.com', password: 'whatever' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+  });
+
+  test('unified login: admin precedence wins over bucket-user with same email', async () => {
+    const collidingEmail = `unified-collide-${Date.now()}@example.com`;
+    const tempHash = await hashPassword('admin-wins-pass');
+    await sql`
+      INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+      VALUES (${collidingEmail}, ${tempHash}, 'Collide Admin', false)
+    `;
+    await createNodeWithLogin(collidingEmail, 'bucket-pass-different');
+
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: collidingEmail, password: 'admin-wins-pass' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { kind: string };
+    expect(body.kind).toBe('admin');
+
+    await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
+  });
+});
