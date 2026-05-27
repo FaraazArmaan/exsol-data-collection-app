@@ -124,3 +124,81 @@ export const putCardinality = (clientId: string, rules: Array<{ parent_role_id: 
   apiFetch<{ ok: true }>(`/api/client-cardinality?client=${encodeURIComponent(clientId)}`, {
     method: 'PUT', body: JSON.stringify({ rules }),
   });
+
+// ─── v3: user nodes ────────────────────────────────────────────────
+
+export interface UserNode {
+  id: string;
+  client_id: string;
+  parent_id: string | null;
+  level_number: number | null;
+  role_id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  fields: Record<string, unknown>;
+  sort_order: number;
+  has_login?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserNodeBody {
+  role_id: string;
+  parent_id?: string | null;
+  level_number?: number | null;
+  display_name: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  fields?: Record<string, unknown>;
+  create_login?: boolean;
+  temp_password?: string;
+}
+
+export const listUserNodes = (clientId: string) =>
+  apiFetch<{ nodes: UserNode[] }>(`/api/user-nodes?client=${encodeURIComponent(clientId)}`);
+
+export const createUserNode = (clientId: string, body: CreateUserNodeBody) =>
+  apiFetch<{ node: UserNode; login_created?: boolean }>(`/api/user-nodes?client=${encodeURIComponent(clientId)}`, {
+    method: 'POST', body: JSON.stringify(body),
+  });
+
+export const patchUserNode = (nodeId: string, body: Partial<Pick<UserNode, 'display_name' | 'email' | 'phone' | 'notes' | 'fields'>>) =>
+  apiFetch<{ node: UserNode }>(`/api/user-nodes-detail?id=${encodeURIComponent(nodeId)}`, {
+    method: 'PATCH', body: JSON.stringify(body),
+  });
+
+export const deleteUserNode = (nodeId: string, cascade = false) =>
+  apiFetch<{ ok: true; deleted_count?: number }>(
+    `/api/user-nodes-detail?id=${encodeURIComponent(nodeId)}${cascade ? '&cascade=descendants' : ''}`,
+    { method: 'DELETE' },
+  );
+
+export const moveUserNode = (nodeId: string, parent_id: string | null, level_number: number | null) =>
+  apiFetch<{ node: UserNode }>(`/api/user-nodes-move?id=${encodeURIComponent(nodeId)}`, {
+    method: 'POST', body: JSON.stringify({ parent_id, level_number }),
+  });
+
+// ─── v3: user-node credentials ─────────────────────────────────────
+
+export interface UserNodeCredentialStatus {
+  has_credential: boolean;
+  email?: string;
+  must_change_password?: boolean;
+  last_login_at?: string | null;
+  temp_password_plain?: string | null;
+  temp_password_views_left?: number | null;
+}
+
+export const getUserNodeCredential = (nodeId: string) =>
+  apiFetch<UserNodeCredentialStatus>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`);
+
+export const resetUserNodeCredential = (nodeId: string, temp_password: string) =>
+  apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, {
+    method: 'POST', body: JSON.stringify({ temp_password }),
+  });
+
+export const deleteUserNodeCredential = (nodeId: string) =>
+  apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
