@@ -107,10 +107,18 @@ function DashboardInner({ clientId }: { clientId: string }) {
       if (newLevel === 1) {
         newParent = null;
       } else {
-        // Re-parent to the narrowed parent at level-1, or first available parent.
+        // Re-parent priority:
+        //   1. If staying at the same level AND the existing parent is still at level-1, keep it
+        //      (otherwise dropping a chip back onto its own row would silently re-parent it to
+        //      "the first L1 owner", which looks like a no-op but changes the parent).
+        //   2. Otherwise prefer the level's "narrowed" parent (the chip the admin drilled into).
+        //   3. Fall back to the first parent at level-1.
         const parentLevel = newLevel - 1;
         const parentList = (nodesByLevel.get(parentLevel) ?? []);
-        const candidateParent = narrowed[parentLevel] ?? parentList[0]?.id ?? null;
+        const stayingAtSameLevel = data.currentLevel === newLevel && data.currentParent !== null;
+        const candidateParent = stayingAtSameLevel
+          ? data.currentParent
+          : (narrowed[parentLevel] ?? parentList[0]?.id ?? null);
         if (!candidateParent) { setMoveError('No parent available at level above. Add one first.'); return; }
         newParent = candidateParent;
       }
