@@ -1,0 +1,67 @@
+import type { Context } from '@netlify/functions';
+import { z } from 'zod';
+import { db } from './_shared/db';
+import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { jsonError, jsonOk } from './_shared/http';
+import { assertUuid } from './_shared/identifier';
+
+const FieldDef = z.object({
+  key: z.string().min(1).max(63).regex(/^[a-z][a-z0-9_]*$/),
+  label: z.string().min(1).max(100),
+  type: z.enum(['text', 'date', 'integer', 'boolean']),
+  required: z.boolean().default(false),
+  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  help: z.string().max(500).optional(),
+  display_in_list: z.boolean().optional(),
+});
+
+const PatchBody = z.object({
+  label: z.string().min(1).max(100).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  fields: z.array(FieldDef).optional(),
+  sort_order: z.number().int().optional(),
+}).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
+
+export default async (req: Request, _ctx: Context) => {
+  try { await requireAdmin(req); } catch (e) {
+    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+    throw e;
+  }
+
+  const id = new URL(req.url).searchParams.get('id');
+  if (!id) return jsonError(400, 'validation_failed', 'id required');
+  try { assertUuid(id, 'id'); } catch { return jsonError(400, 'validation_failed', 'id must be uuid'); }
+
+  const sql = db();
+
+  if (req.method === 'PATCH') {
+    const parsed = PatchBody.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+
+    const fieldsJson = parsed.data.fields ? JSON.stringify(parsed.data.fields) : null;
+    const rows = (await sql`
+      UPDATE public.client_roles
+      SET label       = COALESCE(${parsed.data.label ?? null}::text, label),
+          color       = COALESCE(${parsed.data.color ?? null}::text, color),
+          fields      = COALESCE(${fieldsJson}::jsonb, fields),
+          sort_order  = COALESCE(${parsed.data.sort_order ?? null}::int, sort_order)
+      WHERE id = ${id}::uuid
+      RETURNING id, client_id, key, label, color, fields, sort_order, created_at, updated_at
+    `) as unknown[];
+    if (rows.length === 0) return jsonError(404, 'not_found');
+    return jsonOk({ role: rows[0] });
+  }
+
+  if (req.method === 'DELETE') {
+    // Refuse if any user_node references this role.
+    const refs = (await sql`SELECT 1 FROM public.user_nodes WHERE role_id = ${id}::uuid LIMIT 1`) as unknown[];
+    if (refs.length > 0) return jsonError(409, 'role_in_use');
+    const rows = (await sql`
+      DELETE FROM public.client_roles WHERE id = ${id}::uuid RETURNING id
+    `) as { id: string }[];
+    if (rows.length === 0) return jsonError(404, 'not_found');
+    return jsonOk({ ok: true });
+  }
+
+  return jsonError(405, 'method_not_allowed');
+};
