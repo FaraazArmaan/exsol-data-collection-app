@@ -26,11 +26,23 @@ export default async (req: Request, _ctx: Context) => {
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
   const sql = db();
+
+  // Friendly default: if the request didn't supply allowed_role_ids (or sent
+  // an empty array), pre-populate with ALL existing roles for this client.
+  // Admin can toggle individual roles off via the chips in LevelEditor.
+  let effectiveAllowedRoleIds = parsed.data.allowed_role_ids;
+  if (effectiveAllowedRoleIds.length === 0) {
+    const existing = (await sql`
+      SELECT id FROM public.client_roles WHERE client_id = ${clientId}::uuid
+    `) as { id: string }[];
+    effectiveAllowedRoleIds = existing.map((r) => r.id);
+  }
+
   try {
     const rows = (await sql`
       INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
       VALUES (${clientId}::uuid, ${parsed.data.level_number},
-              ${parsed.data.label ?? null}, ${parsed.data.allowed_role_ids}::uuid[])
+              ${parsed.data.label ?? null}, ${effectiveAllowedRoleIds}::uuid[])
       RETURNING id, client_id, level_number, label, allowed_role_ids, created_at
     `) as unknown[];
     return jsonOk({ level: rows[0] }, { status: 201 });
