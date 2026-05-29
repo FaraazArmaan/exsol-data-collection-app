@@ -4,6 +4,7 @@ import { DndContext, type DragEndEvent } from '@dnd-kit/core';
 import { ClientStructureProvider, useClientStructure } from '../components/ClientStructureContext';
 import { LevelRow } from '../components/LevelRow';
 import { AddUserNodeModal } from '../components/AddUserNodeModal';
+import { EditUserNodeModal } from '../components/EditUserNodeModal';
 import { LoginManageModal } from '../components/LoginManageModal';
 import {
   listUserNodes, moveUserNode,
@@ -27,7 +28,13 @@ function DashboardInner({ clientId }: { clientId: string }) {
   const [nodesError, setNodesError] = useState<string | null>(null);
   const [clientSlug, setClientSlug] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [activeChip, setActiveChip] = useState<UserNode | null>(null);
+  // Two-tier chip click model:
+  //   editingChip → opens EditUserNodeModal (identity fields)
+  //   loginChip   → opens LoginManageModal (credential management)
+  // The edit modal has a "Manage login" button that closes itself and opens
+  // the login modal, so the two surfaces never overlap.
+  const [editingChip, setEditingChip] = useState<UserNode | null>(null);
+  const [loginChip, setLoginChip] = useState<UserNode | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   // Per-level "narrowed parent" so we can show only descendants of one parent at the next level.
   const [narrowed, setNarrowed] = useState<Record<number, string | null>>({});
@@ -83,8 +90,9 @@ function DashboardInner({ clientId }: { clientId: string }) {
   }
 
   function handleChipClick(n: UserNode) {
-    // Clicking a chip opens the login/edit modal AND narrows its level.
-    setActiveChip(n);
+    // Clicking a chip opens the edit modal AND narrows its level (so the next
+    // level row filters to this chip's children).
+    setEditingChip(n);
     if (n.level_number !== null) {
       setNarrowed({ ...narrowed, [n.level_number]: n.id });
     }
@@ -226,11 +234,27 @@ function DashboardInner({ clientId }: { clientId: string }) {
           />
         )}
 
-        {activeChip && (
+        {editingChip && (
+          <EditUserNodeModal
+            node={editingChip}
+            role={rolesById[editingChip.role_id]}
+            onClose={() => setEditingChip(null)}
+            onSaved={async () => { setEditingChip(null); await refreshNodes(); }}
+            onDeleted={async () => { setEditingChip(null); await refreshNodes(); }}
+            onManageLogin={() => {
+              // Close edit, open login. Keep the same node selected so that
+              // returning to the dashboard preserves the user's drill context.
+              setLoginChip(editingChip);
+              setEditingChip(null);
+            }}
+          />
+        )}
+
+        {loginChip && (
           <LoginManageModal
-            node={activeChip}
+            node={loginChip}
             clientSlug={clientSlug}
-            onClose={() => setActiveChip(null)}
+            onClose={() => setLoginChip(null)}
             onChanged={refreshNodes}
           />
         )}
