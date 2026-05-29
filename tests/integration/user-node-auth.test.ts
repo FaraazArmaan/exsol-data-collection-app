@@ -1,6 +1,12 @@
+// vi.mock must be at top level — vitest hoists it before imports.
+vi.mock('../../netlify/functions/_shared/google-verifier', () => ({
+  verifyGoogleIdToken: vi.fn(),
+}));
+
 import type { Context } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
+import { verifyGoogleIdToken } from '../../netlify/functions/_shared/google-verifier';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
 import clientRolesHandler from '../../netlify/functions/client-roles';
@@ -370,5 +376,101 @@ describe('user-node auth', () => {
     expect(body.kind).toBe('admin');
 
     await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
+  });
+
+  // ── Google flow on unified /api/login ────────────────────────────────
+
+  test('Google login: bucket-user with matching email gets bu_session + first-binds google_sub', async () => {
+    const email = `g-bind-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'pwd-irrelevant');
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: `google-sub-${Date.now()}`,
+      email,
+      emailVerified: true,
+      name: 'Test G User',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-google-id-token' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { kind: string; user?: { id: string } };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.user?.id).toBe(nodeId);
+    expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+    const after = (await sql`
+      SELECT google_sub FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { google_sub: string | null }[];
+    expect(after[0]!.google_sub).not.toBeNull();
+  });
+
+  test('Google login: unverified email → 401', async () => {
+    const email = `g-unverified-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'unverified-pwd-1');
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: 'g-sub-unverified', email, emailVerified: false, name: 'X',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+  });
+
+  test('Google login: no matching credential → 401 (strict bind, no auto-provision)', async () => {
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: 'g-sub-nobody', email: `g-nobody-${Date.now()}@example.com`,
+      emailVerified: true, name: 'Nobody',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+  });
+
+  test('Google login: admin precedence wins when email matches admin', async () => {
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: 'g-sub-admin-precedence', email: ADMIN_EMAIL,
+      emailVerified: true, name: 'Admin',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { kind: string };
+    expect(body.kind).toBe('admin');
+    expect(r.headers.get('set-cookie') ?? '').toContain('session=');
+    // Clear the google_sub we just first-bound so the test admin row is reusable.
+    await sql`UPDATE public.admins SET google_sub = NULL WHERE email = ${ADMIN_EMAIL}`;
+  });
+
+  test('Google login: first-bind only — does not overwrite existing google_sub on a different admin', async () => {
+    // Bootstrap the test admin's google_sub to a known value.
+    const existingSub = 'g-sub-existing';
+    await sql`UPDATE public.admins SET google_sub = ${existingSub} WHERE email = ${ADMIN_EMAIL}`;
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: 'g-sub-different', email: ADMIN_EMAIL,
+      emailVerified: true, name: 'Admin',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const after = (await sql`SELECT google_sub FROM public.admins WHERE email = ${ADMIN_EMAIL}`) as { google_sub: string }[];
+    expect(after[0]!.google_sub).toBe(existingSub);
+    await sql`UPDATE public.admins SET google_sub = NULL WHERE email = ${ADMIN_EMAIL}`;
   });
 });

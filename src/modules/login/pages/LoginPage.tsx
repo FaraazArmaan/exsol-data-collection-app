@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../lib/auth-context';
-import { unifiedLogin, type UnifiedLoginResponse } from '../api';
+import { GoogleSignInButton } from '../../../lib/google-signin';
+import { unifiedLogin, unifiedGoogleLogin, type UnifiedLoginResponse } from '../api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -14,6 +15,10 @@ export default function LoginPage() {
 
   // Picker state — only populated when server responds with kind:'choice'.
   const [pickerClients, setPickerClients] = useState<Array<{ id: string; slug: string; name: string }> | null>(null);
+  // When a picker is shown after a Google-flow attempt, we need the original
+  // ID token to re-POST with `client: <slug>`. Held in state across the
+  // picker interaction so the user doesn't re-prompt Google.
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
 
   async function attempt(emailVal: string, passwordVal: string, clientSlug?: string) {
     setError(null);
@@ -50,14 +55,45 @@ export default function LoginPage() {
     await attempt(email.trim(), password);
   }
 
+  async function attemptGoogle(idToken: string, clientSlug?: string) {
+    setError(null);
+    setSubmitting(true);
+    const r = await unifiedGoogleLogin(idToken, clientSlug);
+    setSubmitting(false);
+    if (!r.ok) {
+      setError(r.error.code === 'too_many_attempts'
+        ? 'Too many attempts. Try again in a few minutes.'
+        : "We couldn't find a matching account for that Google identity.");
+      return;
+    }
+    await handleSuccess(r.data);
+  }
+
+  // Stable handler reference so the Google button doesn't re-render the
+  // Google iframe on every parent state change.
+  const handleGoogleCredential = useCallback((idToken: string) => {
+    setPendingGoogleToken(idToken);
+    void attemptGoogle(idToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function pick(slug: string) {
     setPickerClients(null);
-    await attempt(email.trim(), password, slug);
+    // If the picker was triggered by a Google-flow choice response, re-POST
+    // with the held idToken. Otherwise use email/password.
+    if (pendingGoogleToken) {
+      const tok = pendingGoogleToken;
+      setPendingGoogleToken(null);
+      await attemptGoogle(tok, slug);
+    } else {
+      await attempt(email.trim(), password, slug);
+    }
   }
 
   function cancelPicker() {
     setPickerClients(null);
     setPassword('');
+    setPendingGoogleToken(null);
   }
 
   if (pickerClients) {
@@ -101,6 +137,15 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+          <span className="muted" style={{ fontSize: 11 }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+        </div>
+        <GoogleSignInButton onCredential={handleGoogleCredential} />
+        <p className="muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+          Google sign-in only works if your email is already registered as an admin or user.
+        </p>
       </div>
     </div>
   );

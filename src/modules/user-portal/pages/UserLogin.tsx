@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getClientBySlug, userLogin } from '../api';
 import { useUserAuth } from '../user-auth-context';
+import { GoogleSignInButton } from '../../../lib/google-signin';
+import { unifiedGoogleLogin } from '../../login/api';
 
 export default function UserLogin() {
   const { slug } = useParams<{ slug: string }>();
@@ -48,6 +50,27 @@ export default function UserLogin() {
     navigate(r.data.user.must_change_password ? `/c/${slug}/change-password` : `/c/${slug}`, { replace: true });
   }
 
+  const handleGoogleCredential = useCallback(async (idToken: string) => {
+    if (!slug) return;
+    setError(null);
+    setSubmitting(true);
+    // Always scope to this client's slug — we know exactly which workspace
+    // the user is signing in to, so no picker needed.
+    const r = await unifiedGoogleLogin(idToken, slug);
+    setSubmitting(false);
+    if (!r.ok) {
+      setError("We couldn't find a matching account for that Google identity. Ask your admin to add you.");
+      return;
+    }
+    if (r.data.kind !== 'bucket_user') {
+      setError('This workspace expected a user account; Google returned a different kind.');
+      return;
+    }
+    await refresh();
+    const dest = r.data.user.must_change_password ? `/c/${slug}/change-password` : `/c/${slug}`;
+    navigate(dest, { replace: true });
+  }, [slug, navigate, refresh]);
+
   if (slugError) {
     return <PageShell><h1>{slugError}</h1></PageShell>;
   }
@@ -70,6 +93,15 @@ export default function UserLogin() {
           </button>
         </div>
       </form>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+        <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+        <span className="muted" style={{ fontSize: 11 }}>OR</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+      </div>
+      <GoogleSignInButton onCredential={handleGoogleCredential} />
+      <p className="muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+        Google sign-in only works if you already have an account at this workspace.
+      </p>
       <MainLoginEscape />
     </PageShell>
   );

@@ -1,5 +1,6 @@
 // POST /api/login
-//   Body: { email, password, client?: <slug> }
+//   Body (password flow):  { email, password, client?: <slug> }
+//   Body (Google flow):    { idToken, client?: <slug> }
 //
 // Tries admin auth first (admin always wins). Falls through to bucket-user
 // credential lookup. Returns one of:
@@ -8,11 +9,16 @@
 //   - { kind: 'choice', clients: [...] }    (no cookie; UI shows picker)
 //
 // Disambiguation: pass `client: <slug>` in body to narrow a multi-match.
+//
+// Strict bind on the Google flow: never auto-provisions. The admin/email
+// must already exist with matching `email` OR `google_sub`. First-bind
+// only — never overwrites a different existing `google_sub` value.
 
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import { verifyPassword } from './_shared/argon';
+import { verifyGoogleIdToken } from './_shared/google-verifier';
 import {
   mintSession, cookieHeader,
   mintBucketUserSession, buCookieHeader,
@@ -20,11 +26,19 @@ import {
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
 
-const Body = z.object({
+// Body is one of two shapes — password OR Google ID token. Zod union.
+const PasswordBody = z.object({
   email: z.string().email(),
   password: z.string().min(1),
   client: z.string().min(1).max(80).optional(),
 });
+const GoogleBody = z.object({
+  idToken: z.string().min(10),
+  client: z.string().min(1).max(80).optional(),
+});
+const Body = z.union([PasswordBody, GoogleBody]);
+const isGoogleBody = (b: z.infer<typeof Body>): b is z.infer<typeof GoogleBody> =>
+  'idToken' in b;
 
 interface AdminRow {
   id: string;
@@ -58,6 +72,13 @@ export default async (req: Request, _ctx: Context) => {
 
   const ip = extractIp(req);
   const sql = db();
+
+  // Google flow: branch off here. Different rate-limit handling (IP-first
+  // because email isn't known until we verify the token).
+  if (isGoogleBody(parsed.data)) {
+    return await handleGoogleLogin(sql, ip, parsed.data);
+  }
+
   const limit = await checkRateLimit(sql, { email: parsed.data.email, ip });
   if (!limit.allowed) {
     return jsonError(429, 'too_many_attempts',
@@ -165,3 +186,146 @@ export default async (req: Request, _ctx: Context) => {
   `) as ClientRow[];
   return jsonOk({ kind: 'choice', clients });
 };
+
+// ─── Google flow ────────────────────────────────────────────────────
+//
+// Verifies the Google ID token, then:
+//   1. Admin precedence: if an admin row matches the verified email OR has
+//      a matching google_sub → mint admin session (first-bind google_sub).
+//   2. Else: look up user_node_credentials by google_sub OR email. Single
+//      match → mint bu_session (first-bind google_sub). Multi-match →
+//      return kind:'choice'. The disambiguation re-POST passes
+//      { idToken, client: <slug> } which narrows to that client.
+//   3. No match → 401.
+//
+// Strict bind, no auto-provisioning. Admins / bucket-users must already
+// exist with an email or google_sub the verifier can match.
+
+async function handleGoogleLogin(
+  sql: ReturnType<typeof db>,
+  ip: string | null,
+  body: z.infer<typeof GoogleBody>,
+): Promise<Response> {
+  // IP-only rate-limit BEFORE the Google RPC (same defense as auth-google.ts).
+  const ipCheck = await checkRateLimit(sql, { email: null, ip });
+  if (!ipCheck.allowed) {
+    return jsonError(429, 'too_many_attempts',
+      { reason: ipCheck.reason },
+      { 'Retry-After': String(ipCheck.retryAfterSec ?? 300) });
+  }
+
+  let profile;
+  try {
+    profile = await verifyGoogleIdToken(body.idToken);
+  } catch {
+    return jsonError(401, 'unauthorized');
+  }
+  if (!profile.emailVerified) return jsonError(401, 'unauthorized');
+
+  // Full rate-limit with the verified email.
+  const fullCheck = await checkRateLimit(sql, { email: profile.email, ip });
+  if (!fullCheck.allowed) {
+    return jsonError(429, 'too_many_attempts',
+      { reason: fullCheck.reason },
+      { 'Retry-After': String(fullCheck.retryAfterSec ?? 300) });
+  }
+
+  // Step 1: admin precedence (admin always wins).
+  const adminRows = (await sql`
+    SELECT id, email, display_name, is_bootstrap
+    FROM public.admins
+    WHERE email = ${profile.email} OR google_sub = ${profile.sub}
+    LIMIT 1
+  `) as Array<Omit<AdminRow, 'password_hash'>>;
+  if (adminRows.length > 0) {
+    const admin = adminRows[0]!;
+    // First-bind only: never overwrite an existing google_sub.
+    await sql`
+      UPDATE public.admins
+         SET google_sub = ${profile.sub}
+       WHERE id = ${admin.id} AND google_sub IS NULL
+    `;
+    await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });
+    const token = await mintSession({ sub: admin.id, email: admin.email });
+    return jsonOk(
+      { kind: 'admin', admin },
+      { headers: { 'Set-Cookie': cookieHeader(token) } },
+    );
+  }
+
+  // Step 2: bucket-user credentials. Optionally narrowed by `client` slug.
+  let credRows: Array<BUCredRow & { google_sub: string | null }>;
+  let scopedClient: ClientRow | null = null;
+
+  if (body.client) {
+    const c = (await sql`
+      SELECT id, slug, name FROM public.clients WHERE slug = ${body.client} LIMIT 1
+    `) as ClientRow[];
+    if (c.length === 0) {
+      await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
+      return jsonError(401, 'unauthorized');
+    }
+    scopedClient = c[0]!;
+    credRows = (await sql`
+      SELECT id, client_id, user_node_id, email, password_hash,
+             must_change_password, google_sub
+      FROM public.user_node_credentials
+      WHERE client_id = ${scopedClient.id}::uuid
+        AND (google_sub = ${profile.sub} OR email = ${profile.email})
+      LIMIT ${MAX_CREDS_TO_VERIFY}
+    `) as Array<BUCredRow & { google_sub: string | null }>;
+  } else {
+    credRows = (await sql`
+      SELECT id, client_id, user_node_id, email, password_hash,
+             must_change_password, google_sub
+      FROM public.user_node_credentials
+      WHERE google_sub = ${profile.sub} OR email = ${profile.email}
+      ORDER BY created_at
+      LIMIT ${MAX_CREDS_TO_VERIFY}
+    `) as Array<BUCredRow & { google_sub: string | null }>;
+  }
+
+  if (credRows.length === 0) {
+    await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+
+  await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });
+
+  if (credRows.length === 1) {
+    const cred = credRows[0]!;
+    // First-bind only: never overwrite an existing google_sub.
+    await sql`
+      UPDATE public.user_node_credentials
+         SET google_sub = ${profile.sub},
+             last_login_at = now()
+       WHERE id = ${cred.id} AND (google_sub IS NULL OR google_sub = ${profile.sub})
+    `;
+    const c = scopedClient ?? ((await sql`
+      SELECT id, slug, name FROM public.clients WHERE id = ${cred.client_id}::uuid LIMIT 1
+    `) as ClientRow[])[0]!;
+    const token = await mintBucketUserSession({
+      sub: cred.user_node_id, email: cred.email, client_id: cred.client_id,
+    });
+    return jsonOk(
+      {
+        kind: 'bucket_user',
+        user: {
+          id: cred.user_node_id,
+          email: cred.email,
+          must_change_password: cred.must_change_password,
+        },
+        client: { id: c.id, slug: c.slug, name: c.name },
+      },
+      { headers: { 'Set-Cookie': buCookieHeader(token) } },
+    );
+  }
+
+  // Multi-match → return choice; UI re-POSTs with client slug to disambiguate.
+  const clientIds = credRows.map((c) => c.client_id);
+  const clients = (await sql`
+    SELECT id, slug, name FROM public.clients WHERE id = ANY(${clientIds}::uuid[])
+    ORDER BY name
+  `) as ClientRow[];
+  return jsonOk({ kind: 'choice', clients });
+}

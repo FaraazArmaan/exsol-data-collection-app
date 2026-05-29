@@ -11,3 +11,9 @@ export const unifiedLogin = (email: string, password: string, client?: string) =
     method: 'POST',
     body: JSON.stringify({ email, password, ...(client ? { client } : {}) }),
   });
+
+export const unifiedGoogleLogin = (idToken: string, client?: string) =>
+  apiFetch<UnifiedLoginResponse>('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, ...(client ? { client } : {}) }),
+  });
