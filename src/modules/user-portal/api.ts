@@ -10,6 +10,7 @@ export interface UserPortalUser {
   level_number: number | null;
   role: { key: string; label: string; color: string };
   must_change_password: boolean;
+  has_google: boolean;
 }
 
 export interface UserPortalClient {
@@ -31,6 +32,16 @@ export const userLogout = () => apiFetch<{ ok: true }>('/api/u-logout', { method
 
 export const userMe = () =>
   apiFetch<{ user: UserPortalUser; client: UserPortalClient }>('/api/u-me');
+
+export const userLinkGoogle = (idToken: string) =>
+  apiFetch<{ ok: true }>('/api/u-link-google', {
+    method: 'POST', body: JSON.stringify({ idToken }),
+  });
+
+export const userUnlinkGoogle = () =>
+  apiFetch<{ ok: true; already_unlinked?: true }>('/api/u-unlink-google', {
+    method: 'POST',
+  });
 
 export const userChangePassword = (current_password: string, new_password: string) =>
   apiFetch<{ ok: true }>('/api/u-change-password', {

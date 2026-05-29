@@ -20,6 +20,13 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const sql = db();
+  // Pull has_google off the credential row so the UI can show "Linked" badge.
+  const credRows = (await sql`
+    SELECT (google_sub IS NOT NULL) AS has_google
+    FROM public.user_node_credentials WHERE id = ${actor.credential.id}
+  `) as { has_google: boolean }[];
+  const hasGoogle = credRows[0]?.has_google ?? false;
+
   const rows = (await sql`
     SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
            n.display_name, n.email, n.phone, n.notes, n.fields,
@@ -61,6 +68,7 @@ export default async (req: Request, _ctx: Context) => {
       level_number: row.level_number,
       role: { key: row.role_key, label: row.role_label, color: row.role_color },
       must_change_password: actor.credential.must_change_password,
+      has_google: hasGoogle,
     },
     client: { id: row.client_id, slug: row.client_slug, name: row.client_name },
   }, { headers });
