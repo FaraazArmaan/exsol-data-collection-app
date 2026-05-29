@@ -70,7 +70,39 @@ export default function UserLogin() {
           </button>
         </div>
       </form>
+      <MainLoginEscape />
     </PageShell>
+  );
+}
+
+// Small, unobtrusive escape hatch back to the main /login.
+// Lives at the bottom of the per-client login card so users who land here
+// by mistake (or admins who want the unified login) aren't trapped.
+function MainLoginEscape() {
+  return (
+    <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+      <a
+        href="/login"
+        title="Go to main login"
+        aria-label="Main login"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          border: '1px solid var(--border-subtle, #2a2a2a)',
+          background: 'transparent',
+          color: 'var(--text-muted, #888)',
+          fontSize: 14,
+          textDecoration: 'none',
+          lineHeight: 1,
+        }}
+      >
+        ↩
+      </a>
+    </div>
   );
 }
 

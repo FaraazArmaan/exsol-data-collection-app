@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { createUserNode, type ClientRole, type ClientLevel, type UserNode } from '../api';
 import { generateTempPassword } from '../../../lib/random-password';
 
@@ -21,6 +22,12 @@ export function AddUserNodeModal({ clientId, clientSlug, roles, levels, nodes, p
     () => levels.filter((l) => l.allowed_role_ids.includes(roleId)),
     [levels, roleId],
   );
+  // If admin defined levels but never toggled this role on any of them, the
+  // strict filter returns []. That's almost always a misconfiguration rather
+  // than intent — fall back to all levels so the admin can still place the
+  // user, but render a warning that explains the setup gap.
+  const noLevelMappedToRole = levels.length > 0 && allowedLevels.length === 0;
+  const selectableLevels = noLevelMappedToRole ? levels : allowedLevels;
   const [levelNumber, setLevelNumber] = useState<number | null>(presetLevel ?? allowedLevels[0]?.level_number ?? null);
   const [parentId, setParentId] = useState<string | null>(presetParent ?? null);
   const [unassigned, setUnassigned] = useState(false);
@@ -119,16 +126,29 @@ export function AddUserNodeModal({ clientId, clientSlug, roles, levels, nodes, p
 
         {!unassigned && (
           <>
-            <label>Level
-              <select value={levelNumber ?? ''} onChange={(e) => { setLevelNumber(e.target.value ? Number(e.target.value) : null); setParentId(null); }}>
-                <option value="">— pick a level —</option>
-                {allowedLevels.map((l) => (
-                  <option key={l.id} value={l.level_number}>
-                    Level {l.level_number}{l.label ? ` (${l.label})` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {levels.length === 0 && (
+              <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
+                No levels exist yet. <Link to={`/clients/${clientId}/configure`}>Add a level first</Link>, or check "Create as unassigned" above.
+              </p>
+            )}
+            {noLevelMappedToRole && (
+              <p className="muted" style={{ fontSize: 12, margin: '6px 0 0', color: 'var(--warning, #f59e0b)' }}>
+                ⚠ {role?.label ?? 'This role'} isn't marked allowed at any level. You can still pick one,
+                but you'll get a friendlier setup by toggling {role?.label ?? 'the role'} on at least one level under <Link to={`/clients/${clientId}/configure`}>Configure structure</Link>.
+              </p>
+            )}
+            {selectableLevels.length > 0 && (
+              <label>Level
+                <select value={levelNumber ?? ''} onChange={(e) => { setLevelNumber(e.target.value ? Number(e.target.value) : null); setParentId(null); }}>
+                  <option value="">— pick a level —</option>
+                  {selectableLevels.map((l) => (
+                    <option key={l.id} value={l.level_number}>
+                      Level {l.level_number}{l.label ? ` (${l.label})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {levelNumber !== null && levelNumber > 1 && (
               <label>Parent
                 <select required value={parentId ?? ''} onChange={(e) => setParentId(e.target.value || null)}>
