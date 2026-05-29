@@ -322,4 +322,53 @@ describe('user-nodes CRUD', () => {
     const remaining = (await sql`SELECT id FROM public.user_nodes WHERE id = ${sid}::uuid`) as unknown[];
     expect(remaining).toHaveLength(0);
   });
+
+  test('PATCH email propagates to user_node_credentials so login email stays in sync', async () => {
+    // Create a top-level node with create_login (typo in email).
+    const typoEmail = `typo-${Date.now()}@example.com`;
+    const correctedEmail = typoEmail.replace('typo-', 'correct-');
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleShop, level_number: 1, parent_id: null,
+          display_name: 'Tim Typo', email: typoEmail,
+          create_login: true, temp_password: 'temp-test-1234',
+        }),
+      }),
+      CTX,
+    );
+    expect(r.status).toBe(201);
+    const nodeId = (await r.json() as { node: { id: string } }).node.id;
+
+    // Confirm both rows have the typo email.
+    const before = (await sql`
+      SELECT n.email AS node_email, c.email AS cred_email
+      FROM public.user_nodes n
+      LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+      WHERE n.id = ${nodeId}::uuid
+    `) as { node_email: string; cred_email: string }[];
+    expect(before[0]!.node_email).toBe(typoEmail);
+    expect(before[0]!.cred_email).toBe(typoEmail);
+
+    // PATCH the node to the corrected email.
+    const p = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ email: correctedEmail }),
+      }),
+      CTX,
+    );
+    expect(p.status).toBe(200);
+
+    // BOTH rows should now have the corrected email.
+    const after = (await sql`
+      SELECT n.email AS node_email, c.email AS cred_email
+      FROM public.user_nodes n
+      LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+      WHERE n.id = ${nodeId}::uuid
+    `) as { node_email: string; cred_email: string }[];
+    expect(after[0]!.node_email).toBe(correctedEmail);
+    expect(after[0]!.cred_email).toBe(correctedEmail);
+  });
 });

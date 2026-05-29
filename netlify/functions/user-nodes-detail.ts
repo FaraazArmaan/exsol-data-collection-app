@@ -42,19 +42,57 @@ export default async (req: Request, _ctx: Context) => {
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
     const d = parsed.data;
     const fieldsJson = d.fields !== undefined ? JSON.stringify(d.fields) : null;
-    const rows = (await sql`
-      UPDATE public.user_nodes
-      SET display_name = COALESCE(${d.display_name ?? null}::text, display_name),
-          email        = CASE WHEN ${d.email !== undefined}::boolean THEN ${d.email ?? null}::citext ELSE email END,
-          phone        = CASE WHEN ${d.phone !== undefined}::boolean THEN ${d.phone ?? null}::text  ELSE phone END,
-          notes        = CASE WHEN ${d.notes !== undefined}::boolean THEN ${d.notes ?? null}::text  ELSE notes END,
-          fields       = COALESCE(${fieldsJson}::jsonb, fields)
-      WHERE id = ${id}::uuid
-      RETURNING id, client_id, parent_id, level_number, role_id, display_name, email,
-                phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
-    `) as unknown[];
+
+    let rows: Array<{ id: string; client_id: string; email: string | null }>;
+    try {
+      rows = (await sql`
+        UPDATE public.user_nodes
+        SET display_name = COALESCE(${d.display_name ?? null}::text, display_name),
+            email        = CASE WHEN ${d.email !== undefined}::boolean THEN ${d.email ?? null}::citext ELSE email END,
+            phone        = CASE WHEN ${d.phone !== undefined}::boolean THEN ${d.phone ?? null}::text  ELSE phone END,
+            notes        = CASE WHEN ${d.notes !== undefined}::boolean THEN ${d.notes ?? null}::text  ELSE notes END,
+            fields       = COALESCE(${fieldsJson}::jsonb, fields)
+        WHERE id = ${id}::uuid
+        RETURNING id, client_id, parent_id, level_number, role_id, display_name, email,
+                  phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
+      `) as Array<{ id: string; client_id: string; email: string | null }>;
+    } catch (e: unknown) {
+      // user_nodes_email_per_client_idx — unique per client (case-insensitive).
+      const code = (e as { code?: string })?.code;
+      if (code === '23505') return jsonError(409, 'email_taken_in_this_client');
+      throw e;
+    }
     if (rows.length === 0) return jsonError(404, 'not_found');
-    return jsonOk({ node: rows[0] });
+    const node = rows[0]!;
+
+    // Propagate the email change to the credential row so login keeps
+    // working. If the credential doesn't exist for this node, the UPDATE
+    // is a no-op. If the new email collides with another credential's
+    // email in the same client, the unique constraint will throw 23505
+    // and we map it to a friendly error.
+    if (d.email !== undefined && d.email !== null) {
+      try {
+        await sql`
+          UPDATE public.user_node_credentials
+             SET email = ${d.email}::citext
+           WHERE user_node_id = ${node.id}::uuid
+        `;
+      } catch (e: unknown) {
+        const code = (e as { code?: string })?.code;
+        if (code === '23505') {
+          // Edge case: the node update succeeded but the credential email
+          // collides. Re-fetch and return so the caller sees the now-
+          // inconsistent state and can decide. Rare in practice (would
+          // require two credentials with the same target email in one client).
+          return jsonError(409, 'credential_email_collision', {
+            note: 'Node email updated but the credential email could not be propagated due to a collision. Use Manage login to reset the credential.',
+          });
+        }
+        throw e;
+      }
+    }
+
+    return jsonOk({ node });
   }
 
   if (req.method === 'DELETE') {
