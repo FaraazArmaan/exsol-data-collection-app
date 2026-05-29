@@ -13,6 +13,10 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Inline label edit per level row.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
@@ -37,6 +41,20 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
       : [...level.allowed_role_ids, roleId];
     const r = await patchLevel(level.id, { allowed_role_ids: next });
     if (!r.ok) alert(`Failed (${r.error.code})`);
+    onChange();
+  }
+
+  function startEdit(l: ClientLevel) {
+    setEditingId(l.id);
+    setEditLabel(l.label ?? '');
+  }
+
+  async function saveLabel(l: ClientLevel) {
+    const next = editLabel.trim();
+    if (next === (l.label ?? '')) { setEditingId(null); return; }
+    const r = await patchLevel(l.id, { label: next });
+    if (!r.ok) { alert(`Failed (${r.error.code})`); return; }
+    setEditingId(null);
     onChange();
   }
 
@@ -76,9 +94,28 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
         {levels.map((l) => (
           <li key={l.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <strong style={{ flex: '0 0 80px' }}>Level {l.level_number}</strong>
-              <span style={{ flex: 1 }} className="muted">{l.label ?? ''}</span>
-              <button className="btn btn-ghost" onClick={() => handleDelete(l)}>×</button>
+              <strong style={{ flex: '0 0 80px' }} title="Level number is immutable — it indexes existing user_nodes.">Level {l.level_number}</strong>
+              {editingId === l.id ? (
+                <>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void saveLabel(l); } if (e.key === 'Escape') setEditingId(null); }}
+                    placeholder="e.g. Top"
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn btn-primary" onClick={() => void saveLabel(l)}>Save</button>
+                  <button className="btn btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ flex: 1 }} className="muted">{l.label ?? '(no label)'}</span>
+                  <button className="btn btn-ghost" onClick={() => startEdit(l)} title="Edit label">✎</button>
+                  <button className="btn btn-ghost" onClick={() => handleDelete(l)} title="Delete level">×</button>
+                </>
+              )}
             </div>
             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {roles.map((r) => {
@@ -93,6 +130,7 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
                   }}>{r.label}</button>
                 );
               })}
+              {roles.length === 0 && <span className="muted" style={{ fontSize: 12 }}>No roles defined yet.</span>}
             </div>
           </li>
         ))}
