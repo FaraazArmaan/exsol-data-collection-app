@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { DndContext, type DragEndEvent } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { ClientStructureProvider, useClientStructure } from '../components/ClientStructureContext';
 import { LevelRow } from '../components/LevelRow';
 import { AddUserNodeModal } from '../components/AddUserNodeModal';
@@ -38,6 +38,12 @@ function DashboardInner({ clientId }: { clientId: string }) {
   const [moveError, setMoveError] = useState<string | null>(null);
   // Per-level "narrowed parent" so we can show only descendants of one parent at the next level.
   const [narrowed, setNarrowed] = useState<Record<number, string | null>>({});
+
+  // Require 5px of pointer movement before a chip's pointerdown becomes a drag.
+  // Without this, dnd-kit's default PointerSensor activates on every pointerdown
+  // and suppresses the synthetic click event — chips become un-clickable and the
+  // EditUserNodeModal never opens.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   async function refreshNodes() {
     setNodesLoading(true); setNodesError(null);
@@ -165,7 +171,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
   const hasStructure = structure.roles.length > 0 && structure.levels.length > 0;
 
   return (
-    <DndContext onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <section>
         <header style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0 }}>Access dashboard</h1>
