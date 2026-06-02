@@ -20,6 +20,7 @@ import uMeHandler from '../../netlify/functions/u-me';
 import uChangePasswordHandler from '../../netlify/functions/u-change-password';
 import authMeHandler from '../../netlify/functions/auth-me';
 import loginUnifiedHandler from '../../netlify/functions/login';
+import forgotPasswordHandler from '../../netlify/functions/forgot-password';
 
 const ADMIN_EMAIL = 'user-node-auth-test@example.com';
 const ADMIN_PASSWORD = 'user-node-auth-pw';
@@ -194,6 +195,167 @@ describe('user-node auth', () => {
     const r4 = await userNodeCredentialHandler(new Request(url, { method: 'GET', headers: { cookie } }), CTX);
     const body4 = await r4.json() as { temp_password_plain: string | null };
     expect(body4.temp_password_plain).toBeNull();
+  });
+
+  test('GET credential with ?peek=1 returns status only and does NOT decrement views_left', async () => {
+    const email = `un-peek-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'peek-test-1');
+    const peekUrl = `http://localhost/api/user-node-credential?node=${nodeId}&peek=1`;
+    const fullUrl = `http://localhost/api/user-node-credential?node=${nodeId}`;
+
+    // Peek three times — views_left must stay at 3 the entire time, and the
+    // plaintext temp password must never appear in the response.
+    for (let i = 0; i < 3; i++) {
+      const r = await userNodeCredentialHandler(new Request(peekUrl, { method: 'GET', headers: { cookie } }), CTX);
+      expect(r.status).toBe(200);
+      const body = await r.json() as {
+        has_credential: boolean;
+        email: string;
+        has_password: boolean;
+        has_google: boolean;
+        must_change_password: boolean;
+        last_login_at: string | null;
+        temp_password_plain?: string;
+        temp_password_views_left?: number;
+      };
+      expect(body.has_credential).toBe(true);
+      expect(body.email).toBe(email);
+      expect(body.has_password).toBe(true);
+      expect(body.has_google).toBe(false);
+      expect(body.must_change_password).toBe(true);
+      expect(body.last_login_at).toBeNull();
+      // Peek must not leak the plaintext or the counter.
+      expect(body.temp_password_plain).toBeUndefined();
+      expect(body.temp_password_views_left).toBeUndefined();
+    }
+
+    // After three peeks, views_left in the DB must still be 3.
+    const rowsBefore = (await sql`
+      SELECT temp_password_views_left FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { temp_password_views_left: number }[];
+    expect(rowsBefore[0]!.temp_password_views_left).toBe(3);
+
+    // A regular (non-peek) GET decrements normally — proves the counter still works.
+    const fullR = await userNodeCredentialHandler(new Request(fullUrl, { method: 'GET', headers: { cookie } }), CTX);
+    expect(fullR.status).toBe(200);
+    const fullBody = await fullR.json() as { temp_password_plain: string | null; temp_password_views_left: number | null };
+    expect(fullBody.temp_password_plain).toBe('peek-test-1');
+    expect(fullBody.temp_password_views_left).toBe(2);
+  });
+
+  test('forgot-password sets password_reset_requested_at on matching credentials', async () => {
+    const email = `un-forgot-set-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'forgot-test-1');
+
+    const r = await forgotPasswordHandler(
+      new Request('http://localhost/api/forgot-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+
+    const rows = (await sql`
+      SELECT password_reset_requested_at
+      FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { password_reset_requested_at: Date | null }[];
+    expect(rows[0]!.password_reset_requested_at).not.toBeNull();
+  });
+
+  test('forgot-password returns 200 + same shape for unknown email (no enumeration leak)', async () => {
+    const r = await forgotPasswordHandler(
+      new Request('http://localhost/api/forgot-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: `un-forgot-noexist-${Date.now()}@example.com` }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { ok: boolean; message: string };
+    expect(body.ok).toBe(true);
+    expect(typeof body.message).toBe('string');
+  });
+
+  test('admin reset of password clears password_reset_requested_at', async () => {
+    const email = `un-forgot-clear-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'forgot-clear-1');
+
+    // 1. User requests reset → flag set.
+    await forgotPasswordHandler(
+      new Request('http://localhost/api/forgot-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }), CTX,
+    );
+    const before = (await sql`
+      SELECT password_reset_requested_at FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { password_reset_requested_at: Date | null }[];
+    expect(before[0]!.password_reset_requested_at).not.toBeNull();
+
+    // 2. Admin resets password via POST → flag should clear atomically.
+    const reset = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ temp_password: 'new-temp-pwd-after-forgot' }),
+      }), CTX,
+    );
+    expect(reset.status).toBe(200);
+
+    const after = (await sql`
+      SELECT password_reset_requested_at FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
+    `) as { password_reset_requested_at: Date | null }[];
+    expect(after[0]!.password_reset_requested_at).toBeNull();
+  });
+
+  test('list user-nodes surfaces has_reset_request flag', async () => {
+    const email = `un-forgot-list-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'list-flag-1');
+
+    // Before forgot-password call: flag should be false.
+    const before = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, { method: 'GET', headers: { cookie } }),
+      CTX,
+    );
+    const beforeBody = await before.json() as { nodes: Array<{ id: string; has_reset_request: boolean }> };
+    const targetBefore = beforeBody.nodes.find((n) => n.id === nodeId)!;
+    expect(targetBefore.has_reset_request).toBe(false);
+
+    // After forgot-password: flag true.
+    await forgotPasswordHandler(
+      new Request('http://localhost/api/forgot-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }), CTX,
+    );
+    const after = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, { method: 'GET', headers: { cookie } }),
+      CTX,
+    );
+    const afterBody = await after.json() as { nodes: Array<{ id: string; has_reset_request: boolean }> };
+    const targetAfter = afterBody.nodes.find((n) => n.id === nodeId)!;
+    expect(targetAfter.has_reset_request).toBe(true);
+  });
+
+  test('?peek=1 on a node with no credential returns has_credential: false', async () => {
+    // Create a node without a login (create_login: false path).
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 1, parent_id: null,
+          display_name: 'No-login user', email: null, create_login: false,
+        }),
+      }), CTX,
+    );
+    expect(r.status).toBe(201);
+    const { node } = await r.json() as { node: { id: string } };
+
+    const peek = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${node.id}&peek=1`, { method: 'GET', headers: { cookie } }),
+      CTX,
+    );
+    expect(peek.status).toBe(200);
+    const body = await peek.json() as { has_credential: boolean };
+    expect(body.has_credential).toBe(false);
   });
 
   test('bu_session cookie cannot auth admin /api/auth-me', async () => {

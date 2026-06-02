@@ -24,6 +24,7 @@ interface FullCredential {
   last_login_at: string | null;
   has_password: boolean;
   has_google: boolean;
+  password_reset_requested_at: string | null;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -58,7 +59,8 @@ export default async (req: Request, _ctx: Context) => {
       SELECT id, client_id, email, must_change_password, temp_password_plain,
              temp_password_views_left, last_login_at,
              (password_hash IS NOT NULL) AS has_password,
-             (google_sub IS NOT NULL)    AS has_google
+             (google_sub IS NOT NULL)    AS has_google,
+             password_reset_requested_at
       FROM public.user_node_credentials
       WHERE user_node_id = ${nodeId}::uuid LIMIT 1
     `) as FullCredential[];
@@ -73,6 +75,7 @@ export default async (req: Request, _ctx: Context) => {
         has_google: cred.has_google,
         must_change_password: cred.must_change_password,
         last_login_at: cred.last_login_at,
+        password_reset_requested_at: cred.password_reset_requested_at,
       });
     }
 
@@ -105,6 +108,7 @@ export default async (req: Request, _ctx: Context) => {
       has_google: cred.has_google,
       must_change_password: cred.must_change_password,
       last_login_at: cred.last_login_at,
+      password_reset_requested_at: cred.password_reset_requested_at,
       temp_password_plain: plain,
       temp_password_views_left: viewsLeft,
     });
@@ -130,7 +134,8 @@ export default async (req: Request, _ctx: Context) => {
               must_change_password = true,
               temp_password_plain = EXCLUDED.temp_password_plain,
               temp_password_views_left = 3,
-              email = EXCLUDED.email
+              email = EXCLUDED.email,
+              password_reset_requested_at = NULL
       `;
     } catch (e: unknown) {
       const code = (e as { code?: string })?.code;

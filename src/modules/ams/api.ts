@@ -140,6 +140,7 @@ export interface UserNode {
   fields: Record<string, unknown>;
   sort_order: number;
   has_login?: boolean;
+  has_reset_request?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -190,6 +191,7 @@ export interface UserNodeCredentialStatus {
   has_google?: boolean;
   must_change_password?: boolean;
   last_login_at?: string | null;
+  password_reset_requested_at?: string | null;
   temp_password_plain?: string | null;
   temp_password_views_left?: number | null;
 }

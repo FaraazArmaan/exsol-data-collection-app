@@ -17,3 +17,12 @@ export const unifiedGoogleLogin = (idToken: string, client?: string) =>
     method: 'POST',
     body: JSON.stringify({ idToken, ...(client ? { client } : {}) }),
   });
+
+// Admin-mediated forgot password — flips a flag on matching credentials.
+// Response is intentionally the same shape regardless of whether the email
+// matches anything (no enumeration leak).
+export const forgotPassword = (email: string, client?: string) =>
+  apiFetch<{ ok: true; message: string }>('/api/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, ...(client ? { client } : {}) }),
+  });

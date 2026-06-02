@@ -39,7 +39,8 @@ export default async (req: Request, _ctx: Context) => {
       SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
              n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
              n.created_at, n.updated_at, n.created_by_admin,
-             (c.user_node_id IS NOT NULL) AS has_login
+             (c.user_node_id IS NOT NULL) AS has_login,
+             (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
       FROM public.user_nodes n
       LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
       WHERE n.client_id = ${clientId}::uuid
