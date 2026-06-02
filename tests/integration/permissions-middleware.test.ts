@@ -3,7 +3,7 @@ vi.mock('../../netlify/functions/_shared/google-verifier', () => ({
 }));
 
 import type { Context } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
@@ -16,7 +16,7 @@ const ADMIN_EMAIL = 'pmw-test@example.com';
 const ADMIN_PASSWORD = 'pmw-test-pw';
 const CTX = {} as Context;
 
-let sql: ReturnType<typeof neon>;
+let sql: NeonQueryFunction<false, false>;
 let cookie: string;
 let testClientId: string;
 let roleId: string;
