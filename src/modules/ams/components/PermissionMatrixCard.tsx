@@ -97,10 +97,13 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
             <tr key={row.surface}>
               <td>{row.surface}</td>
               {(['view', 'create', 'edit', 'delete'] as const).map((v) => {
+                const supported = row.verbs.includes(v);
                 const key = `_platform.${row.surface}.${v}`;
                 return (
                   <td key={v} style={{ textAlign: 'center' }}>
-                    <input type="checkbox" checked={isOn(key)} onChange={() => toggle(key)} disabled={saving} />
+                    {supported ? (
+                      <input type="checkbox" checked={isOn(key)} onChange={() => toggle(key)} disabled={saving} />
+                    ) : <span className="muted">—</span>}
                   </td>
                 );
               })}

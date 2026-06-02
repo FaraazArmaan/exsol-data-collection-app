@@ -30,11 +30,13 @@ function Inner({ clientId }: { clientId: string }) {
   async function refresh() {
     if (!structure) return;
     setLoading(true);
+    const results = await Promise.all(
+      structure.levels.map((lvl) => getLevelPermissions(lvl.id)),
+    );
     const out: Record<string, LevelPermissionsResponse> = {};
-    for (const lvl of structure.levels) {
-      const r = await getLevelPermissions(lvl.id);
-      if (r.ok) out[lvl.id] = r.data;
-    }
+    results.forEach((r, i) => {
+      if (r.ok) out[structure.levels[i]!.id] = r.data;
+    });
     setPerLevel(out);
     setLoading(false);
   }
