@@ -27,6 +27,12 @@ describe('module registry', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('each manifest key matches its registry key (catches copy-paste errors)', () => {
+    for (const [registryKey, manifest] of Object.entries(moduleRegistry)) {
+      expect(manifest.key).toBe(registryKey);
+    }
+  });
+
   it('getModule returns undefined for unknown key', () => {
     expect(getModule('nonexistent-module')).toBeUndefined();
   });
