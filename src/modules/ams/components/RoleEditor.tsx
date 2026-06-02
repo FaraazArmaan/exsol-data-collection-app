@@ -67,7 +67,7 @@ export function RoleEditor({ clientId, roles, onChange }: Props) {
               value={bucketFamily ?? ''}
               onChange={(e) => setBucketFamily(e.target.value === '' ? null : e.target.value as 'business' | 'employees' | 'customers' | 'products')}
             >
-              <option value="">— (employees, default)</option>
+              <option value="">— (unset — treated as employees)</option>
               <option value="employees">Employees</option>
               <option value="customers">Customers</option>
               <option value="products">Products</option>
