@@ -11,6 +11,11 @@ import clientRolesHandler from '../../netlify/functions/client-roles';
 import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import { subtreeOf } from '../../netlify/functions/_shared/subtree';
+import {
+  requirePermission, ForbiddenError, UnauthorizedError,
+} from '../../netlify/functions/_shared/permissions';
+import userNodesHandler2 from '../../netlify/functions/user-nodes';
+import uLoginHandler from '../../netlify/functions/u-login';
 
 const ADMIN_EMAIL = 'pmw-test@example.com';
 const ADMIN_PASSWORD = 'pmw-test-pw';
@@ -106,5 +111,79 @@ describe('subtreeOf', () => {
     const ids = await subtreeOf(sql, l1a);
     expect(ids).not.toContain(l1b);
     expect(ids).not.toContain(l2b);
+  });
+});
+
+async function createUserWithLogin(displayName: string, levelNumber: number, parentId: string | null, email: string, password: string): Promise<{ nodeId: string }> {
+  const r = await userNodesHandler2(
+    new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({
+        role_id: roleId, level_number: levelNumber, parent_id: parentId,
+        display_name: displayName, email,
+        create_login: true, temp_password: password,
+      }),
+    }), CTX,
+  );
+  return { nodeId: ((await r.json()) as { node: { id: string } }).node.id };
+}
+
+async function buCookieFor(email: string, password: string): Promise<string> {
+  const rows = (await sql`SELECT slug FROM public.clients WHERE id = ${testClientId}`) as { slug: string }[];
+  const slug = rows[0]!.slug;
+  const r = await uLoginHandler(
+    new Request(`http://localhost/api/u-login?client=${slug}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }), CTX,
+  );
+  return r.headers.get('set-cookie')!.split(';')[0]!;
+}
+
+async function setL2Permissions(perms: Record<string, true>) {
+  const l2 = (await sql`SELECT id FROM public.client_levels WHERE client_id = ${testClientId} AND level_number = 2`) as { id: string }[];
+  await sql`UPDATE public.client_levels SET permissions = ${JSON.stringify(perms)}::jsonb WHERE id = ${l2[0]!.id}`;
+}
+
+describe('requirePermission', () => {
+  it('allows the call when the matrix has the key', async () => {
+    const { nodeId: parentId } = await createUserWithLogin('SecondaryA', 1, null, `sec-a-${Date.now()}@example.com`, 'secret-1234');
+    const email = `sec-b-${Date.now()}@example.com`;
+    await createUserWithLogin('SecondaryB', 2, parentId, email, 'secret-1234');
+    const buCookie = await buCookieFor(email, 'secret-1234');
+    await setL2Permissions({ '_platform.users.view': true });
+    const req = new Request('http://localhost/test', { headers: { cookie: buCookie } });
+    const session = await requirePermission(req, '_platform.users.view');
+    expect(session.kind).toBe('bucket_user');
+  });
+
+  it('throws ForbiddenError when the matrix does NOT have the key', async () => {
+    const { nodeId: parentId } = await createUserWithLogin('SecondaryC-parent', 1, null, `sec-c-parent-${Date.now()}@example.com`, 'secret-1234');
+    const email = `sec-c-${Date.now()}@example.com`;
+    await createUserWithLogin('SecondaryC', 2, parentId, email, 'secret-1234');
+    const buCookie = await buCookieFor(email, 'secret-1234');
+    await setL2Permissions({}); // empty matrix
+    const req = new Request('http://localhost/test', { headers: { cookie: buCookie } });
+    await expect(requirePermission(req, '_platform.users.view')).rejects.toThrow(ForbiddenError);
+  });
+
+  it('Primary (L1) bypasses the matrix check', async () => {
+    const email = `pri-${Date.now()}@example.com`;
+    await createUserWithLogin('Primary1', 1, null, email, 'secret-1234');
+    const buCookie = await buCookieFor(email, 'secret-1234');
+    const req = new Request('http://localhost/test', { headers: { cookie: buCookie } });
+    const session = await requirePermission(req, '_platform.structure.delete');
+    expect(session.kind).toBe('bucket_user');
+  });
+
+  it('admin session bypasses the matrix check', async () => {
+    const req = new Request('http://localhost/test', { headers: { cookie } });
+    const session = await requirePermission(req, '_platform.users.delete');
+    expect(session.kind).toBe('admin');
+  });
+
+  it('no session → UnauthorizedError', async () => {
+    const req = new Request('http://localhost/test');
+    await expect(requirePermission(req, '_platform.users.view')).rejects.toThrow(UnauthorizedError);
   });
 });

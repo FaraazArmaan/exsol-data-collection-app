@@ -71,3 +71,77 @@ export async function requireBucketUser(req: Request): Promise<{
   if (!credential) throw new UnauthorizedError('credential_not_found');
   return { credential, claims };
 }
+
+// ---------------------------------------------------------------------------
+// Permission-matrix middleware
+// ---------------------------------------------------------------------------
+
+export class ForbiddenError extends Error {
+  constructor(public readonly key: string) { super(`forbidden: ${key}`); }
+}
+
+export interface AdminSession {
+  kind: 'admin';
+  admin: { id: string; email: string };
+}
+
+export interface BucketUserSession {
+  kind: 'bucket_user';
+  user_node_id: string;
+  client_id: string;
+  level_number: number;
+}
+
+export type AnySession = AdminSession | BucketUserSession;
+
+async function getLevelMatrix(clientId: string, levelNumber: number): Promise<Record<string, true>> {
+  const sql = db();
+  const rows = (await sql`
+    SELECT permissions FROM public.client_levels
+    WHERE client_id = ${clientId}::uuid AND level_number = ${levelNumber}
+    LIMIT 1
+  `) as { permissions: Record<string, true> | null }[];
+  return rows[0]?.permissions ?? {};
+}
+
+export async function requirePermission(req: Request, key: string): Promise<AnySession> {
+  // Try admin session first.
+  try {
+    const a = await requireAdmin(req);
+    return { kind: 'admin', admin: { id: a.admin.id, email: a.admin.email } };
+  } catch (e) {
+    if (!(e instanceof UnauthorizedError)) throw e;
+    // Not an admin session — fall through.
+  }
+
+  // Try bucket-user session.
+  const buToken = readBuCookieToken(req);
+  if (!buToken) throw new UnauthorizedError('no_session');
+
+  let claims: BucketUserClaims;
+  try {
+    claims = await verifyBucketUserSession(buToken);
+  } catch {
+    throw new UnauthorizedError('invalid_token');
+  }
+
+  const sql = db();
+  // level_number is not in the JWT — fetch from user_nodes.
+  const nodeRows = (await sql`
+    SELECT level_number, client_id FROM public.user_nodes
+    WHERE id = ${claims.sub}::uuid LIMIT 1
+  `) as { level_number: number; client_id: string }[];
+  if (nodeRows.length === 0) throw new UnauthorizedError('user_node_missing');
+
+  const levelNumber: number = nodeRows[0]!.level_number;
+  const clientId: string = nodeRows[0]!.client_id;
+
+  // L1 (Primary) bypasses the matrix check.
+  if (levelNumber === 1) {
+    return { kind: 'bucket_user', user_node_id: claims.sub, client_id: clientId, level_number: 1 };
+  }
+
+  const matrix = await getLevelMatrix(clientId, levelNumber);
+  if (!matrix[key]) throw new ForbiddenError(key);
+  return { kind: 'bucket_user', user_node_id: claims.sub, client_id: clientId, level_number: levelNumber };
+}
