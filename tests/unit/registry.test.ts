@@ -3,6 +3,10 @@ import {
   moduleRegistry, allModules, getModule,
 } from '../../src/modules/registry/modules';
 import { DATA_BUCKETS, VERBS } from '../../src/modules/registry/types';
+import {
+  productRegistry, allProducts, getProduct,
+  derivePermissionRows,
+} from '../../src/modules/registry/products';
 
 describe('module registry', () => {
   it('contains booking and payments modules', () => {
@@ -43,11 +47,6 @@ describe('module registry', () => {
   });
 });
 
-import {
-  productRegistry, allProducts, getProduct,
-  derivePermissionRows,
-} from '../../src/modules/registry/products';
-
 describe('product registry', () => {
   it('saloon-booking product exists and references real modules', () => {
     const p = getProduct('saloon-booking');
@@ -61,6 +60,12 @@ describe('product registry', () => {
     const keys = allProducts().map((p) => p.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
+
+  it('each manifest key matches its registry key (catches copy-paste errors)', () => {
+    for (const [registryKey, manifest] of Object.entries(productRegistry)) {
+      expect(manifest.key).toBe(registryKey);
+    }
+  });
 });
 
 describe('derivePermissionRows', () => {
@@ -71,7 +76,8 @@ describe('derivePermissionRows', () => {
   it('returns (module, bucket) rows for every enabled product\'s modules', () => {
     const rows = derivePermissionRows(['saloon-booking']);
     // saloon-booking includes Booking (customers + employees) and Payments
-    // (customers + products). Login is bucket-less and contributes no rows.
+    // (customers + products). Only booking + payments are registered today;
+    // future Modules (login, rewards, …) will add more rows here.
     const keys = rows.map((r) => `${r.module.key}.${r.bucket}`).sort();
     expect(keys).toEqual([
       'booking.customers',
