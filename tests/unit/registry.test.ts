@@ -7,6 +7,10 @@ import {
   productRegistry, allProducts, getProduct,
   derivePermissionRows,
 } from '../../src/modules/registry/products';
+import {
+  isValidPermissionKey,
+  splitPermissionKey,
+} from '../../netlify/functions/_shared/permission-keys';
 
 describe('module registry', () => {
   it('contains booking and payments modules', () => {
@@ -91,5 +95,58 @@ describe('derivePermissionRows', () => {
     const rows = derivePermissionRows(['saloon-booking', 'saloon-booking']);
     const keys = rows.map((r) => `${r.module.key}.${r.bucket}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('permission keys', () => {
+  it('accepts platform keys', () => {
+    expect(isValidPermissionKey('_platform.users.view', ['saloon-booking'])).toBe(true);
+    expect(isValidPermissionKey('_platform.structure.edit', [])).toBe(true);
+    expect(isValidPermissionKey('_platform.settings.delete', [])).toBe(true);
+  });
+
+  it('rejects platform keys with unknown surface', () => {
+    expect(isValidPermissionKey('_platform.bogus.view', [])).toBe(false);
+  });
+
+  it('rejects platform keys with unknown verb', () => {
+    expect(isValidPermissionKey('_platform.users.fly', [])).toBe(false);
+  });
+
+  it('accepts module keys whose module is enabled via enabled Products', () => {
+    expect(isValidPermissionKey('booking.customers.view', ['saloon-booking'])).toBe(true);
+    expect(isValidPermissionKey('payments.products.edit', ['saloon-booking'])).toBe(true);
+  });
+
+  it('rejects module keys whose module is NOT enabled', () => {
+    expect(isValidPermissionKey('booking.customers.view', [])).toBe(false);
+  });
+
+  it('rejects module keys whose verb is not declared in the manifest', () => {
+    // payments manifest omits 'delete'.
+    expect(isValidPermissionKey('payments.customers.delete', ['saloon-booking'])).toBe(false);
+  });
+
+  it('rejects module keys whose bucket is not declared in the manifest', () => {
+    // booking manifest declares customers + employees, not products.
+    expect(isValidPermissionKey('booking.products.view', ['saloon-booking'])).toBe(false);
+  });
+
+  it('splits a valid module key', () => {
+    expect(splitPermissionKey('booking.customers.view')).toEqual({
+      scope: 'module', module: 'booking', bucket: 'customers', verb: 'view',
+    });
+  });
+
+  it('splits a valid platform key', () => {
+    expect(splitPermissionKey('_platform.users.edit')).toEqual({
+      scope: 'platform', surface: 'users', verb: 'edit',
+    });
+  });
+
+  it('returns null for malformed keys', () => {
+    expect(splitPermissionKey('nope')).toBeNull();
+    expect(splitPermissionKey('a.b')).toBeNull();
+    expect(splitPermissionKey('a.b.c.d')).toBeNull();
   });
 });
