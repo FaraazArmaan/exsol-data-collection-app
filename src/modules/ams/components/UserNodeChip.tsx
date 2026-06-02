@@ -34,6 +34,7 @@ export function UserNodeChip({ node, role, onClick }: Props) {
       <span style={{ width: 8, height: 8, borderRadius: 4, background: color }} />
       {node.display_name}
       {node.has_login && <span title="Has login">🔑</span>}
+      {node.has_reset_request && <span title="Password reset requested">🔔</span>}
     </span>
   );
 }

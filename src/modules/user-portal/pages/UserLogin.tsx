@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getClientBySlug, userLogin } from '../api';
 import { useUserAuth } from '../user-auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
-import { unifiedGoogleLogin } from '../../login/api';
+import { unifiedGoogleLogin, forgotPassword } from '../../login/api';
 
 export default function UserLogin() {
   const { slug } = useParams<{ slug: string }>();
@@ -16,6 +16,8 @@ export default function UserLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [forgotMode, setForgotMode] = useState<null | 'form' | 'sent'>(null);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -71,8 +73,61 @@ export default function UserLogin() {
     navigate(dest, { replace: true });
   }, [slug, navigate, refresh]);
 
+  async function onForgotSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !slug) return;
+    setForgotSubmitting(true);
+    // Scope to this client's slug — server only flips the flag on credentials
+    // matching the email within this client, not across the whole org.
+    await forgotPassword(email.trim(), slug);
+    setForgotSubmitting(false);
+    setForgotMode('sent');
+  }
+
   if (slugError) {
     return <PageShell><h1>{slugError}</h1></PageShell>;
+  }
+
+  if (forgotMode === 'sent') {
+    return (
+      <PageShell>
+        <h1 style={{ marginBottom: 4 }}>Request sent</h1>
+        <p style={{ marginTop: 8 }}>
+          If an account exists for <strong>{email.trim()}</strong> at {clientName ?? 'this workspace'},
+          an admin has been notified and will issue you a new temporary password.
+        </p>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Contact your administrator if you don't hear back shortly.
+        </p>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => { setForgotMode(null); setPassword(''); }}>
+          ← Back to sign in
+        </button>
+      </PageShell>
+    );
+  }
+
+  if (forgotMode === 'form') {
+    return (
+      <PageShell>
+        <h1 style={{ marginBottom: 4 }}>Forgot password</h1>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Enter your email and we'll let your admin know to issue a new temporary password.
+        </p>
+        <form onSubmit={onForgotSubmit}>
+          <label>Email
+            <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <button type="submit" className="btn btn-primary" disabled={forgotSubmitting || !email.trim()}>
+              {forgotSubmitting ? 'Sending…' : 'Send request'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setForgotMode(null)} disabled={forgotSubmitting}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </PageShell>
+    );
   }
 
   return (
@@ -86,6 +141,16 @@ export default function UserLogin() {
         <label>Password
           <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
+        <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: 11, padding: '2px 4px' }}
+            onClick={() => setForgotMode('form')}
+          >
+            Forgot password?
+          </button>
+        </div>
         {error && <p className="error">{error}</p>}
         <div style={{ marginTop: 12 }}>
           <button type="submit" className="btn btn-primary" disabled={submitting || !clientName}>

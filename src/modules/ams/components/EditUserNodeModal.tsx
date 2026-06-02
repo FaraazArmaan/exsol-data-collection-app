@@ -203,6 +203,27 @@ export function EditUserNodeModal({ node, role, clientSlug, onClose, onSaved, on
 
             {!statusLoading && status?.has_credential && (
               <>
+                {status.password_reset_requested_at && !resetResult && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      fontSize: 12,
+                    }}
+                  >
+                    🔔 <strong>User requested a password reset</strong>{' '}
+                    <span className="muted">
+                      ({new Date(status.password_reset_requested_at).toLocaleString()})
+                    </span>
+                    <br />
+                    <span className="muted" style={{ fontSize: 11 }}>
+                      Issue a new temp password below and share it out-of-band.
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, marginTop: 6 }}>
                   <span className="muted">Email</span><span>{status.email ?? '—'}</span>
                   <span className="muted">Password</span><span>{status.has_password ? '✓ set' : '— not set'}</span>

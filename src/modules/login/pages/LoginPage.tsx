@@ -2,7 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../lib/auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
-import { unifiedLogin, unifiedGoogleLogin, type UnifiedLoginResponse } from '../api';
+import { unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Forgot-password view state: null = normal sign-in; 'form' = email input;
+  // 'sent' = post-submit confirmation. Server response is the same regardless
+  // of whether the email exists, so 'sent' is shown unconditionally on submit.
+  const [forgotMode, setForgotMode] = useState<null | 'form' | 'sent'>(null);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   // Picker state — only populated when server responds with kind:'choice'.
   const [pickerClients, setPickerClients] = useState<Array<{ id: string; slug: string; name: string }> | null>(null);
@@ -96,6 +102,69 @@ export default function LoginPage() {
     setPendingGoogleToken(null);
   }
 
+  async function onForgotSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setForgotSubmitting(true);
+    // We don't pass `client` here — there's no client slug context on the
+    // main sign-in page. Server will flip the flag on every credential row
+    // matching this email across clients. Same response either way.
+    await forgotPassword(email.trim());
+    setForgotSubmitting(false);
+    setForgotMode('sent');
+  }
+
+  if (forgotMode === 'sent') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" style={{ width: 'min(420px, 92vw)' }}>
+          <h1 style={{ marginBottom: 4 }}>Request sent</h1>
+          <p style={{ marginTop: 8 }}>
+            If an account exists for <strong>{email.trim()}</strong>, an admin has been notified
+            and will issue you a new temporary password.
+          </p>
+          <p className="muted" style={{ fontSize: 12 }}>
+            Contact your administrator if you don't hear back shortly. There's no automated email
+            yet — the new password will be shared with you directly.
+          </p>
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 12 }}
+            onClick={() => { setForgotMode(null); setPassword(''); }}
+          >
+            ← Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (forgotMode === 'form') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" style={{ width: 'min(420px, 92vw)' }}>
+          <h1 style={{ marginBottom: 4 }}>Forgot password</h1>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Enter your email and we'll let your admin know to issue a new temporary password.
+          </p>
+          <form onSubmit={onForgotSubmit}>
+            <label>Email
+              <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+              <button type="submit" className="btn btn-primary" disabled={forgotSubmitting || !email.trim()}>
+                {forgotSubmitting ? 'Sending…' : 'Send request'}
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setForgotMode(null)} disabled={forgotSubmitting}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (pickerClients) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -130,6 +199,16 @@ export default function LoginPage() {
           <label>Password
             <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
+          <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ fontSize: 11, padding: '2px 4px' }}
+              onClick={() => setForgotMode('form')}
+            >
+              Forgot password?
+            </button>
+          </div>
           {error && <p className="error">{error}</p>}
           <div style={{ marginTop: 12 }}>
             <button type="submit" className="btn btn-primary" disabled={submitting}>
