@@ -211,3 +211,20 @@ export const resetUserNodeCredential = (nodeId: string, temp_password: string) =
 
 export const deleteUserNodeCredential = (nodeId: string) =>
   apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
+
+// ─── Admin: enabled Products per Client ────────────────────────────
+
+export interface ProductAvailable { key: string; label: string }
+
+export interface AdminClientProductsResponse {
+  enabled_keys: string[];
+  available: ProductAvailable[];
+}
+
+export const getAdminClientProducts = (clientId: string) =>
+  apiFetch<AdminClientProductsResponse>(`/api/admin-client-products?client=${encodeURIComponent(clientId)}`);
+
+export const putAdminClientProducts = (clientId: string, keys: string[]) =>
+  apiFetch<{ ok: true }>(`/api/admin-client-products?client=${encodeURIComponent(clientId)}`, {
+    method: 'PUT', body: JSON.stringify({ keys }),
+  });

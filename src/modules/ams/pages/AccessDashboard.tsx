@@ -10,6 +10,7 @@ import {
   listUserNodes, moveUserNode,
   type UserNode, type ClientRole, type ClientLevel,
 } from '../api';
+import { ClientProductsSection } from '../../admin/components/ClientProductsSection';
 
 export default function AccessDashboard() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -265,6 +266,8 @@ function DashboardInner({ clientId }: { clientId: string }) {
             onChanged={refreshNodes}
           />
         )}
+
+        <ClientProductsSection clientId={clientId} />
       </section>
     </DndContext>
   );
