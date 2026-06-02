@@ -15,12 +15,15 @@ const FieldDef = z.object({
   display_in_list: z.boolean().optional(),
 });
 
+const BucketFamily = z.enum(['business', 'employees', 'customers', 'products']);
+
 const CreateBody = z.object({
   key: z.string().min(1).max(63).regex(/^[a-z][a-z0-9_]*$/),
   label: z.string().min(1).max(100),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   fields: z.array(FieldDef).optional(),
   sort_order: z.number().int().optional(),
+  bucket_family: BucketFamily.optional(),
 });
 
 export default async (req: Request, _ctx: Context) => {
@@ -40,16 +43,17 @@ export default async (req: Request, _ctx: Context) => {
   const sql = db();
   try {
     const rows = (await sql`
-      INSERT INTO public.client_roles (client_id, key, label, color, fields, sort_order)
+      INSERT INTO public.client_roles (client_id, key, label, color, fields, sort_order, bucket_family)
       VALUES (
         ${clientId}::uuid,
         ${parsed.data.key},
         ${parsed.data.label},
         ${parsed.data.color},
         ${JSON.stringify(parsed.data.fields ?? [])}::jsonb,
-        ${parsed.data.sort_order ?? 0}
+        ${parsed.data.sort_order ?? 0},
+        ${parsed.data.bucket_family ?? null}
       )
-      RETURNING id, client_id, key, label, color, fields, sort_order, created_at, updated_at
+      RETURNING id, client_id, key, label, color, fields, sort_order, bucket_family, created_at, updated_at
     `) as { id: string }[];
     const role = rows[0]!;
 

@@ -15,11 +15,14 @@ const FieldDef = z.object({
   display_in_list: z.boolean().optional(),
 });
 
+const BucketFamily = z.enum(['business', 'employees', 'customers', 'products']);
+
 const PatchBody = z.object({
   label: z.string().min(1).max(100).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   fields: z.array(FieldDef).optional(),
   sort_order: z.number().int().optional(),
+  bucket_family: BucketFamily.nullable().optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
@@ -39,14 +42,18 @@ export default async (req: Request, _ctx: Context) => {
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
     const fieldsJson = parsed.data.fields ? JSON.stringify(parsed.data.fields) : null;
+    // bucket_family: undefined = no change; null = clear to NULL; string = set value
+    const hasBucketFamily = 'bucket_family' in parsed.data;
+    const bucketFamilyVal = hasBucketFamily ? (parsed.data.bucket_family ?? null) : undefined;
     const rows = (await sql`
       UPDATE public.client_roles
-      SET label       = COALESCE(${parsed.data.label ?? null}::text, label),
-          color       = COALESCE(${parsed.data.color ?? null}::text, color),
-          fields      = COALESCE(${fieldsJson}::jsonb, fields),
-          sort_order  = COALESCE(${parsed.data.sort_order ?? null}::int, sort_order)
+      SET label         = COALESCE(${parsed.data.label ?? null}::text, label),
+          color         = COALESCE(${parsed.data.color ?? null}::text, color),
+          fields        = COALESCE(${fieldsJson}::jsonb, fields),
+          sort_order    = COALESCE(${parsed.data.sort_order ?? null}::int, sort_order),
+          bucket_family = CASE WHEN ${hasBucketFamily}::boolean THEN ${bucketFamilyVal ?? null}::text ELSE bucket_family END
       WHERE id = ${id}::uuid
-      RETURNING id, client_id, key, label, color, fields, sort_order, created_at, updated_at
+      RETURNING id, client_id, key, label, color, fields, sort_order, bucket_family, created_at, updated_at
     `) as unknown[];
     if (rows.length === 0) return jsonError(404, 'not_found');
     return jsonOk({ role: rows[0] });

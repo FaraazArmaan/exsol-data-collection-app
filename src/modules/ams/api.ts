@@ -64,6 +64,7 @@ export interface ClientRole {
   color: string;
   fields: RoleFieldDef[];
   sort_order: number;
+  bucket_family?: 'business' | 'employees' | 'customers' | 'products' | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,12 +95,12 @@ export interface ClientStructure {
 export const getClientStructure = (clientId: string) =>
   apiFetch<ClientStructure>(`/api/client-structure?client=${encodeURIComponent(clientId)}`);
 
-export const createRole = (clientId: string, body: { key: string; label: string; color: string; fields?: RoleFieldDef[] }) =>
+export const createRole = (clientId: string, body: { key: string; label: string; color: string; fields?: RoleFieldDef[]; bucket_family?: 'business' | 'employees' | 'customers' | 'products' }) =>
   apiFetch<{ role: ClientRole }>(`/api/client-roles?client=${encodeURIComponent(clientId)}`, {
     method: 'POST', body: JSON.stringify(body),
   });
 
-export const patchRole = (roleId: string, body: Partial<{ label: string; color: string; fields: RoleFieldDef[]; sort_order: number }>) =>
+export const patchRole = (roleId: string, body: Partial<{ label: string; color: string; fields: RoleFieldDef[]; sort_order: number; bucket_family: 'business' | 'employees' | 'customers' | 'products' | null }>) =>
   apiFetch<{ role: ClientRole }>(`/api/client-roles-detail?id=${encodeURIComponent(roleId)}`, {
     method: 'PATCH', body: JSON.stringify(body),
   });

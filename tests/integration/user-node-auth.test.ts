@@ -636,3 +636,27 @@ describe('user-node auth', () => {
     await sql`UPDATE public.admins SET google_sub = NULL WHERE email = ${ADMIN_EMAIL}`;
   });
 });
+
+describe('client-roles bucket_family', () => {
+  test('client-roles POST accepts and persists bucket_family', async () => {
+    const r = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'patient', label: 'Patient', color: '#aa5555', bucket_family: 'customers' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(201);
+    const body = await r.json() as { role: { id: string; bucket_family: string | null } };
+    expect(body.role.bucket_family).toBe('customers');
+  });
+
+  test('client-roles POST rejects invalid bucket_family with 400', async () => {
+    const r = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'pp', label: 'PP', color: '#aaaaaa', bucket_family: 'bogus' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(400);
+  });
+});
