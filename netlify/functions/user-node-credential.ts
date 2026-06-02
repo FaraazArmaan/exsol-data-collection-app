@@ -22,6 +22,8 @@ interface FullCredential {
   temp_password_plain: string | null;
   temp_password_views_left: number | null;
   last_login_at: string | null;
+  has_password: boolean;
+  has_google: boolean;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -31,7 +33,8 @@ export default async (req: Request, _ctx: Context) => {
     throw e;
   }
 
-  const nodeId = new URL(req.url).searchParams.get('node');
+  const url = new URL(req.url);
+  const nodeId = url.searchParams.get('node');
   if (!nodeId) return jsonError(400, 'validation_failed', 'node required');
   try { assertUuid(nodeId, 'node'); } catch { return jsonError(400, 'validation_failed', 'node must be uuid'); }
 
@@ -45,14 +48,33 @@ export default async (req: Request, _ctx: Context) => {
   const node = nodeRows[0]!;
 
   if (req.method === 'GET') {
+    // peek=1 returns status only — does NOT decrement the reveal counter
+    // and does NOT include the plaintext temp password. Use this when an
+    // admin UI needs to display badges like "has password / has Google /
+    // last login" without consuming a reveal view.
+    const peek = url.searchParams.get('peek') === '1';
+
     const rows = (await sql`
       SELECT id, client_id, email, must_change_password, temp_password_plain,
-             temp_password_views_left, last_login_at
+             temp_password_views_left, last_login_at,
+             (password_hash IS NOT NULL) AS has_password,
+             (google_sub IS NOT NULL)    AS has_google
       FROM public.user_node_credentials
       WHERE user_node_id = ${nodeId}::uuid LIMIT 1
     `) as FullCredential[];
     const cred = rows[0];
     if (!cred) return jsonOk({ has_credential: false });
+
+    if (peek) {
+      return jsonOk({
+        has_credential: true,
+        email: cred.email,
+        has_password: cred.has_password,
+        has_google: cred.has_google,
+        must_change_password: cred.must_change_password,
+        last_login_at: cred.last_login_at,
+      });
+    }
 
     let plain = cred.temp_password_plain;
     let viewsLeft = cred.temp_password_views_left;
@@ -79,6 +101,8 @@ export default async (req: Request, _ctx: Context) => {
     return jsonOk({
       has_credential: true,
       email: cred.email,
+      has_password: cred.has_password,
+      has_google: cred.has_google,
       must_change_password: cred.must_change_password,
       last_login_at: cred.last_login_at,
       temp_password_plain: plain,

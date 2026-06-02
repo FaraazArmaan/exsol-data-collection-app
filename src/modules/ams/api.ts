@@ -186,6 +186,8 @@ export const moveUserNode = (nodeId: string, parent_id: string | null, level_num
 export interface UserNodeCredentialStatus {
   has_credential: boolean;
   email?: string;
+  has_password?: boolean;
+  has_google?: boolean;
   must_change_password?: boolean;
   last_login_at?: string | null;
   temp_password_plain?: string | null;
@@ -194,6 +196,11 @@ export interface UserNodeCredentialStatus {
 
 export const getUserNodeCredential = (nodeId: string) =>
   apiFetch<UserNodeCredentialStatus>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`);
+
+// Peek mode: read status without decrementing the reveal counter or returning
+// the plaintext temp password. Use when displaying status badges.
+export const peekUserNodeCredential = (nodeId: string) =>
+  apiFetch<UserNodeCredentialStatus>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}&peek=1`);
 
 export const resetUserNodeCredential = (nodeId: string, temp_password: string) =>
   apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, {

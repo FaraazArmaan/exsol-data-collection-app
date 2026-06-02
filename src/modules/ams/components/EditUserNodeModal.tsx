@@ -1,9 +1,15 @@
-import { useState, type FormEvent } from 'react';
-import { patchUserNode, deleteUserNode, type ClientRole, type UserNode } from '../api';
+import { useEffect, useState, type FormEvent } from 'react';
+import {
+  patchUserNode, deleteUserNode, peekUserNodeCredential,
+  resetUserNodeCredential,
+  type ClientRole, type UserNode, type UserNodeCredentialStatus,
+} from '../api';
+import { generateTempPassword } from '../../../lib/random-password';
 
 interface Props {
   node: UserNode;
   role: ClientRole | undefined;
+  clientSlug: string;
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;
@@ -11,9 +17,11 @@ interface Props {
 }
 
 // Edit the identity-level fields of a user node (display_name, email, phone,
-// notes + any role-defined custom fields). Login management lives in
+// notes + any role-defined custom fields). Also shows a Sign-in summary
+// (password / Google / last login) and a one-click Reset password action.
+// Deep "manage credential" flows (reveal counter, remove login) live in
 // LoginManageModal — this modal exposes a button to hand off to it.
-export function EditUserNodeModal({ node, role, onClose, onSaved, onDeleted, onManageLogin }: Props) {
+export function EditUserNodeModal({ node, role, clientSlug, onClose, onSaved, onDeleted, onManageLogin }: Props) {
   const [displayName, setDisplayName] = useState(node.display_name);
   const [email, setEmail] = useState(node.email ?? '');
   const [phone, setPhone] = useState(node.phone ?? '');
@@ -21,6 +29,28 @@ export function EditUserNodeModal({ node, role, onClose, onSaved, onDeleted, onM
   const [fields, setFields] = useState<Record<string, unknown>>(node.fields ?? {});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sign-in status (peeked — does NOT decrement reveal counter).
+  const [status, setStatus] = useState<UserNodeCredentialStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  // After a Reset password success, hold the newly-issued temp pwd inline
+  // so the admin can copy it without re-opening LoginManageModal.
+  const [resetResult, setResetResult] = useState<null | { tempPassword: string; email: string }>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStatusLoading(true);
+      const r = await peekUserNodeCredential(node.id);
+      if (cancelled) return;
+      setStatusLoading(false);
+      if (r.ok) setStatus(r.data);
+    })();
+    return () => { cancelled = true; };
+  }, [node.id]);
 
   const dirty =
     displayName.trim() !== node.display_name ||
@@ -72,6 +102,38 @@ export function EditUserNodeModal({ node, role, onClose, onSaved, onDeleted, onM
     onDeleted();
   }
 
+  async function handleResetPassword() {
+    setError(null);
+    const tempPw = generateTempPassword();
+    setSubmitting(true);
+    const r = await resetUserNodeCredential(node.id, tempPw);
+    setSubmitting(false);
+    setConfirmingReset(false);
+    if (!r.ok) {
+      setError(r.error.code === 'email_already_has_login_in_this_client'
+        ? 'Email is already taken by another login in this client.'
+        : `Failed (${r.error.code}).`);
+      return;
+    }
+    setResetResult({ tempPassword: tempPw, email: status?.email ?? node.email ?? '' });
+    // Re-peek so the panel reflects the now-set password and cleared last_login.
+    const s = await peekUserNodeCredential(node.id);
+    if (s.ok) setStatus(s.data);
+  }
+
+  async function handleCopyPassword() {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(resetResult.tempPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard may be blocked (insecure context / permissions). Password is
+      // still visible in the readonly input — admin can select-and-copy manually.
+    }
+  }
+
+  const loginUrl = `${window.location.origin}/c/${clientSlug}/login`;
   const roleSwatch = role?.color ?? '#888';
 
   return (
@@ -127,6 +189,78 @@ export function EditUserNodeModal({ node, role, onClose, onSaved, onDeleted, onM
               )}
             </label>
           ))}
+
+          <section style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border, #2a2a2a)' }}>
+            <strong style={{ fontSize: 13 }}>Sign-in</strong>
+
+            {statusLoading && <p className="muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Loading…</p>}
+
+            {!statusLoading && !status?.has_credential && (
+              <p className="muted" style={{ margin: '6px 0 0', fontSize: 12 }}>
+                No login set up yet — use <em>Manage login</em> below to create one.
+              </p>
+            )}
+
+            {!statusLoading && status?.has_credential && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, marginTop: 6 }}>
+                  <span className="muted">Email</span><span>{status.email ?? '—'}</span>
+                  <span className="muted">Password</span><span>{status.has_password ? '✓ set' : '— not set'}</span>
+                  <span className="muted">Google</span><span>{status.has_google ? '✓ linked' : '— not linked'}</span>
+                  <span className="muted">Last login</span>
+                  <span>{status.last_login_at ? new Date(status.last_login_at).toLocaleString() : 'Never'}</span>
+                </div>
+
+                {resetResult ? (
+                  <div style={{ marginTop: 10, padding: 10, background: 'var(--surface-2, rgba(255,255,255,0.04))', borderRadius: 6 }}>
+                    <p className="muted" style={{ margin: '0 0 6px', fontSize: 11 }}>
+                      New temp password — share with {resetResult.email || 'the user'}. They'll be prompted to change it on first sign-in.
+                    </p>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={resetResult.tempPassword}
+                        style={{ fontFamily: 'monospace', flex: 1 }}
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                      <button type="button" className="btn btn-ghost" onClick={handleCopyPassword}>
+                        {copied ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <p className="muted" style={{ margin: '6px 0 0', fontSize: 11 }}>Login URL: {loginUrl}</p>
+                  </div>
+                ) : confirmingReset ? (
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, flexWrap: 'wrap' }}>
+                    <span>Replace existing password with a new temp one?</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ color: 'var(--danger, #ef4444)' }}
+                      onClick={handleResetPassword}
+                      disabled={submitting}
+                    >
+                      {submitting ? '…' : 'Confirm reset'}
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={() => setConfirmingReset(false)} disabled={submitting}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ marginTop: 10, fontSize: 12 }}
+                    onClick={() => setConfirmingReset(true)}
+                    disabled={submitting || !status.email}
+                    title={!status.email ? 'Add an email to the user first' : 'Issue a new temp password'}
+                  >
+                    Reset password
+                  </button>
+                )}
+              </>
+            )}
+          </section>
 
           {error && <p className="error">{error}</p>}
 
