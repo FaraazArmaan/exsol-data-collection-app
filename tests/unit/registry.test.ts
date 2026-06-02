@@ -42,3 +42,48 @@ describe('module registry', () => {
     expect(moduleRegistry.payments?.key).toBe('payments');
   });
 });
+
+import {
+  productRegistry, allProducts, getProduct,
+  derivePermissionRows,
+} from '../../src/modules/registry/products';
+
+describe('product registry', () => {
+  it('saloon-booking product exists and references real modules', () => {
+    const p = getProduct('saloon-booking');
+    expect(p).toBeDefined();
+    for (const ref of p!.modules) {
+      expect(getModule(ref.module)).toBeDefined();
+    }
+  });
+
+  it('product keys are unique', () => {
+    const keys = allProducts().map((p) => p.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('derivePermissionRows', () => {
+  it('returns empty for no enabled products', () => {
+    expect(derivePermissionRows([])).toEqual([]);
+  });
+
+  it('returns (module, bucket) rows for every enabled product\'s modules', () => {
+    const rows = derivePermissionRows(['saloon-booking']);
+    // saloon-booking includes Booking (customers + employees) and Payments
+    // (customers + products). Login is bucket-less and contributes no rows.
+    const keys = rows.map((r) => `${r.module.key}.${r.bucket}`).sort();
+    expect(keys).toEqual([
+      'booking.customers',
+      'booking.employees',
+      'payments.customers',
+      'payments.products',
+    ]);
+  });
+
+  it('deduplicates rows when two products use the same module', () => {
+    const rows = derivePermissionRows(['saloon-booking', 'saloon-booking']);
+    const keys = rows.map((r) => `${r.module.key}.${r.bucket}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
