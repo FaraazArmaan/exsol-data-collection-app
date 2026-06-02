@@ -177,6 +177,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
         <header style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0 }}>Access dashboard</h1>
           <div style={{ display: 'flex', gap: 6 }}>
+            <Link to={`/clients/${clientId}/access-levels`} className="btn btn-secondary">Access levels</Link>
             <Link to={`/clients/${clientId}/configure`} className="btn btn-secondary">Configure</Link>
             <button className="btn btn-primary" disabled={!hasStructure} onClick={() => setShowAdd(true)}>
               + Add user

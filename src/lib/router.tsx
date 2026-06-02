@@ -5,6 +5,7 @@ import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
 import AccessDashboard from '../modules/ams/pages/AccessDashboard';
+import AccessLevelDashboard from '../modules/ams/pages/AccessLevelDashboard';
 import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <AdminDashboard /> },
       { path: '/settings', element: <AdminSettings /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },
+      { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },
       { path: '/clients/:clientId/configure', element: <ConfigureStructure /> },
     ],
   },

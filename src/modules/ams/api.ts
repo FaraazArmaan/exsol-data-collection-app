@@ -228,3 +228,30 @@ export const putAdminClientProducts = (clientId: string, keys: string[]) =>
   apiFetch<{ ok: true }>(`/api/admin-client-products?client=${encodeURIComponent(clientId)}`, {
     method: 'PUT', body: JSON.stringify({ keys }),
   });
+
+// ─── Access Level permissions ──────────────────────────────────────
+
+export interface ModuleRow {
+  module_key: string;
+  label: string;
+  bucket: string;
+  verbs: string[];
+}
+
+export interface PlatformRow { surface: string; verbs: string[] }
+
+export interface LevelPermissionsResponse {
+  level_id: string;
+  level_number: number;
+  permissions: Record<string, true>;
+  module_rows: ModuleRow[];
+  platform_rows: PlatformRow[];
+}
+
+export const getLevelPermissions = (levelId: string) =>
+  apiFetch<LevelPermissionsResponse>(`/api/client-levels-permissions?id=${encodeURIComponent(levelId)}`);
+
+export const putLevelPermissions = (levelId: string, permissions: Record<string, true>) =>
+  apiFetch<{ ok: true }>(`/api/client-levels-permissions?id=${encodeURIComponent(levelId)}`, {
+    method: 'PUT', body: JSON.stringify({ permissions }),
+  });
