@@ -64,6 +64,7 @@ export interface ClientRole {
   color: string;
   fields: RoleFieldDef[];
   sort_order: number;
+  bucket_family?: 'business' | 'employees' | 'customers' | 'products' | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,12 +95,12 @@ export interface ClientStructure {
 export const getClientStructure = (clientId: string) =>
   apiFetch<ClientStructure>(`/api/client-structure?client=${encodeURIComponent(clientId)}`);
 
-export const createRole = (clientId: string, body: { key: string; label: string; color: string; fields?: RoleFieldDef[] }) =>
+export const createRole = (clientId: string, body: { key: string; label: string; color: string; fields?: RoleFieldDef[]; bucket_family?: 'business' | 'employees' | 'customers' | 'products' }) =>
   apiFetch<{ role: ClientRole }>(`/api/client-roles?client=${encodeURIComponent(clientId)}`, {
     method: 'POST', body: JSON.stringify(body),
   });
 
-export const patchRole = (roleId: string, body: Partial<{ label: string; color: string; fields: RoleFieldDef[]; sort_order: number }>) =>
+export const patchRole = (roleId: string, body: Partial<{ label: string; color: string; fields: RoleFieldDef[]; sort_order: number; bucket_family: 'business' | 'employees' | 'customers' | 'products' | null }>) =>
   apiFetch<{ role: ClientRole }>(`/api/client-roles-detail?id=${encodeURIComponent(roleId)}`, {
     method: 'PATCH', body: JSON.stringify(body),
   });
@@ -211,3 +212,47 @@ export const resetUserNodeCredential = (nodeId: string, temp_password: string) =
 
 export const deleteUserNodeCredential = (nodeId: string) =>
   apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
+
+// ─── Admin: enabled Products per Client ────────────────────────────
+
+export interface ProductAvailable { key: string; label: string }
+
+export interface AdminClientProductsResponse {
+  enabled_keys: string[];
+  available: ProductAvailable[];
+}
+
+export const getAdminClientProducts = (clientId: string) =>
+  apiFetch<AdminClientProductsResponse>(`/api/admin-client-products?client=${encodeURIComponent(clientId)}`);
+
+export const putAdminClientProducts = (clientId: string, keys: string[]) =>
+  apiFetch<{ ok: true }>(`/api/admin-client-products?client=${encodeURIComponent(clientId)}`, {
+    method: 'PUT', body: JSON.stringify({ keys }),
+  });
+
+// ─── Access Level permissions ──────────────────────────────────────
+
+export interface ModuleRow {
+  module_key: string;
+  label: string;
+  bucket: string;
+  verbs: string[];
+}
+
+export interface PlatformRow { surface: string; verbs: string[] }
+
+export interface LevelPermissionsResponse {
+  level_id: string;
+  level_number: number;
+  permissions: Record<string, true>;
+  module_rows: ModuleRow[];
+  platform_rows: PlatformRow[];
+}
+
+export const getLevelPermissions = (levelId: string) =>
+  apiFetch<LevelPermissionsResponse>(`/api/client-levels-permissions?id=${encodeURIComponent(levelId)}`);
+
+export const putLevelPermissions = (levelId: string, permissions: Record<string, true>) =>
+  apiFetch<{ ok: true }>(`/api/client-levels-permissions?id=${encodeURIComponent(levelId)}`, {
+    method: 'PUT', body: JSON.stringify({ permissions }),
+  });

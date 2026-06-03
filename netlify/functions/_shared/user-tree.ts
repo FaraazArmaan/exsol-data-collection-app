@@ -8,6 +8,7 @@ export interface RoleRow {
   color: string;
   fields: RoleFieldDef[];
   sort_order: number;
+  bucket_family: 'business' | 'employees' | 'customers' | 'products' | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,7 +69,7 @@ export async function loadStructure(
   clientId: string,
 ): Promise<ClientStructure> {
   const roles = (await sql`
-    SELECT id, client_id, key, label, color, fields, sort_order, created_at, updated_at
+    SELECT id, client_id, key, label, color, fields, sort_order, bucket_family, created_at, updated_at
     FROM public.client_roles WHERE client_id = ${clientId}::uuid
     ORDER BY sort_order, created_at
   `) as RoleRow[];

@@ -12,6 +12,7 @@ export function RoleEditor({ clientId, roles, onChange }: Props) {
   const [key, setKey] = useState('');
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('#3b82f6');
+  const [bucketFamily, setBucketFamily] = useState<'business' | 'employees' | 'customers' | 'products' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,13 +22,13 @@ export function RoleEditor({ clientId, roles, onChange }: Props) {
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     setError(null); setSubmitting(true);
-    const r = await createRole(clientId, { key, label, color });
+    const r = await createRole(clientId, { key, label, color, ...(bucketFamily ? { bucket_family: bucketFamily } : {}) });
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'role_key_taken' ? 'Role key already exists.' : `Failed (${r.error.code})`);
       return;
     }
-    setKey(''); setLabel(''); setColor('#3b82f6'); setShowAdd(false);
+    setKey(''); setLabel(''); setColor('#3b82f6'); setBucketFamily(null); setShowAdd(false);
     onChange();
   }
 
@@ -60,6 +61,18 @@ export function RoleEditor({ clientId, roles, onChange }: Props) {
           </label>
           <label style={{ flex: '0 0 80px' }}>Color
             <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ height: 32, width: '100%' }} />
+          </label>
+          <label style={{ flex: '1 1 140px' }}>Bucket family
+            <select
+              value={bucketFamily ?? ''}
+              onChange={(e) => setBucketFamily(e.target.value === '' ? null : e.target.value as 'business' | 'employees' | 'customers' | 'products')}
+            >
+              <option value="">— (unset — treated as employees)</option>
+              <option value="employees">Employees</option>
+              <option value="customers">Customers</option>
+              <option value="products">Products</option>
+              <option value="business">Business</option>
+            </select>
           </label>
           <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? '…' : 'Add'}</button>
           {error && <p className="error" style={{ width: '100%', margin: '4px 0 0' }}>{error}</p>}
@@ -99,10 +112,11 @@ interface EditProps {
 function RoleEditRow({ role, onCancel, onSaved }: EditProps) {
   const [label, setLabel] = useState(role.label);
   const [color, setColor] = useState(role.color);
+  const [bucketFamily, setBucketFamily] = useState<'business' | 'employees' | 'customers' | 'products' | null>(role.bucket_family ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const changed = label.trim() !== role.label || color !== role.color;
+  const changed = label.trim() !== role.label || color !== role.color || bucketFamily !== (role.bucket_family ?? null);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -111,7 +125,7 @@ function RoleEditRow({ role, onCancel, onSaved }: EditProps) {
     const trimmed = label.trim();
     if (!trimmed) { setError('Label required.'); return; }
     setSubmitting(true);
-    const r = await patchRole(role.id, { label: trimmed, color });
+    const r = await patchRole(role.id, { label: trimmed, color, bucket_family: bucketFamily });
     setSubmitting(false);
     if (!r.ok) { setError(`Failed (${r.error.code})`); return; }
     onSaved();
@@ -125,6 +139,18 @@ function RoleEditRow({ role, onCancel, onSaved }: EditProps) {
         </label>
         <label style={{ flex: '1 1 140px' }}>Label
           <input type="text" required value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+        </label>
+        <label style={{ flex: '1 1 140px' }}>Bucket family
+          <select
+            value={bucketFamily ?? ''}
+            onChange={(e) => setBucketFamily(e.target.value === '' ? null : e.target.value as 'business' | 'employees' | 'customers' | 'products')}
+          >
+            <option value="">— (employees, default)</option>
+            <option value="employees">Employees</option>
+            <option value="customers">Customers</option>
+            <option value="products">Products</option>
+            <option value="business">Business</option>
+          </select>
         </label>
         <span className="muted" style={{ alignSelf: 'center', fontSize: 11, fontFamily: 'var(--font-mono)' }} title="The role key is immutable — it's referenced by stored data.">
           key: {role.key}

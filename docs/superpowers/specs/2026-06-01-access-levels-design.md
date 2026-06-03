@@ -1,6 +1,6 @@
 # Access Levels & Per-Level Permissions
 
-**Status:** Draft for review
+**Status:** Implemented (Phases A–C). Endpoint retrofit deferred per-Module.
 **Date:** 2026-06-01
 **Builds on:** [2026-05-27-ams-v3-hierarchy-design.md](./2026-05-27-ams-v3-hierarchy-design.md)
 **Companion reference:** `ExSol Enterprise .pdf` (root of repo) — Step 1 (Login/AMS), Step 2 (Data Buckets), Step 6 (Product Diversification), page 2 (Access Level Dashboard sketch), page 3 (Products × Modules matrix).
