@@ -10,6 +10,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { getCardinalityCap } from './_shared/user-tree';
+import { subtreeOf } from './_shared/subtree';
 
 const CreateBody = z.object({
   role_id: z.string().uuid(),
@@ -47,17 +48,36 @@ export default async (req: Request, _ctx: Context) => {
   const sql = db();
 
   if (req.method === 'GET') {
-    const nodes = (await sql`
-      SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
-             n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
-             n.created_at, n.updated_at, n.created_by_admin,
-             (c.user_node_id IS NOT NULL) AS has_login,
-             (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
-      FROM public.user_nodes n
-      LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
-      WHERE n.client_id = ${clientId}::uuid
-      ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
-    `) as unknown[];
+    // L2+ bucket-user callers granted _platform.users.view see only their own
+    // subtree (themselves + descendants). Admin and L1 Owner see everything.
+    let allowedIds: string[] | null = null;
+    if (session.kind === 'bucket_user' && session.level_number > 1) {
+      allowedIds = await subtreeOf(sql, session.user_node_id);
+    }
+    const nodes = (allowedIds === null
+      ? await sql`
+        SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
+               n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
+               n.created_at, n.updated_at, n.created_by_admin,
+               (c.user_node_id IS NOT NULL) AS has_login,
+               (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
+        FROM public.user_nodes n
+        LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+        WHERE n.client_id = ${clientId}::uuid
+        ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
+      `
+      : await sql`
+        SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
+               n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
+               n.created_at, n.updated_at, n.created_by_admin,
+               (c.user_node_id IS NOT NULL) AS has_login,
+               (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
+        FROM public.user_nodes n
+        LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+        WHERE n.client_id = ${clientId}::uuid
+          AND n.id = ANY(${allowedIds}::uuid[])
+        ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
+      `) as unknown[];
     return jsonOk({ nodes });
   }
 

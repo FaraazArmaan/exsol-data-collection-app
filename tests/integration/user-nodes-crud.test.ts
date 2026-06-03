@@ -465,6 +465,155 @@ describe('user-nodes GET — bucket-user widening', () => {
   });
 });
 
+describe('user-nodes GET — L2+ subtree scoping', () => {
+  // Build a 3-level tree using admin: Alice (L1) → [Bob (L2), Carol (L2)];
+  // Dave + Eve (L3) under Bob. Grant the L2 level _platform.users.view so a
+  // logged-in L2 sub-manager (Bob) can hit the endpoint. Expectation:
+  //   - Bob (L2) sees only {Bob, Dave, Eve}.
+  //   - Alice (L1 Owner) still sees the entire workspace (no filter).
+  async function setupSubtreeScenario(): Promise<{
+    alice: { cookie: string; nodeId: string };
+    bob: { cookie: string; nodeId: string };
+    carol: { nodeId: string };
+    dave: { nodeId: string };
+    eve: { nodeId: string };
+  }> {
+    // Need a third level + a staff role for L3 + a cap allowing staff under
+    // owners; the base fixture only sets up L1/L2.
+    const r3 = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'staff', label: 'Staff', color: '#10b981' }),
+      }), CTX,
+    );
+    const roleStaff = (await r3.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 3, allowed_role_ids: [roleStaff] }),
+      }), CTX,
+    );
+    await clientCardinalityHandler(
+      new Request(`http://localhost/api/client-cardinality?client=${testClientId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ rules: [
+          { parent_role_id: null,      child_role_id: roleShop,  max_children: 1 },
+          { parent_role_id: roleShop,  child_role_id: roleOwner, max_children: 3 },
+          { parent_role_id: roleOwner, child_role_id: roleStaff, max_children: 10 },
+        ] }),
+      }), CTX,
+    );
+
+    // Grant L2 the _platform.users.view permission so Bob can call GET.
+    const l2Rows = (await sql`
+      SELECT id FROM public.client_levels
+      WHERE client_id = ${testClientId} AND level_number = 2
+    `) as { id: string }[];
+    const l2Id = l2Rows[0]!.id;
+    await sql`
+      UPDATE public.client_levels
+      SET permissions = ${JSON.stringify({ '_platform.users.view': true })}::jsonb
+      WHERE id = ${l2Id}
+    `;
+
+    // Alice (L1) with login.
+    const alice = await createL1OwnerCookie(testClientId, testClientSlug);
+
+    // Bob (L2) under Alice with login.
+    const bobEmail = `bob-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`;
+    const bobPw = `bob-pw-${Date.now()}`;
+    const bobResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: 2, parent_id: alice.nodeId,
+          display_name: 'Bob', email: bobEmail,
+          create_login: true, temp_password: bobPw,
+        }),
+      }), CTX,
+    );
+    const bobNodeId = (await bobResp.json() as { node: { id: string } }).node.id;
+    const bobLogin = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: bobEmail, password: bobPw }),
+      }), CTX,
+    );
+    const bobCookie = bobLogin.headers.get('set-cookie')!.split(';')[0]!;
+
+    // Carol (L2) — also under Alice but sibling to Bob; outside Bob's subtree.
+    const carolResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: 2, parent_id: alice.nodeId, display_name: 'Carol',
+        }),
+      }), CTX,
+    );
+    const carolNodeId = (await carolResp.json() as { node: { id: string } }).node.id;
+
+    // Dave + Eve (L3) under Bob.
+    const daveResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleStaff, level_number: 3, parent_id: bobNodeId, display_name: 'Dave',
+        }),
+      }), CTX,
+    );
+    const daveNodeId = (await daveResp.json() as { node: { id: string } }).node.id;
+    const eveResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleStaff, level_number: 3, parent_id: bobNodeId, display_name: 'Eve',
+        }),
+      }), CTX,
+    );
+    const eveNodeId = (await eveResp.json() as { node: { id: string } }).node.id;
+
+    return {
+      alice,
+      bob: { cookie: bobCookie, nodeId: bobNodeId },
+      carol: { nodeId: carolNodeId },
+      dave: { nodeId: daveNodeId },
+      eve: { nodeId: eveNodeId },
+    };
+  }
+
+  test('L2 user with _platform.users.view sees only their subtree', async () => {
+    const { alice, bob, carol, dave, eve } = await setupSubtreeScenario();
+    const r = await userNodesHandler(
+      new Request('http://localhost/api/user-nodes', {
+        method: 'GET', headers: { cookie: bob.cookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { nodes: Array<{ id: string }> };
+    const ids = body.nodes.map((n) => n.id);
+    expect(ids).toContain(bob.nodeId);
+    expect(ids).toContain(dave.nodeId);
+    expect(ids).toContain(eve.nodeId);
+    expect(ids).not.toContain(alice.nodeId);
+    expect(ids).not.toContain(carol.nodeId);
+  });
+
+  test('L1 Owner still sees all nodes (no filter applied)', async () => {
+    const { alice, bob, carol, dave, eve } = await setupSubtreeScenario();
+    const r = await userNodesHandler(
+      new Request('http://localhost/api/user-nodes', {
+        method: 'GET', headers: { cookie: alice.cookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { nodes: Array<{ id: string }> };
+    const ids = body.nodes.map((n) => n.id);
+    for (const expected of [alice.nodeId, bob.nodeId, carol.nodeId, dave.nodeId, eve.nodeId]) {
+      expect(ids).toContain(expected);
+    }
+  });
+});
+
 describe('user-nodes POST — bucket-user widening', () => {
   test('L1 Owner can create a user in their workspace; row has created_by_admin IS NULL and created_by_user_node = owner id', async () => {
     const { cookie: ownerCookie, nodeId: ownerNodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
