@@ -10,6 +10,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { getCardinalityCap } from './_shared/user-tree';
+import { subtreeOf } from './_shared/subtree';
 
 const CreateBody = z.object({
   role_id: z.string().uuid(),
@@ -47,23 +48,43 @@ export default async (req: Request, _ctx: Context) => {
   const sql = db();
 
   if (req.method === 'GET') {
-    const nodes = (await sql`
-      SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
-             n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
-             n.created_at, n.updated_at, n.created_by_admin,
-             (c.user_node_id IS NOT NULL) AS has_login,
-             (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
-      FROM public.user_nodes n
-      LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
-      WHERE n.client_id = ${clientId}::uuid
-      ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
-    `) as unknown[];
+    // L2+ bucket-user callers granted _platform.users.view see only their own
+    // subtree (themselves + descendants). Admin and L1 Owner see everything.
+    let allowedIds: string[] | null = null;
+    if (session.kind === 'bucket_user' && session.level_number > 1) {
+      allowedIds = await subtreeOf(sql, session.user_node_id);
+    }
+    const nodes = (allowedIds === null
+      ? await sql`
+        SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
+               n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
+               n.created_at, n.updated_at, n.created_by_admin,
+               (c.user_node_id IS NOT NULL) AS has_login,
+               (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
+        FROM public.user_nodes n
+        LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+        WHERE n.client_id = ${clientId}::uuid
+        ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
+      `
+      : await sql`
+        SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
+               n.display_name, n.email, n.phone, n.notes, n.fields, n.sort_order,
+               n.created_at, n.updated_at, n.created_by_admin,
+               (c.user_node_id IS NOT NULL) AS has_login,
+               (c.password_reset_requested_at IS NOT NULL) AS has_reset_request
+        FROM public.user_nodes n
+        LEFT JOIN public.user_node_credentials c ON c.user_node_id = n.id
+        WHERE n.client_id = ${clientId}::uuid
+          AND n.id = ANY(${allowedIds}::uuid[])
+        ORDER BY n.level_number NULLS LAST, n.sort_order, n.created_at
+      `) as unknown[];
     return jsonOk({ nodes });
   }
 
   if (req.method === 'POST') {
     const adminId = session.kind === 'bucket_user' ? null : session.admin.id;
-    return await handleCreate(req, sql, clientId, adminId);
+    const creatorUserNodeId = session.kind === 'bucket_user' ? session.user_node_id : null;
+    return await handleCreate(req, sql, clientId, adminId, creatorUserNodeId);
   }
 
   return jsonError(405, 'method_not_allowed');
@@ -74,6 +95,7 @@ async function handleCreate(
   sql: NeonQueryFunction<false, false>,
   clientId: string,
   adminId: string | null,
+  creatorUserNodeId: string | null,
 ): Promise<Response> {
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -136,7 +158,7 @@ async function handleCreate(
           sql`
             INSERT INTO public.user_nodes (
               client_id, parent_id, level_number, role_id,
-              display_name, email, phone, notes, fields, created_by_admin
+              display_name, email, phone, notes, fields, created_by_admin, created_by_user_node
             )
             VALUES (
               ${clientId}::uuid,
@@ -148,7 +170,8 @@ async function handleCreate(
               ${data.phone ?? null},
               ${data.notes ?? null},
               ${JSON.stringify(data.fields ?? {})}::jsonb,
-              ${adminId}::uuid
+              ${adminId}::uuid,
+              ${creatorUserNodeId}::uuid
             )
             RETURNING id, client_id, parent_id, level_number, role_id, display_name, email,
                       phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
@@ -163,7 +186,7 @@ async function handleCreate(
           throw new Error(`cardinality_exceeded:${cap}`);
         }
         const node = inserted[0]!;
-        return await maybeCreateCredential(sql, clientId, node, data, adminId);
+        return await maybeCreateCredential(sql, clientId, node, data, adminId, creatorUserNodeId);
       } catch (e: unknown) {
         const msg = (e as Error)?.message ?? '';
         const code = (e as { code?: string })?.code;
@@ -183,7 +206,7 @@ async function handleCreate(
     const rows = (await sql`
       INSERT INTO public.user_nodes (
         client_id, parent_id, level_number, role_id,
-        display_name, email, phone, notes, fields, created_by_admin
+        display_name, email, phone, notes, fields, created_by_admin, created_by_user_node
       )
       VALUES (
         ${clientId}::uuid,
@@ -195,12 +218,13 @@ async function handleCreate(
         ${data.phone ?? null},
         ${data.notes ?? null},
         ${JSON.stringify(data.fields ?? {})}::jsonb,
-        ${adminId}::uuid
+        ${adminId}::uuid,
+        ${creatorUserNodeId}::uuid
       )
       RETURNING id, client_id, parent_id, level_number, role_id, display_name, email,
                 phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
     `) as Record<string, unknown>[];
-    return await maybeCreateCredential(sql, clientId, rows[0]!, data, adminId);
+    return await maybeCreateCredential(sql, clientId, rows[0]!, data, adminId, creatorUserNodeId);
   } catch (e: unknown) {
     const msg = (e as Error)?.message ?? '';
     const code = (e as { code?: string })?.code;
@@ -217,6 +241,7 @@ async function maybeCreateCredential(
   node: Record<string, unknown>,
   data: z.infer<typeof CreateBody>,
   adminId: string | null,
+  creatorUserNodeId: string | null,
 ): Promise<Response> {
   if (!data.create_login) return jsonOk({ node }, { status: 201 });
 
@@ -234,10 +259,10 @@ async function maybeCreateCredential(
     await sql`
       INSERT INTO public.user_node_credentials (
         client_id, user_node_id, email, password_hash, must_change_password,
-        temp_password_plain, temp_password_views_left, created_by_admin
+        temp_password_plain, temp_password_views_left, created_by_admin, created_by_user_node
       ) VALUES (
         ${clientId}::uuid, ${node.id as string}::uuid, ${data.email},
-        ${pwdHash}, true, ${data.temp_password}, 3, ${adminId}::uuid
+        ${pwdHash}, true, ${data.temp_password}, 3, ${adminId}::uuid, ${creatorUserNodeId}::uuid
       )
     `;
   } catch (e: unknown) {

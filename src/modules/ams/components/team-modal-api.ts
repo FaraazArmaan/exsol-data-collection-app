@@ -1,0 +1,45 @@
+// Admin-side TeamMemberApi factory + copy bag. Shared by the three thin
+// wrappers around src/modules/shared/team-modals/*.
+
+import {
+  createUserNode, patchUserNode, deleteUserNode,
+  getUserNodeCredential, peekUserNodeCredential,
+  resetUserNodeCredential, deleteUserNodeCredential,
+} from '../api';
+import type { TeamMemberApi, TeamMemberCopy } from '../../shared/team-modals/types';
+
+// AddUserNodeModal needs createNode (which takes clientId), so this is a
+// factory rather than a singleton. The other endpoints key off node id and
+// don't need clientId, but we close over it uniformly for consistency.
+export function buildAdminApi(clientId: string): TeamMemberApi {
+  return {
+    createNode: (body) => createUserNode(clientId, body),
+    updateNode: (id, body) => patchUserNode(id, body),
+    deleteNode: (id, cascade) => deleteUserNode(id, cascade),
+    getCredential: (id) => getUserNodeCredential(id),
+    peekCredential: (id) => peekUserNodeCredential(id),
+    resetCredential: (id, pw) => resetUserNodeCredential(id, pw),
+    deleteCredential: (id) => deleteUserNodeCredential(id),
+  };
+}
+
+// Edit/Login modals don't need createNode but the shared TeamMemberApi shape
+// includes it. Stub it to a clear error rather than silently no-op'ing.
+export const adminApiNoCreate: TeamMemberApi = {
+  createNode: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
+  updateNode: (id, body) => patchUserNode(id, body),
+  deleteNode: (id, cascade) => deleteUserNode(id, cascade),
+  getCredential: (id) => getUserNodeCredential(id),
+  peekCredential: (id) => peekUserNodeCredential(id),
+  resetCredential: (id, pw) => resetUserNodeCredential(id, pw),
+  deleteCredential: (id) => deleteUserNodeCredential(id),
+};
+
+// Admin-side copy. AddUserNodeModal overrides noLevelsHint / noLevelForRoleHint
+// with clientId-aware links to /clients/:id/configure; Edit/Login don't use
+// those hints so they get null defaults.
+export const adminCopy: TeamMemberCopy = {
+  scopeNoun: 'client',
+  noLevelsHint: null,
+  noLevelForRoleHint: () => null,
+};

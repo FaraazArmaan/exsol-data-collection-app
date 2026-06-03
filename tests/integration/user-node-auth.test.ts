@@ -829,7 +829,7 @@ describe('user-node-credential — bucket-user widening', () => {
   test('L1 Owner can POST reset another user\'s password (own workspace)', async () => {
     const ownerEmail = `cred-owner-${Date.now()}@example.com`;
     const ownerPw = 'cred-owner-pw-1';
-    await createNodeWithLogin(ownerEmail, ownerPw);
+    const ownerNodeId = await createNodeWithLogin(ownerEmail, ownerPw);
     const ownerCookie = await buLogin(ownerEmail, ownerPw);
 
     // Admin creates a target node (also L1 since this test client only has L1).
@@ -847,6 +847,11 @@ describe('user-node-credential — bucket-user widening', () => {
     expect(targetCreate.status).toBe(201);
     const targetId = (await targetCreate.json() as { node: { id: string } }).node.id;
 
+    // Delete the admin-created credential so the Owner's reset is an INSERT
+    // (created_by_user_node is only set on INSERT, not ON CONFLICT UPDATE —
+    // attribution belongs to whoever first created the credential row).
+    await sql`DELETE FROM public.user_node_credentials WHERE user_node_id = ${targetId}::uuid`;
+
     // Owner resets target's password.
     const reset = await userNodeCredentialHandler(
       new Request(`http://localhost/api/user-node-credential?node=${targetId}`, {
@@ -856,13 +861,21 @@ describe('user-node-credential — bucket-user widening', () => {
     );
     expect(reset.status).toBe(200);
 
-    // Verify the credential row updated — must_change_password true + temp pw set.
+    // Verify the credential row inserted — must_change_password true + temp pw set
+    // and attribution columns: admin NULL, user_node = owner.
     const rows = (await sql`
-      SELECT must_change_password, temp_password_plain
+      SELECT must_change_password, temp_password_plain, created_by_admin, created_by_user_node
       FROM public.user_node_credentials WHERE user_node_id = ${targetId}::uuid
-    `) as { must_change_password: boolean; temp_password_plain: string }[];
+    `) as {
+      must_change_password: boolean;
+      temp_password_plain: string;
+      created_by_admin: string | null;
+      created_by_user_node: string | null;
+    }[];
     expect(rows[0]!.must_change_password).toBe(true);
     expect(rows[0]!.temp_password_plain).toBe('owner-reset-pw-1');
+    expect(rows[0]!.created_by_admin).toBeNull();
+    expect(rows[0]!.created_by_user_node).toBe(ownerNodeId);
   });
 
   test('L1 Owner can GET peek another user\'s temp password (own workspace)', async () => {

@@ -28,15 +28,32 @@ async function applied(sql: SQL): Promise<Set<string>> {
 // statement — we detect $$ and skip splitting, passing the whole body
 // through. Multi-statement files that need PL/pgSQL must be split across
 // numbered files (e.g., 005_function.sql + 006_trigger.sql).
-function splitStatements(body: string): string[] {
+//
+// Per chunk we strip leading comment-only lines (lines starting with `--`)
+// and blank lines, then keep the chunk iff any SQL remains. A previous
+// implementation filtered chunks whose first character was `--`, which
+// silently dropped statements preceded by a header comment block.
+export function splitStatements(body: string): string[] {
   const trimmed = body.trim();
+  if (trimmed.length === 0) return [];
   if (trimmed.includes('$$')) {
     return [trimmed];
   }
   return trimmed
     .split(/;\s*(?:\r?\n|$)/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !/^--/.test(s));
+    .map((chunk) => {
+      const lines = chunk.split('\n');
+      while (lines.length > 0) {
+        const line = lines[0]!.trim();
+        if (line === '' || line.startsWith('--')) {
+          lines.shift();
+        } else {
+          break;
+        }
+      }
+      return lines.join('\n').trim();
+    })
+    .filter((s) => s.length > 0);
 }
 
 async function main() {

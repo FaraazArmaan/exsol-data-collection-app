@@ -1,33 +1,21 @@
-// Mirrors src/modules/ams/components/LoginManageModal.tsx. Owner-scoped; consolidate when modals stabilize.
-//
-// Differences vs the AMS twin:
-// - Drops the `clientId` prop — owner-scoped API wrappers resolve the client
-//   from the bu_session JWT server-side.
-// - Imports `getCredential`, `resetCredential`, `deleteCredential` from ./api
-//   (owner wrappers) instead of the admin equivalents.
-// - Per spec §3, drops Google link/unlink-on-behalf controls. The "Google: ✓
-//   linked / — not linked" status row is also removed for the owner surface;
-//   only password ops (peek + reset + delete-credential) remain. If we later
-//   want owners to see Google-link status, add the row back.
+// Shared Login-management modal. See ./types.ts for the api/copy contract.
 
 import { useEffect, useState, type FormEvent } from 'react';
-import {
-  getCredential,
-  resetCredential,
-  deleteCredential,
-  type UserNodeCredentialStatus,
-  type UserNode,
-} from './api';
+import type { UserNode } from '../../ams/api';
+import type { UserNodeCredentialStatus } from '../../ams/api';
 import { generateTempPassword } from '../../../lib/random-password';
+import type { TeamMemberApi, TeamMemberCopy } from './types';
 
 interface Props {
+  api: TeamMemberApi;
+  copy: TeamMemberCopy;
   node: UserNode;
   clientSlug: string;
   onClose: () => void;
   onChanged: () => void;
 }
 
-export function LoginManageDrawer({ node, clientSlug, onClose, onChanged }: Props) {
+export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChanged }: Props) {
   const [status, setStatus] = useState<UserNodeCredentialStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [tempPassword, setTempPassword] = useState(() => generateTempPassword());
@@ -37,7 +25,7 @@ export function LoginManageDrawer({ node, clientSlug, onClose, onChanged }: Prop
 
   async function load() {
     setLoading(true); setError(null);
-    const r = await getCredential(node.id);
+    const r = await api.getCredential(node.id);
     setLoading(false);
     if (!r.ok) { setError(`Failed (${r.error.code})`); return; }
     setStatus(r.data);
@@ -53,11 +41,11 @@ export function LoginManageDrawer({ node, clientSlug, onClose, onChanged }: Prop
     if (!hasEmail) { setError('Add an email to the user first.'); return; }
     if (tempPassword.length < 8) { setError('Temp password must be ≥ 8 chars.'); return; }
     setSubmitting(true);
-    const r = await resetCredential(node.id, tempPassword);
+    const r = await api.resetCredential(node.id, tempPassword);
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'email_already_has_login_in_this_client'
-        ? 'This email already has a login in this workspace.'
+        ? `This email already has a login in this ${copy.scopeNoun}.`
         : `Failed (${r.error.code})`);
       return;
     }
@@ -69,7 +57,7 @@ export function LoginManageDrawer({ node, clientSlug, onClose, onChanged }: Prop
   async function handleRemove() {
     if (!confirm('Remove login? User row stays; credential is deleted.')) return;
     setSubmitting(true);
-    const r = await deleteCredential(node.id);
+    const r = await api.deleteCredential(node.id);
     setSubmitting(false);
     if (!r.ok) { setError(`Failed (${r.error.code})`); return; }
     onChanged();
@@ -182,5 +170,3 @@ function Reveal({ label, value, mono = false }: { label: string; value: string; 
     </div>
   );
 }
-
-export default LoginManageDrawer;

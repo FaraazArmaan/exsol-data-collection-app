@@ -32,6 +32,7 @@ export default async (req: Request, _ctx: Context) => {
   if (auth instanceof Response) return auth;
   const session = auth;
   const adminId = session.kind === 'bucket_user' ? null : session.admin.id;
+  const creatorUserNodeId = session.kind === 'bucket_user' ? session.user_node_id : null;
 
   const url = new URL(req.url);
   const nodeId = url.searchParams.get('node');
@@ -128,10 +129,10 @@ export default async (req: Request, _ctx: Context) => {
       await sql`
         INSERT INTO public.user_node_credentials (
           client_id, user_node_id, email, password_hash, must_change_password,
-          temp_password_plain, temp_password_views_left, created_by_admin
+          temp_password_plain, temp_password_views_left, created_by_admin, created_by_user_node
         ) VALUES (
           ${node.client_id}::uuid, ${nodeId}::uuid, ${node.email},
-          ${pwdHash}, true, ${parsed.data.temp_password}, 3, ${adminId}::uuid
+          ${pwdHash}, true, ${parsed.data.temp_password}, 3, ${adminId}::uuid, ${creatorUserNodeId}::uuid
         )
         ON CONFLICT (user_node_id) DO UPDATE
           SET password_hash = EXCLUDED.password_hash,

@@ -204,7 +204,7 @@ export async function authenticateForPermission(
     return await requirePermission(req, key);
   } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
+    if (e instanceof ForbiddenError) return jsonError(403, 'forbidden');
     throw e;
   }
 }
