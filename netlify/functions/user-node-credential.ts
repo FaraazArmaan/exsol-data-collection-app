@@ -8,7 +8,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import { hashPassword } from './_shared/argon';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { authenticateForPermission, authorizeClientScope } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 
@@ -28,11 +28,10 @@ interface FullCredential {
 }
 
 export default async (req: Request, _ctx: Context) => {
-  let actor;
-  try { actor = await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
+  const auth = await authenticateForPermission(req, '_platform.users.edit');
+  if (auth instanceof Response) return auth;
+  const session = auth;
+  const adminId = session.kind === 'bucket_user' ? null : session.admin.id;
 
   const url = new URL(req.url);
   const nodeId = url.searchParams.get('node');
@@ -47,6 +46,11 @@ export default async (req: Request, _ctx: Context) => {
   `) as { id: string; client_id: string; email: string | null }[];
   if (nodeRows.length === 0) return jsonError(404, 'user_node_not_found');
   const node = nodeRows[0]!;
+
+  // Row-based authz against the node's client. Admin callers always pass;
+  // bucket-user callers must be in the same workspace as the target node.
+  const scope = authorizeClientScope(session, node.client_id);
+  if ('error' in scope) return jsonError(403, scope.error);
 
   if (req.method === 'GET') {
     // peek=1 returns status only — does NOT decrement the reveal counter
@@ -127,7 +131,7 @@ export default async (req: Request, _ctx: Context) => {
           temp_password_plain, temp_password_views_left, created_by_admin
         ) VALUES (
           ${node.client_id}::uuid, ${nodeId}::uuid, ${node.email},
-          ${pwdHash}, true, ${parsed.data.temp_password}, 3, ${actor.admin.id}::uuid
+          ${pwdHash}, true, ${parsed.data.temp_password}, 3, ${adminId}::uuid
         )
         ON CONFLICT (user_node_id) DO UPDATE
           SET password_hash = EXCLUDED.password_hash,
