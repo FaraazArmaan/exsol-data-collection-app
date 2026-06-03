@@ -42,3 +42,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .login-card h1 { margin: 0 0 16px; font-size: 22px; }
 .error { color: var(--danger); margin: 8px 0 0; font-size: 13px; }
 .muted { color: var(--text-muted); font-size: 12px; }
+
+/* Sidebar — modules group header */
+.sidebar nav .nav-group-header { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 12px 4px; color: var(--text-muted); }
+
+/* Top bar */
+.topbar { height: 56px; flex-shrink: 0; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; background: var(--bg-surface); }
+.topbar-title { font-weight: 600; }
+
+/* Dropdown menu (disclosure region) */
+.dropdown { position: relative; }
+.dropdown-menu { position: absolute; right: 0; top: calc(100% + 4px); min-width: 160px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 4px; z-index: 50; display: flex; flex-direction: column; }
+.dropdown-item { padding: 8px 12px; text-align: left; background: transparent; border: 0; color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; font: inherit; text-decoration: none; }
+.dropdown-item:hover { background: var(--bg-elevated); color: var(--text-primary); }

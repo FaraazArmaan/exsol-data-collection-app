@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-auth-context';
 
@@ -7,6 +7,25 @@ export function TopBar() {
   const { user, client, signOut } = useUserAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
 
   if (!user || !client) return null;
 
@@ -17,21 +36,10 @@ export function TopBar() {
   }
 
   return (
-    <header
-      style={{
-        height: 56,
-        flexShrink: 0,
-        borderBottom: '1px solid var(--border, rgba(255,255,255,0.08))',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 20px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ fontWeight: 600 }}>{client.name}</div>
+    <header className="topbar">
+      <div className="topbar-title">{client.name}</div>
 
-      <div style={{ position: 'relative' }}>
+      <div className="dropdown" ref={menuRef}>
         <button
           className="btn btn-ghost"
           onClick={() => setMenuOpen((o) => !o)}
@@ -44,35 +52,18 @@ export function TopBar() {
         </button>
 
         {menuOpen && (
-          <div
-            role="menu"
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 'calc(100% + 4px)',
-              minWidth: 160,
-              background: 'var(--surface, #1a1a1a)',
-              border: '1px solid var(--border, rgba(255,255,255,0.12))',
-              borderRadius: 6,
-              padding: 4,
-              zIndex: 10,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
+          <div className="dropdown-menu">
             <Link
               to={`/c/${slug}/account`}
-              role="menuitem"
+              className="dropdown-item"
               onClick={() => setMenuOpen(false)}
-              style={{ padding: '8px 12px', textDecoration: 'none', color: 'inherit', borderRadius: 4 }}
             >
               Account
             </Link>
             <button
               type="button"
-              role="menuitem"
+              className="dropdown-item"
               onClick={() => { void handleSignOut(); }}
-              style={{ textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 0, color: 'inherit', borderRadius: 4, cursor: 'pointer' }}
             >
               Sign out
             </button>

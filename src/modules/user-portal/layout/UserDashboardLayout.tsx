@@ -4,11 +4,11 @@ import { TopBar } from './TopBar';
 
 export function UserDashboardLayout() {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="app-shell">
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <TopBar />
-        <main style={{ flex: 1, padding: 24, boxSizing: 'border-box' }}>
+        <main className="main">
           <Outlet />
         </main>
       </div>
