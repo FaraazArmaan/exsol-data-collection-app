@@ -1,19 +1,13 @@
-// Mirrors src/modules/ams/components/EditUserNodeModal.tsx. Owner-scoped; consolidate when modals stabilize.
-//
-// Differences vs the AMS twin:
-// - Drops the `clientId` prop — owner-scoped API wrappers resolve the client
-//   from the bu_session JWT server-side.
-// - Imports `updateNode`, `deleteNode`, `peekCredential`, `resetCredential`
-//   from ./api (owner wrappers) instead of patchUserNode/deleteUserNode/etc.
+// Shared Edit-User modal. See ./types.ts for the api/copy contract.
 
 import { useEffect, useState, type FormEvent } from 'react';
-import {
-  updateNode, deleteNode, peekCredential, resetCredential,
-  type ClientRole, type UserNode, type UserNodeCredentialStatus,
-} from './api';
+import type { ClientRole, UserNode, UserNodeCredentialStatus } from '../../ams/api';
 import { generateTempPassword } from '../../../lib/random-password';
+import type { TeamMemberApi, TeamMemberCopy } from './types';
 
 interface Props {
+  api: TeamMemberApi;
+  copy: TeamMemberCopy;
   node: UserNode;
   role: ClientRole | undefined;
   clientSlug: string;
@@ -23,12 +17,14 @@ interface Props {
   onManageLogin: () => void;
 }
 
-// Edit the identity-level fields of a team member (display_name, email, phone,
+// Edit the identity-level fields of a user node (display_name, email, phone,
 // notes + any role-defined custom fields). Also shows a Sign-in summary
 // (password / Google / last login) and a one-click Reset password action.
 // Deep "manage credential" flows (reveal counter, remove login) live in
-// LoginManageDrawer — this modal exposes a button to hand off to it.
-export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, onDeleted, onManageLogin }: Props) {
+// LoginManageModal — this modal exposes a button to hand off to it.
+export function EditUserModal({
+  api, copy, node, role, clientSlug, onClose, onSaved, onDeleted, onManageLogin,
+}: Props) {
   const [displayName, setDisplayName] = useState(node.display_name);
   const [email, setEmail] = useState(node.email ?? '');
   const [phone, setPhone] = useState(node.phone ?? '');
@@ -42,7 +38,7 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
   const [statusLoading, setStatusLoading] = useState(true);
 
   // After a Reset password success, hold the newly-issued temp pwd inline
-  // so the owner can copy it without re-opening LoginManageDrawer.
+  // so the user can copy it without re-opening LoginManageModal.
   const [resetResult, setResetResult] = useState<null | { tempPassword: string; email: string }>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -51,13 +47,13 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     let cancelled = false;
     (async () => {
       setStatusLoading(true);
-      const r = await peekCredential(node.id);
+      const r = await api.peekCredential(node.id);
       if (cancelled) return;
       setStatusLoading(false);
       if (r.ok) setStatus(r.data);
     })();
     return () => { cancelled = true; };
-  }, [node.id]);
+  }, [api, node.id]);
 
   const dirty =
     displayName.trim() !== node.display_name ||
@@ -72,7 +68,7 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     if (!displayName.trim()) { setError('Display name is required.'); return; }
     if (!dirty) { onClose(); return; }
     setSubmitting(true);
-    const r = await updateNode(node.id, {
+    const r = await api.updateNode(node.id, {
       display_name: displayName.trim(),
       email: email.trim() || null,
       phone: phone.trim() || null,
@@ -82,7 +78,7 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'email_already_has_login_in_this_client'
-        ? 'Email is already taken by another user in this workspace.'
+        ? `Email is already taken by another user in this ${copy.scopeNoun}.`
         : `Failed (${r.error.code}).`);
       return;
     }
@@ -93,12 +89,12 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     const labelHint = role?.label ? ` (${role.label})` : '';
     if (!confirm(`Delete ${node.display_name}${labelHint}? This also removes their login if any.`)) return;
     setSubmitting(true);
-    const r = await deleteNode(node.id);
+    const r = await api.deleteNode(node.id);
     if (!r.ok && r.error.code === 'has_children') {
       setSubmitting(false);
       if (!confirm('This user has children in the tree. Delete them and all descendants?')) return;
       setSubmitting(true);
-      const r2 = await deleteNode(node.id, true);
+      const r2 = await api.deleteNode(node.id, true);
       setSubmitting(false);
       if (!r2.ok) { setError(`Failed (${r2.error.code}).`); return; }
       onDeleted();
@@ -113,18 +109,18 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     setError(null);
     const tempPw = generateTempPassword();
     setSubmitting(true);
-    const r = await resetCredential(node.id, tempPw);
+    const r = await api.resetCredential(node.id, tempPw);
     setSubmitting(false);
     setConfirmingReset(false);
     if (!r.ok) {
       setError(r.error.code === 'email_already_has_login_in_this_client'
-        ? 'Email is already taken by another login in this workspace.'
+        ? `Email is already taken by another login in this ${copy.scopeNoun}.`
         : `Failed (${r.error.code}).`);
       return;
     }
     setResetResult({ tempPassword: tempPw, email: status?.email ?? node.email ?? '' });
     // Re-peek so the panel reflects the now-set password and cleared last_login.
-    const s = await peekCredential(node.id);
+    const s = await api.peekCredential(node.id);
     if (s.ok) setStatus(s.data);
   }
 
@@ -136,7 +132,7 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard may be blocked (insecure context / permissions). Password is
-      // still visible in the readonly input — owner can select-and-copy manually.
+      // still visible in the readonly input — caller can select-and-copy manually.
     }
   }
 
@@ -313,5 +309,3 @@ export function EditTeamMemberModal({ node, role, clientSlug, onClose, onSaved, 
     </div>
   );
 }
-
-export default EditTeamMemberModal;

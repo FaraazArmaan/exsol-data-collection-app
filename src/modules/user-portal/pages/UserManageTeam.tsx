@@ -8,8 +8,8 @@
 //     server resolves the client from the bu_session JWT.
 //   - Reuses LevelRow + UserNodeChip from ../../ams/components verbatim
 //     (props are auth-agnostic; no surgery needed).
-//   - Reuses ../team/{AddTeamMemberModal,EditTeamMemberModal,LoginManageDrawer}
-//     and ../team/api wrappers (parameter-free; JWT-scoped server-side).
+//   - Renders the shared team modals (src/modules/shared/team-modals) with
+//     the owner-scoped api + copy bag from ../team/team-modal-api.
 //
 // The handleDragEnd logic is copied verbatim from AccessDashboard.tsx (the
 // dnd id format + re-parent fallback logic is the source of truth) — only
@@ -24,9 +24,10 @@ import {
   type ClientStructure, type ClientRole, type UserNode,
 } from '../team/api';
 import { LevelRow } from '../../ams/components/LevelRow';
-import { AddTeamMemberModal } from '../team/AddTeamMemberModal';
-import { EditTeamMemberModal } from '../team/EditTeamMemberModal';
-import { LoginManageDrawer } from '../team/LoginManageDrawer';
+import { AddUserModal } from '../../shared/team-modals/AddUserModal';
+import { EditUserModal } from '../../shared/team-modals/EditUserModal';
+import { LoginManageModal } from '../../shared/team-modals/LoginManageModal';
+import { ownerApi, ownerCopy } from '../team/team-modal-api';
 
 export default function UserManageTeam() {
   const { slug } = useParams<{ slug: string }>();
@@ -40,7 +41,7 @@ export default function UserManageTeam() {
   const [showAdd, setShowAdd] = useState(false);
 
   // Two-tier chip click model: edit modal opens first; from inside it the
-  // owner can hop into the LoginManageDrawer for credential ops. They never
+  // owner can hop into the LoginManageModal for credential ops. They never
   // overlap. (Mirrors AccessDashboard.)
   const [editingChip, setEditingChip] = useState<UserNode | null>(null);
   const [loginChip, setLoginChip] = useState<UserNode | null>(null);
@@ -227,7 +228,10 @@ export default function UserManageTeam() {
         />
 
         {showAdd && (
-          <AddTeamMemberModal
+          <AddUserModal
+            api={ownerApi}
+            copy={ownerCopy}
+            title="Add team member"
             clientSlug={slug}
             roles={structure.roles}
             levels={structure.levels}
@@ -238,7 +242,9 @@ export default function UserManageTeam() {
         )}
 
         {editingChip && (
-          <EditTeamMemberModal
+          <EditUserModal
+            api={ownerApi}
+            copy={ownerCopy}
             node={editingChip}
             role={rolesById[editingChip.role_id]}
             clientSlug={slug}
@@ -255,7 +261,9 @@ export default function UserManageTeam() {
         )}
 
         {loginChip && (
-          <LoginManageDrawer
+          <LoginManageModal
+            api={ownerApi}
+            copy={ownerCopy}
             node={loginChip}
             clientSlug={slug}
             onClose={() => setLoginChip(null)}
