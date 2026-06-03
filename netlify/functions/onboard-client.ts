@@ -235,10 +235,12 @@ export default async (req: Request, _ctx: Context) => {
       if (msg.includes('user_node_credentials')) {
         return err(409, 'email_already_has_login_in_this_workspace', 'owner');
       }
-      if (msg.includes('clients_slug_key') || msg.includes('clients_slug')) {
+      if (msg.includes('clients_slug_unique') || msg.includes('clients_slug')) {
         return err(422, 'slug_collision', 'name');
       }
-      return err(409, 'duplicate_row', 'roles', { sqlstate: code });
+      // Unknown 23505 — most likely a slug race; attribute to name where the
+      // user can change input. Include sqlstate for triage.
+      return err(409, 'duplicate_row', 'name', { sqlstate: code });
     }
     if (code === '23503') {
       return err(400, 'foreign_key_violation', 'levels', { sqlstate: code });
