@@ -3,8 +3,8 @@ import { z } from 'zod';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './_shared/db';
 import {
-  requireAdmin, requirePermission, resolveClientId,
-  UnauthorizedError, ForbiddenError,
+  requireAdmin, authenticateForPermission, resolveClientIdOrRespond,
+  UnauthorizedError,
   type AnySession,
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
@@ -30,11 +30,9 @@ export default async (req: Request, _ctx: Context) => {
   let adminActor: { admin: { id: string } } | null = null;
 
   if (req.method === 'GET') {
-    try { session = await requirePermission(req, '_platform.users.view'); } catch (e) {
-      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-      if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
-      throw e;
-    }
+    const auth = await authenticateForPermission(req, '_platform.users.view');
+    if (auth instanceof Response) return auth;
+    session = auth;
   } else if (req.method === 'POST') {
     try { adminActor = await requireAdmin(req); } catch (e) {
       if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
@@ -45,11 +43,9 @@ export default async (req: Request, _ctx: Context) => {
     return jsonError(405, 'method_not_allowed');
   }
 
-  const resolved = resolveClientId(session, req);
-  if ('error' in resolved) {
-    return jsonError(resolved.error === 'forbidden_cross_client' ? 403 : 400, resolved.error);
-  }
-  const clientId = resolved.clientId;
+  const scope = resolveClientIdOrRespond(session, req);
+  if (scope instanceof Response) return scope;
+  const clientId = scope.clientId;
   try { assertUuid(clientId, 'client'); } catch { return jsonError(400, 'validation_failed', 'client must be uuid'); }
 
   const sql = db();

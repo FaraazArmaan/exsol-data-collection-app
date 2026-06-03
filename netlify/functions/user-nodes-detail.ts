@@ -2,9 +2,8 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import {
-  requireAdmin, requirePermission, authorizeClientScope,
-  UnauthorizedError, ForbiddenError,
-  type AnySession,
+  requireAdmin, authenticateForPermission, authorizeClientScope,
+  UnauthorizedError,
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
@@ -26,12 +25,9 @@ export default async (req: Request, _ctx: Context) => {
   const sql = db();
 
   if (req.method === 'GET') {
-    let session: AnySession;
-    try { session = await requirePermission(req, '_platform.users.view'); } catch (e) {
-      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-      if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
-      throw e;
-    }
+    const auth = await authenticateForPermission(req, '_platform.users.view');
+    if (auth instanceof Response) return auth;
+    const session = auth;
 
     const rows = (await sql`
       SELECT id, client_id, parent_id, level_number, role_id, display_name, email,

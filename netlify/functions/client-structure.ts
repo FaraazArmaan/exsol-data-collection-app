@@ -1,8 +1,7 @@
 import type { Context } from '@netlify/functions';
 import { db } from './_shared/db';
 import {
-  requirePermission, resolveClientId,
-  UnauthorizedError, ForbiddenError,
+  authenticateForPermission, resolveClientIdOrRespond,
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
@@ -11,20 +10,13 @@ import { loadStructure } from './_shared/user-tree';
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');
 
-  let session;
-  try {
-    session = await requirePermission(req, '_platform.users.view');
-  } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
-    throw e;
-  }
+  const auth = await authenticateForPermission(req, '_platform.users.view');
+  if (auth instanceof Response) return auth;
+  const session = auth;
 
-  const resolved = resolveClientId(session, req);
-  if ('error' in resolved) {
-    return jsonError(resolved.error === 'forbidden_cross_client' ? 403 : 400, resolved.error);
-  }
-  const clientId = resolved.clientId;
+  const scope = resolveClientIdOrRespond(session, req);
+  if (scope instanceof Response) return scope;
+  const clientId = scope.clientId;
   try { assertUuid(clientId, 'client'); } catch { return jsonError(400, 'validation_failed', 'client must be uuid'); }
 
   const sql = db();

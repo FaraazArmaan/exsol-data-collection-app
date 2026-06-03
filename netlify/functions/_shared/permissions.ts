@@ -1,4 +1,5 @@
 import { db } from './db';
+import { jsonError } from './http';
 import {
   readCookieToken, verifySession, type SessionClaims,
   readBuCookieToken, verifyBucketUserSession, type BucketUserClaims,
@@ -180,4 +181,49 @@ export function authorizeClientScope(
   return rowClientId === session.client_id
     ? { ok: true }
     : { error: 'forbidden_cross_client' };
+}
+
+// ---------------------------------------------------------------------------
+// HTTP-aware wrappers — collapse the requirePermission + error-mapping and
+// resolveClientId + error-mapping boilerplate that endpoints repeat verbatim.
+// ---------------------------------------------------------------------------
+
+/**
+ * Combine requirePermission + standard HTTP error mapping.
+ * Returns either the session OR a Response to send.
+ * Endpoint pattern:
+ *
+ *   const auth = await authenticateForPermission(req, '_platform.users.view');
+ *   if (auth instanceof Response) return auth;
+ *   const session = auth;
+ */
+export async function authenticateForPermission(
+  req: Request, key: string,
+): Promise<AnySession | Response> {
+  try {
+    return await requirePermission(req, key);
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+    if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
+    throw e;
+  }
+}
+
+/**
+ * Combine resolveClientId + standard HTTP error mapping.
+ * Returns either { clientId } OR a Response to send.
+ * Endpoint pattern:
+ *
+ *   const scope = resolveClientIdOrRespond(session, req);
+ *   if (scope instanceof Response) return scope;
+ *   const clientId = scope.clientId;
+ */
+export function resolveClientIdOrRespond(
+  session: AnySession, req: Request,
+): { clientId: string } | Response {
+  const r = resolveClientId(session, req);
+  if ('error' in r) {
+    return jsonError(r.error === 'forbidden_cross_client' ? 403 : 400, r.error);
+  }
+  return r;
 }
