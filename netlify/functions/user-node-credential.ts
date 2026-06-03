@@ -8,7 +8,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import { hashPassword } from './_shared/argon';
-import { authenticateForPermission, authorizeClientScope } from './_shared/permissions';
+import { authenticateForPermission, authorizeClientScope, authorizeSubtreeScope } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 
@@ -52,6 +52,10 @@ export default async (req: Request, _ctx: Context) => {
   // bucket-user callers must be in the same workspace as the target node.
   const scope = authorizeClientScope(session, node.client_id);
   if ('error' in scope) return jsonError(403, scope.error);
+  // Subtree scope: L2+ callers may only act on credentials in their subtree.
+  // Admin and L1 bypass. The credential's user_node_id equals nodeId here.
+  const subtree = await authorizeSubtreeScope(sql, session, nodeId);
+  if ('error' in subtree) return jsonError(403, subtree.error);
 
   if (req.method === 'GET') {
     // peek=1 returns status only — does NOT decrement the reveal counter
