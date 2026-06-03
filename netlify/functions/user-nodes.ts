@@ -2,7 +2,11 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import {
+  requireAdmin, requirePermission, resolveClientId,
+  UnauthorizedError, ForbiddenError,
+  type AnySession,
+} from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
@@ -22,14 +26,30 @@ const CreateBody = z.object({
 });
 
 export default async (req: Request, _ctx: Context) => {
-  let actor;
-  try { actor = await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
+  let session: AnySession;
+  let adminActor: { admin: { id: string } } | null = null;
+
+  if (req.method === 'GET') {
+    try { session = await requirePermission(req, '_platform.users.view'); } catch (e) {
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      if (e instanceof ForbiddenError) return jsonError(403, 'forbidden', { key: e.key });
+      throw e;
+    }
+  } else if (req.method === 'POST') {
+    try { adminActor = await requireAdmin(req); } catch (e) {
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      throw e;
+    }
+    session = { kind: 'admin', admin: { id: adminActor.admin.id, email: '' } };
+  } else {
+    return jsonError(405, 'method_not_allowed');
   }
 
-  const clientId = new URL(req.url).searchParams.get('client');
-  if (!clientId) return jsonError(400, 'validation_failed', 'client required');
+  const resolved = resolveClientId(session, req);
+  if ('error' in resolved) {
+    return jsonError(resolved.error === 'forbidden_cross_client' ? 403 : 400, resolved.error);
+  }
+  const clientId = resolved.clientId;
   try { assertUuid(clientId, 'client'); } catch { return jsonError(400, 'validation_failed', 'client must be uuid'); }
 
   const sql = db();
@@ -50,7 +70,7 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'POST') {
-    return await handleCreate(req, sql, clientId, actor.admin.id);
+    return await handleCreate(req, sql, clientId, adminActor!.admin.id);
   }
 
   return jsonError(405, 'method_not_allowed');

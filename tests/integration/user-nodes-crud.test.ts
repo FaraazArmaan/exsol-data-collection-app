@@ -9,6 +9,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import clientCardinalityHandler from '../../netlify/functions/client-cardinality';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import userNodesDetailHandler from '../../netlify/functions/user-nodes-detail';
+import uLoginHandler from '../../netlify/functions/u-login';
 
 const ADMIN_EMAIL = 'user-nodes-test@example.com';
 const ADMIN_PASSWORD = 'user-nodes-pw';
@@ -17,6 +18,7 @@ const CTX = {} as Context;
 let sql: ReturnType<typeof neon>;
 let cookie: string;
 let testClientId: string;
+let testClientSlug: string;
 let roleShop: string, roleOwner: string;
 const createdClients: string[] = [];
 
@@ -48,7 +50,9 @@ async function setupClientWithStructure() {
     }),
     CTX,
   );
-  testClientId = (await cr.json() as { client: { id: string } }).client.id;
+  const createdClient = (await cr.json() as { client: { id: string; slug: string } }).client;
+  testClientId = createdClient.id;
+  testClientSlug = createdClient.slug;
   createdClients.push(testClientId);
 
   // Two roles + two levels + a cardinality cap of 3 owners per shop.
@@ -370,5 +374,87 @@ describe('user-nodes CRUD', () => {
     `) as { node_email: string; cred_email: string }[];
     expect(after[0]!.node_email).toBe(correctedEmail);
     expect(after[0]!.cred_email).toBe(correctedEmail);
+  });
+});
+
+// Shared helper for the bucket-user widening describe blocks. Creates an L1
+// Owner (uses the existing `roleShop` L1 slot from setupClientWithStructure),
+// logs them in, and returns the bu_session cookie + the L1 node id.
+async function createL1OwnerCookie(
+  clientId: string, clientSlug: string,
+): Promise<{ cookie: string; nodeId: string }> {
+  const email = `owner-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`;
+  const pw = `owner-pw-${Date.now()}`;
+  const r = await userNodesHandler(
+    new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({
+        role_id: roleShop, level_number: 1, parent_id: null,
+        display_name: 'Owner', email,
+        create_login: true, temp_password: pw,
+      }),
+    }), CTX,
+  );
+  if (r.status !== 201) throw new Error(`owner create failed: ${r.status} ${await r.text()}`);
+  const nodeId = (await r.json() as { node: { id: string } }).node.id;
+  const login = await uLoginHandler(
+    new Request(`http://localhost/api/u-login?client=${clientSlug}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw }),
+    }), CTX,
+  );
+  if (login.status !== 200) throw new Error(`owner login failed: ${login.status}`);
+  return { cookie: login.headers.get('set-cookie')!.split(';')[0]!, nodeId };
+}
+
+describe('user-nodes GET — bucket-user widening', () => {
+  test('L1 Owner can GET /api/user-nodes without ?client= (JWT-scoped)', async () => {
+    const { cookie: ownerCookie, nodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesHandler(
+      new Request('http://localhost/api/user-nodes', {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { nodes: Array<{ id: string; client_id: string }> };
+    expect(body.nodes.some((n) => n.id === nodeId)).toBe(true);
+    // Every returned node should belong to the owner's client.
+    for (const n of body.nodes) {
+      expect(n.client_id).toBe(testClientId);
+    }
+  });
+
+  test('L1 Owner with ?client= matching their workspace also succeeds', async () => {
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { nodes: unknown[] };
+    expect(Array.isArray(body.nodes)).toBe(true);
+  });
+
+  test('bucket-user passing ?client=<other-client-id> gets 403 forbidden_cross_client', async () => {
+    const otherClientResp = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client ${Date.now()}` }),
+      }), CTX,
+    );
+    const otherId = (await otherClientResp.json() as { client: { id: string } }).client.id;
+    createdClients.push(otherId);
+
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${otherId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
   });
 });
