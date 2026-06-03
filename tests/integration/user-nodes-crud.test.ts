@@ -460,8 +460,8 @@ describe('user-nodes GET — bucket-user widening', () => {
 });
 
 describe('user-nodes POST — bucket-user widening', () => {
-  test('L1 Owner can create a user in their workspace; row has created_by_admin IS NULL', async () => {
-    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+  test('L1 Owner can create a user in their workspace; row has created_by_admin IS NULL and created_by_user_node = owner id', async () => {
+    const { cookie: ownerCookie, nodeId: ownerNodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
     const r = await userNodesHandler(
       new Request('http://localhost/api/user-nodes', {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
@@ -475,9 +475,10 @@ describe('user-nodes POST — bucket-user widening', () => {
     expect(body.node.client_id).toBe(testClientId);
 
     const rows = (await sql`
-      SELECT created_by_admin FROM public.user_nodes WHERE id = ${body.node.id}::uuid
-    `) as { created_by_admin: string | null }[];
+      SELECT created_by_admin, created_by_user_node FROM public.user_nodes WHERE id = ${body.node.id}::uuid
+    `) as { created_by_admin: string | null; created_by_user_node: string | null }[];
     expect(rows[0]!.created_by_admin).toBeNull();
+    expect(rows[0]!.created_by_user_node).toBe(ownerNodeId);
   });
 
   test('L1 Owner POST with ?client=<other-client-id> returns 403 forbidden_cross_client', async () => {
