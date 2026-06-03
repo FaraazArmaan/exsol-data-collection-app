@@ -1,9 +1,13 @@
+import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './db';
 import { jsonError } from './http';
 import {
   readCookieToken, verifySession, type SessionClaims,
   readBuCookieToken, verifyBucketUserSession, type BucketUserClaims,
 } from './session';
+import { subtreeOf } from './subtree';
+
+type SQL = NeonQueryFunction<false, false>;
 
 export interface AdminRecord {
   id: string;
@@ -181,6 +185,31 @@ export function authorizeClientScope(
   return rowClientId === session.client_id
     ? { ok: true }
     : { error: 'forbidden_cross_client' };
+}
+
+/**
+ * After authorizeClientScope passes, narrow further to the caller's subtree
+ * if they're an L2+ bucket-user. Admin and L1 Owner always pass.
+ *
+ * Pattern:
+ *   const scope = authorizeClientScope(session, node.client_id);
+ *   if ('error' in scope) return jsonError(403, scope.error);
+ *   const subtree = await authorizeSubtreeScope(sql, session, node.id);
+ *   if ('error' in subtree) return jsonError(403, subtree.error);
+ */
+export async function authorizeSubtreeScope(
+  sql: SQL,
+  session: AnySession,
+  targetNodeId: string,
+): Promise<{ ok: true } | { error: 'forbidden_subtree' }> {
+  // Admin and L1 bypass.
+  if (session.kind === 'admin') return { ok: true };
+  if (session.level_number <= 1) return { ok: true };
+  // L2+ — fetch subtree and check membership.
+  const allowed = await subtreeOf(sql, session.user_node_id);
+  return allowed.includes(targetNodeId)
+    ? { ok: true }
+    : { error: 'forbidden_subtree' };
 }
 
 // ---------------------------------------------------------------------------

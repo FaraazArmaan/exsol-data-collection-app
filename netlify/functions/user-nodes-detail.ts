@@ -2,7 +2,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import {
-  authenticateForPermission, authorizeClientScope,
+  authenticateForPermission, authorizeClientScope, authorizeSubtreeScope,
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
@@ -37,6 +37,8 @@ export default async (req: Request, _ctx: Context) => {
 
     const scope = authorizeClientScope(session, rows[0]!.client_id);
     if ('error' in scope) return jsonError(403, scope.error);
+    const subtree = await authorizeSubtreeScope(sql, session, id);
+    if ('error' in subtree) return jsonError(403, subtree.error);
 
     const c = (await sql`SELECT count(*)::int AS c FROM public.user_nodes WHERE parent_id = ${id}::uuid`) as { c: number }[];
     return jsonOk({ node: rows[0], children_count: c[0]!.c });
@@ -54,6 +56,8 @@ export default async (req: Request, _ctx: Context) => {
     if (existing.length === 0) return jsonError(404, 'not_found');
     const scope = authorizeClientScope(session, existing[0]!.client_id);
     if ('error' in scope) return jsonError(403, scope.error);
+    const subtree = await authorizeSubtreeScope(sql, session, id);
+    if ('error' in subtree) return jsonError(403, subtree.error);
 
     const parsed = PatchBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -123,6 +127,8 @@ export default async (req: Request, _ctx: Context) => {
     if (existing.length === 0) return jsonError(404, 'not_found');
     const scope = authorizeClientScope(session, existing[0]!.client_id);
     if ('error' in scope) return jsonError(403, scope.error);
+    const subtree = await authorizeSubtreeScope(sql, session, id);
+    if ('error' in subtree) return jsonError(403, subtree.error);
 
     const cascade = url.searchParams.get('cascade') === 'descendants';
 

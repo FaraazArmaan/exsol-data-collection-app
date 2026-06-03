@@ -9,6 +9,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import clientCardinalityHandler from '../../netlify/functions/client-cardinality';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import userNodesDetailHandler from '../../netlify/functions/user-nodes-detail';
+import userNodesMoveHandler from '../../netlify/functions/user-nodes-move';
 import uLoginHandler from '../../netlify/functions/u-login';
 
 const ADMIN_EMAIL = 'user-nodes-test@example.com';
@@ -611,6 +612,121 @@ describe('user-nodes GET — L2+ subtree scoping', () => {
     for (const expected of [alice.nodeId, bob.nodeId, carol.nodeId, dave.nodeId, eve.nodeId]) {
       expect(ids).toContain(expected);
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Subtree scoping on detail + move endpoints. Bob (L2) has _platform.users
+  // .view/.edit/.delete via the matrix; Carol is his sibling (outside subtree),
+  // Dave + Eve are his children (inside subtree). Expectation: row-id-targeted
+  // operations against Carol get 403 forbidden_subtree even though she's in
+  // the same client.
+  // -------------------------------------------------------------------------
+  async function grantL2EditAndDelete(): Promise<void> {
+    // Extend the matrix on L2 to include edit + delete (view already set by
+    // setupSubtreeScenario). Merge rather than overwrite so we keep view.
+    await sql`
+      UPDATE public.client_levels
+      SET permissions = ${JSON.stringify({
+        '_platform.users.view': true,
+        '_platform.users.edit': true,
+        '_platform.users.delete': true,
+      })}::jsonb
+      WHERE client_id = ${testClientId} AND level_number = 2
+    `;
+  }
+
+  test('L2 user cannot GET a sibling node (outside their subtree)', async () => {
+    const { bob, carol } = await setupSubtreeScenario();
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${carol.nodeId}`, {
+        method: 'GET', headers: { cookie: bob.cookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user can GET a node in their own subtree', async () => {
+    const { bob, dave } = await setupSubtreeScenario();
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${dave.nodeId}`, {
+        method: 'GET', headers: { cookie: bob.cookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { node: { id: string } };
+    expect(body.node.id).toBe(dave.nodeId);
+  });
+
+  test('L2 user cannot PATCH a sibling node', async () => {
+    const { bob, carol } = await setupSubtreeScenario();
+    await grantL2EditAndDelete();
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${carol.nodeId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: bob.cookie },
+        body: JSON.stringify({ display_name: 'hijacked' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user cannot DELETE a sibling node', async () => {
+    const { bob, carol } = await setupSubtreeScenario();
+    await grantL2EditAndDelete();
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${carol.nodeId}`, {
+        method: 'DELETE', headers: { cookie: bob.cookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user cannot MOVE a sibling node', async () => {
+    const { bob, carol } = await setupSubtreeScenario();
+    await grantL2EditAndDelete();
+    // Try to move Carol to unassigned — moved-node check should reject.
+    const r = await userNodesMoveHandler(
+      new Request(`http://localhost/api/user-nodes-move?id=${carol.nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bob.cookie },
+        body: JSON.stringify({ parent_id: null, level_number: null }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user cannot move their own subtree node under a sibling parent', async () => {
+    const { bob, carol, dave } = await setupSubtreeScenario();
+    await grantL2EditAndDelete();
+    // Bob owns Dave but Carol is outside his subtree — moving Dave under
+    // Carol must fail with forbidden_subtree (new-parent check).
+    const r = await userNodesMoveHandler(
+      new Request(`http://localhost/api/user-nodes-move?id=${dave.nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bob.cookie },
+        body: JSON.stringify({ parent_id: carol.nodeId, level_number: 3 }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user can move a subtree node to unassigned (no parent)', async () => {
+    const { bob, dave } = await setupSubtreeScenario();
+    await grantL2EditAndDelete();
+    const r = await userNodesMoveHandler(
+      new Request(`http://localhost/api/user-nodes-move?id=${dave.nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bob.cookie },
+        body: JSON.stringify({ parent_id: null, level_number: null }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
   });
 });
 

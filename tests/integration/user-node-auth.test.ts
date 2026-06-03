@@ -959,4 +959,107 @@ describe('user-node-credential — bucket-user widening', () => {
     const body = await r.json() as { error: { code: string } };
     expect(body.error.code).toBe('forbidden_cross_client');
   });
+
+  // ---------------------------------------------------------------------------
+  // Subtree scoping on credential endpoints. Build a 2-level tree:
+  //   Alice (L1) → [Bob (L2), Carol (L2)]
+  // Bob has a credential; Carol has one too. With Bob logged in (L2), he must
+  // NOT be able to peek or reset Carol's credential — she's outside his subtree
+  // even though both share the workspace.
+  // ---------------------------------------------------------------------------
+  async function setupCredSubtreeScenario(): Promise<{
+    bobCookie: string;
+    carolNodeId: string;
+  }> {
+    // Add an L2 level alongside the existing L1 + grant edit perm.
+    await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleId] }),
+    }), CTX);
+    await sql`
+      UPDATE public.client_levels
+      SET permissions = ${JSON.stringify({
+        '_platform.users.view': true,
+        '_platform.users.edit': true,
+      })}::jsonb
+      WHERE client_id = ${testClientId} AND level_number = 2
+    `;
+
+    // Alice (L1) — created via admin so we control the cookie cleanly.
+    const aliceEmail = `cred-sub-alice-${Date.now()}@example.com`;
+    const aliceResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 1, parent_id: null,
+          display_name: 'Alice', email: aliceEmail,
+        }),
+      }), CTX,
+    );
+    const aliceId = (await aliceResp.json() as { node: { id: string } }).node.id;
+
+    // Bob (L2) under Alice + login.
+    const bobEmail = `cred-sub-bob-${Date.now()}@example.com`;
+    const bobPw = `cred-sub-bob-pw-${Date.now()}`;
+    const bobResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 2, parent_id: aliceId,
+          display_name: 'Bob', email: bobEmail,
+          create_login: true, temp_password: bobPw,
+        }),
+      }), CTX,
+    );
+    expect(bobResp.status).toBe(201);
+    const bobLogin = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: bobEmail, password: bobPw }),
+      }), CTX,
+    );
+    const bobCookie = bobLogin.headers.get('set-cookie')!.split(';')[0]!;
+
+    // Carol (L2) — Bob's sibling, also has a credential.
+    const carolEmail = `cred-sub-carol-${Date.now()}@example.com`;
+    const carolResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 2, parent_id: aliceId,
+          display_name: 'Carol', email: carolEmail,
+          create_login: true, temp_password: 'carol-orig-pw-12345',
+        }),
+      }), CTX,
+    );
+    expect(carolResp.status).toBe(201);
+    const carolNodeId = (await carolResp.json() as { node: { id: string } }).node.id;
+
+    return { bobCookie, carolNodeId };
+  }
+
+  test('L2 user cannot peek a sibling credential', async () => {
+    const { bobCookie, carolNodeId } = await setupCredSubtreeScenario();
+    const r = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${carolNodeId}`, {
+        method: 'GET', headers: { cookie: bobCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
+
+  test('L2 user cannot reset a sibling credential password', async () => {
+    const { bobCookie, carolNodeId } = await setupCredSubtreeScenario();
+    const r = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${carolNodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bobCookie },
+        body: JSON.stringify({ temp_password: 'hijack-pw-67890' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_subtree');
+  });
 });

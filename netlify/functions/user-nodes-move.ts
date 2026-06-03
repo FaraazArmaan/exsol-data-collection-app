@@ -1,7 +1,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { authenticateForPermission, authorizeClientScope } from './_shared/permissions';
+import { authenticateForPermission, authorizeClientScope, authorizeSubtreeScope } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { cycleCheck, getCardinalityCap } from './_shared/user-tree';
@@ -37,6 +37,16 @@ export default async (req: Request, _ctx: Context) => {
 
   const scope = authorizeClientScope(session, node.client_id);
   if ('error' in scope) return jsonError(403, scope.error);
+  // Moved node must be in caller's subtree (L2+); admin and L1 bypass.
+  const movedScope = await authorizeSubtreeScope(sql, session, node.id);
+  if ('error' in movedScope) return jsonError(403, movedScope.error);
+  // New parent (if any) must also be in caller's subtree — you can't move
+  // a node under a parent you don't manage. Unassigning (parent=null) is
+  // allowed because that's stripping access within the caller's own subtree.
+  if (newParent !== null) {
+    const parentScope = await authorizeSubtreeScope(sql, session, newParent);
+    if ('error' in parentScope) return jsonError(403, parentScope.error);
+  }
 
   // Case 1: moving to unassigned. The CHECK constraint requires unassigned nodes
   // to have NULL parent_id as well, so we flatten the entire subtree: every node
