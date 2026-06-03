@@ -19,6 +19,15 @@ export interface UserPortalClient {
   name: string;
 }
 
+export interface UserPortalEnabledModule {
+  key: string;
+  label: string;
+}
+
+// PermissionMatrix is a flat map: 'module.bucket.verb' → true.
+// Absent keys are denied.
+export type UserPortalPermissionMatrix = Record<string, true>;
+
 export const getClientBySlug = (slug: string) =>
   apiFetch<{ client: UserPortalClient }>(`/api/u-client-by-slug?slug=${encodeURIComponent(slug)}`);
 
@@ -31,7 +40,12 @@ export const userLogin = (slug: string, email: string, password: string) =>
 export const userLogout = () => apiFetch<{ ok: true }>('/api/u-logout', { method: 'POST' });
 
 export const userMe = () =>
-  apiFetch<{ user: UserPortalUser; client: UserPortalClient }>('/api/u-me');
+  apiFetch<{
+    user: UserPortalUser;
+    client: UserPortalClient;
+    permissions: UserPortalPermissionMatrix;
+    enabled_modules: UserPortalEnabledModule[];
+  }>('/api/u-me');
 
 export const userLinkGoogle = (idToken: string) =>
   apiFetch<{ ok: true }>('/api/u-link-google', {
