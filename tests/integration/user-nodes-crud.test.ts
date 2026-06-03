@@ -125,6 +125,12 @@ describe('user-nodes CRUD', () => {
     const body = await r.json() as { node: { id: string; level_number: number; parent_id: null } };
     expect(body.node.level_number).toBe(1);
     expect(body.node.parent_id).toBeNull();
+    // Admin-path attribution: created_by_admin set, created_by_user_node NULL.
+    const attribution = (await sql`
+      SELECT created_by_admin, created_by_user_node FROM public.user_nodes WHERE id = ${body.node.id}::uuid
+    `) as { created_by_admin: string | null; created_by_user_node: string | null }[];
+    expect(attribution[0]!.created_by_admin).not.toBeNull();
+    expect(attribution[0]!.created_by_user_node).toBeNull();
   });
 
   test('GET returns the list of nodes for a client', async () => {
