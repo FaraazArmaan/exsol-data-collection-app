@@ -94,7 +94,7 @@ export interface BucketUserSession {
 
 export type AnySession = AdminSession | BucketUserSession;
 
-async function getLevelMatrix(clientId: string, levelNumber: number): Promise<Record<string, true>> {
+export async function getLevelMatrix(clientId: string, levelNumber: number): Promise<Record<string, true>> {
   const sql = db();
   const rows = (await sql`
     SELECT permissions FROM public.client_levels

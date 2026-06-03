@@ -21,6 +21,7 @@ import uChangePasswordHandler from '../../netlify/functions/u-change-password';
 import authMeHandler from '../../netlify/functions/auth-me';
 import loginUnifiedHandler from '../../netlify/functions/login';
 import forgotPasswordHandler from '../../netlify/functions/forgot-password';
+import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
 
 const ADMIN_EMAIL = 'user-node-auth-test@example.com';
 const ADMIN_PASSWORD = 'user-node-auth-pw';
@@ -658,5 +659,156 @@ describe('client-roles bucket_family', () => {
       }), CTX,
     );
     expect(r.status).toBe(400);
+  });
+});
+
+describe('u-me payload extensions (dashboard)', () => {
+  // Helper: create L2 level allowed for the test role, and return its id.
+  async function createL2Level(): Promise<string> {
+    const r = await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleId] }),
+      }), CTX,
+    );
+    if (r.status !== 201) throw new Error(`create L2 failed: ${r.status} ${await r.text()}`);
+    return (await r.json() as { level: { id: string } }).level.id;
+  }
+
+  // Helper: enable saloon-booking on the test client.
+  async function enableSaloonBooking(): Promise<void> {
+    const r = await adminClientProductsHandler(
+      new Request(`http://localhost/api/admin-client-products?client=${testClientId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ keys: ['saloon-booking'] }),
+      }), CTX,
+    );
+    if (r.status !== 200) throw new Error(`enable product failed: ${r.status} ${await r.text()}`);
+  }
+
+  // Helper: log in as a bucket user and return the bu_session cookie header.
+  async function bucketUserLogin(email: string, password: string): Promise<string> {
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }), CTX,
+    );
+    if (r.status !== 200) throw new Error(`u-login failed: ${r.status}`);
+    return r.headers.get('set-cookie')!.split(';')[0]!;
+  }
+
+  // Helper: create a node at a specific level and return the node id.
+  // L2+ nodes require a parent (server enforces top_level_requires_level_1),
+  // so for levelNumber>1 we first create an L1 parent (no login) and attach.
+  async function createNodeAtLevel(
+    email: string, password: string, levelNumber: number,
+  ): Promise<string> {
+    let parentId: string | null = null;
+    if (levelNumber !== 1) {
+      const parentR = await userNodesHandler(
+        new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+          body: JSON.stringify({
+            role_id: roleId, level_number: 1, parent_id: null,
+            display_name: `L1 Parent for L${levelNumber}`, email: null,
+            create_login: false,
+          }),
+        }), CTX,
+      );
+      if (parentR.status !== 201) throw new Error(`create parent failed: ${parentR.status} ${await parentR.text()}`);
+      parentId = (await parentR.json() as { node: { id: string } }).node.id;
+    }
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: levelNumber, parent_id: parentId,
+          display_name: `L${levelNumber} User`, email,
+          create_login: true, temp_password: password,
+        }),
+      }), CTX,
+    );
+    if (r.status !== 201) throw new Error(`create node failed: ${r.status} ${await r.text()}`);
+    return (await r.json() as { node: { id: string } }).node.id;
+  }
+
+  test('L1 user u-me response includes permissions object and enabled_modules', async () => {
+    await enableSaloonBooking();
+    const email = `u-me-l1-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'l1-pass-1');
+    const buCookie = await bucketUserLogin(email, 'l1-pass-1');
+
+    const r = await uMeHandler(
+      new Request('http://localhost/api/u-me', { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as {
+      user: { level_number: number | null };
+      permissions: Record<string, true>;
+      enabled_modules: Array<{ key: string; label: string }>;
+    };
+    expect(body.user.level_number).toBe(1);
+    expect(typeof body.permissions).toBe('object'); // may be empty — L1 bypasses matrix
+    const moduleKeys = body.enabled_modules.map((m) => m.key).sort();
+    expect(moduleKeys).toEqual(['booking', 'payments']);
+  });
+
+  test('L2 user u-me response surfaces only the granted matrix keys', async () => {
+    await enableSaloonBooking();
+    const l2Id = await createL2Level();
+    // Set a restricted matrix on the L2 level: view on booking.customers only.
+    // We import clientLevelsPermissionsHandler at the top of the file for this.
+    const clientLevelsPermissionsHandler = (
+      await import('../../netlify/functions/client-levels-permissions')
+    ).default;
+    const putR = await clientLevelsPermissionsHandler(
+      new Request(`http://localhost/api/client-levels-permissions?id=${l2Id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ permissions: { 'booking.customers.view': true } }),
+      }), CTX,
+    );
+    expect(putR.status).toBe(200);
+
+    const email = `u-me-l2-${Date.now()}@example.com`;
+    await createNodeAtLevel(email, 'l2-pass-1', 2);
+    const buCookie = await bucketUserLogin(email, 'l2-pass-1');
+
+    const r = await uMeHandler(
+      new Request('http://localhost/api/u-me', { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as {
+      user: { level_number: number | null };
+      permissions: Record<string, true>;
+      enabled_modules: Array<{ key: string; label: string }>;
+    };
+    expect(body.user.level_number).toBe(2);
+    expect(body.permissions).toEqual({ 'booking.customers.view': true });
+    // Module is enabled on the client regardless of the user's matrix —
+    // the client-side useNavItems hook is what filters by matrix.
+    const moduleKeys = body.enabled_modules.map((m) => m.key).sort();
+    expect(moduleKeys).toEqual(['booking', 'payments']);
+  });
+
+  test('user on a client with no enabled Products receives empty enabled_modules', async () => {
+    // No enableSaloonBooking() — clean client from beforeEach.
+    const email = `u-me-empty-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'empty-pass-1');
+    const buCookie = await bucketUserLogin(email, 'empty-pass-1');
+
+    const r = await uMeHandler(
+      new Request('http://localhost/api/u-me', { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as {
+      enabled_modules: unknown[];
+      permissions: Record<string, true>;
+    };
+    expect(body.enabled_modules).toEqual([]);
+    expect(typeof body.permissions).toBe('object');
   });
 });
