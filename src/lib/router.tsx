@@ -10,7 +10,10 @@ import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
 import UserAccount from '../modules/user-portal/pages/UserAccount';
+import UserDashboardHome from '../modules/user-portal/pages/UserDashboardHome';
+import ModuleStub from '../modules/user-portal/pages/ModuleStub';
 import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/UserPortalRoutes';
+import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
 
 function ShellLayout() {
   return (
@@ -38,8 +41,17 @@ export const router = createBrowserRouter([
       {
         element: <RequireBucketUser />,
         children: [
-          { index: true, element: <UserAccount /> },
+          // Change-password stays outside dashboard chrome — the forced-reset
+          // flow should not look like a fully-furnished workspace.
           { path: 'change-password', element: <UserChangePassword /> },
+          {
+            element: <UserDashboardLayout />,
+            children: [
+              { index: true, element: <UserDashboardHome /> },
+              { path: 'account', element: <UserAccount /> },
+              { path: 'm/:moduleKey', element: <ModuleStub /> },
+            ],
+          },
         ],
       },
     ],
