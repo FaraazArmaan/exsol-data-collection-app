@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-auth-context';
 import type {
@@ -50,11 +51,14 @@ export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
 export function useNavItems(): NavModuleItem[] {
   const { slug } = useParams<{ slug: string }>();
   const { user, enabledModules, permissions } = useUserAuth();
-  if (!slug || !user) return [];
-  return computeNavItems({
-    slug,
-    levelNumber: user.level_number,
-    enabledModules,
-    permissions,
-  });
+
+  return useMemo(() => {
+    if (!slug || !user) return [];
+    return computeNavItems({
+      slug,
+      levelNumber: user.level_number,
+      enabledModules,
+      permissions,
+    });
+  }, [slug, user, enabledModules, permissions]);
 }
