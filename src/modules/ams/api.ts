@@ -256,3 +256,20 @@ export const putLevelPermissions = (levelId: string, permissions: Record<string,
   apiFetch<{ ok: true }>(`/api/client-levels-permissions?id=${encodeURIComponent(levelId)}`, {
     method: 'PUT', body: JSON.stringify({ permissions }),
   });
+
+// ---------------------------------------------------------------------------
+// Onboarding wizard
+// ---------------------------------------------------------------------------
+export interface OnboardClientBody {
+  name: string;
+  enabled_products: string[];
+  roles: Array<{ key: string; label: string; color: string; bucket_family?: 'business' | 'employees' | 'customers' | 'products' | null }>;
+  levels: Array<{ level_number: number; label?: string | null; allowed_role_keys: string[] }>;
+  cardinality_rules: Array<{ parent_role_key: string | null; child_role_key: string; max_children: number }>;
+  owner: { display_name: string; email: string; phone?: string | null; notes?: string | null; temp_password: string };
+}
+
+export const onboardClient = (body: OnboardClientBody) =>
+  apiFetch<{ client: { id: string; name: string; slug: string } }>('/api/onboard-client', {
+    method: 'POST', body: JSON.stringify(body),
+  });
