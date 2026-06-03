@@ -2,8 +2,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import {
-  requireAdmin, authenticateForPermission, authorizeClientScope,
-  UnauthorizedError,
+  authenticateForPermission, authorizeClientScope,
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
@@ -43,13 +42,19 @@ export default async (req: Request, _ctx: Context) => {
     return jsonOk({ node: rows[0], children_count: c[0]!.c });
   }
 
-  // PATCH + DELETE stay admin-only until Task 4.
-  try { await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
-
   if (req.method === 'PATCH') {
+    const auth = await authenticateForPermission(req, '_platform.users.edit');
+    if (auth instanceof Response) return auth;
+    const session = auth;
+
+    // Row-based authz: fetch first, then check client scope before mutating.
+    const existing = (await sql`
+      SELECT client_id FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string }[];
+    if (existing.length === 0) return jsonError(404, 'not_found');
+    const scope = authorizeClientScope(session, existing[0]!.client_id);
+    if ('error' in scope) return jsonError(403, scope.error);
+
     const parsed = PatchBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
     const d = parsed.data;
@@ -108,6 +113,17 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'DELETE') {
+    const auth = await authenticateForPermission(req, '_platform.users.delete');
+    if (auth instanceof Response) return auth;
+    const session = auth;
+
+    const existing = (await sql`
+      SELECT client_id FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string }[];
+    if (existing.length === 0) return jsonError(404, 'not_found');
+    const scope = authorizeClientScope(session, existing[0]!.client_id);
+    if ('error' in scope) return jsonError(403, scope.error);
+
     const cascade = url.searchParams.get('cascade') === 'descendants';
 
     if (!cascade) {

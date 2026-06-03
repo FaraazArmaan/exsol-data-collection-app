@@ -544,6 +544,129 @@ describe('user-nodes-detail GET — bucket-user widening', () => {
     expect(body.node.client_id).toBe(testClientId);
   });
 
+  test('L1 Owner can PATCH own-workspace node', async () => {
+    const { cookie: ownerCookie, nodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({ display_name: 'Owner self-renamed' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { node: { display_name: string } };
+    expect(body.node.display_name).toBe('Owner self-renamed');
+  });
+
+  test('L1 Owner can DELETE own-workspace node (with no children)', async () => {
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    // Owner creates a leaf node they can then delete.
+    const created = await userNodesHandler(
+      new Request('http://localhost/api/user-nodes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: null, parent_id: null, display_name: 'To Delete',
+        }),
+      }), CTX,
+    );
+    expect(created.status).toBe(201);
+    const leafId = (await created.json() as { node: { id: string } }).node.id;
+
+    const d = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${leafId}`, {
+        method: 'DELETE', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(d.status).toBe(200);
+  });
+
+  test('L1 Owner PATCH cross-client node → 403 forbidden_cross_client', async () => {
+    // Setup client B + node B.
+    const cr2 = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client Patch ${Date.now()}` }),
+      }), CTX,
+    );
+    const clientB = (await cr2.json() as { client: { id: string } }).client;
+    createdClients.push(clientB.id);
+    const rrB = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'shop', label: 'Shop', color: '#ef4444' }),
+      }), CTX,
+    );
+    const roleShopB = (await rrB.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+      }), CTX,
+    );
+    const nodeBResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleShopB, level_number: 1, parent_id: null, display_name: 'B shop',
+        }),
+      }), CTX,
+    );
+    const nodeBId = (await nodeBResp.json() as { node: { id: string } }).node.id;
+
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeBId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({ display_name: 'hijack' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
+  });
+
+  test('L1 Owner DELETE cross-client node → 403 forbidden_cross_client', async () => {
+    const cr2 = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client Delete ${Date.now()}` }),
+      }), CTX,
+    );
+    const clientB = (await cr2.json() as { client: { id: string } }).client;
+    createdClients.push(clientB.id);
+    const rrB = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'shop', label: 'Shop', color: '#ef4444' }),
+      }), CTX,
+    );
+    const roleShopB = (await rrB.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+      }), CTX,
+    );
+    const nodeBResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleShopB, level_number: 1, parent_id: null, display_name: 'B shop',
+        }),
+      }), CTX,
+    );
+    const nodeBId = (await nodeBResp.json() as { node: { id: string } }).node.id;
+
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeBId}`, {
+        method: 'DELETE', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
+  });
+
   test('L1 Owner gets 403 forbidden_cross_client when GETting a node in another workspace', async () => {
     // Build client B with its own structure + a node.
     const cr2 = await clientsHandler(
