@@ -145,3 +145,39 @@ export async function requirePermission(req: Request, key: string): Promise<AnyS
   if (!matrix[key]) throw new ForbiddenError(key);
   return { kind: 'bucket_user', user_node_id: claims.sub, client_id: clientId, level_number: levelNumber };
 }
+
+// ---------------------------------------------------------------------------
+// Client-scope helpers — pair with requirePermission for endpoints that need
+// to know which Client the caller is acting on.
+//
+// resolveClientId   — for endpoints that take ?client=<uuid> (admin) and
+//                     where bucket-user is implicitly scoped to own client.
+// authorizeClientScope — for endpoints that lookup a node row by ?id=<uuid>
+//                        first; pass node.client_id to verify caller may act.
+// ---------------------------------------------------------------------------
+
+export function resolveClientId(
+  session: AnySession,
+  req: Request,
+): { clientId: string } | { error: 'missing_client' | 'forbidden_cross_client' } {
+  const param = new URL(req.url).searchParams.get('client');
+  if (session.kind === 'admin') {
+    if (!param) return { error: 'missing_client' };
+    return { clientId: param };
+  }
+  // bucket_user — JWT-scoped. Reject any explicit ?client= that doesn't match.
+  if (param && param !== session.client_id) {
+    return { error: 'forbidden_cross_client' };
+  }
+  return { clientId: session.client_id };
+}
+
+export function authorizeClientScope(
+  session: AnySession,
+  rowClientId: string,
+): { ok: true } | { error: 'forbidden_cross_client' } {
+  if (session.kind === 'admin') return { ok: true };
+  return rowClientId === session.client_id
+    ? { ok: true }
+    : { error: 'forbidden_cross_client' };
+}
