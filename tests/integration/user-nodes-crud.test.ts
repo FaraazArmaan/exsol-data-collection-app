@@ -458,3 +458,89 @@ describe('user-nodes GET — bucket-user widening', () => {
     expect(body.error.code).toBe('forbidden_cross_client');
   });
 });
+
+describe('user-nodes-detail GET — bucket-user widening', () => {
+  test('L1 Owner can GET their own L1 node row', async () => {
+    const { cookie: ownerCookie, nodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { node: { id: string; client_id: string } };
+    expect(body.node.id).toBe(nodeId);
+    expect(body.node.client_id).toBe(testClientId);
+  });
+
+  test('L1 Owner can GET another node in their own workspace (e.g. an L2 child)', async () => {
+    const { cookie: ownerCookie, nodeId: shopId } = await createL1OwnerCookie(testClientId, testClientSlug);
+    // Admin creates an L2 child under the shop.
+    const childResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: 2, parent_id: shopId, display_name: 'L2 child',
+        }),
+      }), CTX,
+    );
+    expect(childResp.status).toBe(201);
+    const childId = (await childResp.json() as { node: { id: string } }).node.id;
+
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${childId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { node: { id: string; client_id: string } };
+    expect(body.node.id).toBe(childId);
+    expect(body.node.client_id).toBe(testClientId);
+  });
+
+  test('L1 Owner gets 403 forbidden_cross_client when GETting a node in another workspace', async () => {
+    // Build client B with its own structure + a node.
+    const cr2 = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client B ${Date.now()}` }),
+      }), CTX,
+    );
+    const clientB = (await cr2.json() as { client: { id: string; slug: string } }).client;
+    createdClients.push(clientB.id);
+
+    const rrB = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'shop', label: 'Shop', color: '#ef4444' }),
+      }), CTX,
+    );
+    const roleShopB = (await rrB.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+      }), CTX,
+    );
+    const nodeBResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleShopB, level_number: 1, parent_id: null, display_name: 'B shop',
+        }),
+      }), CTX,
+    );
+    const nodeBId = (await nodeBResp.json() as { node: { id: string } }).node.id;
+
+    // Owner-A logs in and tries to GET node-B by id.
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesDetailHandler(
+      new Request(`http://localhost/api/user-nodes-detail?id=${nodeBId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
+  });
+});
