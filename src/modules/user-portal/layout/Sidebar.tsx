@@ -5,10 +5,14 @@ import { useUserAuth } from '../user-auth-context';
 export function Sidebar() {
   const { slug } = useParams<{ slug: string }>();
   const items = useNavItems();
-  const { user } = useUserAuth();
+  const { user, permissions } = useUserAuth();
   if (!slug) return null;
 
-  const isOwner = user && (user.level_number == null || user.level_number === 1);
+  const canManageTeam = user && (
+    user.level_number == null ||
+    user.level_number === 1 ||
+    permissions['_platform.users.view'] === true
+  );
 
   return (
     <aside className="sidebar">
@@ -26,7 +30,7 @@ export function Sidebar() {
           </>
         )}
 
-        {isOwner && (
+        {canManageTeam && (
           <>
             <div className="nav-group-header">Workspace</div>
             <NavLink to={`/c/${slug}/team`}>Team</NavLink>
