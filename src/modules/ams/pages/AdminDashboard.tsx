@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listClients, type ClientSummary } from '../api';
 import { ClientCard } from '../components/ClientCard';
-import { AddClientModal } from '../components/AddClientModal';
+import { OnboardClientWizard } from '../components/onboarding/OnboardClientWizard';
 
 export default function AdminDashboard() {
   const [clients, setClients] = useState<ClientSummary[]>([]);
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       )}
 
       {showAdd && (
-        <AddClientModal onClose={() => setShowAdd(false)} onCreated={refresh} />
+        <OnboardClientWizard onClose={() => setShowAdd(false)} onCreated={refresh} />
       )}
     </section>
   );
