@@ -55,3 +55,26 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .dropdown-menu { position: absolute; right: 0; top: calc(100% + 4px); min-width: 160px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 4px; z-index: 50; display: flex; flex-direction: column; }
 .dropdown-item { padding: 8px 12px; text-align: left; background: transparent; border: 0; color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; font: inherit; text-decoration: none; }
 .dropdown-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+/* Sidebar — user-portal variant places Account inside nav, anchored to bottom */
+.sidebar-nav-grow { flex: 1; }
+.sidebar-nav-footer { margin-top: auto; }
+
+/* Page-level layout primitives */
+.page { max-width: 960px; }
+.page-narrow { max-width: 720px; }
+.page-tight { max-width: 640px; }
+.page-title { margin: 0; font-size: 24px; }
+.page-header { margin-bottom: 24px; }
+.section-title { margin: 0 0 12px; font-size: 16px; }
+
+/* Tiles — composable on top of .card */
+.tile-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.tile { flex: 1; min-width: 180px; }
+.tile-link { text-decoration: none; color: inherit; display: block; }
+.tile-title { font-weight: 600; }
+.tile-sub { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.tile-disabled { opacity: 0.6; cursor: not-allowed; }
+.tile-disabled-badge { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-top: 8px; }
+.tile-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+.tile-stat-value { font-size: 20px; font-weight: 600; margin-top: 4px; }

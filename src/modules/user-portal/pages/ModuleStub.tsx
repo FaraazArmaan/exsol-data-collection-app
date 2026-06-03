@@ -12,8 +12,8 @@ export default function ModuleStub() {
   const item = navItems.find((n) => n.moduleKey === moduleKey);
   if (!item) return <Navigate to={`/c/${slug}`} replace />;
 
-  // Pull the verbs the user has on this Module, grouped per bucket.
   // Permission keys look like '<moduleKey>.<bucket>.<verb>'.
+  // Group the verbs the user has on this Module by bucket.
   const prefix = `${moduleKey}.`;
   const bucketVerbs = new Map<string, string[]>();
   for (const key of Object.keys(permissions)) {
@@ -31,13 +31,13 @@ export default function ModuleStub() {
   const isOwner = user.level_number == null || user.level_number === 1;
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      <h1 style={{ margin: 0, fontSize: 24 }}>{item.label}</h1>
+    <div className="page-narrow">
+      <h1 className="page-title">{item.label}</h1>
       <p className="muted" style={{ margin: '8px 0 24px', fontSize: 14 }}>
         This module's UI is coming soon.
       </p>
 
-      <div className="card" style={{ padding: 16 }}>
+      <div className="card">
         <h3 style={{ margin: '0 0 8px', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Your permissions here
         </h3>

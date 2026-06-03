@@ -49,8 +49,8 @@ export default function UserAccount() {
   if (!user) return null;
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      <h1 style={{ margin: '0 0 24px', fontSize: 24 }}>Account</h1>
+    <div className="page-tight">
+      <h1 className="page-title" style={{ marginBottom: 24 }}>Account</h1>
 
       <div className="card" style={{ marginBottom: 16, padding: 16 }}>
         <h3 style={{ margin: '0 0 8px' }}>Your account</h3>

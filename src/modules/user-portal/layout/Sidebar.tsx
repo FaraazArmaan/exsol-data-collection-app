@@ -8,7 +8,7 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <nav aria-label="Primary" style={{ flex: 1 }}>
+      <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
 
         {items.length > 0 && (
@@ -22,7 +22,7 @@ export function Sidebar() {
           </>
         )}
 
-        <NavLink to={`/c/${slug}/account`} style={{ marginTop: 'auto' }}>
+        <NavLink to={`/c/${slug}/account`} className="sidebar-nav-footer">
           Account
         </NavLink>
       </nav>
