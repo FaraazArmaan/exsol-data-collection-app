@@ -459,6 +459,52 @@ describe('user-nodes GET — bucket-user widening', () => {
   });
 });
 
+describe('user-nodes POST — bucket-user widening', () => {
+  test('L1 Owner can create a user in their workspace; row has created_by_admin IS NULL', async () => {
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesHandler(
+      new Request('http://localhost/api/user-nodes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: null, parent_id: null, display_name: 'Owner-created floater',
+        }),
+      }), CTX,
+    );
+    expect(r.status).toBe(201);
+    const body = await r.json() as { node: { id: string; client_id: string } };
+    expect(body.node.client_id).toBe(testClientId);
+
+    const rows = (await sql`
+      SELECT created_by_admin FROM public.user_nodes WHERE id = ${body.node.id}::uuid
+    `) as { created_by_admin: string | null }[];
+    expect(rows[0]!.created_by_admin).toBeNull();
+  });
+
+  test('L1 Owner POST with ?client=<other-client-id> returns 403 forbidden_cross_client', async () => {
+    const otherClientResp = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client Post ${Date.now()}` }),
+      }), CTX,
+    );
+    const otherId = (await otherClientResp.json() as { client: { id: string } }).client.id;
+    createdClients.push(otherId);
+
+    const { cookie: ownerCookie } = await createL1OwnerCookie(testClientId, testClientSlug);
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${otherId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({
+          role_id: roleOwner, level_number: null, parent_id: null, display_name: 'cross-client',
+        }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
+  });
+});
+
 describe('user-nodes-detail GET — bucket-user widening', () => {
   test('L1 Owner can GET their own L1 node row', async () => {
     const { cookie: ownerCookie, nodeId } = await createL1OwnerCookie(testClientId, testClientSlug);
