@@ -127,9 +127,9 @@ describe('onboard-client', () => {
   });
 
   test('invalid_reference rolls back — level allowed_role_keys references nonexistent role', async () => {
-    const before = (await sql`SELECT count(*)::int AS c FROM public.clients`) as { c: number }[];
+    const uniqName = `Onboard Bad Ref ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const r = await call({
-      name: `Onboard Bad Ref ${Date.now()}`,
+      name: uniqName,
       enabled_products: [],
       roles: [{ key: 'owner', label: 'Owner', color: '#3b82f6' }],
       levels: [{ level_number: 1, allowed_role_keys: ['nonexistent'] }],
@@ -140,14 +140,16 @@ describe('onboard-client', () => {
     const body = await r.json() as { error: { code: string; details: { section: string } } };
     expect(body.error.code).toBe('invalid_reference');
     expect(body.error.details.section).toBe('levels');
-    const after = (await sql`SELECT count(*)::int AS c FROM public.clients`) as { c: number }[];
-    expect(after[0]!.c).toBe(before[0]!.c); // no client row leaked
+    // No client row should exist for THIS submission's derived slug.
+    // Asserting by name (precise) instead of by global count (race-prone in parallel suites).
+    const leak = (await sql`SELECT id FROM public.clients WHERE name = ${uniqName} LIMIT 1`) as { id: string }[];
+    expect(leak.length).toBe(0);
   });
 
   test('cardinality_violation rolls back — rule + owner conflict', async () => {
-    const before = (await sql`SELECT count(*)::int AS c FROM public.clients`) as { c: number }[];
+    const uniqName = `Onboard Card Viol ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const r = await call({
-      name: `Onboard Card Viol ${Date.now()}`,
+      name: uniqName,
       enabled_products: [],
       roles: [{ key: 'owner', label: 'Owner', color: '#3b82f6' }],
       levels: [{ level_number: 1, allowed_role_keys: ['owner'] }],
@@ -159,8 +161,8 @@ describe('onboard-client', () => {
     const body = await r.json() as { error: { code: string; details: { section: string } } };
     expect(body.error.code).toBe('cardinality_violation');
     expect(body.error.details.section).toBe('owner');
-    const after = (await sql`SELECT count(*)::int AS c FROM public.clients`) as { c: number }[];
-    expect(after[0]!.c).toBe(before[0]!.c);
+    const leak = (await sql`SELECT id FROM public.clients WHERE name = ${uniqName} LIMIT 1`) as { id: string }[];
+    expect(leak.length).toBe(0);
   });
 
   test('admin attribution: created_by_admin set on client + user_node + credential', async () => {
