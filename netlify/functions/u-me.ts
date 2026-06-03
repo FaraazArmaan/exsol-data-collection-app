@@ -8,7 +8,8 @@ import {
   buCookieHeader, mintBucketUserSession, shouldRefreshBucketUser,
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
-import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
+import { requireBucketUser, UnauthorizedError, getLevelMatrix } from './_shared/permissions';
+import { derivePermissionRows } from '../../src/modules/registry/products';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');
@@ -47,6 +48,24 @@ export default async (req: Request, _ctx: Context) => {
   if (rows.length === 0) return jsonError(404, 'user_node_not_found');
   const row = rows[0]!;
 
+  const levelNumber = row.level_number ?? 1; // legacy rows without a level default to Primary
+  const permissions = await getLevelMatrix(row.client_id, levelNumber);
+
+  const enabledProductRows = (await sql`
+    SELECT product_key FROM public.client_enabled_products
+    WHERE client_id = ${row.client_id}::uuid
+  `) as { product_key: string }[];
+  const enabledProductKeys = enabledProductRows.map((r) => r.product_key);
+
+  // Reduce derivePermissionRows() down to a unique list of Modules.
+  const moduleMap = new Map<string, { key: string; label: string }>();
+  for (const pr of derivePermissionRows(enabledProductKeys)) {
+    if (!moduleMap.has(pr.module.key)) {
+      moduleMap.set(pr.module.key, { key: pr.module.key, label: pr.module.label });
+    }
+  }
+  const enabledModules = Array.from(moduleMap.values());
+
   const headers: Record<string, string> = {};
   if (shouldRefreshBucketUser(actor.claims)) {
     const fresh = await mintBucketUserSession({
@@ -71,5 +90,7 @@ export default async (req: Request, _ctx: Context) => {
       has_google: hasGoogle,
     },
     client: { id: row.client_id, slug: row.client_slug, name: row.client_name },
+    permissions,
+    enabled_modules: enabledModules,
   }, { headers });
 };
