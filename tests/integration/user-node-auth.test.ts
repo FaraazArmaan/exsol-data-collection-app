@@ -812,3 +812,138 @@ describe('u-me payload extensions (dashboard)', () => {
     expect(typeof body.permissions).toBe('object');
   });
 });
+
+describe('user-node-credential — bucket-user widening', () => {
+  // Local helper: log in as a bucket user against testClientSlug.
+  async function buLogin(email: string, password: string): Promise<string> {
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }), CTX,
+    );
+    if (r.status !== 200) throw new Error(`bu-login failed: ${r.status}`);
+    return r.headers.get('set-cookie')!.split(';')[0]!;
+  }
+
+  test('L1 Owner can POST reset another user\'s password (own workspace)', async () => {
+    const ownerEmail = `cred-owner-${Date.now()}@example.com`;
+    const ownerPw = 'cred-owner-pw-1';
+    await createNodeWithLogin(ownerEmail, ownerPw);
+    const ownerCookie = await buLogin(ownerEmail, ownerPw);
+
+    // Admin creates a target node (also L1 since this test client only has L1).
+    const targetEmail = `cred-target-${Date.now()}@example.com`;
+    const targetCreate = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: null, parent_id: null,
+          display_name: 'Target', email: targetEmail,
+          create_login: true, temp_password: 'target-orig-pw',
+        }),
+      }), CTX,
+    );
+    expect(targetCreate.status).toBe(201);
+    const targetId = (await targetCreate.json() as { node: { id: string } }).node.id;
+
+    // Owner resets target's password.
+    const reset = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${targetId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({ temp_password: 'owner-reset-pw-1' }),
+      }), CTX,
+    );
+    expect(reset.status).toBe(200);
+
+    // Verify the credential row updated — must_change_password true + temp pw set.
+    const rows = (await sql`
+      SELECT must_change_password, temp_password_plain
+      FROM public.user_node_credentials WHERE user_node_id = ${targetId}::uuid
+    `) as { must_change_password: boolean; temp_password_plain: string }[];
+    expect(rows[0]!.must_change_password).toBe(true);
+    expect(rows[0]!.temp_password_plain).toBe('owner-reset-pw-1');
+  });
+
+  test('L1 Owner can GET peek another user\'s temp password (own workspace)', async () => {
+    const ownerEmail = `cred-peek-owner-${Date.now()}@example.com`;
+    const ownerPw = 'cred-peek-owner-pw-1';
+    await createNodeWithLogin(ownerEmail, ownerPw);
+    const ownerCookie = await buLogin(ownerEmail, ownerPw);
+
+    const targetEmail = `cred-peek-target-${Date.now()}@example.com`;
+    const targetCreate = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: null, parent_id: null,
+          display_name: 'Peek Target', email: targetEmail,
+          create_login: true, temp_password: 'peek-temp-1234',
+        }),
+      }), CTX,
+    );
+    expect(targetCreate.status).toBe(201);
+    const targetId = (await targetCreate.json() as { node: { id: string } }).node.id;
+
+    const peek = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${targetId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(peek.status).toBe(200);
+    const body = await peek.json() as { temp_password_plain: string | null };
+    expect(body.temp_password_plain).toBe('peek-temp-1234');
+  });
+
+  test('Bucket-user cannot reset cred for a node in another workspace → 403', async () => {
+    // Owner-A in testClient.
+    const ownerEmail = `cred-cross-${Date.now()}@example.com`;
+    const ownerPw = 'cred-cross-pw-1';
+    await createNodeWithLogin(ownerEmail, ownerPw);
+    const ownerCookie = await buLogin(ownerEmail, ownerPw);
+
+    // Build client B + node with credential.
+    const cr2 = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Cred Other ${Date.now()}` }),
+      }), CTX,
+    );
+    const clientB = (await cr2.json() as { client: { id: string } }).client;
+    createdClients.push(clientB.id);
+    const rrB = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+      }), CTX,
+    );
+    const roleB = (await rrB.json() as { role: { id: string } }).role.id;
+    await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleB] }),
+    }), CTX);
+    const targetEmailB = `cred-target-B-${Date.now()}@example.com`;
+    const nodeBResp = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${clientB.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleB, level_number: 1, parent_id: null,
+          display_name: 'Target B', email: targetEmailB,
+          create_login: true, temp_password: 'b-target-pw-1',
+        }),
+      }), CTX,
+    );
+    expect(nodeBResp.status).toBe(201);
+    const nodeBId = (await nodeBResp.json() as { node: { id: string } }).node.id;
+
+    const r = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeBId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie: ownerCookie },
+        body: JSON.stringify({ temp_password: 'hijack-pw-12345' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
+  });
+});

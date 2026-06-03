@@ -1,10 +1,14 @@
 import { NavLink, useParams } from 'react-router-dom';
 import { useNavItems } from '../nav/useNavItems';
+import { useUserAuth } from '../user-auth-context';
 
 export function Sidebar() {
   const { slug } = useParams<{ slug: string }>();
   const items = useNavItems();
+  const { user } = useUserAuth();
   if (!slug) return null;
+
+  const isOwner = user && (user.level_number == null || user.level_number === 1);
 
   return (
     <aside className="sidebar">
@@ -19,6 +23,13 @@ export function Sidebar() {
                 {item.label}
               </NavLink>
             ))}
+          </>
+        )}
+
+        {isOwner && (
+          <>
+            <div className="nav-group-header">Workspace</div>
+            <NavLink to={`/c/${slug}/team`}>Team</NavLink>
           </>
         )}
 

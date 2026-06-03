@@ -1,7 +1,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { authenticateForPermission, authorizeClientScope } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { cycleCheck, getCardinalityCap } from './_shared/user-tree';
@@ -13,10 +13,9 @@ const Body = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
-  try { await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
+  const auth = await authenticateForPermission(req, '_platform.users.edit');
+  if (auth instanceof Response) return auth;
+  const session = auth;
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError(400, 'validation_failed', 'id required');
@@ -35,6 +34,9 @@ export default async (req: Request, _ctx: Context) => {
   `) as { id: string; client_id: string; parent_id: string | null; level_number: number | null; role_id: string }[];
   if (nodeRows.length === 0) return jsonError(404, 'not_found');
   const node = nodeRows[0]!;
+
+  const scope = authorizeClientScope(session, node.client_id);
+  if ('error' in scope) return jsonError(403, scope.error);
 
   // Case 1: moving to unassigned. The CHECK constraint requires unassigned nodes
   // to have NULL parent_id as well, so we flatten the entire subtree: every node

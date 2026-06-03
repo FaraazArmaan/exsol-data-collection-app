@@ -56,7 +56,10 @@ export default function UserDashboardHome() {
           ))}
           {isOwner && (
             <>
-              <StubTile title="Manage team" description="Add, edit, and remove users in your workspace." />
+              <Link to={`/c/${slug}/team`} className="card tile tile-link">
+                <div className="tile-title">Manage team</div>
+                <div className="tile-sub">Add, edit, and remove users in your workspace.</div>
+              </Link>
               <StubTile title="Settings" description="Configure workspace preferences and integrations." />
             </>
           )}

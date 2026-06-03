@@ -1,7 +1,9 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import {
+  authenticateForPermission, authorizeClientScope,
+} from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 
@@ -14,11 +16,6 @@ const PatchBody = z.object({
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
-
   const url = new URL(req.url);
   const id = url.searchParams.get('id');
   if (!id) return jsonError(400, 'validation_failed', 'id required');
@@ -27,17 +24,37 @@ export default async (req: Request, _ctx: Context) => {
   const sql = db();
 
   if (req.method === 'GET') {
+    const auth = await authenticateForPermission(req, '_platform.users.view');
+    if (auth instanceof Response) return auth;
+    const session = auth;
+
     const rows = (await sql`
       SELECT id, client_id, parent_id, level_number, role_id, display_name, email,
              phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
       FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
-    `) as unknown[];
+    `) as Array<{ client_id: string }>;
     if (rows.length === 0) return jsonError(404, 'not_found');
+
+    const scope = authorizeClientScope(session, rows[0]!.client_id);
+    if ('error' in scope) return jsonError(403, scope.error);
+
     const c = (await sql`SELECT count(*)::int AS c FROM public.user_nodes WHERE parent_id = ${id}::uuid`) as { c: number }[];
     return jsonOk({ node: rows[0], children_count: c[0]!.c });
   }
 
   if (req.method === 'PATCH') {
+    const auth = await authenticateForPermission(req, '_platform.users.edit');
+    if (auth instanceof Response) return auth;
+    const session = auth;
+
+    // Row-based authz: fetch first, then check client scope before mutating.
+    const existing = (await sql`
+      SELECT client_id FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string }[];
+    if (existing.length === 0) return jsonError(404, 'not_found');
+    const scope = authorizeClientScope(session, existing[0]!.client_id);
+    if ('error' in scope) return jsonError(403, scope.error);
+
     const parsed = PatchBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
     const d = parsed.data;
@@ -96,6 +113,17 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'DELETE') {
+    const auth = await authenticateForPermission(req, '_platform.users.delete');
+    if (auth instanceof Response) return auth;
+    const session = auth;
+
+    const existing = (await sql`
+      SELECT client_id FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string }[];
+    if (existing.length === 0) return jsonError(404, 'not_found');
+    const scope = authorizeClientScope(session, existing[0]!.client_id);
+    if ('error' in scope) return jsonError(403, scope.error);
+
     const cascade = url.searchParams.get('cascade') === 'descendants';
 
     if (!cascade) {

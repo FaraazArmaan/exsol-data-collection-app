@@ -10,6 +10,8 @@ import clientRolesDetailHandler from '../../netlify/functions/client-roles-detai
 import clientLevelsHandler from '../../netlify/functions/client-levels';
 import clientLevelsDetailHandler from '../../netlify/functions/client-levels-detail';
 import clientCardinalityHandler from '../../netlify/functions/client-cardinality';
+import userNodesHandler from '../../netlify/functions/user-nodes';
+import uLoginHandler from '../../netlify/functions/u-login';
 
 const ADMIN_EMAIL = 'client-structure-test@example.com';
 const ADMIN_PASSWORD = 'client-structure-pw';
@@ -18,6 +20,7 @@ const CTX = {} as Context;
 let sql: ReturnType<typeof neon>;
 let cookie: string;
 let testClientId: string;
+let testClientSlug: string;
 const createdClients: string[] = [];
 
 beforeAll(async () => {
@@ -50,7 +53,9 @@ beforeEach(async () => {
     CTX,
   );
   if (cr.status !== 201) throw new Error('client create failed');
-  testClientId = (await cr.json() as { client: { id: string } }).client.id;
+  const created = (await cr.json() as { client: { id: string; slug: string } }).client;
+  testClientId = created.id;
+  testClientSlug = created.slug;
   createdClients.push(testClientId);
 });
 
@@ -274,5 +279,104 @@ describe('client-structure', () => {
     const struct = await g.json() as { cardinality_rules: Array<{ max_children: number }> };
     expect(struct.cardinality_rules).toHaveLength(1);
     expect(struct.cardinality_rules[0]!.max_children).toBe(5);
+  });
+});
+
+describe('client-structure — bucket-user widening', () => {
+  // Create an L1 role + level so we can produce an L1 Owner login.
+  async function setupL1OwnerScaffolding(): Promise<string> {
+    const rr = await clientRolesHandler(
+      new Request(`http://localhost/api/client-roles?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+      }), CTX,
+    );
+    if (rr.status !== 201) throw new Error(`role create failed: ${rr.status}`);
+    const roleId = (await rr.json() as { role: { id: string } }).role.id;
+    const lr = await clientLevelsHandler(
+      new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+      }), CTX,
+    );
+    if (lr.status !== 201) throw new Error(`level create failed: ${lr.status}`);
+    return roleId;
+  }
+
+  // Local helper — creates an L1 Owner node + logs in + returns the bu_session cookie.
+  async function createOwnerCookie(
+    clientId: string, clientSlug: string, roleId: string,
+  ): Promise<string> {
+    const email = `owner-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`;
+    const pw = `owner-pw-${Date.now()}`;
+    const r = await userNodesHandler(
+      new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({
+          role_id: roleId, level_number: 1, parent_id: null,
+          display_name: 'Owner', email,
+          create_login: true, temp_password: pw,
+        }),
+      }), CTX,
+    );
+    if (r.status !== 201) throw new Error(`owner create failed: ${r.status} ${await r.text()}`);
+    const login = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${clientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pw }),
+      }), CTX,
+    );
+    if (login.status !== 200) throw new Error(`owner login failed: ${login.status}`);
+    return login.headers.get('set-cookie')!.split(';')[0]!;
+  }
+
+  test('L1 Owner can GET /api/client-structure without ?client= (JWT-scoped)', async () => {
+    const roleId = await setupL1OwnerScaffolding();
+    const ownerCookie = await createOwnerCookie(testClientId, testClientSlug, roleId);
+    const r = await clientStructureHandler(
+      new Request('http://localhost/api/client-structure', {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json() as { roles: Array<{ id: string }>; levels: Array<{ id: string }> };
+    expect(body.roles.some((r) => r.id === roleId)).toBe(true);
+    expect(body.levels.length).toBeGreaterThan(0);
+  });
+
+  test('L1 Owner with ?client= matching their workspace also succeeds', async () => {
+    const roleId = await setupL1OwnerScaffolding();
+    const ownerCookie = await createOwnerCookie(testClientId, testClientSlug, roleId);
+    const r = await clientStructureHandler(
+      new Request(`http://localhost/api/client-structure?client=${testClientId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+  });
+
+  test('bucket-user passing ?client=<other-client-id> gets 403 forbidden_cross_client', async () => {
+    const roleId = await setupL1OwnerScaffolding();
+
+    // Create a second client (clientB) using the admin cookie.
+    const otherClientResp = await clientsHandler(
+      new Request('http://localhost/api/clients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ name: `Other Client ${Date.now()}` }),
+      }), CTX,
+    );
+    const otherId = (await otherClientResp.json() as { client: { id: string } }).client.id;
+    createdClients.push(otherId);
+
+    const ownerCookie = await createOwnerCookie(testClientId, testClientSlug, roleId);
+
+    const r = await clientStructureHandler(
+      new Request(`http://localhost/api/client-structure?client=${otherId}`, {
+        method: 'GET', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(r.status).toBe(403);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('forbidden_cross_client');
   });
 });

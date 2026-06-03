@@ -2,7 +2,10 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import {
+  authenticateForPermission, resolveClientIdOrRespond,
+  type AnySession,
+} from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
@@ -22,14 +25,23 @@ const CreateBody = z.object({
 });
 
 export default async (req: Request, _ctx: Context) => {
-  let actor;
-  try { actor = await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
+  let session: AnySession;
+
+  if (req.method === 'GET') {
+    const auth = await authenticateForPermission(req, '_platform.users.view');
+    if (auth instanceof Response) return auth;
+    session = auth;
+  } else if (req.method === 'POST') {
+    const auth = await authenticateForPermission(req, '_platform.users.create');
+    if (auth instanceof Response) return auth;
+    session = auth;
+  } else {
+    return jsonError(405, 'method_not_allowed');
   }
 
-  const clientId = new URL(req.url).searchParams.get('client');
-  if (!clientId) return jsonError(400, 'validation_failed', 'client required');
+  const scope = resolveClientIdOrRespond(session, req);
+  if (scope instanceof Response) return scope;
+  const clientId = scope.clientId;
   try { assertUuid(clientId, 'client'); } catch { return jsonError(400, 'validation_failed', 'client must be uuid'); }
 
   const sql = db();
@@ -50,7 +62,8 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'POST') {
-    return await handleCreate(req, sql, clientId, actor.admin.id);
+    const adminId = session.kind === 'bucket_user' ? null : session.admin.id;
+    return await handleCreate(req, sql, clientId, adminId);
   }
 
   return jsonError(405, 'method_not_allowed');
@@ -60,7 +73,7 @@ async function handleCreate(
   req: Request,
   sql: NeonQueryFunction<false, false>,
   clientId: string,
-  adminId: string,
+  adminId: string | null,
 ): Promise<Response> {
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -203,7 +216,7 @@ async function maybeCreateCredential(
   clientId: string,
   node: Record<string, unknown>,
   data: z.infer<typeof CreateBody>,
-  adminId: string,
+  adminId: string | null,
 ): Promise<Response> {
   if (!data.create_login) return jsonOk({ node }, { status: 201 });
 

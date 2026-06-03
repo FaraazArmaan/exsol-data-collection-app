@@ -12,6 +12,7 @@ import UserChangePassword from '../modules/user-portal/pages/UserChangePassword'
 import UserAccount from '../modules/user-portal/pages/UserAccount';
 import UserDashboardHome from '../modules/user-portal/pages/UserDashboardHome';
 import ModuleStub from '../modules/user-portal/pages/ModuleStub';
+import UserManageTeam from '../modules/user-portal/pages/UserManageTeam';
 import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/UserPortalRoutes';
 import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
 
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <UserDashboardHome /> },
               { path: 'account', element: <UserAccount /> },
+              { path: 'team', element: <UserManageTeam /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
