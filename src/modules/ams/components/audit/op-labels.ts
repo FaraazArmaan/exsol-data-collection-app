@@ -19,6 +19,8 @@ export const OP_LABELS: Record<string, string> = {
   'user_node.updated': 'Edited team member',
   'user_node.deleted': 'Removed team member',
   'user_node.moved': 'Moved team member',
+  'users.bulk_invited': 'Bulk-invited team members',
+  'users.bulk_role_changed': 'Bulk-changed roles',
   'credential.peeked': 'Viewed temp password',
   'credential.reset': 'Reset password',
   'credential.deleted': 'Removed login',
@@ -55,6 +57,22 @@ export function summarize(op: string, detail: Record<string, unknown> | null): s
     if (v.new_parent_id === null && v.new_level_number === null) return 'moved to unassigned';
     if (typeof v.new_level_number === 'number') return `moved to level ${v.new_level_number}`;
     return '';
+  }
+  if (op === 'users.bulk_invited') {
+    const v = detail as { count?: number; login_count?: number; role_keys?: string[] };
+    const parts: string[] = [];
+    if (typeof v.count === 'number') parts.push(`${v.count} user${v.count === 1 ? '' : 's'}`);
+    if (typeof v.login_count === 'number' && v.login_count > 0) parts.push(`${v.login_count} login${v.login_count === 1 ? '' : 's'}`);
+    if (Array.isArray(v.role_keys) && v.role_keys.length > 0) parts.push(`role${v.role_keys.length === 1 ? '' : 's'}: ${v.role_keys.join(', ')}`);
+    return parts.join(' · ');
+  }
+  if (op === 'users.bulk_role_changed') {
+    const v = detail as { count?: number; to_role_key?: string; from_role_keys?: string[] };
+    const parts: string[] = [];
+    if (typeof v.count === 'number') parts.push(`${v.count} user${v.count === 1 ? '' : 's'}`);
+    if (v.to_role_key) parts.push(`→ ${v.to_role_key}`);
+    if (Array.isArray(v.from_role_keys) && v.from_role_keys.length > 0) parts.push(`from ${v.from_role_keys.join(', ')}`);
+    return parts.join(' · ');
   }
   if (op === 'cardinality.replaced') {
     const v = detail as { rules_count?: number };
