@@ -55,7 +55,7 @@ export const router = createBrowserRouter([
               { index: true, element: <UserDashboardHome /> },
               { path: 'account', element: <UserAccount /> },
               { path: 'team', element: <UserManageTeam /> },
-              { path: 'files', element: <WorkspaceFilesPage /> },
+              { path: 'file-manager', element: <WorkspaceFilesPage /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
     element: <RequireAdmin />,
     children: [
       { path: '/', element: <AdminDashboard /> },
-      { path: '/files', element: <AdminFilesPage /> },
+      { path: '/file-manager', element: <AdminFilesPage /> },
       { path: '/settings', element: <AdminSettings /> },
       { path: '/audit', element: <AuditLog /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },

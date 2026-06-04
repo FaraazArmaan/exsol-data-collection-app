@@ -20,7 +20,7 @@ export function Sidebar() {
         ) : (
           <>
             <NavLink to="/" end>Dashboard</NavLink>
-            <NavLink to="/files">Files</NavLink>
+            <NavLink to="/file-manager">File Manager</NavLink>
             <NavLink to="/audit">Audit</NavLink>
             <NavLink to="/settings">Settings</NavLink>
           </>
