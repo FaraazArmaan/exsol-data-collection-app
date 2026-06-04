@@ -9,6 +9,7 @@ import AccessLevelDashboard from '../modules/ams/pages/AccessLevelDashboard';
 import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import AuditLog from '../modules/ams/pages/AuditLog';
 import ClientAuditLog from '../modules/ams/pages/ClientAuditLog';
+import FilesPage from '../modules/ams/pages/FilesPage';
 import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
 import UserAccount from '../modules/user-portal/pages/UserAccount';
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <AdminDashboard /> },
       { path: '/settings', element: <AdminSettings /> },
       { path: '/audit', element: <AuditLog /> },
+      { path: '/files', element: <FilesPage /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },

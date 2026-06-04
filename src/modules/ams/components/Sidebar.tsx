@@ -21,6 +21,7 @@ export function Sidebar() {
           <>
             <NavLink to="/" end>Dashboard</NavLink>
             <NavLink to="/audit">Audit</NavLink>
+            <NavLink to="/files">Files</NavLink>
             <NavLink to="/settings">Settings</NavLink>
           </>
         )}
