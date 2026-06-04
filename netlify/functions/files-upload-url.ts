@@ -53,12 +53,7 @@ export default async (req: Request, _ctx: Context) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
-  if (!isAllowedMime(parsed.data.mime)) {
-    return new Response(JSON.stringify({ error: 'mime_not_allowed' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-    });
-  }
+  if (!isAllowedMime(parsed.data.mime)) return jsonError(400, 'mime_not_allowed');
 
   // Admin → admin vault. Workspace → workspace scope.
   let blob_key: string;

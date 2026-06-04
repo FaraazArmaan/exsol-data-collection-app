@@ -75,6 +75,6 @@ describe('POST /api/files-upload-url', () => {
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe('mime_not_allowed');
+    expect(body.error.code).toBe('mime_not_allowed');
   });
 });
