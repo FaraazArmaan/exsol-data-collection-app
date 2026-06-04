@@ -69,3 +69,64 @@ describe('migration 030: files table', () => {
     `).rejects.toThrow(/files_uploader_consistent/);
   });
 });
+
+describe('migration 031: file_categories', () => {
+  test('table exists with PK (file_id, category_key)', async () => {
+    const cols = (await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'file_categories'
+      ORDER BY ordinal_position
+    `) as { column_name: string }[];
+    expect(cols.map((c) => c.column_name)).toEqual(['file_id', 'category_key']);
+  });
+
+  test('CHECK constraint rejects unknown category key', async () => {
+    const clients = (await sql`SELECT id FROM public.clients LIMIT 1`) as { id: string }[];
+    if (clients.length === 0) return;
+    const nodeRows = (await sql`
+      SELECT id FROM public.user_nodes WHERE client_id = ${clients[0]!.id}::uuid LIMIT 1
+    `) as { id: string }[];
+    if (nodeRows.length === 0) return;
+    const fileRows = (await sql`
+      INSERT INTO public.files (client_id, type, storage_kind, blob_key, title, uploaded_by_user_node)
+      VALUES (${clients[0]!.id}::uuid, 'document', 'blob', 'k-test', 't', ${nodeRows[0]!.id}::uuid)
+      RETURNING id
+    `) as { id: string }[];
+    const fileId = fileRows[0]!.id;
+    try {
+      await expect(sql`
+        INSERT INTO public.file_categories (file_id, category_key)
+        VALUES (${fileId}::uuid, 'not_a_real_key')
+      `).rejects.toThrow();
+    } finally {
+      await sql`DELETE FROM public.files WHERE id = ${fileId}::uuid`;
+    }
+  });
+
+  test('all 11 TS categories pass the CHECK', async () => {
+    const clients = (await sql`SELECT id FROM public.clients LIMIT 1`) as { id: string }[];
+    if (clients.length === 0) return;
+    const nodeRows = (await sql`
+      SELECT id FROM public.user_nodes WHERE client_id = ${clients[0]!.id}::uuid LIMIT 1
+    `) as { id: string }[];
+    if (nodeRows.length === 0) return;
+    const fileRows = (await sql`
+      INSERT INTO public.files (client_id, type, storage_kind, blob_key, title, uploaded_by_user_node)
+      VALUES (${clients[0]!.id}::uuid, 'document', 'blob', 'k-test-2', 't', ${nodeRows[0]!.id}::uuid)
+      RETURNING id
+    `) as { id: string }[];
+    const fileId = fileRows[0]!.id;
+    const { CATEGORY_KEYS } = await import('../../src/modules/files/shared/categories');
+    try {
+      for (const k of CATEGORY_KEYS) {
+        await sql`INSERT INTO public.file_categories (file_id, category_key) VALUES (${fileId}::uuid, ${k})`;
+      }
+      const rows = (await sql`
+        SELECT category_key FROM public.file_categories WHERE file_id = ${fileId}::uuid
+      `) as { category_key: string }[];
+      expect(rows).toHaveLength(11);
+    } finally {
+      await sql`DELETE FROM public.files WHERE id = ${fileId}::uuid`;
+    }
+  });
+});
