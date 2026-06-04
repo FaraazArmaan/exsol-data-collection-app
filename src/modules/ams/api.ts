@@ -273,3 +273,49 @@ export const onboardClient = (body: OnboardClientBody) =>
   apiFetch<{ client: { id: string; name: string; slug: string } }>('/api/onboard-client', {
     method: 'POST', body: JSON.stringify(body),
   });
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+export interface AuditLogActor {
+  kind: 'admin' | 'bucket_user' | 'unknown';
+  id: string | null;
+  label: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  occurred_at: string;
+  actor: AuditLogActor;
+  op: string;
+  client_id: string | null;
+  client_name: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  detail: Record<string, unknown> | null;
+}
+
+export interface AuditLogFilter {
+  actor_admin?: string;
+  actor_user_node?: string;
+  client_id?: string;
+  op?: string;
+  target_type?: string;
+  target_id?: string;
+  since?: string;
+  until?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export const listAuditLog = (filter: AuditLogFilter = {}) => {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(filter)) {
+    if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+  }
+  const qs = q.toString();
+  return apiFetch<{ entries: AuditLogEntry[]; total: number; page: number; page_size: number }>(
+    `/api/audit-log${qs ? `?${qs}` : ''}`,
+  );
+};
