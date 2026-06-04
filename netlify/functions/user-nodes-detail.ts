@@ -6,6 +6,7 @@ import {
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const PatchBody = z.object({
   display_name: z.string().min(1).max(200).optional(),
@@ -86,6 +87,15 @@ export default async (req: Request, _ctx: Context) => {
     if (rows.length === 0) return jsonError(404, 'not_found');
     const node = rows[0]!;
 
+    await logAudit(sql, {
+      session,
+      op: 'user_node.updated',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: id,
+      detail: d as Record<string, unknown>,
+    });
+
     // Propagate the email change to the credential row so login keeps
     // working. If the credential doesn't exist for this node, the UPDATE
     // is a no-op. If the new email collides with another credential's
@@ -122,14 +132,16 @@ export default async (req: Request, _ctx: Context) => {
     const session = auth;
 
     const existing = (await sql`
-      SELECT client_id FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
-    `) as { client_id: string }[];
+      SELECT client_id, display_name FROM public.user_nodes WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string; display_name: string }[];
     if (existing.length === 0) return jsonError(404, 'not_found');
     const scope = authorizeClientScope(session, existing[0]!.client_id);
     if ('error' in scope) return jsonError(403, scope.error);
     const subtree = await authorizeSubtreeScope(sql, session, id);
     if ('error' in subtree) return jsonError(403, subtree.error);
 
+    const clientIdOfRow = existing[0]!.client_id;
+    const displayName = existing[0]!.display_name;
     const cascade = url.searchParams.get('cascade') === 'descendants';
 
     if (!cascade) {
@@ -137,6 +149,14 @@ export default async (req: Request, _ctx: Context) => {
       if (kids.length > 0) return jsonError(409, 'has_children');
       const out = (await sql`DELETE FROM public.user_nodes WHERE id = ${id}::uuid RETURNING id`) as unknown[];
       if (out.length === 0) return jsonError(404, 'not_found');
+      await logAudit(sql, {
+        session,
+        op: 'user_node.deleted',
+        clientId: clientIdOfRow,
+        targetType: 'user_node',
+        targetId: id,
+        detail: { display_name: displayName },
+      });
       return jsonOk({ ok: true });
     }
 
@@ -151,6 +171,14 @@ export default async (req: Request, _ctx: Context) => {
       RETURNING id
     `) as unknown[];
     if (out.length === 0) return jsonError(404, 'not_found');
+    await logAudit(sql, {
+      session,
+      op: 'user_node.deleted',
+      clientId: clientIdOfRow,
+      targetType: 'user_node',
+      targetId: id,
+      detail: { display_name: displayName },
+    });
     return jsonOk({ ok: true, deleted_count: out.length });
   }
 

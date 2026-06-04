@@ -11,6 +11,7 @@ import userNodesHandler from '../../netlify/functions/user-nodes';
 import userNodesDetailHandler from '../../netlify/functions/user-nodes-detail';
 import userNodesMoveHandler from '../../netlify/functions/user-nodes-move';
 import uLoginHandler from '../../netlify/functions/u-login';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'user-nodes-test@example.com';
 const ADMIN_PASSWORD = 'user-nodes-pw';
@@ -132,6 +133,13 @@ describe('user-nodes CRUD', () => {
     `) as { created_by_admin: string | null; created_by_user_node: string | null }[];
     expect(attribution[0]!.created_by_admin).not.toBeNull();
     expect(attribution[0]!.created_by_user_node).toBeNull();
+    await assertLastAudit(sql, {
+      op: 'user_node.created',
+      targetType: 'user_node',
+      targetId: body.node.id,
+      clientId: testClientId,
+      actorUserNodeId: null,
+    });
   });
 
   test('GET returns the list of nodes for a client', async () => {
@@ -280,6 +288,12 @@ describe('user-nodes CRUD', () => {
     const body = await p.json() as { node: { display_name: string; notes: string } };
     expect(body.node.display_name).toBe('New');
     expect(body.node.notes).toBe('updated');
+    await assertLastAudit(sql, {
+      op: 'user_node.updated',
+      targetType: 'user_node',
+      targetId: id,
+      clientId: testClientId,
+    });
   });
 
   test('DELETE node with children returns 409 has_children', async () => {
@@ -332,6 +346,12 @@ describe('user-nodes CRUD', () => {
     expect(d.status).toBe(200);
     const remaining = (await sql`SELECT id FROM public.user_nodes WHERE id = ${sid}::uuid`) as unknown[];
     expect(remaining).toHaveLength(0);
+    await assertLastAudit(sql, {
+      op: 'user_node.deleted',
+      targetType: 'user_node',
+      targetId: sid,
+      clientId: testClientId,
+    });
   });
 
   test('PATCH email propagates to user_node_credentials so login email stays in sync', async () => {
@@ -750,6 +770,14 @@ describe('user-nodes POST — bucket-user widening', () => {
     `) as { created_by_admin: string | null; created_by_user_node: string | null }[];
     expect(rows[0]!.created_by_admin).toBeNull();
     expect(rows[0]!.created_by_user_node).toBe(ownerNodeId);
+    await assertLastAudit(sql, {
+      op: 'user_node.created',
+      targetType: 'user_node',
+      targetId: body.node.id,
+      clientId: testClientId,
+      actorUserNodeId: ownerNodeId,
+      actorAdminId: null,
+    });
   });
 
   test('L1 Owner POST with ?client=<other-client-id> returns 403 forbidden_cross_client', async () => {

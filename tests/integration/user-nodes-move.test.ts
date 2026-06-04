@@ -10,6 +10,7 @@ import clientCardinalityHandler from '../../netlify/functions/client-cardinality
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import userNodesMoveHandler from '../../netlify/functions/user-nodes-move';
 import uLoginHandler from '../../netlify/functions/u-login';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'user-nodes-move-test@example.com';
 const ADMIN_PASSWORD = 'user-nodes-move-pw';
@@ -102,6 +103,12 @@ describe('user-nodes-move', () => {
     const body = await r.json() as { node: { parent_id: string; level_number: number } };
     expect(body.node.parent_id).toBe(ownerB);
     expect(body.node.level_number).toBe(3);
+    await assertLastAudit(sql, {
+      op: 'user_node.moved',
+      targetType: 'user_node',
+      targetId: emp,
+      clientId: testClientId,
+    });
   });
 
   test('move to unassigned makes the entire subtree unassigned', async () => {

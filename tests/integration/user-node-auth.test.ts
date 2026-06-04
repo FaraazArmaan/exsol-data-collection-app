@@ -22,6 +22,7 @@ import authMeHandler from '../../netlify/functions/auth-me';
 import loginUnifiedHandler from '../../netlify/functions/login';
 import forgotPasswordHandler from '../../netlify/functions/forgot-password';
 import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'user-node-auth-test@example.com';
 const ADMIN_PASSWORD = 'user-node-auth-pw';
@@ -242,6 +243,12 @@ describe('user-node auth', () => {
     const fullBody = await fullR.json() as { temp_password_plain: string | null; temp_password_views_left: number | null };
     expect(fullBody.temp_password_plain).toBe('peek-test-1');
     expect(fullBody.temp_password_views_left).toBe(2);
+    await assertLastAudit(sql, {
+      op: 'credential.peeked',
+      targetType: 'user_node',
+      targetId: nodeId,
+      clientId: testClientId,
+    });
   });
 
   test('forgot-password sets password_reset_requested_at on matching credentials', async () => {
@@ -876,6 +883,29 @@ describe('user-node-credential — bucket-user widening', () => {
     expect(rows[0]!.temp_password_plain).toBe('owner-reset-pw-1');
     expect(rows[0]!.created_by_admin).toBeNull();
     expect(rows[0]!.created_by_user_node).toBe(ownerNodeId);
+    await assertLastAudit(sql, {
+      op: 'credential.reset',
+      targetType: 'user_node',
+      targetId: targetId,
+      clientId: testClientId,
+      actorUserNodeId: ownerNodeId,
+      actorAdminId: null,
+    });
+
+    // Same test exercises credential DELETE attribution + audit row (credential.deleted).
+    const del = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${targetId}`, {
+        method: 'DELETE', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(del.status).toBe(200);
+    await assertLastAudit(sql, {
+      op: 'credential.deleted',
+      targetType: 'user_node',
+      targetId: targetId,
+      clientId: testClientId,
+      actorUserNodeId: ownerNodeId,
+    });
   });
 
   test('L1 Owner can GET peek another user\'s temp password (own workspace)', async () => {

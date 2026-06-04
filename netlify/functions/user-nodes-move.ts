@@ -6,6 +6,7 @@ import { subtreeOf } from './_shared/subtree';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { cycleCheck, getCardinalityCap } from './_shared/user-tree';
+import { logAudit } from './_shared/audit';
 
 const Body = z.object({
   parent_id: z.string().uuid().nullable(),
@@ -75,6 +76,14 @@ export default async (req: Request, _ctx: Context) => {
       SET parent_id = NULL, level_number = NULL
       WHERE id = ANY(${subtreeIds}::uuid[])
     `;
+    await logAudit(sql, {
+      session,
+      op: 'user_node.moved',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: id,
+      detail: { new_parent_id: newParent, new_level_number: newLevel },
+    });
     return jsonOk({ ok: true, moved_to: 'unassigned' });
   }
 
@@ -134,6 +143,14 @@ export default async (req: Request, _ctx: Context) => {
       SELECT id, client_id, parent_id, level_number, role_id, display_name
       FROM public.user_nodes WHERE id = ${id}::uuid
     `) as unknown[];
+    await logAudit(sql, {
+      session,
+      op: 'user_node.moved',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: id,
+      detail: { new_parent_id: newParent, new_level_number: newLevel },
+    });
     return jsonOk({ node: rows[0] });
   }
 
@@ -204,5 +221,13 @@ export default async (req: Request, _ctx: Context) => {
     SELECT id, client_id, parent_id, level_number, role_id, display_name
     FROM public.user_nodes WHERE id = ${id}::uuid
   `) as unknown[];
+  await logAudit(sql, {
+    session,
+    op: 'user_node.moved',
+    clientId: node.client_id,
+    targetType: 'user_node',
+    targetId: id,
+    detail: { new_parent_id: newParent, new_level_number: newLevel },
+  });
   return jsonOk({ node: rows[0] });
 };

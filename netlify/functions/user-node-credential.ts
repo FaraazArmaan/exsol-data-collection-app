@@ -11,6 +11,7 @@ import { hashPassword } from './_shared/argon';
 import { authenticateForPermission, authorizeClientScope, authorizeSubtreeScope } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const ResetBody = z.object({ temp_password: z.string().min(8).max(200) });
 
@@ -77,6 +78,14 @@ export default async (req: Request, _ctx: Context) => {
     if (!cred) return jsonOk({ has_credential: false });
 
     if (peek) {
+      await logAudit(sql, {
+        session,
+        op: 'credential.peeked',
+        clientId: cred.client_id,
+        targetType: 'user_node',
+        targetId: nodeId,
+        detail: { views_left_after: cred.temp_password_views_left },
+      });
       return jsonOk({
         has_credential: true,
         email: cred.email,
@@ -151,11 +160,27 @@ export default async (req: Request, _ctx: Context) => {
       if (code === '23505') return jsonError(409, 'email_already_has_login_in_this_client');
       throw e;
     }
+    await logAudit(sql, {
+      session,
+      op: 'credential.reset',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: nodeId,
+      detail: { has_temp_password: true },
+    });
     return jsonOk({ ok: true });
   }
 
   if (req.method === 'DELETE') {
     await sql`DELETE FROM public.user_node_credentials WHERE user_node_id = ${nodeId}::uuid`;
+    await logAudit(sql, {
+      session,
+      op: 'credential.deleted',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: nodeId,
+      detail: {},
+    });
     return jsonOk({ ok: true });
   }
 
