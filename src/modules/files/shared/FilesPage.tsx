@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useEffect, useState } from 'react';
 import type { CategoryKey } from './categories';
 import type { FileRow, FileType } from './types';
@@ -17,6 +18,8 @@ export function FilesPage({ clientId, isL1Owner }: Props) {
   const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   function load() {
@@ -28,11 +31,29 @@ export function FilesPage({ clientId, isL1Owner }: Props) {
 
   useEffect(load, [clientId, activeType, selectedCategories.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragActive(false);
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    setDroppedFile(f);
+    setShowUpload(true);
+  }
+
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 24 }}>
+    <div
+      onDragOver={(e) => { e.preventDefault(); if (!dragActive) setDragActive(true); }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragActive(false); }}
+      onDrop={onDrop}
+      style={{
+        maxWidth: 1100, margin: '0 auto', padding: 24,
+        outline: dragActive ? '2px dashed #4a8' : 'none',
+        outlineOffset: -8,
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Files</h2>
-        <button type="button" onClick={() => setShowUpload(true)} style={{ background: '#fff', color: '#000', padding: '6px 14px' }}>
+        <button type="button" onClick={() => { setDroppedFile(null); setShowUpload(true); }} style={{ background: '#fff', color: '#000', padding: '6px 14px' }}>
           + Upload
         </button>
       </div>
@@ -46,7 +67,8 @@ export function FilesPage({ clientId, isL1Owner }: Props) {
       {showUpload && (
         <UploadModal
           clientId={clientId} isL1Owner={isL1Owner} isAdminVault={clientId === null}
-          onClose={() => setShowUpload(false)}
+          initialFile={droppedFile}
+          onClose={() => { setShowUpload(false); setDroppedFile(null); }}
           onUploaded={load}
         />
       )}

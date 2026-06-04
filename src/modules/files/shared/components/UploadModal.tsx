@@ -9,13 +9,14 @@ interface Props {
   clientId: string | null;
   isL1Owner: boolean;
   isAdminVault: boolean;
+  initialFile?: File | null;
   onClose: () => void;
   onUploaded: () => void;
 }
 
-export function UploadModal({ clientId, isL1Owner, isAdminVault, onClose, onUploaded }: Props) {
+export function UploadModal({ clientId, isL1Owner, isAdminVault, initialFile, onClose, onUploaded }: Props) {
   const [mode, setMode] = useState<'file' | 'url'>('file');
-  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [pickedFile, setPickedFile] = useState<File | null>(initialFile ?? null);
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -90,7 +91,12 @@ export function UploadModal({ clientId, isL1Owner, isAdminVault, onClose, onUplo
         </div>
 
         {mode === 'file'
-          ? <input type="file" onChange={(e) => setPickedFile(e.target.files?.[0] ?? null)} />
+          ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input type="file" onChange={(e) => setPickedFile(e.target.files?.[0] ?? null)} />
+              {pickedFile && <span style={{ fontSize: 12, color: '#888' }}>{pickedFile.name}</span>}
+            </div>
+          )
           : <input placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: '100%', padding: 8 }} />}
 
         <label style={{ display: 'block', marginTop: 12 }}>

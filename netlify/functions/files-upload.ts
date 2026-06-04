@@ -6,7 +6,7 @@
 import type { Context } from '@netlify/functions';
 import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission } from './_shared/permissions';
-import { consumeToken } from './files-upload-url';
+import { verifyUploadToken } from './_shared/upload-token';
 import { filesStore } from './_shared/files-storage';
 
 export default async (req: Request, _ctx: Context) => {
@@ -17,7 +17,7 @@ export default async (req: Request, _ctx: Context) => {
 
   const tok = new URL(req.url).searchParams.get('token');
   if (!tok) return jsonError(400, 'token_required');
-  const reserved = consumeToken(tok);
+  const reserved = await verifyUploadToken(tok);
   if (!reserved) return jsonError(404, 'token_invalid_or_expired');
 
   const body = await req.arrayBuffer();

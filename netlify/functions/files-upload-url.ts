@@ -12,36 +12,19 @@
 
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
-import { randomBytes } from 'node:crypto';
 import { jsonError, jsonOk } from './_shared/http';
 import {
   authenticateForPermission, resolveClientIdOrRespond,
 } from './_shared/permissions';
 import { isAllowedMime } from './_shared/files-mime';
 import { blobKeyFor } from './_shared/files-storage';
+import { signUploadToken } from './_shared/upload-token';
 
 const Body = z.object({
   filename:  z.string().min(1).max(500),
   mime:      z.string().min(1).max(200),
   byte_size: z.number().int().nonnegative().max(5 * 1024 * 1024 * 1024), // 5 GB hard cap
 });
-
-// In-memory token table; tokens TTL after 5 minutes.
-const tokens = new Map<string, { blobKey: string; expiresAt: number }>();
-
-function newToken(blobKey: string): string {
-  const tok = randomBytes(32).toString('base64url');
-  tokens.set(tok, { blobKey, expiresAt: Date.now() + 5 * 60_000 });
-  return tok;
-}
-
-export function consumeToken(tok: string): { blobKey: string } | null {
-  const entry = tokens.get(tok);
-  if (!entry) return null;
-  tokens.delete(tok);
-  if (entry.expiresAt < Date.now()) return null;
-  return { blobKey: entry.blobKey };
-}
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
@@ -65,7 +48,7 @@ export default async (req: Request, _ctx: Context) => {
     blob_key = blobKeyFor({ scope: 'workspace', clientId: scope.clientId });
   }
 
-  const upload_token = newToken(blob_key);
+  const upload_token = await signUploadToken(blob_key);
   return jsonOk({
     blob_key,
     upload_token,
