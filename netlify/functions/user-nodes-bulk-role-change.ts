@@ -12,8 +12,9 @@ import { z } from 'zod';
 import { db } from './_shared/db';
 import {
   authenticateForPermission, resolveClientIdOrRespond,
-  authorizeSubtreeScope, type AnySession,
+  type AnySession,
 } from './_shared/permissions';
+import { subtreeOf } from './_shared/subtree';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
 
@@ -68,10 +69,11 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   // Subtree scope for L2+ bucket-user callers — every target must be inside subtree.
+  // Hoist the recursive CTE: run once, then check membership in O(1) per target.
   if (session.kind === 'bucket_user' && session.level_number > 1) {
+    const allowed = new Set(await subtreeOf(sql, session.user_node_id));
     for (const t of targets) {
-      const r = await authorizeSubtreeScope(sql, session, t.id);
-      if ('error' in r) return jsonError(403, 'forbidden');
+      if (!allowed.has(t.id)) return jsonError(403, 'forbidden');
     }
   }
 
@@ -119,6 +121,13 @@ export default async (req: Request, _ctx: Context) => {
     for (const r of rows) existingCounts.set(r.parent_id ?? 'root', r.c);
   }
 
+  // Batch-fetch parent role_ids once (avoids N+1 SELECTs in the loop below).
+  const parentIds = [...new Set(targets.map((t) => t.parent_id).filter((x): x is string => x !== null))];
+  const parentRows = parentIds.length > 0 ? (await sql`
+    SELECT id, role_id FROM public.user_nodes WHERE id = ANY(${parentIds}::uuid[])
+  `) as { id: string; role_id: string }[] : [];
+  const parentRoleById = new Map(parentRows.map((r) => [r.id, r.role_id]));
+
   // Per-target validation pass.
   const errors: TargetError[] = [];
   const deltas = new Map<string, number>(); // pending changes to count toward cap
@@ -131,14 +140,10 @@ export default async (req: Request, _ctx: Context) => {
         continue;
       }
     }
-    // Parent's role id for cardinality.
-    let parentRoleId: string | null = null;
-    if (t.parent_id !== null) {
-      const parentRow = (await sql`
-        SELECT role_id FROM public.user_nodes WHERE id = ${t.parent_id}::uuid LIMIT 1
-      `) as { role_id: string }[];
-      if (parentRow[0]) parentRoleId = parentRow[0].role_id;
-    }
+    // Parent's role id for cardinality (from batch lookup).
+    const parentRoleId: string | null = t.parent_id !== null
+      ? parentRoleById.get(t.parent_id) ?? null
+      : null;
     const cap = capFor(parentRoleId);
     if (cap !== null) {
       const key = t.parent_id ?? 'root';
