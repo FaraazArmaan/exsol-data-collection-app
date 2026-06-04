@@ -158,6 +158,74 @@ describe('user-node auth', () => {
     expect(r.status).toBe(401);
   });
 
+  test('u-login failure logs an attempt as "failed"', async () => {
+    const email = `rate-failed-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'correct-pw-1');
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'wrong-pw' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(401);
+
+    const rows = (await sql`
+      SELECT outcome FROM public.login_attempts WHERE email = ${email} ORDER BY id DESC LIMIT 1
+    `) as { outcome: string }[];
+    expect(rows[0]?.outcome).toBe('failed');
+
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+  });
+
+  test('u-login success logs an attempt as "success"', async () => {
+    const email = `rate-success-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'happy-pw-1');
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'happy-pw-1' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+
+    const rows = (await sql`
+      SELECT outcome FROM public.login_attempts WHERE email = ${email} ORDER BY id DESC LIMIT 1
+    `) as { outcome: string }[];
+    expect(rows[0]?.outcome).toBe('success');
+
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+  });
+
+  test('u-login returns 429 after 10 failed attempts in 5 minutes', async () => {
+    const email = `rate-throttle-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'pw-throttle-1');
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+
+    // Seed 10 'failed' attempts directly so we don't pay 10× argon2 cost.
+    for (let i = 0; i < 10; i++) {
+      await sql`
+        INSERT INTO public.login_attempts (email, outcome) VALUES (${email}, 'failed')
+      `;
+    }
+
+    // Even the CORRECT password is rejected with 429 because of the throttle.
+    const r = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'pw-throttle-1' }),
+      }), CTX,
+    );
+    expect(r.status).toBe(429);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('too_many_attempts');
+
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+  });
+
   test('u-change-password clears must_change_password and wipes plain', async () => {
     const email = `un-change-${Date.now()}@example.com`;
     const nodeId = await createNodeWithLogin(email, 'change-me-1');
