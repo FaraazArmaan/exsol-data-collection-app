@@ -33,6 +33,7 @@ export function Sidebar() {
         {canManageTeam && (
           <>
             <div className="nav-group-header">Workspace</div>
+            <NavLink to={`/c/${slug}/files`}>Files</NavLink>
             <NavLink to={`/c/${slug}/team`}>Team</NavLink>
           </>
         )}
