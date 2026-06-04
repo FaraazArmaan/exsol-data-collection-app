@@ -80,4 +80,42 @@ describe('parseCsv', () => {
     expect(result.rows[0]!.display_name).toBe('Alice');
     expect(result.parseErrors.some((e) => /unknown/i.test(e.message) && /foobar/.test(e.message))).toBe(true);
   });
+
+  test('handles CRLF line endings without splitting inside quoted field', () => {
+    const text = 'display_name,role_key\r\n"Smith, Jane",owner\r\nBob,manager\r\n';
+    const result = parseCsv(text);
+    expect(result.parseErrors).toEqual([]);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0]!.display_name).toBe('Smith, Jane');
+    expect(result.rows[1]!.display_name).toBe('Bob');
+  });
+
+  test('flags non-numeric level_number with row-attributed parseError', () => {
+    const text = [
+      'display_name,role_key,level_number',
+      'Alice,owner,1',
+      'Bob,manager,abc',
+    ].join('\n');
+    const result = parseCsv(text);
+    // Row 0 is fine, row 1 (line 3 in CSV) has a level_number error.
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0]!.level_number).toBe(1);
+    expect(result.rows[1]!.level_number).toBeNull();
+    expect(result.parseErrors.some((e) => e.row === 3 && /level_number/.test(e.message))).toBe(true);
+  });
+
+  test('flags unterminated quoted field', () => {
+    const text = [
+      'display_name,role_key',
+      'Alice,"oops',
+    ].join('\n');
+    const result = parseCsv(text);
+    expect(result.parseErrors.some((e) => /unterminated/i.test(e.message) || /unclosed/i.test(e.message))).toBe(true);
+  });
+
+  test('empty input → parseError, no rows', () => {
+    const result = parseCsv('');
+    expect(result.rows).toEqual([]);
+    expect(result.parseErrors.length).toBeGreaterThan(0);
+  });
 });

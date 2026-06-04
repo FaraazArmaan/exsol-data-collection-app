@@ -35,7 +35,7 @@ const REQUIRED_COLUMNS: (keyof ParsedRow)[] = ['display_name', 'role_key'];
 
 export function parseCsv(text: string): ParseResult {
   const parseErrors: ParseError[] = [];
-  const lines = splitLines(text);
+  const lines = splitLines(text, parseErrors);
   if (lines.length === 0) return { rows: [], parseErrors: [{ row: 1, message: 'empty input' }] };
 
   const headerCells = splitCsvLine(lines[0]!).map((c) => c.trim());
@@ -68,18 +68,31 @@ export function parseCsv(text: string): ParseResult {
       if (!KNOWN_COLUMNS.has(k as keyof ParsedRow)) continue;
       obj[k] = (cells[j] ?? '').trim();
     }
-    rows.push(coerceRow(obj));
+    // CSV row number: header is row 1, first data row is row 2 → i + 1.
+    rows.push(coerceRow(obj, i + 1, parseErrors));
   }
   return { rows, parseErrors };
 }
 
-function coerceRow(o: Record<string, string>): ParsedRow {
+function coerceRow(o: Record<string, string>, csvRow: number, parseErrors: ParseError[]): ParsedRow {
   const level = o.level_number;
   const create = (o.create_login ?? '').toLowerCase();
+  let levelNumber: number | null;
+  if (level === '' || level === undefined) {
+    levelNumber = null;
+  } else {
+    const n = Number(level);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      parseErrors.push({ row: csvRow, message: `level_number must be an integer, got "${level}"` });
+      levelNumber = null;
+    } else {
+      levelNumber = n;
+    }
+  }
   return {
     display_name: o.display_name ?? '',
     role_key: o.role_key ?? '',
-    level_number: level === '' || level === undefined ? null : Number(level),
+    level_number: levelNumber,
     parent_email: o.parent_email ? o.parent_email : null,
     email: o.email ? o.email : null,
     phone: o.phone ? o.phone : null,
@@ -89,8 +102,10 @@ function coerceRow(o: Record<string, string>): ParsedRow {
   };
 }
 
-// Split on LF or CRLF without splitting inside quoted fields.
-function splitLines(text: string): string[] {
+// Split on LF or CRLF without splitting inside quoted fields. Surfaces an
+// unterminated-quote error via the shared parseErrors array if the file ends
+// while still inside a quoted field.
+function splitLines(text: string, parseErrors: ParseError[]): string[] {
   const out: string[] = [];
   let cur = '';
   let inQuotes = false;
@@ -113,6 +128,9 @@ function splitLines(text: string): string[] {
     cur += ch;
   }
   if (cur !== '') out.push(cur);
+  if (inQuotes) {
+    parseErrors.push({ row: 1, message: 'unterminated quoted field — missing closing "' });
+  }
   return out;
 }
 
