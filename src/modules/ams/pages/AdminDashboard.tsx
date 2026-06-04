@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listClients, type ClientSummary } from '../api';
 import { ClientCard } from '../components/ClientCard';
-import { OnboardClientWizard } from '../components/onboarding/OnboardClientWizard';
+import { OnboardClientChooser } from '../components/onboarding/OnboardClientChooser';
 
 export default function AdminDashboard() {
   const [clients, setClients] = useState<ClientSummary[]>([]);
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       )}
 
       {showAdd && (
-        <OnboardClientWizard onClose={() => setShowAdd(false)} onCreated={refresh} />
+        <OnboardClientChooser onClose={() => setShowAdd(false)} onCreated={refresh} />
       )}
     </section>
   );

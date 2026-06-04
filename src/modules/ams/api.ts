@@ -1,4 +1,5 @@
 import { apiFetch } from '../../lib/api-client';
+import type { OnboardClientBulkBody, OnboardClientBulkSuccess } from '../shared/onboarding-import/types';
 
 export interface ClientSummary {
   id: string;
@@ -297,6 +298,13 @@ export interface OnboardClientBody {
 
 export const onboardClient = (body: OnboardClientBody) =>
   apiFetch<{ client: { id: string; name: string; slug: string } }>('/api/onboard-client', {
+    method: 'POST', body: JSON.stringify(body),
+  });
+
+// ─── Bulk onboarding (XLSX import path) ────────────────────────────
+
+export const onboardClientBulk = (body: OnboardClientBulkBody) =>
+  apiFetch<OnboardClientBulkSuccess>('/api/onboard-client-bulk', {
     method: 'POST', body: JSON.stringify(body),
   });
 
