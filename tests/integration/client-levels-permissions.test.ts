@@ -11,6 +11,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import clientRolesHandler from '../../netlify/functions/client-roles';
 import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
 import clientLevelsPermissionsHandler from '../../netlify/functions/client-levels-permissions';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'clp-test@example.com';
 const ADMIN_PASSWORD = 'clp-test-pw';
@@ -138,6 +139,12 @@ describe('client-levels-permissions', () => {
     );
     const body = await r.json() as { permissions: Record<string, true> };
     expect(body.permissions).toEqual({ '_platform.structure.view': true });
+    await assertLastAudit(sql, {
+      op: 'permissions.updated',
+      targetType: 'level',
+      targetId: l2Id,
+      clientId,
+    });
   });
 
   it('PUT rejects keys that reference Modules not enabled by current Products', async () => {

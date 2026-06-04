@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const RuleSchema = z.object({
   parent_role_id: z.string().uuid().nullable(),
@@ -17,7 +18,8 @@ const PutBody = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'PUT') return jsonError(405, 'method_not_allowed');
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -51,5 +53,13 @@ export default async (req: Request, _ctx: Context) => {
     if (code === '23505') return jsonError(400, 'duplicate_rule');
     throw e;
   }
+  await logAudit(sql, {
+    session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+    op: 'cardinality.replaced',
+    clientId,
+    targetType: 'client',
+    targetId: clientId,
+    detail: { rules_count: parsed.data.rules.length },
+  });
   return jsonOk({ ok: true });
 };

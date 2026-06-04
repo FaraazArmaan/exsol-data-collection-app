@@ -12,6 +12,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 import { allProducts, getProduct } from '../../src/modules/registry/products';
 
 const PutBody = z.object({ keys: z.array(z.string().min(1).max(80)).max(64) });
@@ -55,6 +56,14 @@ export default async (req: Request, _ctx: Context) => {
         VALUES (${clientId}::uuid, ${key}, ${actor.admin.id}::uuid)
       `),
     ]);
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'products.replaced',
+      clientId,
+      targetType: 'client',
+      targetId: clientId,
+      detail: { keys: parsed.data.keys },
+    });
     return jsonOk({ ok: true });
   }
 

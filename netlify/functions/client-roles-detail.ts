@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const FieldDef = z.object({
   key: z.string().min(1).max(63).regex(/^[a-z][a-z0-9_]*$/),
@@ -26,7 +27,8 @@ const PatchBody = z.object({
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -54,12 +56,26 @@ export default async (req: Request, _ctx: Context) => {
           bucket_family = CASE WHEN ${hasBucketFamily}::boolean THEN ${bucketFamilyVal ?? null}::text ELSE bucket_family END
       WHERE id = ${id}::uuid
       RETURNING id, client_id, key, label, color, fields, sort_order, bucket_family, created_at, updated_at
-    `) as unknown[];
+    `) as Array<{ client_id: string }>;
     if (rows.length === 0) return jsonError(404, 'not_found');
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'role.updated',
+      clientId: rows[0]!.client_id,
+      targetType: 'role',
+      targetId: id,
+      detail: parsed.data,
+    });
     return jsonOk({ role: rows[0] });
   }
 
   if (req.method === 'DELETE') {
+    // Fetch row (need client_id + key for audit) before deletion.
+    const existing = (await sql`
+      SELECT client_id, key FROM public.client_roles WHERE id = ${id}::uuid LIMIT 1
+    `) as { client_id: string; key: string }[];
+    if (existing.length === 0) return jsonError(404, 'not_found');
+
     // Refuse if any user_node references this role.
     const refs = (await sql`SELECT 1 FROM public.user_nodes WHERE role_id = ${id}::uuid LIMIT 1`) as unknown[];
     if (refs.length > 0) return jsonError(409, 'role_in_use');
@@ -67,6 +83,14 @@ export default async (req: Request, _ctx: Context) => {
       DELETE FROM public.client_roles WHERE id = ${id}::uuid RETURNING id
     `) as { id: string }[];
     if (rows.length === 0) return jsonError(404, 'not_found');
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'role.deleted',
+      clientId: existing[0]!.client_id,
+      targetType: 'role',
+      targetId: id,
+      detail: { key: existing[0]!.key },
+    });
     return jsonOk({ ok: true });
   }
 

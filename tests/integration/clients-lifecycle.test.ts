@@ -5,6 +5,7 @@ import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
 import clientsDetailHandler from '../../netlify/functions/clients-detail';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'clients-lifecycle-test@example.com';
 const ADMIN_PASSWORD = 'clients-lifecycle-pw';
@@ -63,6 +64,12 @@ describe('clients lifecycle', () => {
     expect(body.client.name).toBe('Lifecycle Test Co');
     expect(body.client.slug).toMatch(/^lifecycle-test-co/);
     created.push(body.client.id);
+    await assertLastAudit(sql, {
+      op: 'client.created',
+      targetType: 'client',
+      targetId: body.client.id,
+      clientId: body.client.id,
+    });
   });
 
   test('POST with empty name returns 400 validation_failed', async () => {

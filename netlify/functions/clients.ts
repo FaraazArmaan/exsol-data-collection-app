@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { deriveSlug } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const CreateBody = z.object({
   name: z.string().min(1).max(200),
@@ -57,8 +58,18 @@ export default async (req: Request, _ctx: Context) => {
       RETURNING id, created_at
     `) as { id: string; created_at: string }[];
 
+    const newId = inserted[0]!.id;
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'client.created',
+      clientId: newId,
+      targetType: 'client',
+      targetId: newId,
+      detail: { name: parsed.data.name, slug },
+    });
+
     return jsonOk(
-      { client: { id: inserted[0]!.id, name: parsed.data.name, slug, created_at: inserted[0]!.created_at } },
+      { client: { id: newId, name: parsed.data.name, slug, created_at: inserted[0]!.created_at } },
       { status: 201 },
     );
   }

@@ -12,6 +12,7 @@ import clientLevelsDetailHandler from '../../netlify/functions/client-levels-det
 import clientCardinalityHandler from '../../netlify/functions/client-cardinality';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'client-structure-test@example.com';
 const ADMIN_PASSWORD = 'client-structure-pw';
@@ -111,6 +112,12 @@ describe('client-structure', () => {
     const body = await r.json() as { role: { id: string; key: string; label: string; color: string; fields: unknown[] } };
     expect(body.role.key).toBe('owner');
     expect(body.role.fields).toEqual([]);
+    await assertLastAudit(sql, {
+      op: 'role.created',
+      targetType: 'role',
+      targetId: body.role.id,
+      clientId: testClientId,
+    });
   });
 
   test('POST with duplicate key returns 409', async () => {
@@ -151,6 +158,12 @@ describe('client-structure', () => {
     expect(p.status).toBe(200);
     const body = await p.json() as { role: { label: string } };
     expect(body.role.label).toBe('New');
+    await assertLastAudit(sql, {
+      op: 'role.updated',
+      targetType: 'role',
+      targetId: created.id,
+      clientId: testClientId,
+    });
   });
 
   test('DELETE role-in-use returns 409 role_in_use', async () => {
@@ -175,6 +188,12 @@ describe('client-structure', () => {
       CTX,
     );
     expect(d.status).toBe(200);
+    await assertLastAudit(sql, {
+      op: 'role.deleted',
+      targetType: 'role',
+      targetId: created.id,
+      clientId: testClientId,
+    });
   });
 
   test('POST /api/client-levels creates a level', async () => {
@@ -186,8 +205,14 @@ describe('client-structure', () => {
       CTX,
     );
     expect(r.status).toBe(201);
-    const body = await r.json() as { level: { level_number: number; label: string } };
+    const body = await r.json() as { level: { id: string; level_number: number; label: string } };
     expect(body.level.level_number).toBe(1);
+    await assertLastAudit(sql, {
+      op: 'level.created',
+      targetType: 'level',
+      targetId: body.level.id,
+      clientId: testClientId,
+    });
   });
 
   test('POST level with duplicate level_number returns 409', async () => {
@@ -226,6 +251,12 @@ describe('client-structure', () => {
       CTX,
     );
     expect(p.status).toBe(200);
+    await assertLastAudit(sql, {
+      op: 'level.updated',
+      targetType: 'level',
+      targetId: lvl.id,
+      clientId: testClientId,
+    });
   });
 
   test('PUT /api/client-cardinality replaces the full ruleset atomically', async () => {
@@ -279,6 +310,12 @@ describe('client-structure', () => {
     const struct = await g.json() as { cardinality_rules: Array<{ max_children: number }> };
     expect(struct.cardinality_rules).toHaveLength(1);
     expect(struct.cardinality_rules[0]!.max_children).toBe(5);
+    await assertLastAudit(sql, {
+      op: 'cardinality.replaced',
+      targetType: 'client',
+      targetId: testClientId,
+      clientId: testClientId,
+    });
   });
 });
 

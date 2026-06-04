@@ -19,6 +19,7 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { isValidPermissionKey } from './_shared/permission-keys';
+import { logAudit } from './_shared/audit';
 import {
   VERBS, PLATFORM_SURFACES, type Verb, type PlatformSurface,
 } from '../../src/modules/registry/types';
@@ -31,7 +32,8 @@ const PutBody = z.object({
 type LevelRow = { id: string; client_id: string; level_number: number; permissions: Record<string, true> };
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -89,6 +91,14 @@ export default async (req: Request, _ctx: Context) => {
       SET permissions = ${JSON.stringify(parsed.data.permissions)}::jsonb
       WHERE id = ${levelId}::uuid
     `;
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'permissions.updated',
+      clientId: level.client_id,
+      targetType: 'level',
+      targetId: levelId,
+      detail: { keys_count: Object.keys(parsed.data.permissions).length },
+    });
     return jsonOk({ ok: true });
   }
 

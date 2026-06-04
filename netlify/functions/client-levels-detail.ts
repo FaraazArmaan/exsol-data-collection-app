@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const PatchBody = z.object({
   label: z.string().min(1).max(100).optional(),
@@ -11,7 +12,8 @@ const PatchBody = z.object({
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -32,8 +34,16 @@ export default async (req: Request, _ctx: Context) => {
           allowed_role_ids = COALESCE(${parsed.data.allowed_role_ids ?? null}::uuid[], allowed_role_ids)
       WHERE id = ${id}::uuid
       RETURNING id, client_id, level_number, label, allowed_role_ids, created_at
-    `) as unknown[];
+    `) as Array<{ client_id: string }>;
     if (rows.length === 0) return jsonError(404, 'not_found');
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'level.updated',
+      clientId: rows[0]!.client_id,
+      targetType: 'level',
+      targetId: id,
+      detail: parsed.data,
+    });
     return jsonOk({ level: rows[0] });
   }
 
@@ -48,6 +58,14 @@ export default async (req: Request, _ctx: Context) => {
     `) as unknown[];
     if (refs.length > 0) return jsonError(409, 'level_in_use');
     await sql`DELETE FROM public.client_levels WHERE id = ${id}::uuid`;
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'level.deleted',
+      clientId: lvls[0]!.client_id,
+      targetType: 'level',
+      targetId: id,
+      detail: { level_number: lvls[0]!.level_number },
+    });
     return jsonOk({ ok: true });
   }
 

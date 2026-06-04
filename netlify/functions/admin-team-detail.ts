@@ -7,6 +7,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { assertUuid } from './_shared/identifier';
 import { jsonError, jsonOk } from './_shared/http';
+import { logAudit } from './_shared/audit';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'DELETE') return jsonError(405, 'method_not_allowed');
@@ -23,8 +24,8 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, is_bootstrap FROM public.admins WHERE id = ${id} LIMIT 1
-  `) as { id: string; is_bootstrap: boolean }[];
+    SELECT id, email, is_bootstrap FROM public.admins WHERE id = ${id} LIMIT 1
+  `) as { id: string; email: string; is_bootstrap: boolean }[];
   const target = rows[0];
   if (!target) return jsonError(404, 'not_found');
 
@@ -35,5 +36,13 @@ export default async (req: Request, _ctx: Context) => {
   if (id === actor.admin.id) return jsonError(409, 'cannot_delete_self');
 
   await sql`DELETE FROM public.admins WHERE id = ${id}`;
+  await logAudit(sql, {
+    session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+    op: 'admin.deleted',
+    clientId: null,
+    targetType: 'admin',
+    targetId: id,
+    detail: { email: target.email },
+  });
   return jsonOk({ ok: true });
 };

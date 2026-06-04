@@ -18,6 +18,7 @@ import loginHandler from '../../netlify/functions/auth-login';
 import adminTeamHandler from '../../netlify/functions/admin-team';
 import adminTeamDetailHandler from '../../netlify/functions/admin-team-detail';
 import adminSelfHandler from '../../netlify/functions/admin-self';
+import { assertLastAudit } from '../helpers/audit';
 
 const BOOTSTRAP_EMAIL = 'admin-team-bootstrap-test@example.com';
 const BOOTSTRAP_PASSWORD = 'admin-team-bootstrap-pw';
@@ -113,10 +114,16 @@ describe('admin-team endpoints', () => {
       CTX,
     );
     expect(res.status).toBe(201);
-    const body = await res.json() as { admin: { email: string; is_bootstrap: boolean; has_password: boolean } };
+    const body = await res.json() as { admin: { id: string; email: string; is_bootstrap: boolean; has_password: boolean } };
     expect(body.admin.email).toBe(email);
     expect(body.admin.is_bootstrap).toBe(false);
     expect(body.admin.has_password).toBe(true);
+    await assertLastAudit(sql, {
+      op: 'admin.created',
+      targetType: 'admin',
+      targetId: body.admin.id,
+      clientId: null,
+    });
   });
 
   test('POST with duplicate email returns 409 email_taken', async () => {
@@ -191,6 +198,12 @@ describe('admin-team endpoints', () => {
 
     const verify = (await sql`SELECT id FROM public.admins WHERE id = ${created.admin.id}`) as { id: string }[];
     expect(verify).toHaveLength(0);
+    await assertLastAudit(sql, {
+      op: 'admin.deleted',
+      targetType: 'admin',
+      targetId: created.admin.id,
+      clientId: null,
+    });
   });
 
   test('PATCH admin-self updates display_name', async () => {
