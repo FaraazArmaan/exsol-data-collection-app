@@ -78,14 +78,6 @@ export default async (req: Request, _ctx: Context) => {
     if (!cred) return jsonOk({ has_credential: false });
 
     if (peek) {
-      await logAudit(sql, {
-        session,
-        op: 'credential.peeked',
-        clientId: cred.client_id,
-        targetType: 'user_node',
-        targetId: nodeId,
-        detail: { views_left_after: cred.temp_password_views_left },
-      });
       return jsonOk({
         has_credential: true,
         email: cred.email,
@@ -119,6 +111,14 @@ export default async (req: Request, _ctx: Context) => {
     } else {
       plain = null;
     }
+    await logAudit(sql, {
+      session,
+      op: 'credential.peeked',
+      clientId: cred.client_id,
+      targetType: 'user_node',
+      targetId: nodeId,
+      detail: { views_left_after: viewsLeft },
+    });
     return jsonOk({
       has_credential: true,
       email: cred.email,

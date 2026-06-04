@@ -197,6 +197,11 @@ describe('user-node auth', () => {
     const r4 = await userNodeCredentialHandler(new Request(url, { method: 'GET', headers: { cookie } }), CTX);
     const body4 = await r4.json() as { temp_password_plain: string | null };
     expect(body4.temp_password_plain).toBeNull();
+    await assertLastAudit(sql, {
+      op: 'credential.peeked',
+      targetType: 'user_node',
+      targetId: nodeId,
+    });
   });
 
   test('GET credential with ?peek=1 returns status only and does NOT decrement views_left', async () => {
@@ -243,12 +248,6 @@ describe('user-node auth', () => {
     const fullBody = await fullR.json() as { temp_password_plain: string | null; temp_password_views_left: number | null };
     expect(fullBody.temp_password_plain).toBe('peek-test-1');
     expect(fullBody.temp_password_views_left).toBe(2);
-    await assertLastAudit(sql, {
-      op: 'credential.peeked',
-      targetType: 'user_node',
-      targetId: nodeId,
-      clientId: testClientId,
-    });
   });
 
   test('forgot-password sets password_reset_requested_at on matching credentials', async () => {
