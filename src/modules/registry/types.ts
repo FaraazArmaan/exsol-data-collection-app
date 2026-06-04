@@ -16,7 +16,7 @@ export type DataBucket = (typeof DATA_BUCKETS)[number];
 export const VERBS = ['view', 'create', 'edit', 'delete'] as const;
 export type Verb = (typeof VERBS)[number];
 
-export const PLATFORM_SURFACES = ['users', 'structure', 'settings'] as const;
+export const PLATFORM_SURFACES = ['users', 'structure', 'settings', 'files'] as const;
 export type PlatformSurface = (typeof PLATFORM_SURFACES)[number];
 
 export type ModuleKey = string; // narrowed by the registry's keyof
