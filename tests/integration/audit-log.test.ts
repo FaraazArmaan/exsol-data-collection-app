@@ -155,4 +155,39 @@ describe('GET /api/audit-log', () => {
     expect(body.entries[0]!.id).toBe(id2);  // most recent first
     expect(body.entries[1]!.id).toBe(id1);
   });
+
+  test('target_label joined from user_nodes for user_node target_type', async () => {
+    // Set up: create a client + role + user_node so we have a real target whose
+    // display_name we can later assert in the joined audit response.
+    const clientRows = (await sql`
+      INSERT INTO public.clients (name, slug, created_by)
+      VALUES (${'Audit Label Test ' + Date.now()}, ${'audit-label-' + Date.now()}, ${adminId}::uuid)
+      RETURNING id
+    `) as { id: string }[];
+    const clientId = clientRows[0]!.id;
+
+    const roleRows = (await sql`
+      INSERT INTO public.client_roles (client_id, key, label, color)
+      VALUES (${clientId}::uuid, 'tgt-test', 'Target Test Role', '#3b82f6')
+      RETURNING id
+    `) as { id: string }[];
+    const roleId = roleRows[0]!.id;
+
+    const targetUserNode = (await sql`
+      INSERT INTO public.user_nodes (client_id, parent_id, level_number, role_id, display_name, created_by_admin)
+      VALUES (${clientId}::uuid, NULL, 1, ${roleId}::uuid, 'Target Label Test', ${adminId}::uuid)
+      RETURNING id
+    `) as { id: string }[];
+    const targetNodeId = targetUserNode[0]!.id;
+
+    const uniqOp = `label.test.${Date.now()}`;
+    await seedAudit(uniqOp, { target_type: 'user_node', target_id: targetNodeId });
+    const r = await call(`?op=${encodeURIComponent(uniqOp)}`);
+    const body = await r.json() as { entries: Array<{ target_label: string | null }> };
+    expect(body.entries[0]!.target_label).toBe('Target Label Test');
+
+    // Cleanup: deleting the client cascades to roles + user_nodes. Audit row
+    // cleanup happens via the existing afterEach hook.
+    await sql`DELETE FROM public.clients WHERE id = ${clientId}::uuid`;
+  });
 });

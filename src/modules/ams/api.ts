@@ -293,6 +293,7 @@ export interface AuditLogEntry {
   client_name: string | null;
   target_type: string | null;
   target_id: string | null;
+  target_label: string | null;
   detail: Record<string, unknown> | null;
 }
 

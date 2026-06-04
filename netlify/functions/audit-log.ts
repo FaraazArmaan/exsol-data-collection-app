@@ -32,6 +32,7 @@ interface Row {
   admin_email: string | null;
   user_node_display_name: string | null;
   client_name: string | null;
+  target_label: string | null;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -61,11 +62,23 @@ export default async (req: Request, _ctx: Context) => {
       a.client_id, a.target_type, a.target_id, a.detail,
       adm.email AS admin_email,
       un.display_name AS user_node_display_name,
-      c.name AS client_name
+      c.name AS client_name,
+      COALESCE(
+        tn.display_name,
+        tr.label,
+        tl.label,
+        ta.email,
+        CASE WHEN a.target_type = 'client' THEN c.name ELSE NULL END,
+        NULL
+      ) AS target_label
     FROM public.audit_log a
     LEFT JOIN public.admins adm ON adm.id = a.actor_admin
     LEFT JOIN public.user_nodes un ON un.id = a.actor_user_node
     LEFT JOIN public.clients c ON c.id = a.client_id
+    LEFT JOIN public.user_nodes tn   ON a.target_type = 'user_node' AND tn.id::text = a.target_id
+    LEFT JOIN public.client_roles tr ON a.target_type = 'role'      AND tr.id::text = a.target_id
+    LEFT JOIN public.client_levels tl ON a.target_type = 'level'    AND tl.id::text = a.target_id
+    LEFT JOIN public.admins ta       ON a.target_type = 'admin'     AND ta.id::text = a.target_id
     WHERE
       (${f.actor_admin ?? null}::uuid IS NULL OR a.actor_admin = ${f.actor_admin ?? null}::uuid)
       AND (${f.actor_user_node ?? null}::uuid IS NULL OR a.actor_user_node = ${f.actor_user_node ?? null}::uuid)
@@ -108,6 +121,7 @@ export default async (req: Request, _ctx: Context) => {
       client_name: r.client_name,
       target_type: r.target_type,
       target_id: r.target_id,
+      target_label: r.target_label,
       detail: r.detail,
     };
   });
