@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { AuditLogEntry } from '../../api';
+import { actionLabel } from './op-labels';
 
 interface Props {
   entry: AuditLogEntry | null;
@@ -32,9 +33,22 @@ export function AuditDetailDrawer({ entry, onClose }: Props) {
         <dl style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, fontSize: 13 }}>
           <dt className="muted">When</dt><dd>{new Date(entry.occurred_at).toLocaleString()}<br /><span className="muted" style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.occurred_at}</span></dd>
           <dt className="muted">Actor</dt><dd><strong>{entry.actor.label}</strong><br /><span className="muted" style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.actor.kind} · {entry.actor.id ?? '—'}</span></dd>
-          <dt className="muted">Op</dt><dd><code>{entry.op}</code></dd>
+          <dt className="muted">Action</dt>
+          <dd>
+            {actionLabel(entry.op)}<br />
+            <span className="muted" style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.op}</span>
+          </dd>
           <dt className="muted">Client</dt><dd>{entry.client_name ?? '—'}<br /><span className="muted" style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.client_id ?? ''}</span></dd>
-          <dt className="muted">Target</dt><dd>{entry.target_type && entry.target_id ? <code>{entry.target_type}:{entry.target_id}</code> : '—'}</dd>
+          <dt className="muted">Target</dt>
+          <dd>
+            {entry.target_label ?? '—'}
+            {entry.target_type && entry.target_id ? (
+              <>
+                <br />
+                <span className="muted" style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.target_type}:{entry.target_id}</span>
+              </>
+            ) : null}
+          </dd>
         </dl>
         <h3 style={{ marginTop: 20, marginBottom: 8, fontSize: 14 }}>Detail</h3>
         <pre style={{

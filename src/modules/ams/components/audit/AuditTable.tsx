@@ -1,4 +1,5 @@
 import type { AuditLogEntry } from '../../api';
+import { actionLabel, summarize } from './op-labels';
 
 interface Props {
   entries: AuditLogEntry[];
@@ -26,31 +27,40 @@ export function AuditTable({ entries, total, page, pageSize, loading, error, onR
             <tr style={{ background: 'var(--bg-elevated)' }}>
               <th style={{ textAlign: 'left', padding: '8px 12px' }}>When</th>
               <th style={{ textAlign: 'left', padding: '8px 12px' }}>Actor</th>
-              <th style={{ textAlign: 'left', padding: '8px 12px' }}>Op</th>
-              <th style={{ textAlign: 'left', padding: '8px 12px' }}>Client</th>
+              <th style={{ textAlign: 'left', padding: '8px 12px' }}>Action</th>
+              <th style={{ textAlign: 'left', padding: '8px 12px' }}>Summary</th>
+              <th style={{ textAlign: 'left', padding: '8px 12px' }}>Workspace</th>
               <th style={{ textAlign: 'left', padding: '8px 12px' }}>Target</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map((e) => (
-              <tr key={e.id} onClick={() => onRowClick(e)}
-                style={{ cursor: 'pointer', borderTop: '1px solid var(--border-subtle)' }}
-                onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--bg-elevated)')}
-                onMouseLeave={(ev) => (ev.currentTarget.style.background = '')}>
-                <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12 }}>
-                  {new Date(e.occurred_at).toLocaleString()}
-                </td>
-                <td style={{ padding: '8px 12px' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{e.actor.kind}</span>{' '}
-                  <strong>{e.actor.label}</strong>
-                </td>
-                <td style={{ padding: '8px 12px' }}><code>{e.op}</code></td>
-                <td style={{ padding: '8px 12px' }}>{e.client_name ?? <span className="muted">—</span>}</td>
-                <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11 }}>
-                  {e.target_type && e.target_id ? `${e.target_type}:${e.target_id.slice(0, 8)}` : '—'}
-                </td>
-              </tr>
-            ))}
+            {entries.map((e) => {
+              const summary = summarize(e.op, e.detail);
+              return (
+                <tr key={e.id} onClick={() => onRowClick(e)}
+                  style={{ cursor: 'pointer', borderTop: '1px solid var(--border-subtle)' }}
+                  onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--bg-elevated)')}
+                  onMouseLeave={(ev) => (ev.currentTarget.style.background = '')}>
+                  <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12 }}>
+                    {new Date(e.occurred_at).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{e.actor.kind}</span>{' '}
+                    <strong>{e.actor.label}</strong>
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>{actionLabel(e.op)}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+                    {summary || ''}
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>{e.client_name ?? <span className="muted">—</span>}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {e.target_label
+                      ? e.target_label
+                      : <span className="muted">—</span>}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
