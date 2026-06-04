@@ -11,6 +11,9 @@ import {
   type UserNode, type ClientRole, type ClientLevel,
 } from '../api';
 import { ClientProductsSection } from '../../admin/components/ClientProductsSection';
+import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';
+import { BulkActionBar } from '../../shared/team-modals/BulkActionBar';
+import { buildAdminApi } from '../components/team-modal-api';
 
 export default function AccessDashboard() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -39,6 +42,10 @@ function DashboardInner({ clientId }: { clientId: string }) {
   const [moveError, setMoveError] = useState<string | null>(null);
   // Per-level "narrowed parent" so we can show only descendants of one parent at the next level.
   const [narrowed, setNarrowed] = useState<Record<number, string | null>>({});
+  const [showBulkInvite, setShowBulkInvite] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const adminApi = useMemo(() => buildAdminApi(clientId), [clientId]);
 
   // Require 5px of pointer movement before a chip's pointerdown becomes a drag.
   // Without this, dnd-kit's default PointerSensor activates on every pointerdown
@@ -180,9 +187,24 @@ function DashboardInner({ clientId }: { clientId: string }) {
             <Link to={`/clients/${clientId}/access-levels`} className="btn btn-secondary">Access levels</Link>
             <Link to={`/clients/${clientId}/audit`} className="btn btn-secondary">Audit</Link>
             <Link to={`/clients/${clientId}/configure`} className="btn btn-secondary">Configure</Link>
-            <button className="btn btn-primary" disabled={!hasStructure} onClick={() => setShowAdd(true)}>
-              + Add user
-            </button>
+            {!selectMode && (
+              <>
+                <button className="btn btn-secondary" disabled={!hasStructure} onClick={() => setShowBulkInvite(true)}>
+                  Bulk invite
+                </button>
+                <button className="btn btn-secondary" disabled={!hasStructure} onClick={() => setSelectMode(true)}>
+                  Select
+                </button>
+                <button className="btn btn-primary" disabled={!hasStructure} onClick={() => setShowAdd(true)}>
+                  + Add user
+                </button>
+              </>
+            )}
+            {selectMode && (
+              <button className="btn btn-secondary" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}>
+                Cancel selection
+              </button>
+            )}
           </div>
         </header>
 
@@ -219,6 +241,11 @@ function DashboardInner({ clientId }: { clientId: string }) {
               nodes={nodesForLevel(l)}
               rolesById={rolesById}
               onChipClick={handleChipClick}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={(id) => setSelectedIds((prev) => {
+                const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+              })}
             />
           );
         })}
@@ -229,6 +256,11 @@ function DashboardInner({ clientId }: { clientId: string }) {
           nodes={nodesByLevel.get('unassigned') ?? []}
           rolesById={rolesById}
           onChipClick={handleChipClick}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => setSelectedIds((prev) => {
+            const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+          })}
         />
 
         {showAdd && (
@@ -266,6 +298,37 @@ function DashboardInner({ clientId }: { clientId: string }) {
             clientSlug={clientSlug}
             onClose={() => setLoginChip(null)}
             onChanged={refreshNodes}
+          />
+        )}
+
+        {showBulkInvite && (
+          <BulkInviteModal
+            api={adminApi}
+            roles={structure.roles}
+            levels={structure.levels}
+            onClose={() => setShowBulkInvite(false)}
+            onCreated={async ({ created, logins }) => {
+              setShowBulkInvite(false);
+              await refreshNodes();
+              // Toast — reuse alert until a toast system lands.
+              window.alert(`Created ${created} user${created === 1 ? '' : 's'}${logins > 0 ? `, ${logins} with login${logins === 1 ? '' : 's'}` : ''}.`);
+            }}
+          />
+        )}
+
+        {selectMode && (
+          <BulkActionBar
+            api={adminApi}
+            selectedIds={selectedIds}
+            nodes={nodes}
+            roles={structure.roles}
+            levels={structure.levels}
+            onCleared={() => setSelectedIds(new Set())}
+            onChanged={async () => {
+              setSelectMode(false);
+              setSelectedIds(new Set());
+              await refreshNodes();
+            }}
           />
         )}
 
