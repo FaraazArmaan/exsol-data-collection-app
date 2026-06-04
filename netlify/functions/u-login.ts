@@ -11,6 +11,7 @@ import { db } from './_shared/db';
 import { verifyPassword } from './_shared/argon';
 import { mintBucketUserSession, buCookieHeader } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
+import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
 
 const Body = z.object({
   email: z.string().email(),
@@ -35,12 +36,21 @@ export default async (req: Request, _ctx: Context) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
+  const ip = extractIp(req);
   const sql = db();
+  const limit = await checkRateLimit(sql, { email: parsed.data.email, ip });
+  if (!limit.allowed) {
+    return jsonError(429, 'too_many_attempts', { retry_after_sec: limit.retryAfterSec });
+  }
+
   const clientRows = (await sql`
     SELECT id, name FROM public.clients WHERE slug = ${slug} LIMIT 1
   `) as { id: string; name: string }[];
   const client = clientRows[0];
-  if (!client) return jsonError(404, 'client_not_found');
+  if (!client) {
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(404, 'client_not_found');
+  }
 
   const credRows = (await sql`
     SELECT id, client_id, user_node_id, email, password_hash, must_change_password
@@ -51,9 +61,13 @@ export default async (req: Request, _ctx: Context) => {
   const credential = credRows[0];
 
   const ok = await verifyPassword(parsed.data.password, credential?.password_hash ?? null);
-  if (!ok || !credential) return jsonError(401, 'unauthorized');
+  if (!ok || !credential) {
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
 
   await sql`UPDATE public.user_node_credentials SET last_login_at = now() WHERE id = ${credential.id}`;
+  await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
 
   const token = await mintBucketUserSession({
     sub: credential.user_node_id,
