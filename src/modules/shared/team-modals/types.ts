@@ -25,6 +25,18 @@ export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: { code: string; details?: unknown } };
 
+export interface BulkInviteRow {
+  display_name: string;
+  role_key: string;
+  level_number?: number | null;
+  parent_email?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  create_login?: boolean;
+  temp_password?: string;
+}
+
 export interface TeamMemberApi {
   createNode: (
     body: CreateUserNodeBody,
@@ -44,6 +56,13 @@ export interface TeamMemberApi {
     temp_password: string,
   ) => Promise<ApiResult<{ ok: true }>>;
   deleteCredential: (nodeId: string) => Promise<ApiResult<{ ok: true }>>;
+  bulkInvite: (
+    rows: BulkInviteRow[],
+  ) => Promise<ApiResult<{ nodes: UserNode[]; login_count: number }>>;
+  bulkRoleChange: (
+    node_ids: string[],
+    new_role_id: string,
+  ) => Promise<ApiResult<{ updated: number }>>;
 }
 
 // Per-surface user-facing copy. Keeps the JSX shared while letting admin vs
