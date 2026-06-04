@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   moduleRegistry, allModules, getModule,
 } from '../../src/modules/registry/modules';
-import { DATA_BUCKETS, VERBS } from '../../src/modules/registry/types';
+import { DATA_BUCKETS, VERBS, PLATFORM_SURFACES } from '../../src/modules/registry/types';
 import {
   productRegistry, allProducts, getProduct,
   derivePermissionRows,
@@ -148,5 +148,15 @@ describe('permission keys', () => {
     expect(splitPermissionKey('nope')).toBeNull();
     expect(splitPermissionKey('a.b')).toBeNull();
     expect(splitPermissionKey('a.b.c.d')).toBeNull();
+  });
+});
+
+describe('platform surfaces', () => {
+  it('includes files surface', () => {
+    expect(PLATFORM_SURFACES).toContain('files');
+  });
+
+  it('exposes 4 surfaces total (users, structure, settings, files)', () => {
+    expect(PLATFORM_SURFACES).toEqual(['users', 'structure', 'settings', 'files']);
   });
 });

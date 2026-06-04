@@ -95,7 +95,7 @@ describe('client-levels-permissions', () => {
     };
     expect(body.permissions).toEqual({});
     expect(body.module_rows).toEqual([]);
-    expect(body.platform_rows.map((r) => r.surface).sort()).toEqual(['settings', 'structure', 'users']);
+    expect(body.platform_rows.map((r) => r.surface).sort()).toEqual(['files', 'settings', 'structure', 'users']);
   });
 
   it('GET after enabling saloon-booking returns booking + payments rows', async () => {

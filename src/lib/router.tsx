@@ -18,6 +18,8 @@ import ModuleStub from '../modules/user-portal/pages/ModuleStub';
 import UserManageTeam from '../modules/user-portal/pages/UserManageTeam';
 import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/UserPortalRoutes';
 import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
+import AdminFilesPage from '../modules/files/admin/AdminFilesPage';
+import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
 
 function ShellLayout() {
   return (
@@ -54,6 +56,7 @@ export const router = createBrowserRouter([
               { index: true, element: <UserDashboardHome /> },
               { path: 'account', element: <UserAccount /> },
               { path: 'team', element: <UserManageTeam /> },
+              { path: 'file-manager', element: <WorkspaceFilesPage /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
@@ -65,9 +68,10 @@ export const router = createBrowserRouter([
     element: <RequireAdmin />,
     children: [
       { path: '/', element: <AdminDashboard /> },
-      { path: '/settings', element: <AdminSettings /> },
-      { path: '/audit', element: <AuditLog /> },
+      { path: '/file-manager', element: <AdminFilesPage /> },
       { path: '/files', element: <FilesPage /> },
+      { path: '/audit', element: <AuditLog /> },
+      { path: '/settings', element: <AdminSettings /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },

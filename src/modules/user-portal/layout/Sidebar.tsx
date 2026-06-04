@@ -18,6 +18,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
+        <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
         {items.length > 0 && (
           <>
