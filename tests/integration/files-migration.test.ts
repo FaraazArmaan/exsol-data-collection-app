@@ -130,3 +130,32 @@ describe('migration 031: file_categories', () => {
     }
   });
 });
+
+describe('migration 032: file_audience tables', () => {
+  test('file_allowed_roles exists with PK (file_id, role_id)', async () => {
+    const cols = (await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'file_allowed_roles'
+      ORDER BY ordinal_position
+    `) as { column_name: string }[];
+    expect(cols.map((c) => c.column_name)).toEqual(['file_id', 'role_id']);
+  });
+
+  test('file_allowed_nodes exists with PK (file_id, node_id)', async () => {
+    const cols = (await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'file_allowed_nodes'
+      ORDER BY ordinal_position
+    `) as { column_name: string }[];
+    expect(cols.map((c) => c.column_name)).toEqual(['file_id', 'node_id']);
+  });
+
+  test('file_allowed_users exists with PK (file_id, user_node_id)', async () => {
+    const cols = (await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'file_allowed_users'
+      ORDER BY ordinal_position
+    `) as { column_name: string }[];
+    expect(cols.map((c) => c.column_name)).toEqual(['file_id', 'user_node_id']);
+  });
+});
