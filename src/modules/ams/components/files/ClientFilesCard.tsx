@@ -1,41 +1,51 @@
-// Raw "tree command" style file structure for one workspace. Monospace
-// font, click-to-collapse, persistent expand state across the 5s repoll.
+// File-explorer view of one workspace, structured around ROLES not buckets.
 //
 // Hierarchy:
 //   📁 Workspace
-//      🏢 business         ← always 4 buckets, empty ones included
-//      👥 employees
-//         👤 Owner          ← user_nodes from this client whose role's
-//            👤 Manager        bucket_family matches this bucket. Tree
-//               · Stylist     follows parent_id pointers within the bucket;
-//               · Stylist     cross-bucket parents make the child a local
-//            👤 Manager        root within its own bucket.
-//      🛍️ customers
-//      📦 products
+//      🪪 Level N — Role label    ← one folder per role, sorted by lowest level
+//         · 👤 User                 (flat — no parent_id nesting)
+//                                   each user shows "↳ reports to <parent name>"
+//                                   as a suffix when they have a parent_id
+//
+// Roles allowed at multiple levels show their lowest level for ordering with
+// an "(also L2)"-style badge. Roles not assigned to any level go into a final
+// "Unassigned" section at the bottom of the workspace.
+//
+// bucket_family is shown as a small tag next to the role label, NOT a folder
+// layer — so wizard-created roles (with null bucket_family) and bulk-imported
+// roles (hardcoded 'employees') both render identically in this view.
 
 import { useEffect, useMemo, useState } from 'react';
 import {
   getClientStructure, listUserNodes,
-  type ClientSummary, type ClientRole, type UserNode,
+  type ClientSummary, type ClientRole, type ClientLevel, type UserNode,
 } from '../../api';
 
 const POLL_MS = 5000;
-
-type BucketKey = 'business' | 'employees' | 'customers' | 'products' | 'other';
-
-const BUCKETS: BucketKey[] = ['business', 'employees', 'customers', 'products', 'other'];
-const BUCKET_ICON: Record<BucketKey, string> = {
-  business: '🏢', employees: '👥', customers: '🛍️', products: '📦', other: '📂',
-};
 
 interface Props {
   client: ClientSummary;
 }
 
+interface RoleGroup {
+  role: ClientRole;
+  primaryLevel: number | null;   // lowest level the role is allowed at; null if orphan
+  allowedLevels: number[];        // every level it appears in (for the spanning badge)
+  users: UserNode[];
+}
+
+const BUCKET_TAG: Record<string, { icon: string; label: string }> = {
+  business:  { icon: '🏢', label: 'business' },
+  employees: { icon: '👥', label: 'employees' },
+  customers: { icon: '🛍️', label: 'customers' },
+  products:  { icon: '📦', label: 'products' },
+};
+
 export function ClientFilesCard({ client }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set([client.id]));
   const [nodes, setNodes] = useState<UserNode[]>([]);
   const [roles, setRoles] = useState<ClientRole[]>([]);
+  const [levels, setLevels] = useState<ClientLevel[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<number | null>(null);
 
@@ -50,6 +60,7 @@ export function ClientFilesCard({ client }: Props) {
     if (!structRes.ok) { setError(`structure: ${structRes.error.code}`); return; }
     if (!nodesRes.ok) { setError(`nodes: ${nodesRes.error.code}`); return; }
     setRoles(structRes.data.roles);
+    setLevels(structRes.data.levels);
     setNodes(nodesRes.data.nodes);
     setLastFetched(Date.now());
   }
@@ -70,16 +81,55 @@ export function ClientFilesCard({ client }: Props) {
     });
   }
 
-  const rolesById = useMemo(
-    () => Object.fromEntries(roles.map((r) => [r.id, r])) as Record<string, ClientRole>,
-    [roles],
+  // Index users by id (for parent_id → name lookups in the "reports to" suffix).
+  const userById = useMemo(
+    () => Object.fromEntries(nodes.map((n) => [n.id, n])) as Record<string, UserNode>,
+    [nodes],
   );
 
-  function bucketOf(node: UserNode): BucketKey {
-    const fam = rolesById[node.role_id]?.bucket_family ?? null;
-    if (fam === 'business' || fam === 'employees' || fam === 'customers' || fam === 'products') return fam;
-    return 'other';
-  }
+  // Build role groups: for each role, which levels it's allowed at + its users.
+  const groups = useMemo<RoleGroup[]>(() => {
+    if (roles.length === 0) return [];
+    const levelsByRole = new Map<string, number[]>();
+    for (const lv of levels) {
+      for (const rid of lv.allowed_role_ids) {
+        const arr = levelsByRole.get(rid) ?? [];
+        arr.push(lv.level_number);
+        levelsByRole.set(rid, arr);
+      }
+    }
+    const usersByRole = new Map<string, UserNode[]>();
+    for (const n of nodes) {
+      const arr = usersByRole.get(n.role_id) ?? [];
+      arr.push(n);
+      usersByRole.set(n.role_id, arr);
+    }
+    const result: RoleGroup[] = roles.map((r) => {
+      const allowed = (levelsByRole.get(r.id) ?? []).slice().sort((a, b) => a - b);
+      const users = (usersByRole.get(r.id) ?? []).slice().sort(
+        (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
+      );
+      return {
+        role: r,
+        primaryLevel: allowed.length > 0 ? allowed[0]! : null,
+        allowedLevels: allowed,
+        users,
+      };
+    });
+    // Sort: assigned roles by primaryLevel ascending, then role.sort_order,
+    // then label. Orphan roles (null primaryLevel) sink to the bottom.
+    result.sort((a, b) => {
+      const aHas = a.primaryLevel !== null ? 1 : 0;
+      const bHas = b.primaryLevel !== null ? 1 : 0;
+      if (aHas !== bHas) return bHas - aHas;       // assigned first
+      if (a.primaryLevel !== null && b.primaryLevel !== null && a.primaryLevel !== b.primaryLevel) {
+        return a.primaryLevel - b.primaryLevel;
+      }
+      return a.role.sort_order - b.role.sort_order
+        || a.role.label.localeCompare(b.role.label);
+    });
+    return result;
+  }, [roles, levels, nodes]);
 
   return (
     <div style={{
@@ -88,7 +138,6 @@ export function ClientFilesCard({ client }: Props) {
       lineHeight: 1.55,
       marginBottom: 4,
     }}>
-      {/* Workspace row */}
       <TreeRow
         depth={0}
         glyph={isWorkspaceOpen ? '▾' : '▸'}
@@ -108,116 +157,66 @@ export function ClientFilesCard({ client }: Props) {
         <p className="error" style={{ fontSize: 12, paddingLeft: 24 }}>{error}</p>
       )}
 
-      {/* Buckets */}
-      {isWorkspaceOpen && BUCKETS.map((bucket) => {
-        if (bucket === 'other') {
-          // Hide 'other' bucket entirely when empty so the canonical 4 stay tidy.
-          const any = nodes.some((n) => bucketOf(n) === 'other');
-          if (!any) return null;
-        }
-        const bucketKey = `${client.id}:${bucket}`;
-        const bucketOpen = expanded.has(bucketKey);
-        const inBucket = nodes.filter((n) => bucketOf(n) === bucket);
+      {isWorkspaceOpen && groups.map((g) => {
+        const roleKey = `${client.id}:${g.role.id}`;
+        const roleOpen = expanded.has(roleKey);
+        const hasUsers = g.users.length > 0;
+        const folderLabel = g.primaryLevel !== null
+          ? `Level ${g.primaryLevel} — ${g.role.label}`
+          : `${g.role.label} (unassigned)`;
+        const spanBadge = g.allowedLevels.length > 1
+          ? ` (also ${g.allowedLevels.slice(1).map((l) => `L${l}`).join(', ')})`
+          : '';
         return (
-          <div key={bucket}>
+          <div key={g.role.id}>
             <TreeRow
               depth={1}
-              glyph={inBucket.length === 0 ? '·' : (bucketOpen ? '▾' : '▸')}
-              icon={BUCKET_ICON[bucket]}
-              label={bucket}
-              meta={<span className="muted" style={{ fontSize: 11 }}>· {inBucket.length}</span>}
-              onClick={inBucket.length > 0 ? () => toggle(bucketKey) : undefined}
-              muted={inBucket.length === 0}
+              glyph={hasUsers ? (roleOpen ? '▾' : '▸') : '·'}
+              icon="🪪"
+              label={folderLabel + spanBadge}
+              meta={<>
+                <span className="muted" style={{ fontSize: 11 }}>· {g.users.length}</span>
+                {g.role.bucket_family && BUCKET_TAG[g.role.bucket_family] && (
+                  <span className="muted" style={{
+                    fontSize: 10,
+                    marginLeft: 6,
+                    padding: '1px 6px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-subtle, #2a2a2a)',
+                  }}>
+                    {BUCKET_TAG[g.role.bucket_family]!.icon} {BUCKET_TAG[g.role.bucket_family]!.label}
+                  </span>
+                )}
+              </>}
+              onClick={hasUsers ? () => toggle(roleKey) : undefined}
+              muted={!hasUsers}
+              roleColor={g.role.color}
             />
-            {bucketOpen && inBucket.length > 0 && (
-              <Subtree
-                depth={2}
-                parentId={null}
-                bucket={bucket}
-                nodes={nodes}
-                rolesById={rolesById}
-                bucketOfFn={bucketOf}
-                expandedSet={expanded}
-                onToggle={toggle}
-              />
-            )}
+            {roleOpen && hasUsers && g.users.map((u) => {
+              const parent = u.parent_id ? userById[u.parent_id] : null;
+              return (
+                <TreeRow
+                  key={u.id}
+                  depth={2}
+                  glyph="·"
+                  icon="👤"
+                  label={u.display_name}
+                  meta={<>
+                    {u.email && <span className="muted" style={{ fontSize: 11 }}>· {u.email}</span>}
+                    {u.has_login && <span title="Has login" style={{ fontSize: 11, marginLeft: 4 }}>🔑</span>}
+                    {parent && (
+                      <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                        ↳ reports to {parent.display_name}
+                      </span>
+                    )}
+                  </>}
+                />
+              );
+            })}
           </div>
         );
       })}
     </div>
-  );
-}
-
-interface SubtreeProps {
-  depth: number;
-  parentId: string | null;
-  bucket: BucketKey;
-  nodes: UserNode[];
-  rolesById: Record<string, ClientRole>;
-  bucketOfFn: (n: UserNode) => BucketKey;
-  expandedSet: Set<string>;
-  onToggle: (key: string) => void;
-}
-
-function Subtree({
-  depth, parentId, bucket, nodes, rolesById, bucketOfFn, expandedSet, onToggle,
-}: SubtreeProps) {
-  // Roots within this bucket: parent_id null, OR parent isn't in this bucket.
-  let visible: UserNode[];
-  if (parentId === null) {
-    visible = nodes.filter((n) => {
-      if (bucketOfFn(n) !== bucket) return false;
-      if (n.parent_id === null) return true;
-      const parent = nodes.find((p) => p.id === n.parent_id);
-      return !parent || bucketOfFn(parent) !== bucket;
-    });
-  } else {
-    visible = nodes.filter((n) => n.parent_id === parentId && bucketOfFn(n) === bucket);
-  }
-  visible.sort((a, b) =>
-    (a.level_number ?? 0) - (b.level_number ?? 0)
-    || a.sort_order - b.sort_order
-    || a.created_at.localeCompare(b.created_at),
-  );
-
-  return (
-    <>
-      {visible.map((n) => {
-        const role = rolesById[n.role_id];
-        const hasChildren = nodes.some((c) => c.parent_id === n.id && bucketOfFn(c) === bucket);
-        const open = expandedSet.has(n.id);
-        const glyph = hasChildren ? (open ? '▾' : '▸') : '·';
-        return (
-          <div key={n.id}>
-            <TreeRow
-              depth={depth}
-              glyph={glyph}
-              icon="👤"
-              label={n.display_name}
-              meta={<>
-                {role && <span className="muted" style={{ fontSize: 11 }}>· {role.label}</span>}
-                {n.email && <span className="muted" style={{ fontSize: 11 }}> · {n.email}</span>}
-                {n.has_login && <span title="Has login" style={{ fontSize: 11, marginLeft: 4 }}>🔑</span>}
-              </>}
-              onClick={hasChildren ? () => onToggle(n.id) : undefined}
-              roleColor={role?.color}
-            />
-            {hasChildren && open && (
-              <Subtree
-                depth={depth + 1}
-                parentId={n.id}
-                bucket={bucket}
-                nodes={nodes}
-                rolesById={rolesById}
-                bucketOfFn={bucketOfFn}
-                expandedSet={expandedSet}
-                onToggle={onToggle}
-              />
-            )}
-          </div>
-        );
-      })}
-    </>
   );
 }
 

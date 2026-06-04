@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function RolesStep({ state, dispatch }: Props) {
-  const [draft, setDraft] = useState<RoleDraft>({ key: '', label: '', color: '#3b82f6', bucket_family: null });
+  const [draft, setDraft] = useState<RoleDraft>({ key: '', label: '', color: '#3b82f6', bucket_family: 'employees' });
   const [error, setError] = useState<string | null>(null);
 
   function add() {
@@ -16,7 +16,7 @@ export function RolesStep({ state, dispatch }: Props) {
     if (draft.label.trim().length === 0) { setError('Label is required'); return; }
     if (state.roles.some((r) => r.key === draft.key)) { setError('Key must be unique within this workspace'); return; }
     dispatch({ type: 'addRole', role: { ...draft, label: draft.label.trim() } });
-    setDraft({ key: '', label: '', color: '#3b82f6', bucket_family: null });
+    setDraft({ key: '', label: '', color: '#3b82f6', bucket_family: 'employees' });
   }
 
   return (
