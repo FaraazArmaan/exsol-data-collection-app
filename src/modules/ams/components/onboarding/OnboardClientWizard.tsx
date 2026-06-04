@@ -4,6 +4,7 @@ import {
   initialState, reducer, validators, applyAutoSeed, STEP_ORDER,
   type WizardStep,
 } from './state';
+import { useAdminSessionHeartbeat } from '../../../../lib/use-admin-session-heartbeat';
 import { Stepper } from './Stepper';
 import { NameStep } from './steps/NameStep';
 import { ProductsStep } from './steps/ProductsStep';
@@ -22,6 +23,9 @@ interface Props {
 export function OnboardClientWizard({ onClose, onCreated }: Props) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [createdClient, setCreatedClient] = useState<{ id: string; name: string; slug: string; tempPassword: string; email: string } | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useAdminSessionHeartbeat();
 
   const currentIdx = STEP_ORDER.indexOf(state.step as Exclude<WizardStep, 'success'>);
   const isLastStep = state.step === 'owner';
@@ -62,6 +66,10 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
     });
     if (!r.ok) {
       const code = r.error.code;
+      if (code === 'unauthorized') {
+        setSessionExpired(true);
+        return;
+      }
       const details = (r.error as { details?: { section?: string } }).details ?? {};
       dispatch({
         type: 'submitError',
@@ -96,6 +104,21 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
           <button type="button" className="btn btn-ghost" onClick={tryCancel} aria-label="Cancel">×</button>
         </header>
 
+        {sessionExpired ? (
+          <div style={{ padding: '24px 8px' }}>
+            <p style={{ marginTop: 0 }}>
+              Your session expired. Refresh the page to sign in again.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => { window.location.reload(); }}
+            >
+              Refresh
+            </button>
+          </div>
+        ) : (
+          <>
         <Stepper currentStep={state.step} onJumpTo={(s) => dispatch({ type: 'goToStep', step: s })} />
 
         {state.step === 'name' && <NameStep state={state} dispatch={dispatch} />}
@@ -131,6 +154,8 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

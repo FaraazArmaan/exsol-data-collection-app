@@ -9,6 +9,7 @@ import AccessLevelDashboard from '../modules/ams/pages/AccessLevelDashboard';
 import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import AuditLog from '../modules/ams/pages/AuditLog';
 import ClientAuditLog from '../modules/ams/pages/ClientAuditLog';
+import FilesPage from '../modules/ams/pages/FilesPage';
 import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
 import UserAccount from '../modules/user-portal/pages/UserAccount';
@@ -19,7 +20,6 @@ import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/User
 import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
 import AdminFilesPage from '../modules/files/admin/AdminFilesPage';
 import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
-import FilesPage from '../modules/ams/pages/FilesPage';
 
 function ShellLayout() {
   return (
@@ -70,8 +70,8 @@ export const router = createBrowserRouter([
       { path: '/', element: <AdminDashboard /> },
       { path: '/file-manager', element: <AdminFilesPage /> },
       { path: '/files', element: <FilesPage /> },
-      { path: '/settings', element: <AdminSettings /> },
       { path: '/audit', element: <AuditLog /> },
+      { path: '/settings', element: <AdminSettings /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },

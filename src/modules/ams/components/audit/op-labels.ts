@@ -6,6 +6,7 @@ export const OP_LABELS: Record<string, string> = {
   'client.updated': 'Edited workspace',
   'client.deleted': 'Deleted workspace',
   'client.onboarded': 'Onboarded new workspace',
+  'client.onboarded_bulk': 'Onboarded workspace (bulk import)',
   'role.created': 'Added role',
   'role.updated': 'Edited role',
   'role.deleted': 'Removed role',
@@ -42,6 +43,15 @@ export function summarize(op: string, detail: Record<string, unknown> | null): s
     const parts: string[] = [];
     if (typeof v.roles_count === 'number') parts.push(`${v.roles_count} role${v.roles_count === 1 ? '' : 's'}`);
     if (typeof v.levels_count === 'number') parts.push(`${v.levels_count} level${v.levels_count === 1 ? '' : 's'}`);
+    if (typeof v.enabled_products_count === 'number' && v.enabled_products_count > 0) parts.push(`${v.enabled_products_count} product${v.enabled_products_count === 1 ? '' : 's'}`);
+    return parts.join(', ');
+  }
+  if (op === 'client.onboarded_bulk') {
+    const v = detail as { role_count?: number; team_count?: number; login_count?: number; enabled_products_count?: number };
+    const parts: string[] = [];
+    if (typeof v.role_count === 'number') parts.push(`${v.role_count} role${v.role_count === 1 ? '' : 's'}`);
+    if (typeof v.team_count === 'number') parts.push(`${v.team_count} member${v.team_count === 1 ? '' : 's'}`);
+    if (typeof v.login_count === 'number') parts.push(`${v.login_count} login${v.login_count === 1 ? '' : 's'}`);
     if (typeof v.enabled_products_count === 'number' && v.enabled_products_count > 0) parts.push(`${v.enabled_products_count} product${v.enabled_products_count === 1 ? '' : 's'}`);
     return parts.join(', ');
   }
