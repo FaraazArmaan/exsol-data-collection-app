@@ -11,9 +11,15 @@ interface Props {
   rolesById: Record<string, ClientRole>;
   onChipClick: (node: UserNode) => void;
   warning?: boolean;
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function LevelRow({ dropId, title, subtitle, countLabel, nodes, rolesById, onChipClick, warning }: Props) {
+export function LevelRow({
+  dropId, title, subtitle, countLabel, nodes, rolesById, onChipClick, warning,
+  selectMode, selectedIds, onToggleSelect,
+}: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
   return (
     <div
@@ -39,7 +45,15 @@ export function LevelRow({ dropId, title, subtitle, countLabel, nodes, rolesById
         {nodes.length === 0
           ? <span className="muted" style={{ fontSize: 12 }}>—</span>
           : nodes.map((n) => (
-              <UserNodeChip key={n.id} node={n} role={rolesById[n.role_id]} onClick={() => onChipClick(n)} />
+              <UserNodeChip
+                key={n.id}
+                node={n}
+                role={rolesById[n.role_id]}
+                onClick={() => onChipClick(n)}
+                selectMode={selectMode}
+                selected={selectedIds?.has(n.id) ?? false}
+                onToggleSelect={onToggleSelect}
+              />
             ))}
       </div>
     </div>

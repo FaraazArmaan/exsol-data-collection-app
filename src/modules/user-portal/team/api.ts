@@ -18,6 +18,7 @@ import type {
   UserNode,
   CreateUserNodeBody,
   UserNodeCredentialStatus,
+  BulkInviteRowPayload,
 } from '../../ams/api';
 
 // ─── Structure ────────────────────────────────────────────────────
@@ -92,6 +93,20 @@ export const deleteCredential = (nodeId: string) =>
   apiFetch<{ ok: true }>(
     `/api/user-node-credential?node=${encodeURIComponent(nodeId)}`,
     { method: 'DELETE' },
+  );
+
+// ─── Bulk operations ──────────────────────────────────────────────
+
+export const bulkInvite = (rows: BulkInviteRowPayload[]) =>
+  apiFetch<{ nodes: UserNode[]; login_count: number }>(
+    '/api/user-nodes-bulk',
+    { method: 'POST', body: JSON.stringify({ rows }) },
+  );
+
+export const bulkRoleChangeOwner = (node_ids: string[], new_role_id: string) =>
+  apiFetch<{ updated: number }>(
+    '/api/user-nodes-bulk-role-change',
+    { method: 'POST', body: JSON.stringify({ node_ids, new_role_id }) },
   );
 
 // Re-export the AMS types so consumers can import them from one place.

@@ -213,6 +213,32 @@ export const resetUserNodeCredential = (nodeId: string, temp_password: string) =
 export const deleteUserNodeCredential = (nodeId: string) =>
   apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
 
+// ─── v3: bulk operations ──────────────────────────────────────────
+
+export interface BulkInviteRowPayload {
+  display_name: string;
+  role_key: string;
+  level_number?: number | null;
+  parent_email?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  create_login?: boolean;
+  temp_password?: string;
+}
+
+export const bulkInviteUsers = (clientId: string, rows: BulkInviteRowPayload[]) =>
+  apiFetch<{ nodes: UserNode[]; login_count: number }>(
+    `/api/user-nodes-bulk?client=${encodeURIComponent(clientId)}`,
+    { method: 'POST', body: JSON.stringify({ rows }) },
+  );
+
+export const bulkRoleChange = (clientId: string, node_ids: string[], new_role_id: string) =>
+  apiFetch<{ updated: number }>(
+    `/api/user-nodes-bulk-role-change?client=${encodeURIComponent(clientId)}`,
+    { method: 'POST', body: JSON.stringify({ node_ids, new_role_id }) },
+  );
+
 // ─── Admin: enabled Products per Client ────────────────────────────
 
 export interface ProductAvailable { key: string; label: string }

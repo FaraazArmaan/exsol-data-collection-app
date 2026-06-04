@@ -27,6 +27,8 @@ import { LevelRow } from '../../ams/components/LevelRow';
 import { AddUserModal } from '../../shared/team-modals/AddUserModal';
 import { EditUserModal } from '../../shared/team-modals/EditUserModal';
 import { LoginManageModal } from '../../shared/team-modals/LoginManageModal';
+import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';
+import { BulkActionBar } from '../../shared/team-modals/BulkActionBar';
 import { ownerApi, ownerCopy } from '../team/team-modal-api';
 
 export default function UserManageTeam() {
@@ -39,6 +41,9 @@ export default function UserManageTeam() {
   const [nodesLoading, setNodesLoading] = useState(true);
   const [nodesError, setNodesError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showBulkInvite, setShowBulkInvite] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Two-tier chip click model: edit modal opens first; from inside it the
   // owner can hop into the LoginManageModal for credential ops. They never
@@ -186,9 +191,26 @@ export default function UserManageTeam() {
               {client.name} · {nodes.length} {nodes.length === 1 ? 'user' : 'users'}
             </p>
           </div>
-          <button className="btn btn-primary" disabled={!hasStructure} onClick={() => setShowAdd(true)}>
-            + Add user
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {!selectMode && (
+              <>
+                <button className="btn btn-secondary" disabled={!hasStructure} onClick={() => setShowBulkInvite(true)}>
+                  Bulk invite
+                </button>
+                <button className="btn btn-secondary" disabled={!hasStructure} onClick={() => setSelectMode(true)}>
+                  Select
+                </button>
+                <button className="btn btn-primary" disabled={!hasStructure} onClick={() => setShowAdd(true)}>
+                  + Add user
+                </button>
+              </>
+            )}
+            {selectMode && (
+              <button className="btn btn-secondary" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}>
+                Cancel selection
+              </button>
+            )}
+          </div>
         </header>
 
         {!hasStructure && (
@@ -215,6 +237,11 @@ export default function UserManageTeam() {
               nodes={nodesForLevel(l.level_number)}
               rolesById={rolesById}
               onChipClick={handleChipClick}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={(id) => setSelectedIds((prev) => {
+                const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+              })}
             />
           );
         })}
@@ -225,6 +252,11 @@ export default function UserManageTeam() {
           nodes={nodesByLevel.get('unassigned') ?? []}
           rolesById={rolesById}
           onChipClick={handleChipClick}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => setSelectedIds((prev) => {
+            const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+          })}
         />
 
         {showAdd && (
@@ -268,6 +300,32 @@ export default function UserManageTeam() {
             clientSlug={slug}
             onClose={() => setLoginChip(null)}
             onChanged={refreshNodes}
+          />
+        )}
+
+        {showBulkInvite && structure && (
+          <BulkInviteModal
+            api={ownerApi}
+            roles={structure.roles}
+            levels={structure.levels}
+            onClose={() => setShowBulkInvite(false)}
+            onCreated={async ({ created, logins }) => {
+              setShowBulkInvite(false);
+              await refreshNodes();
+              window.alert(`Created ${created} user${created === 1 ? '' : 's'}${logins > 0 ? `, ${logins} with login${logins === 1 ? '' : 's'}` : ''}.`);
+            }}
+          />
+        )}
+
+        {selectMode && structure && (
+          <BulkActionBar
+            api={ownerApi}
+            selectedIds={selectedIds}
+            nodes={nodes}
+            roles={structure.roles}
+            levels={structure.levels}
+            onCleared={() => setSelectedIds(new Set())}
+            onChanged={async () => { setSelectMode(false); setSelectedIds(new Set()); await refreshNodes(); }}
           />
         )}
       </section>
