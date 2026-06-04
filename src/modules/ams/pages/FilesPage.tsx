@@ -1,8 +1,7 @@
-// Admin "Files" page — live tree of every client's user buckets.
+// Admin "Files" page — raw monospace tree of every workspace's structure.
 //
-// Top-level client list polls every 5s so newly-onboarded workspaces appear
-// without a refresh. Each ClientFilesCard manages its own per-client poll
-// when expanded.
+// Top-level list polls every 5s so newly-onboarded workspaces appear without
+// a refresh. Each ClientFilesCard owns its own per-client poll while expanded.
 
 import { useEffect, useState } from 'react';
 import { listClients, type ClientSummary } from '../api';
@@ -36,23 +35,30 @@ export default function FilesPage() {
         <div>
           <h1 style={{ margin: 0 }}>Files</h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
-            Live workspace tree · polls every 5s · click a workspace to expand
+            Raw tree view · polls every 5s · click any node to expand
           </p>
         </div>
-        <div className="muted" style={{ fontSize: 11 }}>
-          {lastFetched && <>↻ {secondsAgo(lastFetched)} · </>}
+        <div className="muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {lastFetched && <>↻ {secondsAgo(lastFetched)}</>}
           <button className="btn btn-ghost" onClick={() => void refresh()}>Refresh now</button>
         </div>
       </header>
 
-      {loading && <p className="muted">Loading…</p>}
-      {error && <p className="error">{error}</p>}
-      {!loading && !error && clients.length === 0 && (
-        <p className="muted">No workspaces yet.</p>
-      )}
-      {clients.map((c) => (
-        <ClientFilesCard key={c.id} client={c} />
-      ))}
+      <div style={{
+        background: 'var(--bg-elevated, #1a1a1a)',
+        border: '1px solid var(--border-subtle, #2a2a2a)',
+        borderRadius: 6,
+        padding: 12,
+      }}>
+        {loading && <p className="muted">Loading…</p>}
+        {error && <p className="error">{error}</p>}
+        {!loading && !error && clients.length === 0 && (
+          <p className="muted">No workspaces yet.</p>
+        )}
+        {clients.map((c) => (
+          <ClientFilesCard key={c.id} client={c} />
+        ))}
+      </div>
     </section>
   );
 }
