@@ -6,10 +6,12 @@
 import { useEffect, useState } from 'react';
 import { listClients, type ClientSummary } from '../api';
 import { ClientFilesCard } from '../components/files/ClientFilesCard';
+import { useAdminSessionHeartbeat } from '../../../lib/use-admin-session-heartbeat';
 
 const LIST_POLL_MS = 5000;
 
 export default function FilesPage() {
+  useAdminSessionHeartbeat();
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
