@@ -1,5 +1,5 @@
 // src/modules/ams/components/onboarding/OnboardClientWizard.tsx
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import {
   initialState, reducer, validators, applyAutoSeed, STEP_ORDER,
   type WizardStep,
@@ -22,6 +22,19 @@ interface Props {
 export function OnboardClientWizard({ onClose, onCreated }: Props) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [createdClient, setCreatedClient] = useState<{ id: string; name: string; slug: string; tempPassword: string; email: string } | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Heartbeat: ping /api/auth-me every 5 minutes while the wizard is mounted
+  // to keep the 15-minute admin session cookie refreshed. auth-me.ts calls
+  // mintSession() when claims are within 10 minutes of expiry, so a 5-minute
+  // interval guarantees the cookie never approaches its hard expiry while a
+  // user is filling out the multi-step form.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void fetch('/api/auth-me', { credentials: 'same-origin' });
+    }, 5 * 60 * 1000);
+    return () => { window.clearInterval(id); };
+  }, []);
 
   const currentIdx = STEP_ORDER.indexOf(state.step as Exclude<WizardStep, 'success'>);
   const isLastStep = state.step === 'owner';
@@ -62,6 +75,10 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
     });
     if (!r.ok) {
       const code = r.error.code;
+      if (code === 'unauthorized') {
+        setSessionExpired(true);
+        return;
+      }
       const details = (r.error as { details?: { section?: string } }).details ?? {};
       dispatch({
         type: 'submitError',
@@ -96,6 +113,21 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
           <button type="button" className="btn btn-ghost" onClick={tryCancel} aria-label="Cancel">×</button>
         </header>
 
+        {sessionExpired ? (
+          <div style={{ padding: '24px 8px' }}>
+            <p style={{ marginTop: 0 }}>
+              Your session expired. Refresh the page to sign in again.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => { window.location.reload(); }}
+            >
+              Refresh
+            </button>
+          </div>
+        ) : (
+          <>
         <Stepper currentStep={state.step} onJumpTo={(s) => dispatch({ type: 'goToStep', step: s })} />
 
         {state.step === 'name' && <NameStep state={state} dispatch={dispatch} />}
@@ -131,6 +163,8 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
