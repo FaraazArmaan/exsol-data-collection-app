@@ -11,6 +11,7 @@ import { db } from './_shared/db';
 import { hashPassword } from './_shared/argon';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
+import { logAudit } from './_shared/audit';
 
 const CreateBody = z.object({
   email: z.string().email().max(254),
@@ -29,7 +30,8 @@ interface TeamRow {
 }
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -63,6 +65,14 @@ export default async (req: Request, _ctx: Context) => {
                   (google_sub IS NOT NULL) AS has_google,
                   created_at
       `) as TeamRow[];
+      await logAudit(sql, {
+        session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+        op: 'admin.created',
+        clientId: null,
+        targetType: 'admin',
+        targetId: inserted[0]!.id,
+        detail: { email: parsed.data.email, display_name: parsed.data.display_name },
+      });
       return jsonOk({ admin: inserted[0] }, { status: 201 });
     } catch (e: unknown) {
       // Neon surfaces unique-constraint failures as code 23505,

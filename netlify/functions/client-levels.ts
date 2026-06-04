@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const CreateBody = z.object({
   level_number: z.number().int().positive(),
@@ -13,7 +14,8 @@ const CreateBody = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -44,7 +46,15 @@ export default async (req: Request, _ctx: Context) => {
       VALUES (${clientId}::uuid, ${parsed.data.level_number},
               ${parsed.data.label ?? null}, ${effectiveAllowedRoleIds}::uuid[])
       RETURNING id, client_id, level_number, label, allowed_role_ids, created_at
-    `) as unknown[];
+    `) as Array<{ id: string }>;
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'level.created',
+      clientId,
+      targetType: 'level',
+      targetId: rows[0]!.id,
+      detail: { level_number: parsed.data.level_number, label: parsed.data.label ?? null },
+    });
     return jsonOk({ level: rows[0] }, { status: 201 });
   } catch (e: unknown) {
     const code = (e as { code?: string })?.code;

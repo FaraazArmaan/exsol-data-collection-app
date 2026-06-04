@@ -3,9 +3,11 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 export default async (req: Request, _ctx: Context) => {
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -26,6 +28,14 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method === 'DELETE') {
     // Cascades to client_roles, client_levels, user_nodes, etc. via FK.
     await sql`DELETE FROM public.clients WHERE id = ${id}`;
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'client.deleted',
+      clientId: id,
+      targetType: 'client',
+      targetId: id,
+      detail: { name: client.name },
+    });
     return jsonOk({ ok: true });
   }
 

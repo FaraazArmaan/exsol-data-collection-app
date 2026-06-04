@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import onboardClientHandler from '../../netlify/functions/onboard-client';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'onboard-test@example.com';
 const ADMIN_PASSWORD = 'onboard-pw';
@@ -102,6 +103,12 @@ describe('onboard-client', () => {
     const cred = (await sql`SELECT must_change_password, temp_password_plain FROM public.user_node_credentials WHERE client_id = ${out.client.id}::uuid`) as { must_change_password: boolean; temp_password_plain: string }[];
     expect(cred[0]!.must_change_password).toBe(true);
     expect(cred[0]!.temp_password_plain).toBe(body.owner.temp_password);
+    await assertLastAudit(sql, {
+      op: 'client.onboarded',
+      targetType: 'client',
+      targetId: out.client.id,
+      clientId: out.client.id,
+    });
   });
 
   test('minimum body (auto-seed roles + levels) creates working client', async () => {

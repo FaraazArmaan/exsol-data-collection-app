@@ -11,6 +11,7 @@ import { assertUuid } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { getCardinalityCap } from './_shared/user-tree';
 import { subtreeOf } from './_shared/subtree';
+import { logAudit } from './_shared/audit';
 
 const CreateBody = z.object({
   role_id: z.string().uuid(),
@@ -84,7 +85,7 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method === 'POST') {
     const adminId = session.kind === 'bucket_user' ? null : session.admin.id;
     const creatorUserNodeId = session.kind === 'bucket_user' ? session.user_node_id : null;
-    return await handleCreate(req, sql, clientId, adminId, creatorUserNodeId);
+    return await handleCreate(req, sql, clientId, adminId, creatorUserNodeId, session);
   }
 
   return jsonError(405, 'method_not_allowed');
@@ -96,6 +97,7 @@ async function handleCreate(
   clientId: string,
   adminId: string | null,
   creatorUserNodeId: string | null,
+  session: AnySession,
 ): Promise<Response> {
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -186,7 +188,7 @@ async function handleCreate(
           throw new Error(`cardinality_exceeded:${cap}`);
         }
         const node = inserted[0]!;
-        return await maybeCreateCredential(sql, clientId, node, data, adminId, creatorUserNodeId);
+        return await maybeCreateCredential(sql, clientId, node, data, adminId, creatorUserNodeId, session);
       } catch (e: unknown) {
         const msg = (e as Error)?.message ?? '';
         const code = (e as { code?: string })?.code;
@@ -224,7 +226,7 @@ async function handleCreate(
       RETURNING id, client_id, parent_id, level_number, role_id, display_name, email,
                 phone, notes, fields, sort_order, created_at, updated_at, created_by_admin
     `) as Record<string, unknown>[];
-    return await maybeCreateCredential(sql, clientId, rows[0]!, data, adminId, creatorUserNodeId);
+    return await maybeCreateCredential(sql, clientId, rows[0]!, data, adminId, creatorUserNodeId, session);
   } catch (e: unknown) {
     const msg = (e as Error)?.message ?? '';
     const code = (e as { code?: string })?.code;
@@ -242,8 +244,25 @@ async function maybeCreateCredential(
   data: z.infer<typeof CreateBody>,
   adminId: string | null,
   creatorUserNodeId: string | null,
+  session: AnySession,
 ): Promise<Response> {
-  if (!data.create_login) return jsonOk({ node }, { status: 201 });
+  const nodeId = node.id as string;
+  if (!data.create_login) {
+    await logAudit(sql, {
+      session,
+      op: 'user_node.created',
+      clientId,
+      targetType: 'user_node',
+      targetId: nodeId,
+      detail: {
+        display_name: data.display_name,
+        role_id: data.role_id,
+        level_number: data.level_number ?? null,
+        has_login: false,
+      },
+    });
+    return jsonOk({ node }, { status: 201 });
+  }
 
   if (!data.temp_password || data.temp_password.length < 8) {
     // Roll back the user_node insert (best effort).
@@ -272,5 +291,18 @@ async function maybeCreateCredential(
     if (code === '23505') return jsonError(409, 'email_already_has_login_in_this_client');
     throw e;
   }
+  await logAudit(sql, {
+    session,
+    op: 'user_node.created',
+    clientId,
+    targetType: 'user_node',
+    targetId: nodeId,
+    detail: {
+      display_name: data.display_name,
+      role_id: data.role_id,
+      level_number: data.level_number ?? null,
+      has_login: true,
+    },
+  });
   return jsonOk({ node, login_created: true }, { status: 201 });
 }

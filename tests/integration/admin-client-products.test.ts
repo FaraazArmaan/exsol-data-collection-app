@@ -8,6 +8,7 @@ import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
 import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'acp-test@example.com';
 const ADMIN_PASSWORD = 'acp-test-pw';
@@ -80,6 +81,12 @@ describe('admin-client-products', () => {
     );
     const body = await r2.json() as { enabled_keys: string[] };
     expect(body.enabled_keys).toEqual(['saloon-booking']);
+    await assertLastAudit(sql, {
+      op: 'products.replaced',
+      targetType: 'client',
+      targetId: clientId,
+      clientId,
+    });
   });
 
   it('PUT with empty keys clears all enabled products', async () => {

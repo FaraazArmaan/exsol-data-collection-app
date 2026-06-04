@@ -4,6 +4,7 @@ import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
+import { logAudit } from './_shared/audit';
 
 const FieldDef = z.object({
   key: z.string().min(1).max(63).regex(/^[a-z][a-z0-9_]*$/),
@@ -28,7 +29,8 @@ const CreateBody = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
-  try { await requireAdmin(req); } catch (e) {
+  let actor;
+  try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }
@@ -67,6 +69,15 @@ export default async (req: Request, _ctx: Context) => {
       WHERE client_id = ${clientId}::uuid
         AND NOT (${role.id}::uuid = ANY(allowed_role_ids))
     `;
+
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: 'role.created',
+      clientId,
+      targetType: 'role',
+      targetId: role.id,
+      detail: { key: parsed.data.key, label: parsed.data.label },
+    });
 
     return jsonOk({ role }, { status: 201 });
   } catch (e: unknown) {

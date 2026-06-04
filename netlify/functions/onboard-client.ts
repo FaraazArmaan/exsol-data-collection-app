@@ -17,6 +17,7 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { deriveSlug } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
+import { logAudit } from './_shared/audit';
 
 const RoleSchema = z.object({
   key: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(50),
@@ -250,6 +251,21 @@ export default async (req: Request, _ctx: Context) => {
     }
     throw e; // unknown — let it 500
   }
+
+  await logAudit(sql, {
+    session: { kind: 'admin' as const, admin: { id: adminId, email: '' } },
+    op: 'client.onboarded',
+    clientId,
+    targetType: 'client',
+    targetId: clientId,
+    detail: {
+      enabled_products_count: data.enabled_products.length,
+      roles_count: roles.length,
+      levels_count: levels.length,
+      cardinality_rules_count: data.cardinality_rules.length,
+      owner_email: data.owner.email,
+    },
+  });
 
   return jsonOk({
     client: { id: clientId, name: data.name, slug },

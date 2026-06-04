@@ -22,6 +22,7 @@ import authMeHandler from '../../netlify/functions/auth-me';
 import loginUnifiedHandler from '../../netlify/functions/login';
 import forgotPasswordHandler from '../../netlify/functions/forgot-password';
 import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
+import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'user-node-auth-test@example.com';
 const ADMIN_PASSWORD = 'user-node-auth-pw';
@@ -196,6 +197,11 @@ describe('user-node auth', () => {
     const r4 = await userNodeCredentialHandler(new Request(url, { method: 'GET', headers: { cookie } }), CTX);
     const body4 = await r4.json() as { temp_password_plain: string | null };
     expect(body4.temp_password_plain).toBeNull();
+    await assertLastAudit(sql, {
+      op: 'credential.peeked',
+      targetType: 'user_node',
+      targetId: nodeId,
+    });
   });
 
   test('GET credential with ?peek=1 returns status only and does NOT decrement views_left', async () => {
@@ -876,6 +882,29 @@ describe('user-node-credential — bucket-user widening', () => {
     expect(rows[0]!.temp_password_plain).toBe('owner-reset-pw-1');
     expect(rows[0]!.created_by_admin).toBeNull();
     expect(rows[0]!.created_by_user_node).toBe(ownerNodeId);
+    await assertLastAudit(sql, {
+      op: 'credential.reset',
+      targetType: 'user_node',
+      targetId: targetId,
+      clientId: testClientId,
+      actorUserNodeId: ownerNodeId,
+      actorAdminId: null,
+    });
+
+    // Same test exercises credential DELETE attribution + audit row (credential.deleted).
+    const del = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${targetId}`, {
+        method: 'DELETE', headers: { cookie: ownerCookie },
+      }), CTX,
+    );
+    expect(del.status).toBe(200);
+    await assertLastAudit(sql, {
+      op: 'credential.deleted',
+      targetType: 'user_node',
+      targetId: targetId,
+      clientId: testClientId,
+      actorUserNodeId: ownerNodeId,
+    });
   });
 
   test('L1 Owner can GET peek another user\'s temp password (own workspace)', async () => {
