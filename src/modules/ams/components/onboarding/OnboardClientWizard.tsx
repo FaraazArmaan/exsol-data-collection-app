@@ -1,9 +1,10 @@
 // src/modules/ams/components/onboarding/OnboardClientWizard.tsx
-import { useEffect, useReducer, useState } from 'react';
+import { useReducer, useState } from 'react';
 import {
   initialState, reducer, validators, applyAutoSeed, STEP_ORDER,
   type WizardStep,
 } from './state';
+import { useAdminSessionHeartbeat } from '../../../../lib/use-admin-session-heartbeat';
 import { Stepper } from './Stepper';
 import { NameStep } from './steps/NameStep';
 import { ProductsStep } from './steps/ProductsStep';
@@ -24,17 +25,7 @@ export function OnboardClientWizard({ onClose, onCreated }: Props) {
   const [createdClient, setCreatedClient] = useState<{ id: string; name: string; slug: string; tempPassword: string; email: string } | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  // Heartbeat: ping /api/auth-me every 5 minutes while the wizard is mounted
-  // to keep the 15-minute admin session cookie refreshed. auth-me.ts calls
-  // mintSession() when claims are within 10 minutes of expiry, so a 5-minute
-  // interval guarantees the cookie never approaches its hard expiry while a
-  // user is filling out the multi-step form.
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      void fetch('/api/auth-me', { credentials: 'same-origin' });
-    }, 5 * 60 * 1000);
-    return () => { window.clearInterval(id); };
-  }, []);
+  useAdminSessionHeartbeat();
 
   const currentIdx = STEP_ORDER.indexOf(state.step as Exclude<WizardStep, 'success'>);
   const isLastStep = state.step === 'owner';
