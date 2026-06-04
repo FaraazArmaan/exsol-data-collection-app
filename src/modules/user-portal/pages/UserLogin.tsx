@@ -45,7 +45,13 @@ export default function UserLogin() {
     const r = await userLogin(slug, email.trim(), password);
     setSubmitting(false);
     if (!r.ok) {
-      setError(r.error.code === 'unauthorized' ? 'Email or password incorrect.' : `Login failed (${r.error.code}).`);
+      if (r.error.code === 'too_many_attempts') {
+        setError('Too many attempts. Try again in a few minutes.');
+      } else if (r.error.code === 'unauthorized') {
+        setError('Email or password incorrect.');
+      } else {
+        setError(`Login failed (${r.error.code}).`);
+      }
       return;
     }
     await refresh();
