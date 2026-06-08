@@ -1,0 +1,4 @@
+sku,name,type,category,brand,price,currency,stock_qty,unit,status,tags,description
+GOOD-1,Good Item,physical,Electronics,X,10,USD,1,each,active,,
+,Bad Service,service,Services,,10,USD,5,,active,,
+NEG-1,Negative Price,physical,Electronics,X,-5,USD,1,each,active,,
