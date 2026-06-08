@@ -13,7 +13,6 @@ export interface RoleDraft {
 export interface LevelDraft {
   level_number: number;
   label?: string | null;
-  allowed_role_keys: string[];
 }
 
 export interface CardinalityDraft {
@@ -62,6 +61,7 @@ export type WizardAction =
   | { type: 'removeRole'; index: number }
   | { type: 'addLevel'; level: LevelDraft }
   | { type: 'removeLevel'; index: number }
+  | { type: 'updateLevelLabel'; level_number: number; label: string | null }
   | { type: 'addCardinality'; rule: CardinalityDraft }
   | { type: 'removeCardinality'; index: number }
   | { type: 'setOwner'; patch: Partial<OwnerDraft> }
@@ -83,6 +83,10 @@ export function reducer(state: WizardState, action: WizardAction): WizardState {
     case 'removeRole': return { ...state, roles: state.roles.filter((_, i) => i !== action.index) };
     case 'addLevel': return { ...state, levels: [...state.levels, action.level] };
     case 'removeLevel': return { ...state, levels: state.levels.filter((_, i) => i !== action.index) };
+    case 'updateLevelLabel': return {
+      ...state,
+      levels: state.levels.map((l) => l.level_number === action.level_number ? { ...l, label: action.label } : l),
+    };
     case 'addCardinality': return { ...state, cardinality_rules: [...state.cardinality_rules, action.rule] };
     case 'removeCardinality': return { ...state, cardinality_rules: state.cardinality_rules.filter((_, i) => i !== action.index) };
     case 'setOwner': return { ...state, owner: { ...state.owner, ...action.patch } };
@@ -120,18 +124,16 @@ export function applyAutoSeed(state: WizardState): WizardState {
     roles = [{ key: 'owner', label: 'Owner', color: '#3b82f6' }];
   }
   if (levels.length === 0) {
-    levels = [{ level_number: 1, label: 'Primary', allowed_role_keys: [roles[0]!.key] }];
+    levels = [{ level_number: 1, label: 'Primary' }];
   }
   return { ...state, roles, levels };
 }
 
-// Resolve the Owner's role key per spec §4.5: first role in `roles` whose
-// key appears in level 1's allowed_role_keys.
+// Resolve the Owner's role key: levels no longer carry role bindings, so the
+// Owner is simply the first role in the roles array (server uses the same rule).
 export function resolveOwnerRoleKey(state: WizardState): string | null {
-  const lv1 = state.levels.find((l) => l.level_number === 1);
-  if (!lv1 || lv1.allowed_role_keys.length === 0) return null;
-  const match = state.roles.find((r) => lv1.allowed_role_keys.includes(r.key));
-  return match?.key ?? null;
+  if (!state.levels.find((l) => l.level_number === 1)) return null;
+  return state.roles[0]?.key ?? null;
 }
 
 // The 6 ordered steps (no 'success' — that's a terminal post-submit state).

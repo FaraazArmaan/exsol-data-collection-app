@@ -296,7 +296,7 @@ export interface OnboardClientBody {
   name: string;
   enabled_products: string[];
   roles: Array<{ key: string; label: string; color: string; bucket_family?: 'business' | 'employees' | 'customers' | 'products' | null }>;
-  levels: Array<{ level_number: number; label?: string | null; allowed_role_keys: string[] }>;
+  levels: Array<{ level_number: number; label?: string | null }>;
   cardinality_rules: Array<{ parent_role_key: string | null; child_role_key: string; max_children: number }>;
   owner: { display_name: string; email: string; phone?: string | null; notes?: string | null; temp_password: string };
 }
