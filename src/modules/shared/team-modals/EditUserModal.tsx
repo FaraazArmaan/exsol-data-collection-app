@@ -55,14 +55,10 @@ export function EditUserModal({
       ? nodes.filter((n) => n.level_number === node.level_number! - 1)
       : [];
 
-  // Role picker — show only roles allowed at the target's current level.
-  // Unassigned (level_number === null) nodes can't have their role changed via
-  // this picker because no level is defined → no allowed_role_ids; assign a
-  // level first via drag-drop.
-  const levelAllowedRoleIds = node.level_number !== null
-    ? (levels.find((l) => l.level_number === node.level_number)?.allowed_role_ids ?? [])
-    : [];
-  const levelAllowedRoles = roles.filter((r) => levelAllowedRoleIds.includes(r.id));
+  // Picker shows ALL roles in the workspace. Level no longer constrains role —
+  // a role's level-applicability is now considered part of the role itself
+  // (a future refactor will remove `client_levels.allowed_role_ids` entirely).
+  const pickableRoles = roles;
 
   const isSelfTarget = callerUserNodeId !== null && callerUserNodeId === node.id;
   const rolePickerVisible = caps.canChangeRole && node.level_number !== null;
@@ -156,15 +152,13 @@ export function EditUserModal({
         const msg =
           code === 'cardinality_exceeded'
             ? `Limit reached for this role under the current parent${details?.max !== undefined ? ` (max ${details.max})` : ''}. Move the user first, or pick a different role.`
-            : code === 'level_disallows_role'
-              ? `This role isn't allowed at level ${node.level_number}.`
-              : code === 'forbidden_role_change_scope'
-                ? `Only admins and Owners can change roles.`
-                : code === 'self_role_change_forbidden'
-                  ? `You can't change your own role.`
-                  : code === 'unassigned_node'
-                    ? `Assign this user to a level first.`
-                    : `Failed (${code}).`;
+            : code === 'forbidden_role_change_scope'
+              ? `Only admins and Owners can change roles.`
+              : code === 'self_role_change_forbidden'
+                ? `You can't change your own role.`
+                : code === 'unassigned_node'
+                  ? `Assign this user to a level first.`
+                  : `Failed (${code}).`;
         setError(msg);
         return;
       }
@@ -306,7 +300,7 @@ export function EditUserModal({
                   setRoleChangeConfirmed(false);
                 }}
               >
-                {levelAllowedRoles.map((r) => (
+                {pickableRoles.map((r) => (
                   <option key={r.id} value={r.id}>{r.label}</option>
                 ))}
               </select>
@@ -326,7 +320,7 @@ export function EditUserModal({
             >
               You're changing <strong>{node.display_name}</strong> from{' '}
               <strong>{role?.label ?? '(current)'}</strong> to{' '}
-              <strong>{levelAllowedRoles.find((r) => r.id === selectedRoleId)?.label ?? '(new)'}</strong>.
+              <strong>{pickableRoles.find((r) => r.id === selectedRoleId)?.label ?? '(new)'}</strong>.
               This affects which views and bulk actions they appear in.
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button
