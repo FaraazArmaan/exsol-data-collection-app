@@ -240,6 +240,12 @@ export const bulkRoleChange = (clientId: string, node_ids: string[], new_role_id
     { method: 'POST', body: JSON.stringify({ node_ids, new_role_id }) },
   );
 
+export const changeRole = (clientId: string, node_id: string, new_role_id: string) =>
+  apiFetch<{ node: UserNode; no_change?: boolean }>(
+    `/api/user-nodes-role-change?client=${encodeURIComponent(clientId)}`,
+    { method: 'POST', body: JSON.stringify({ node_id, new_role_id }) },
+  );
+
 // ─── Admin: enabled Products per Client ────────────────────────────
 
 export interface ProductAvailable { key: string; label: string }

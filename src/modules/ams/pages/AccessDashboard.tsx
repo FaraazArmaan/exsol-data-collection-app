@@ -101,12 +101,13 @@ function DashboardInner({ clientId }: { clientId: string }) {
   }
 
   function handleChipClick(n: UserNode) {
-    // Clicking a chip opens the edit modal AND narrows its level (so the next
-    // level row filters to this chip's children).
+    // Clicking a chip opens the edit modal. It must NOT also narrow the
+    // level below — narrowing collapses Level N+1 to a single parent's
+    // children and hides the other users that PR #5 (f19608f3) was
+    // explicitly fixing for the no-narrowing render path. If a drill
+    // affordance is wanted later, hang it off a separate UX surface
+    // (chevron, double-click) rather than the primary click.
     setEditingChip(n);
-    if (n.level_number !== null) {
-      setNarrowed({ ...narrowed, [n.level_number]: n.id });
-    }
   }
 
   async function onDragEnd(e: DragEndEvent) {
@@ -277,8 +278,11 @@ function DashboardInner({ clientId }: { clientId: string }) {
 
         {editingChip && (
           <EditUserNodeModal
+            clientId={clientId}
             node={editingChip}
             role={rolesById[editingChip.role_id]}
+            roles={structure.roles}
+            levels={structure.levels}
             clientSlug={clientSlug}
             nodes={nodes}
             onClose={() => setEditingChip(null)}
@@ -295,6 +299,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
 
         {loginChip && (
           <LoginManageModal
+            clientId={clientId}
             node={loginChip}
             clientSlug={clientSlug}
             onClose={() => setLoginChip(null)}

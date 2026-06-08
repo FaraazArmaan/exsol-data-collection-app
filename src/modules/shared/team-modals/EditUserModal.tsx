@@ -1,15 +1,22 @@
 // Shared Edit-User modal. See ./types.ts for the api/copy contract.
 
 import { useEffect, useState, type FormEvent } from 'react';
-import type { ClientRole, UserNode, UserNodeCredentialStatus } from '../../ams/api';
+import type { ClientRole, ClientLevel, UserNode, UserNodeCredentialStatus } from '../../ams/api';
 import { generateTempPassword } from '../../../lib/random-password';
-import type { TeamMemberApi, TeamMemberCopy } from './types';
+import type { TeamMemberApi, TeamMemberCopy, TeamMemberCaps } from './types';
 
 interface Props {
   api: TeamMemberApi;
   copy: TeamMemberCopy;
+  caps: TeamMemberCaps;
   node: UserNode;
   role: ClientRole | undefined;
+  roles: ClientRole[];
+  levels: ClientLevel[];
+  // The user_node id of the currently-signed-in caller, when the caller is a
+  // bucket_user (owner). Null for admin callers (who aren't user nodes). Used
+  // to forbid self-role-change on the client side.
+  callerUserNodeId: string | null;
   clientSlug: string;
   // All user nodes in the workspace. Used to populate the Parent picker with
   // siblings at the level above this node. Pass an empty array if the caller
@@ -27,7 +34,8 @@ interface Props {
 // Deep "manage credential" flows (reveal counter, remove login) live in
 // LoginManageModal — this modal exposes a button to hand off to it.
 export function EditUserModal({
-  api, copy, node, role, clientSlug, nodes, onClose, onSaved, onDeleted, onManageLogin,
+  api, copy, caps, node, role, roles, levels, callerUserNodeId,
+  clientSlug, nodes, onClose, onSaved, onDeleted, onManageLogin,
 }: Props) {
   const [displayName, setDisplayName] = useState(node.display_name);
   const [email, setEmail] = useState(node.email ?? '');
@@ -46,6 +54,20 @@ export function EditUserModal({
     node.level_number !== null && node.level_number > 1
       ? nodes.filter((n) => n.level_number === node.level_number! - 1)
       : [];
+
+  // Picker shows ALL roles in the workspace. Level no longer constrains role —
+  // a role's level-applicability is now considered part of the role itself
+  // (a future refactor will remove `client_levels.allowed_role_ids` entirely).
+  const pickableRoles = roles;
+
+  const isSelfTarget = callerUserNodeId !== null && callerUserNodeId === node.id;
+  const rolePickerVisible = caps.canChangeRole && node.level_number !== null;
+  const rolePickerDisabled = isSelfTarget;
+
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(node.role_id);
+  const [roleChangeConfirmed, setRoleChangeConfirmed] = useState(false);
+
+  const roleChanged = selectedRoleId !== node.role_id;
 
   // Sign-in status (peeked — does NOT decrement reveal counter).
   const [status, setStatus] = useState<UserNodeCredentialStatus | null>(null);
@@ -76,7 +98,7 @@ export function EditUserModal({
     (phone.trim() || null) !== (node.phone ?? null) ||
     (notes.trim() || null) !== (node.notes ?? null) ||
     JSON.stringify(fields) !== JSON.stringify(node.fields ?? {});
-  const dirty = identityDirty || parentChanged;
+  const dirty = identityDirty || parentChanged || (roleChanged && roleChangeConfirmed);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -116,6 +138,27 @@ export function EditUserModal({
               : code === 'parent_level_mismatch'
                 ? 'The chosen parent is not at the level above this user.'
                 : `Failed (${code}).`;
+        setError(msg);
+        return;
+      }
+    }
+
+    if (roleChanged && roleChangeConfirmed) {
+      const r = await api.changeRole(node.id, selectedRoleId);
+      if (!r.ok) {
+        setSubmitting(false);
+        const code = r.error.code;
+        const details = r.error.details as { max?: number } | undefined;
+        const msg =
+          code === 'cardinality_exceeded'
+            ? `Limit reached for this role under the current parent${details?.max !== undefined ? ` (max ${details.max})` : ''}. Move the user first, or pick a different role.`
+            : code === 'forbidden_role_change_scope'
+              ? `Only admins and Owners can change roles.`
+              : code === 'self_role_change_forbidden'
+                ? `You can't change your own role.`
+                : code === 'unassigned_node'
+                  ? `Assign this user to a level first.`
+                  : `Failed (${code}).`;
         setError(msg);
         return;
       }
@@ -244,6 +287,60 @@ export function EditUserModal({
                 ))}
               </select>
             </label>
+          )}
+
+          {rolePickerVisible && (
+            <label>Role
+              <select
+                value={selectedRoleId}
+                disabled={rolePickerDisabled}
+                title={rolePickerDisabled ? "You can't change your own role" : undefined}
+                onChange={(e) => {
+                  setSelectedRoleId(e.target.value);
+                  setRoleChangeConfirmed(false);
+                }}
+              >
+                {pickableRoles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {rolePickerVisible && roleChanged && !roleChangeConfirmed && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: 10,
+                borderRadius: 6,
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                fontSize: 12,
+              }}
+            >
+              You're changing <strong>{node.display_name}</strong> from{' '}
+              <strong>{role?.label ?? '(current)'}</strong> to{' '}
+              <strong>{pickableRoles.find((r) => r.id === selectedRoleId)?.label ?? '(new)'}</strong>.
+              This affects which views and bulk actions they appear in.
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setRoleChangeConfirmed(true)}
+                  disabled={submitting}
+                >
+                  Confirm role change
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedRoleId(node.role_id)}
+                  disabled={submitting}
+                >
+                  Revert
+                </button>
+              </div>
+            </div>
           )}
 
           <section style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border, #2a2a2a)' }}>
