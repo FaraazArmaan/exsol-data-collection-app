@@ -21,6 +21,7 @@ import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboard
 import AdminFilesPage from '../modules/files/admin/AdminFilesPage';
 import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
 import ProductsListPage from '../modules/products/workspace/pages/ProductsListPage';
+import ProductEditPage from '../modules/products/workspace/pages/ProductEditPage';
 
 function ShellLayout() {
   return (
@@ -59,6 +60,8 @@ export const router = createBrowserRouter([
               { path: 'team', element: <UserManageTeam /> },
               { path: 'file-manager', element: <WorkspaceFilesPage /> },
               { path: 'products', element: <ProductsListPage /> },
+              { path: 'products/new', element: <ProductEditPage /> },
+              { path: 'products/:productId/edit', element: <ProductEditPage /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
