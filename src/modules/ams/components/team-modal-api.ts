@@ -28,21 +28,25 @@ export function buildAdminApi(clientId: string): TeamMemberApi {
   };
 }
 
-// Edit/Login modals don't need createNode but the shared TeamMemberApi shape
-// includes it. Stub it to a clear error rather than silently no-op'ing.
-export const adminApiNoCreate: TeamMemberApi = {
-  createNode: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
-  updateNode: (id, body) => patchUserNode(id, body),
-  deleteNode: (id, cascade) => deleteUserNode(id, cascade),
-  moveNode: (id, p, l) => moveUserNode(id, p, l),
-  getCredential: (id) => getUserNodeCredential(id),
-  peekCredential: (id) => peekUserNodeCredential(id),
-  resetCredential: (id, pw) => resetUserNodeCredential(id, pw),
-  deleteCredential: (id) => deleteUserNodeCredential(id),
-  bulkInvite: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
-  bulkRoleChange: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
-  changeRole: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
-};
+// Edit/Login modals don't need createNode/bulk surfaces but the shared
+// TeamMemberApi shape includes them. Stub the unused ones to a clear error
+// rather than silently no-op'ing. `changeRole` needs clientId though, so this
+// is a factory rather than a singleton (matches buildAdminApi above).
+export function buildAdminApiNoCreate(clientId: string): TeamMemberApi {
+  return {
+    createNode: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
+    updateNode: (id, body) => patchUserNode(id, body),
+    deleteNode: (id, cascade) => deleteUserNode(id, cascade),
+    moveNode: (id, p, l) => moveUserNode(id, p, l),
+    getCredential: (id) => getUserNodeCredential(id),
+    peekCredential: (id) => peekUserNodeCredential(id),
+    resetCredential: (id, pw) => resetUserNodeCredential(id, pw),
+    deleteCredential: (id) => deleteUserNodeCredential(id),
+    bulkInvite: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
+    bulkRoleChange: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
+    changeRole: (id, rid) => changeRole(clientId, id, rid),
+  };
+}
 
 // Admin-side copy. AddUserNodeModal overrides noLevelsHint / noLevelForRoleHint
 // with clientId-aware links to /clients/:id/configure; Edit/Login don't use

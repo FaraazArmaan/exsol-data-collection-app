@@ -277,8 +277,12 @@ export default function UserManageTeam() {
           <EditUserModal
             api={ownerApi}
             copy={ownerCopy}
+            caps={{ canChangeRole: user.level_number === 1 }}
             node={editingChip}
             role={rolesById[editingChip.role_id]}
+            roles={structure.roles}
+            levels={structure.levels}
+            callerUserNodeId={user.id}
             clientSlug={slug}
             nodes={nodes}
             onClose={() => setEditingChip(null)}
