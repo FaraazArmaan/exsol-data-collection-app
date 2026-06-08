@@ -4,7 +4,7 @@
 
 **Goal:** Drop `client_levels.allowed_role_ids`, make any role assignable at any level, simplify the LevelEditor + onboarding wizard, and inline permission defaults at level-create time (L1 = all, L2+ = none).
 
-**Architecture:** Single feature branch, code-first deploy ordering. All backend writes/reads of `allowed_role_ids` go away in one push; migration 033 drops the column on prod Neon AFTER deploy is ready (inverts the additive-migration memory — see Task 13). New helper `defaultPermissionsForLevel(levelNumber, enabledProductKeys)` derives permission defaults from the workspace's enabled modules.
+**Architecture:** Single feature branch, code-first deploy ordering. All backend writes/reads of `allowed_role_ids` go away in one push; migration 036 drops the column on prod Neon AFTER deploy is ready (inverts the additive-migration memory — see Task 13). New helper `defaultPermissionsForLevel(levelNumber, enabledProductKeys)` derives permission defaults from the workspace's enabled modules.
 
 **Tech Stack:** Netlify Functions (TS), Neon Postgres, Vitest, React/Vite frontend, existing `src/modules/registry/` for module manifests, existing `_shared/permission-keys.ts` for key validation.
 
@@ -14,7 +14,7 @@
 - After any TypeScript change: run `npm run typecheck`.
 - Never `git push` without explicit user approval. Local commits are fine.
 - Never run `npm test` casually — it hits the real Neon dev DB and takes ~135s. Each task scopes test runs to specific files.
-- Migration 033 runs against PROD Neon AFTER code-deploy completes — opposite of the usual order. See Task 13.
+- Migration 036 runs against PROD Neon AFTER code-deploy completes — opposite of the usual order. See Task 13.
 - Co-author trailer: `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
 
 ---
@@ -22,7 +22,7 @@
 ## File Structure
 
 **New files (4):**
-- `db/migrations/033_drop_client_levels_allowed_role_ids.sql` — single ALTER TABLE
+- `db/migrations/036_drop_client_levels_allowed_role_ids.sql` — single ALTER TABLE
 - `netlify/functions/_shared/level-permissions.ts` — `defaultPermissionsForLevel()` helper
 - `tests/unit/level-permissions-default.test.ts` — 3 tests for the new helper
 - `tests/integration/client-levels-create-defaults.test.ts` — 2 tests for endpoint defaults
@@ -1109,7 +1109,7 @@ test: drop allowed_role_ids from level fixtures
 
 Six integration test files updated to stop sending allowed_role_ids
 in their POST /api/client-levels fixture bodies. Endpoint no longer
-accepts the field; migration 033 will drop the column.
+accepts the field; migration 036 will drop the column.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -1122,7 +1122,7 @@ EOF
 
 **Files:**
 - Create: `tests/integration/client-levels-create-defaults.test.ts`
-- Create: `db/migrations/033_drop_client_levels_allowed_role_ids.sql`
+- Create: `db/migrations/036_drop_client_levels_allowed_role_ids.sql`
 
 - [ ] **Step 1: Write the integration test**
 
@@ -1233,10 +1233,10 @@ Recommended: run the migration first, then this test.
 
 - [ ] **Step 3: Create the migration file**
 
-Create `db/migrations/033_drop_client_levels_allowed_role_ids.sql`:
+Create `db/migrations/036_drop_client_levels_allowed_role_ids.sql`:
 
 ```sql
--- 033_drop_client_levels_allowed_role_ids.sql
+-- 036_drop_client_levels_allowed_role_ids.sql
 --
 -- The allowed_role_ids column was a level-binds-roles constraint that no
 -- longer applies after the 2026-06-08 levels/roles decoupling refactor.
@@ -1256,13 +1256,13 @@ ALTER TABLE public.client_levels DROP COLUMN allowed_role_ids;
 npm run migrate
 ```
 
-Expected: migration 033 applied. Verify with:
+Expected: migration 036 applied. Verify with:
 
 ```bash
 npm run migrate -- --status
 ```
 
-Should show 033 as applied. Or query the schema directly:
+Should show 036 as applied. Or query the schema directly:
 
 ```bash
 DATABASE_URL=$(grep -E '^DATABASE_URL' .env | cut -d= -f2-) psql "$DATABASE_URL" -c "\d public.client_levels"
@@ -1289,11 +1289,11 @@ Expected: PASS.
 - [ ] **Step 8: Commit the test + migration together**
 
 ```bash
-git add tests/integration/client-levels-create-defaults.test.ts db/migrations/033_drop_client_levels_allowed_role_ids.sql
+git add tests/integration/client-levels-create-defaults.test.ts db/migrations/036_drop_client_levels_allowed_role_ids.sql
 git commit -m "$(cat <<'EOF'
-feat(levels): drop allowed_role_ids column (migration 033)
+feat(levels): drop allowed_role_ids column (migration 036)
 
-Migration 033 drops the column on prod Neon AFTER this branch's
+Migration 036 drops the column on prod Neon AFTER this branch's
 code-deploy is ready. Locally the migration ran against dev Neon
 before this commit. Two integration tests pin the L1/L2 permission
 defaults behavior on the create endpoint.
@@ -1350,7 +1350,7 @@ git pull origin main --ff-only            # ensure local main is fresh
 git merge --no-ff feat/levels-roles-decoupling -m "$(cat <<'EOF'
 Merge branch 'feat/levels-roles-decoupling' into main
 
-Drops client_levels.allowed_role_ids (migration 033, applied to prod
+Drops client_levels.allowed_role_ids (migration 036, applied to prod
 Neon AFTER this push lands — see spec §7). Roles are now orthogonal
 to levels. LevelEditor + onboarding wizard simplified. All role
 pickers show every workspace role. Level-create writes permission
@@ -1397,7 +1397,7 @@ DEPLOY_ID=$(npx netlify api listSiteDeploys --data '{"site_id": "6d53c9bf-d6a7-4
 npx netlify api restoreSiteDeploy --data "{\"site_id\": \"6d53c9bf-d6a7-4fb4-a16e-e5a4e94f59b4\", \"deploy_id\": \"$DEPLOY_ID\"}"
 ```
 
-- [ ] **Step 6: Run migration 033 against PROD Neon (the destructive step)**
+- [ ] **Step 6: Run migration 036 against PROD Neon (the destructive step)**
 
 Per `feedback_verify_neon_endpoint_before_drop.md`, echo the host first:
 
@@ -1414,7 +1414,7 @@ If verified:
 DATABASE_URL="$PROD_DB_URL" npm run migrate
 ```
 
-Expected: migration 033 applied to prod. Verify:
+Expected: migration 036 applied to prod. Verify:
 
 ```bash
 DATABASE_URL="$PROD_DB_URL" psql -c "\d public.client_levels"
@@ -1451,7 +1451,7 @@ git branch -d feat/levels-roles-decoupling
 - Targeted test suite (~17 files) all green; new test counts: 4 unit (defaults) + 2 integration (create defaults) added; 1 unit (`validateLevelAllowsRole`) + 2 integration (bulk level-disallows × 2) deleted.
 - Working tree clean apart from known untracked files.
 - Branch merged into local main; pushed to origin/main after explicit user approval.
-- Migration 033 applied to prod Neon AFTER deploy ready.
+- Migration 036 applied to prod Neon AFTER deploy ready.
 - Prod manual smoke scenarios 1-7 all pass.
 - `allowed_role_ids` column gone from prod.
 

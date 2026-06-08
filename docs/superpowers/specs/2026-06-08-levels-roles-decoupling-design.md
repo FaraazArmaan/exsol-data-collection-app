@@ -13,7 +13,7 @@ Decouple roles from levels in the data model and the UI. After this refactor, an
 ## 2. Scope
 
 **In scope**
-- Drop `client_levels.allowed_role_ids` column in migration 033.
+- Drop `client_levels.allowed_role_ids` column in migration 036.
 - Remove all backend reads and writes of that column (6 endpoints + 1 shared helper).
 - Remove the level-allows-role validation everywhere it remains (bulk endpoints, onboarding endpoints).
 - Simplify the `LevelEditor` UI (drop role-toggle grid, add "Edit permissions →" link).
@@ -34,7 +34,7 @@ Decouple roles from levels in the data model and the UI. After this refactor, an
 
 | Decision | Choice | Reasoning |
 |---|---|---|
-| Migration policy | Drop `allowed_role_ids` column entirely (migration 033) | Cleanest end state. Single push deploys both halves; no transitional state in production. |
+| Migration policy | Drop `allowed_role_ids` column entirely (migration 036) | Cleanest end state. Single push deploys both halves; no transitional state in production. |
 | LevelEditor UI shape | Number + optional label + "Edit permissions →" link | Single-responsibility row. Label stays optional (matches "just Level 1, Level 2" with optional friendly names). Permissions live in the existing matrix UI. |
 | Onboarding wizard | "How many levels?" + optional labels; permissions defaulted at create | Minimum onboarding friction. Admin tunes permissions in `/access-levels` post-creation. |
 | All role pickers | Show all workspace roles (AddUser + Bulk + Edit) | Consistency across the team-modal surface. Backend constraint goes away symmetrically. |
@@ -42,10 +42,10 @@ Decouple roles from levels in the data model and the UI. After this refactor, an
 
 ## 4. Data model
 
-### 4.1 Migration 033
+### 4.1 Migration 036
 
 ```sql
--- db/migrations/033_drop_client_levels_allowed_role_ids.sql
+-- db/migrations/036_drop_client_levels_allowed_role_ids.sql
 --
 -- The allowed_role_ids column was a level-binds-roles constraint that no
 -- longer applies after the levels/roles decoupling refactor. Roles are now
@@ -216,13 +216,13 @@ Helper text above the list: "Levels are positions in your org chart. L1 is the t
 
 ```
 1. Feature branch with ALL code changes — no consumer reads or writes allowed_role_ids.
-2. Run migration 033 against DEV Neon. Verify local tests pass.
+2. Run migration 036 against DEV Neon. Verify local tests pass.
 3. Local merge to main → push → Netlify deploys new code.
    ↓
    Intermediate state: new code is live on prod; prod DB still has the
    allowed_role_ids column with orphan data. New code does not touch it.
    Harmless presence.
-4. Run migration 033 against PROD Neon (drops the orphan column).
+4. Run migration 036 against PROD Neon (drops the orphan column).
 5. Probe + restoreSiteDeploy if needed (per feedback_netlify_new_function_404).
 ```
 
@@ -293,7 +293,7 @@ The implementation plan MUST call out the deploy order in its task list and expl
 ## 11. File touch summary
 
 **New files**
-- `db/migrations/033_drop_client_levels_allowed_role_ids.sql`
+- `db/migrations/036_drop_client_levels_allowed_role_ids.sql`
 - `netlify/functions/_shared/level-permissions.ts`
 - `tests/unit/level-permissions-default.test.ts`
 - `tests/integration/client-levels-create.test.ts` (or extend existing)
