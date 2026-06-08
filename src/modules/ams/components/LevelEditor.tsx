@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { createLevel, patchLevel, deleteLevel, type ClientLevel, type ClientRole } from '../api';
+import { createLevel, patchLevel, deleteLevel, type ClientLevel } from '../api';
 
 interface Props {
   clientId: string;
   levels: ClientLevel[];
-  roles: ClientRole[];
   onChange: () => void;
 }
 
-export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
+export function LevelEditor({ clientId, levels, onChange }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +23,7 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
     const level_number = Number(data.get('level_number'));
     const label = String(data.get('label') || '').trim() || undefined;
     setSubmitting(true); setError(null);
-    const r = await createLevel(clientId, { level_number, label, allowed_role_ids: [] });
+    const r = await createLevel(clientId, { level_number, label });
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'level_number_taken' ? 'Level number already exists.' : `Failed (${r.error.code})`);
@@ -32,15 +31,6 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
     }
     form.reset();
     setShowAdd(false);
-    onChange();
-  }
-
-  async function toggleRole(level: ClientLevel, roleId: string) {
-    const next = level.allowed_role_ids.includes(roleId)
-      ? level.allowed_role_ids.filter((id) => id !== roleId)
-      : [...level.allowed_role_ids, roleId];
-    const r = await patchLevel(level.id, { allowed_role_ids: next });
-    if (!r.ok) alert(`Failed (${r.error.code})`);
     onChange();
   }
 
@@ -111,26 +101,19 @@ export function LevelEditor({ clientId, levels, roles, onChange }: Props) {
                 </>
               ) : (
                 <>
-                  <span style={{ flex: 1 }} className="muted">{l.label ?? '(no label)'}</span>
+                  <span style={{ flex: 1 }} className="muted">{l.label ?? ''}</span>
+                  <a
+                    href={`/clients/${clientId}/access-levels?level=${l.level_number}`}
+                    className="btn btn-ghost"
+                    style={{ fontSize: 12 }}
+                    title="Configure this level's access permissions"
+                  >
+                    Edit permissions →
+                  </a>
                   <button className="btn btn-ghost" onClick={() => startEdit(l)} title="Edit label">✎</button>
                   <button className="btn btn-ghost" onClick={() => handleDelete(l)} title="Delete level">×</button>
                 </>
               )}
-            </div>
-            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {roles.map((r) => {
-                const on = l.allowed_role_ids.includes(r.id);
-                return (
-                  <button key={r.id} onClick={() => toggleRole(l, r.id)} style={{
-                    padding: '2px 8px', borderRadius: 12, fontSize: 12,
-                    border: `1px solid ${r.color}`,
-                    background: on ? r.color : 'transparent',
-                    color: on ? '#fff' : 'inherit',
-                    cursor: 'pointer',
-                  }}>{r.label}</button>
-                );
-              })}
-              {roles.length === 0 && <span className="muted" style={{ fontSize: 12 }}>No roles defined yet.</span>}
             </div>
           </li>
         ))}

@@ -35,7 +35,7 @@ function ConfigureInner({ clientId }: { clientId: string }) {
             <RoleEditor clientId={clientId} roles={structure.roles} onChange={refresh} />
           </div>
           <div className="card" style={{ marginBottom: 16 }}>
-            <LevelEditor clientId={clientId} levels={structure.levels} roles={structure.roles} onChange={refresh} />
+            <LevelEditor clientId={clientId} levels={structure.levels} onChange={refresh} />
           </div>
           <div className="card">
             <CardinalityEditor clientId={clientId} rules={structure.cardinality_rules} roles={structure.roles} onChange={refresh} />
