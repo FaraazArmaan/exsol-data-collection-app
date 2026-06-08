@@ -5,7 +5,7 @@ import {
   createUserNode, patchUserNode, deleteUserNode, moveUserNode,
   getUserNodeCredential, peekUserNodeCredential,
   resetUserNodeCredential, deleteUserNodeCredential,
-  bulkInviteUsers, bulkRoleChange,
+  bulkInviteUsers, bulkRoleChange, changeRole,
 } from '../api';
 import type { TeamMemberApi, TeamMemberCopy } from '../../shared/team-modals/types';
 
@@ -24,6 +24,7 @@ export function buildAdminApi(clientId: string): TeamMemberApi {
     deleteCredential: (id) => deleteUserNodeCredential(id),
     bulkInvite: (rows) => bulkInviteUsers(clientId, rows),
     bulkRoleChange: (ids, rid) => bulkRoleChange(clientId, ids, rid),
+    changeRole: (id, rid) => changeRole(clientId, id, rid),
   };
 }
 
@@ -40,6 +41,7 @@ export const adminApiNoCreate: TeamMemberApi = {
   deleteCredential: (id) => deleteUserNodeCredential(id),
   bulkInvite: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
   bulkRoleChange: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
+  changeRole: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
 };
 
 // Admin-side copy. AddUserNodeModal overrides noLevelsHint / noLevelForRoleHint

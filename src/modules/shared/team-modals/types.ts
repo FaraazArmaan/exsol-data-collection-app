@@ -71,6 +71,10 @@ export interface TeamMemberApi {
     node_ids: string[],
     new_role_id: string,
   ) => Promise<ApiResult<{ updated: number }>>;
+  changeRole: (
+    nodeId: string,
+    new_role_id: string,
+  ) => Promise<ApiResult<{ node: UserNode; no_change?: boolean }>>;
 }
 
 // Per-surface user-facing copy. Keeps the JSX shared while letting admin vs
@@ -85,4 +89,10 @@ export interface TeamMemberCopy {
   // any of them. Admin links to /configure; owner says "ask your admin".
   // `roleLabel` is the friendly role name (e.g. "Manager").
   noLevelForRoleHint: (roleLabel: string) => ReactNode;
+}
+
+// Per-portal capability flags. Lets the modal hide UI affordances when the
+// current caller's role/level doesn't permit them. Decided by the call site.
+export interface TeamMemberCaps {
+  canChangeRole: boolean;
 }

@@ -7,7 +7,7 @@
 import {
   createNode, updateNode, deleteNode, moveNode as moveOwnerNode,
   getCredential, peekCredential, resetCredential, deleteCredential,
-  bulkInvite, bulkRoleChangeOwner,
+  bulkInvite, bulkRoleChangeOwner, changeRoleOwner,
 } from './api';
 import type { TeamMemberApi, TeamMemberCopy } from '../../shared/team-modals/types';
 
@@ -22,6 +22,7 @@ export const ownerApi: TeamMemberApi = {
   deleteCredential: (id) => deleteCredential(id),
   bulkInvite: (rows) => bulkInvite(rows),
   bulkRoleChange: (ids, rid) => bulkRoleChangeOwner(ids, rid),
+  changeRole: (id, rid) => changeRoleOwner(id, rid),
 };
 
 // Owner-side copy. "workspace" (rather than "client") in collision errors;

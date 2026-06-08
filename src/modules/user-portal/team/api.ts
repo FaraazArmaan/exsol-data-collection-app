@@ -109,6 +109,12 @@ export const bulkRoleChangeOwner = (node_ids: string[], new_role_id: string) =>
     { method: 'POST', body: JSON.stringify({ node_ids, new_role_id }) },
   );
 
+export const changeRoleOwner = (node_id: string, new_role_id: string) =>
+  apiFetch<{ node: UserNode; no_change?: boolean }>(
+    '/api/user-nodes-role-change',
+    { method: 'POST', body: JSON.stringify({ node_id, new_role_id }) },
+  );
+
 // Re-export the AMS types so consumers can import them from one place.
 export type {
   ClientStructure,
