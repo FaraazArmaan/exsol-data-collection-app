@@ -78,6 +78,17 @@ describe('computeNavItems', () => {
     expect(items.map((i) => i.moduleKey)).toEqual(['booking', 'payments']);
   });
 
+  test('products module is excluded from generic rail (dedicated sidebar entry)', () => {
+    const products: UserPortalEnabledModule = { key: 'products', label: 'Product Manager' };
+    const items = computeNavItems({
+      slug: 'acme',
+      levelNumber: 1,
+      enabledModules: [booking, products, payments],
+      permissions: {},
+    });
+    expect(items.map((i) => i.moduleKey)).toEqual(['booking', 'payments']);
+  });
+
   test('platform keys (_platform.*) are ignored — they do not surface a Module', () => {
     const items = computeNavItems({
       slug: 'acme',

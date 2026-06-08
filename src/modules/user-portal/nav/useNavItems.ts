@@ -18,6 +18,11 @@ interface ComputeArgs {
   permissions: UserPortalPermissionMatrix;
 }
 
+// Modules with a dedicated sidebar entry — Sidebar.tsx renders these directly
+// against their own route (not via /m/:moduleKey ModuleStub), so we keep them
+// out of the generic Modules rail to avoid a duplicate link.
+const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products']);
+
 // Pure — exported for unit tests.
 export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
   const { slug, levelNumber, enabledModules, permissions } = args;
@@ -34,9 +39,10 @@ export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
     return false;
   };
 
-  const visible = isOwner
+  const visible = (isOwner
     ? [...enabledModules]
-    : enabledModules.filter((m) => hasViewOnModule(m.key));
+    : enabledModules.filter((m) => hasViewOnModule(m.key))
+  ).filter((m) => !MODULES_WITH_DEDICATED_NAV.has(m.key));
 
   visible.sort((a, b) => a.label.localeCompare(b.label));
 
