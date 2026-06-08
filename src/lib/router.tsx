@@ -20,6 +20,9 @@ import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/User
 import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
 import AdminFilesPage from '../modules/files/admin/AdminFilesPage';
 import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
+import ProductsListPage from '../modules/products/workspace/pages/ProductsListPage';
+import ProductEditPage from '../modules/products/workspace/pages/ProductEditPage';
+import ProductCategoriesPage from '../modules/products/workspace/pages/ProductCategoriesPage';
 
 function ShellLayout() {
   return (
@@ -57,6 +60,10 @@ export const router = createBrowserRouter([
               { path: 'account', element: <UserAccount /> },
               { path: 'team', element: <UserManageTeam /> },
               { path: 'file-manager', element: <WorkspaceFilesPage /> },
+              { path: 'products', element: <ProductsListPage /> },
+              { path: 'products/new', element: <ProductEditPage /> },
+              { path: 'products/:productId/edit', element: <ProductEditPage /> },
+              { path: 'products/categories', element: <ProductCategoriesPage /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

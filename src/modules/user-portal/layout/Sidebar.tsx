@@ -1,6 +1,7 @@
 import { NavLink, useParams } from 'react-router-dom';
 import { useNavItems } from '../nav/useNavItems';
 import { useUserAuth } from '../user-auth-context';
+import { canViewProducts } from '../../products/shared/permissions';
 
 export function Sidebar() {
   const { slug } = useParams<{ slug: string }>();
@@ -14,11 +15,16 @@ export function Sidebar() {
     permissions['_platform.users.view'] === true
   );
 
+  const showProducts = user && canViewProducts(permissions, user.level_number);
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
+        {showProducts && (
+          <NavLink to={`/c/${slug}/products`}>Product Manager</NavLink>
+        )}
 
         {items.length > 0 && (
           <>

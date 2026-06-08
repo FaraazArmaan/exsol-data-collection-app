@@ -1,0 +1,4 @@
+sku,name,type,category,brand,price,currency,stock_qty,unit,status,tags,description
+WH-1,Wireless Headphones,physical,Electronics,SoundLab,129.00,USD,24,each,active,wireless;audio,Premium over-ear
+,Repair Service,service,Services,,80.00,USD,,,active,onsite,1-hour minimum
+USB-1,USB-C Hub,physical,Electronics,HubCo,45.00,USD,0,each,draft,,

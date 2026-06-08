@@ -95,6 +95,128 @@ npm run migrate
 
 ---
 
+## Canonical Test Pattern (read before tasks 7–15)
+
+There is **no `tests/_helpers/harness.ts`** with `withFreshDb` / `makeBucketUser` / `fetchAs` / `seedProducts` — those were placeholder names. The actual integration-test pattern is:
+
+**Reference files** (read these first as canonical examples):
+- `tests/integration/files-detail.test.ts` — handler-direct call pattern, admin auth, audit assertions, optional Blob mock
+- `tests/integration/user-node-auth.test.ts` — bucket-user (`u-*` endpoint) auth flow + node creation
+- `tests/helpers/audit.ts` — `assertLastAudit(sql, {...})` is the ONLY shared helper currently
+
+**Pattern in every integration test file:**
+
+```ts
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import type { Context } from '@netlify/functions';
+import { neon } from '@neondatabase/serverless';
+import { hashPassword } from '../../netlify/functions/_shared/argon';
+import loginHandler from '../../netlify/functions/auth-login';
+import uLoginHandler from '../../netlify/functions/u-login';
+import userNodesHandler from '../../netlify/functions/user-nodes';
+// + the product handlers you're testing
+import { assertLastAudit } from '../helpers/audit';
+
+const CTX = {} as Context;
+const ADMIN_EMAIL = 'pm-categories-test@example.com';
+const ADMIN_PASSWORD = 'pm-categories-pw';
+
+let sql: ReturnType<typeof neon>;
+let adminCookie: string;
+let clientId: string;
+let clientSlug: string;
+let roleId: string;
+
+beforeAll(async () => {
+  sql = neon(process.env.DATABASE_URL!);
+  // 1. Create / upsert admin
+  const pw = await hashPassword(ADMIN_PASSWORD);
+  const a = await sql`
+    INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+    VALUES (${ADMIN_EMAIL}, ${pw}, 'PM Test', true)
+    ON CONFLICT (email) DO UPDATE SET password_hash = ${pw}, is_bootstrap = true
+    RETURNING id
+  ` as { id: string }[];
+  // 2. Admin login → cookie
+  const r = await loginHandler(new Request('http://localhost/api/auth-login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+  }), CTX);
+  adminCookie = r.headers.get('set-cookie')!.split(';')[0]!;
+  // 3. Create a fresh test client + slug + a baseline role + level 1 with the products module enabled.
+  //    Use admin endpoints (admin-create-client / client-roles / client-levels) — read existing tests
+  //    for the exact endpoint names. Result: clientId, clientSlug, roleId available.
+});
+
+afterAll(async () => {
+  // Best-effort cleanup: DELETE the test client; CASCADE handles everything else.
+  if (clientId) await sql`DELETE FROM public.clients WHERE id = ${clientId}::uuid`;
+});
+```
+
+**Bucket-user login helper (inline at top of file, NOT a shared helper):**
+
+```ts
+async function loginBucketUser(email: string, password: string, permsToGrant: Record<string, boolean>): Promise<string> {
+  // 1. Create a new level with the granted perms (or update level 1's perms JSONB)
+  await sql`
+    UPDATE public.client_levels SET permissions = ${permsToGrant}::jsonb
+    WHERE client_id = ${clientId}::uuid AND level_number = 1
+  `;
+  // 2. Create a user_node with login credentials (mirror createNodeWithLogin in user-node-auth.test.ts)
+  const createReq = new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({
+      role_id: roleId, level_number: 1, parent_id: null,
+      display_name: 'PM Test User', email,
+      create_login: true, temp_password: password,
+    }),
+  });
+  await userNodesHandler(createReq, CTX);
+  // 3. u-login as that user → bu_session cookie
+  const r = await uLoginHandler(new Request(`http://localhost/api/u-login?client=${clientSlug}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  }), CTX);
+  return r.headers.get('set-cookie')!.split(';')[0]!;
+}
+```
+
+**Calling a workspace endpoint:**
+
+```ts
+const buCookie = await loginBucketUser('pm-edit@test.com', 'pw-1', {
+  'products.products.view': true, 'products.products.create': true,
+});
+const res = await uProductsHandler(new Request('http://localhost/api/u-products', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+  body: JSON.stringify({ type: 'physical', name: 'Test', price_cents: 1000 }),
+}), CTX);
+expect(res.status).toBe(201);
+```
+
+**Key conventions:**
+
+- Each test FILE manages its own admin + client + role setup in `beforeAll`. Cleanup in `afterAll` is best-effort.
+- Tests run in parallel, so use unique emails (timestamp suffix) when creating users.
+- Don't invent helpers — inline what you need. The only shared helper is `assertLastAudit`.
+- The plan task code blocks that reference `withFreshDb`/`makeBucketUser`/`fetchAs`/`seedProducts`/`createProduct` are TEMPLATES — translate them into the pattern above. The TEST BEHAVIORS (what's asserted) remain authoritative.
+
+**Translation cheat-sheet (subagents: apply this when reading T7–T15 test snippets):**
+
+| Plan snippet | Actual implementation |
+|---|---|
+| `withFreshDb(async (db) => { ... })` | Write `beforeAll`/`beforeEach` for setup; use the file-scoped `sql` directly inside `test()` blocks |
+| `makeBucketUser({ perms: {...} })` | Call `loginBucketUser(uniqueEmail, password, perms)` returning a cookie string |
+| `fetchAs(session, method, path, body)` | Build a `new Request(...)` with `cookie: session` header, call the imported handler directly |
+| `createProduct(session, {...})` | POST through `uProductsHandler` (the actual handler import) |
+| `seedProducts(session, items)` | Loop: POST each through `uProductsHandler` |
+| Direct `db\`SELECT ...\`` in tests | Use the file-scoped `sql` |
+
+This pattern is verified against `files-detail.test.ts` and `user-node-auth.test.ts`. Do not invent new helpers.
+
+---
+
 ## Task 1: Branch verification + dependency check
 
 **Files:**
