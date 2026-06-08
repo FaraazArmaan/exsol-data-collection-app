@@ -6,32 +6,6 @@ import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 type SQL = NeonQueryFunction<false, false>;
 
-export interface LevelAllowsRoleOk { ok: true }
-export interface LevelAllowsRoleFail { ok: false; code: 'level_disallows_role' }
-export type LevelAllowsRoleResult = LevelAllowsRoleOk | LevelAllowsRoleFail;
-
-/**
- * Returns ok when the new role is in `client_levels.allowed_role_ids` for the
- * given level. Caller is expected to have already verified the role belongs
- * to the client.
- */
-export async function validateLevelAllowsRole(
-  sql: SQL,
-  clientId: string,
-  levelNumber: number,
-  newRoleId: string,
-): Promise<LevelAllowsRoleResult> {
-  const rows = (await sql`
-    SELECT allowed_role_ids FROM public.client_levels
-    WHERE client_id = ${clientId}::uuid AND level_number = ${levelNumber}
-    LIMIT 1
-  `) as { allowed_role_ids: string[] }[];
-  if (rows.length === 0 || !rows[0]!.allowed_role_ids.includes(newRoleId)) {
-    return { ok: false, code: 'level_disallows_role' };
-  }
-  return { ok: true };
-}
-
 export interface CardinalityOk { ok: true }
 export interface CardinalityFail { ok: false; code: 'cardinality_exceeded'; max: number }
 export type CardinalityResult = CardinalityOk | CardinalityFail;
