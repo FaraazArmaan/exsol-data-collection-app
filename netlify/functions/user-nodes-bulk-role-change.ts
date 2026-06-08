@@ -87,14 +87,6 @@ export default async (req: Request, _ctx: Context) => {
     targets.map((t) => roleKeyById.get(t.role_id) ?? t.role_id),
   ));
 
-  // Level allowed-roles for each level present in the target set.
-  const distinctLevels = Array.from(new Set(targets.map((t) => t.level_number).filter((n): n is number => n !== null)));
-  const levels = distinctLevels.length === 0 ? [] : (await sql`
-    SELECT level_number, allowed_role_ids FROM public.client_levels
-    WHERE client_id = ${clientId}::uuid AND level_number = ANY(${distinctLevels}::int[])
-  `) as { level_number: number; allowed_role_ids: string[] }[];
-  const levelByNumber = new Map(levels.map((l) => [l.level_number, l]));
-
   // Cardinality rules.
   const rules = (await sql`
     SELECT parent_role_id, child_role_id, max_children
@@ -129,17 +121,10 @@ export default async (req: Request, _ctx: Context) => {
   const parentRoleById = new Map(parentRows.map((r) => [r.id, r.role_id]));
 
   // Per-target validation pass.
+  // Cardinality only — role-level coupling has been removed.
   const errors: TargetError[] = [];
   const deltas = new Map<string, number>(); // pending changes to count toward cap
   for (const t of targets) {
-    // Level allows the new role?
-    if (t.level_number !== null) {
-      const lv = levelByNumber.get(t.level_number);
-      if (!lv || !lv.allowed_role_ids.includes(new_role_id)) {
-        errors.push({ node_id: t.id, reason: `Role not allowed at level ${t.level_number}` });
-        continue;
-      }
-    }
     // Parent's role id for cardinality (from batch lookup).
     const parentRoleId: string | null = t.parent_id !== null
       ? parentRoleById.get(t.parent_id) ?? null
