@@ -79,14 +79,14 @@ async function setupClientWithStructure() {
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 1, label: 'Top', allowed_role_ids: [roleShop] }),
+      body: JSON.stringify({ level_number: 1, label: 'Top' }),
     }),
     CTX,
   );
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleOwner] }),
+      body: JSON.stringify({ level_number: 2 }),
     }),
     CTX,
   );
@@ -511,7 +511,7 @@ describe('user-nodes GET — L2+ subtree scoping', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 3, allowed_role_ids: [roleStaff] }),
+        body: JSON.stringify({ level_number: 3 }),
       }), CTX,
     );
     await clientCardinalityHandler(
@@ -899,7 +899,7 @@ describe('user-nodes-detail GET — bucket-user widening', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+        body: JSON.stringify({ level_number: 1 }),
       }), CTX,
     );
     const nodeBResp = await userNodesHandler(
@@ -943,7 +943,7 @@ describe('user-nodes-detail GET — bucket-user widening', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+        body: JSON.stringify({ level_number: 1 }),
       }), CTX,
     );
     const nodeBResp = await userNodesHandler(
@@ -988,7 +988,7 @@ describe('user-nodes-detail GET — bucket-user widening', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+        body: JSON.stringify({ level_number: 1 }),
       }), CTX,
     );
     const nodeBResp = await userNodesHandler(

@@ -31,17 +31,10 @@ export function AddUserModal({
 }: Props) {
   const [roleId, setRoleId] = useState<string>(roles[0]?.id ?? '');
   const role = roles.find((r) => r.id === roleId);
-  const allowedLevels = useMemo(
-    () => levels.filter((l) => l.allowed_role_ids.includes(roleId)),
-    [levels, roleId],
-  );
-  // If admin defined levels but never toggled this role on any of them, the
-  // strict filter returns []. That's almost always a misconfiguration rather
-  // than intent — fall back to all levels so the user can still be placed,
-  // but render a warning that explains the setup gap.
-  const noLevelMappedToRole = levels.length > 0 && allowedLevels.length === 0;
-  const selectableLevels = noLevelMappedToRole ? levels : allowedLevels;
-  const [levelNumber, setLevelNumber] = useState<number | null>(presetLevel ?? allowedLevels[0]?.level_number ?? null);
+  // Any role can be assigned at any level. See
+  // docs/superpowers/specs/2026-06-08-levels-roles-decoupling-design.md.
+  const selectableLevels = levels;
+  const [levelNumber, setLevelNumber] = useState<number | null>(presetLevel ?? levels[0]?.level_number ?? null);
   const [parentId, setParentId] = useState<string | null>(presetParent ?? null);
   const [unassigned, setUnassigned] = useState(false);
   const validParents = useMemo(
@@ -140,7 +133,6 @@ export function AddUserModal({
         {!unassigned && (
           <>
             {levels.length === 0 && copy.noLevelsHint}
-            {noLevelMappedToRole && copy.noLevelForRoleHint(role?.label ?? 'This role')}
             {selectableLevels.length > 0 && (
               <label>Level
                 <select value={levelNumber ?? ''} onChange={(e) => { setLevelNumber(e.target.value ? Number(e.target.value) : null); setParentId(null); }}>

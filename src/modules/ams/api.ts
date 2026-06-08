@@ -75,7 +75,6 @@ export interface ClientLevel {
   client_id: string;
   level_number: number;
   label: string | null;
-  allowed_role_ids: string[];
   created_at: string;
 }
 
@@ -109,12 +108,12 @@ export const patchRole = (roleId: string, body: Partial<{ label: string; color: 
 export const deleteRole = (roleId: string) =>
   apiFetch<{ ok: true }>(`/api/client-roles-detail?id=${encodeURIComponent(roleId)}`, { method: 'DELETE' });
 
-export const createLevel = (clientId: string, body: { level_number: number; label?: string; allowed_role_ids: string[] }) =>
+export const createLevel = (clientId: string, body: { level_number: number; label?: string }) =>
   apiFetch<{ level: ClientLevel }>(`/api/client-levels?client=${encodeURIComponent(clientId)}`, {
     method: 'POST', body: JSON.stringify(body),
   });
 
-export const patchLevel = (levelId: string, body: Partial<{ label: string; allowed_role_ids: string[] }>) =>
+export const patchLevel = (levelId: string, body: Partial<{ label: string }>) =>
   apiFetch<{ level: ClientLevel }>(`/api/client-levels-detail?id=${encodeURIComponent(levelId)}`, {
     method: 'PATCH', body: JSON.stringify(body),
   });
@@ -297,7 +296,7 @@ export interface OnboardClientBody {
   name: string;
   enabled_products: string[];
   roles: Array<{ key: string; label: string; color: string; bucket_family?: 'business' | 'employees' | 'customers' | 'products' | null }>;
-  levels: Array<{ level_number: number; label?: string | null; allowed_role_keys: string[] }>;
+  levels: Array<{ level_number: number; label?: string | null }>;
   cardinality_rules: Array<{ parent_role_key: string | null; child_role_key: string; max_children: number }>;
   owner: { display_name: string; email: string; phone?: string | null; notes?: string | null; temp_password: string };
 }

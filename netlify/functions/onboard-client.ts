@@ -18,6 +18,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { deriveSlug } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
+import { defaultPermissionsForLevel } from './_shared/level-permissions';
 
 const RoleSchema = z.object({
   key: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(50),
@@ -29,7 +30,6 @@ const RoleSchema = z.object({
 const LevelSchema = z.object({
   level_number: z.number().int().min(1),
   label: z.string().max(100).nullable().optional(),
-  allowed_role_keys: z.array(z.string()),
 });
 
 const CardinalitySchema = z.object({
@@ -81,19 +81,11 @@ export default async (req: Request, _ctx: Context) => {
     roles = [{ key: 'owner', label: 'Owner', color: '#3b82f6' }];
   }
   if (levels.length === 0) {
-    // Use the first role's key as the L1 allowed role.
-    levels = [{ level_number: 1, label: 'Primary', allowed_role_keys: [roles[0]!.key] }];
+    levels = [{ level_number: 1, label: 'Primary' }];
   }
 
   // ---- VALIDATE references (pre-transaction; cheap fail-fast) ----
   const roleKeys = new Set(roles.map((r) => r.key));
-  for (const lv of levels) {
-    for (const k of lv.allowed_role_keys) {
-      if (!roleKeys.has(k)) {
-        return err(400, 'invalid_reference', 'levels', { unknown_role_key: k, level_number: lv.level_number });
-      }
-    }
-  }
   for (const rule of data.cardinality_rules) {
     if (rule.parent_role_key !== null && !roleKeys.has(rule.parent_role_key)) {
       return err(400, 'invalid_reference', 'cardinality', { unknown_role_key: rule.parent_role_key });
@@ -104,11 +96,13 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   // ---- Determine Owner's role (spec §4.5) ----
+  // Levels no longer carry allowed_role_keys; the Owner is simply the first
+  // role in the roles array (auto-seeded as 'owner' when roles is empty).
   const level1 = levels.find((l) => l.level_number === 1);
-  if (!level1 || level1.allowed_role_keys.length === 0) {
+  if (!level1) {
     return err(400, 'level_1_has_no_roles', 'levels');
   }
-  const ownerRoleKey = roles.find((r) => level1.allowed_role_keys.includes(r.key))?.key;
+  const ownerRoleKey = roles[0]?.key;
   if (!ownerRoleKey) {
     return err(400, 'level_1_has_no_roles', 'levels');
   }
@@ -172,13 +166,14 @@ export default async (req: Request, _ctx: Context) => {
     `);
   }
 
-  // 4. levels
+  // 4. levels — permissions default via helper (L1 = all keys for enabled products; L2+ = {}).
+  const enabledProductKeys: string[] = data.enabled_products ?? [];
   for (const lv of levels) {
-    const allowedIds = lv.allowed_role_keys.map((k) => roleIdByKey.get(k)!);
+    const permissions = defaultPermissionsForLevel(lv.level_number, enabledProductKeys);
     queries.push(sql`
-      INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
+      INSERT INTO public.client_levels (client_id, level_number, label, permissions)
       VALUES (${clientId}::uuid, ${lv.level_number}, ${lv.label ?? null},
-              ${allowedIds}::uuid[])
+              ${JSON.stringify(permissions)}::jsonb)
     `);
   }
 

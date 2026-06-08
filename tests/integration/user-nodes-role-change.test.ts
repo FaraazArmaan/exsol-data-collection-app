@@ -73,13 +73,13 @@ async function setupClient() {
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${clientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 1, label: 'Top', allowed_role_ids: [roleShop] }),
+      body: JSON.stringify({ level_number: 1, label: 'Top' }),
     }), CTX,
   );
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${clientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleA, roleB] }),
+      body: JSON.stringify({ level_number: 2 }),
     }), CTX,
   );
   await clientCardinalityHandler(

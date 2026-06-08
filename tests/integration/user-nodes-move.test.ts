@@ -74,7 +74,7 @@ beforeEach(async () => {
   for (const n of [1, 2, 3]) {
     await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: n, allowed_role_ids: [roleShop, roleOwner, roleEmp] }),
+      body: JSON.stringify({ level_number: n }),
     }), CTX);
   }
 });
@@ -229,7 +229,7 @@ describe('user-nodes-move', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleShopB] }),
+        body: JSON.stringify({ level_number: 1 }),
       }), CTX,
     );
     const nodeBResp = await userNodesHandler(

@@ -85,12 +85,12 @@ describe('applyAutoSeed', () => {
     const withRole = reducer(initialState, { type: 'addRole', role: { key: 'manager', label: 'Manager', color: '#000' } });
     const seeded = applyAutoSeed(withRole);
     expect(seeded.levels.length).toBe(1);
-    expect(seeded.levels[0]).toMatchObject({ level_number: 1, label: 'Primary', allowed_role_keys: ['manager'] });
+    expect(seeded.levels[0]).toMatchObject({ level_number: 1, label: 'Primary' });
   });
 
   test('non-empty roles + levels are preserved unchanged', () => {
     const s1 = reducer(initialState, { type: 'addRole', role: { key: 'owner', label: 'O', color: '#000' } });
-    const s2 = reducer(s1, { type: 'addLevel', level: { level_number: 1, allowed_role_keys: ['owner'] } });
+    const s2 = reducer(s1, { type: 'addLevel', level: { level_number: 1 } });
     const seeded = applyAutoSeed(s2);
     expect(seeded.roles).toEqual(s2.roles);
     expect(seeded.levels).toEqual(s2.levels);
@@ -98,20 +98,20 @@ describe('applyAutoSeed', () => {
 });
 
 describe('resolveOwnerRoleKey', () => {
-  test('picks the first role whose key is in L1 allowed_role_keys', () => {
+  test('picks the first role in the roles array when L1 exists', () => {
     const state: WizardState = {
       ...initialState,
       roles: [
         { key: 'staff', label: 'Staff', color: '#000' },
         { key: 'owner', label: 'Owner', color: '#111' },
       ],
-      levels: [{ level_number: 1, allowed_role_keys: ['owner'] }],
+      levels: [{ level_number: 1 }],
     };
-    expect(resolveOwnerRoleKey(state)).toBe('owner');
+    expect(resolveOwnerRoleKey(state)).toBe('staff');
   });
 
-  test('returns null if L1 has no allowed roles', () => {
-    const state: WizardState = { ...initialState, roles: [{ key: 'x', label: 'X', color: '#000' }], levels: [{ level_number: 1, allowed_role_keys: [] }] };
+  test('returns null if roles is empty', () => {
+    const state: WizardState = { ...initialState, roles: [], levels: [{ level_number: 1 }] };
     expect(resolveOwnerRoleKey(state)).toBeNull();
   });
 

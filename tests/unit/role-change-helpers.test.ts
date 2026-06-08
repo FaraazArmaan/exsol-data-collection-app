@@ -7,7 +7,7 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { neon } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
-import { validateLevelAllowsRole, validateCardinality } from '../../netlify/functions/_shared/role-change';
+import { validateCardinality } from '../../netlify/functions/_shared/role-change';
 
 let sql: NeonQueryFunction<false, false>;
 let clientId: string;
@@ -57,8 +57,8 @@ beforeAll(async () => {
   `) as { id: string }[];
   roleB = rb[0]!.id;
   await sql`
-    INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
-    VALUES (${clientId}::uuid, 2, 'L2', ARRAY[${roleA}::uuid])
+    INSERT INTO public.client_levels (client_id, level_number, label)
+    VALUES (${clientId}::uuid, 2, 'L2')
   `;
   await sql`
     INSERT INTO public.client_cardinality_rules (client_id, parent_role_id, child_role_id, max_children)
@@ -73,24 +73,6 @@ afterAll(async () => {
   for (const id of createdAdmins) {
     try { await sql`DELETE FROM public.admins WHERE id = ${id}::uuid`; } catch { /* */ }
   }
-});
-
-describe('validateLevelAllowsRole', () => {
-  test('returns ok when role is in allowed_role_ids', async () => {
-    const r = await validateLevelAllowsRole(sql, clientId, 2, roleA);
-    expect(r.ok).toBe(true);
-  });
-
-  test('returns level_disallows_role when role is not in allowed_role_ids', async () => {
-    const r = await validateLevelAllowsRole(sql, clientId, 2, roleB);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.code).toBe('level_disallows_role');
-  });
-
-  test('returns level_disallows_role when level does not exist', async () => {
-    const r = await validateLevelAllowsRole(sql, clientId, 99, roleA);
-    expect(r.ok).toBe(false);
-  });
 });
 
 describe('validateCardinality', () => {

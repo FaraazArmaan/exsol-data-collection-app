@@ -59,10 +59,10 @@ export default async (req: Request, _ctx: Context) => {
   `) as { id: string; key: string }[];
   const roleIdByKey = new Map(roles.map((r) => [r.key, r.id]));
 
-  const levels = (await sql`
-    SELECT level_number, allowed_role_ids FROM public.client_levels WHERE client_id = ${clientId}::uuid
-  `) as { level_number: number; allowed_role_ids: string[] }[];
-  const levelByNumber = new Map(levels.map((l) => [l.level_number, l]));
+  const configuredLevelNumbersRows = (await sql`
+    SELECT level_number FROM public.client_levels WHERE client_id = ${clientId}::uuid
+  `) as { level_number: number }[];
+  const configuredLevelNumbers = new Set(configuredLevelNumbersRows.map((l) => l.level_number));
 
   const rules = (await sql`
     SELECT parent_role_id, child_role_id, max_children
@@ -121,11 +121,12 @@ export default async (req: Request, _ctx: Context) => {
     const roleId = roleIdByKey.get(row.role_key);
     if (!roleId) rowErrors.push(`Role "${row.role_key}" not found`);
 
+    // Verify the level exists for the workspace; role-level coupling has been
+    // removed (any role can exist at any level). See
+    // docs/superpowers/specs/2026-06-08-levels-roles-decoupling-design.md.
     if (row.level_number !== null && row.level_number !== undefined) {
-      const lv = levelByNumber.get(row.level_number);
-      if (!lv) rowErrors.push(`Level ${row.level_number} not configured`);
-      else if (roleId && !lv.allowed_role_ids.includes(roleId)) {
-        rowErrors.push(`Role "${row.role_key}" not allowed at level ${row.level_number}`);
+      if (!configuredLevelNumbers.has(row.level_number)) {
+        rowErrors.push(`Level ${row.level_number} not configured`);
       }
     }
 

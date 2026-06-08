@@ -77,14 +77,14 @@ async function setupClient() {
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${clientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 1, label: 'Top', allowed_role_ids: [roleShop] }),
+      body: JSON.stringify({ level_number: 1, label: 'Top' }),
     }),
     CTX,
   );
   await clientLevelsHandler(
     new Request(`http://localhost/api/client-levels?client=${clientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleA, roleB] }),
+      body: JSON.stringify({ level_number: 2 }),
     }),
     CTX,
   );
@@ -144,30 +144,6 @@ describe('POST /api/user-nodes-bulk-role-change', () => {
     });
   });
 
-  test('pre-validation: target at level where new role is disallowed → 400, no UPDATEs', async () => {
-    const shopRes = await userNodesHandler(
-      new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ role_id: roleShop, level_number: 1, parent_id: null, display_name: 'Shop P' }),
-      }),
-      CTX,
-    );
-    const shopId = (await shopRes.json() as { node: { id: string } }).node.id;
-
-    const r = await bulkRoleHandler(
-      new Request(`http://localhost/api/user-nodes-bulk-role-change?client=${clientId}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ node_ids: [shopId], new_role_id: roleB }),
-      }),
-      CTX,
-    );
-    expect(r.status).toBe(400);
-    const body = await r.json() as { error: { code: string } };
-    expect(body.error.code).toBe('bulk_validation_failed');
-    const after = (await sql`SELECT role_id FROM public.user_nodes WHERE id = ${shopId}::uuid`) as { role_id: string }[];
-    expect(after[0]!.role_id).toBe(roleShop);
-  });
-
   test('cross-client: node_id from another client → 400 cross_client', async () => {
     const cr = await clientsHandler(
       new Request('http://localhost/api/clients', {
@@ -189,7 +165,7 @@ describe('POST /api/user-nodes-bulk-role-change', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${otherClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, label: 'Top', allowed_role_ids: [otherRoleId] }),
+        body: JSON.stringify({ level_number: 1, label: 'Top' }),
       }),
       CTX,
     );

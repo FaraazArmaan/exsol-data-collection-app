@@ -23,6 +23,26 @@ import {
 
 const POLL_MS = 5000;
 
+// Primary level for a role = lowest level_number where a user has that role.
+// Returns null if no users have this role yet — those roles fall to the bottom.
+function primaryLevelFor(role: ClientRole, nodes: UserNode[]): number | null {
+  let min: number | null = null;
+  for (const n of nodes) {
+    if (n.role_id !== role.id || n.level_number === null) continue;
+    if (min === null || n.level_number < min) min = n.level_number;
+  }
+  return min;
+}
+
+// All distinct levels where users with this role currently live (sorted ascending).
+function allowedLevelsFor(role: ClientRole, nodes: UserNode[]): number[] {
+  const set = new Set<number>();
+  for (const n of nodes) {
+    if (n.role_id === role.id && n.level_number !== null) set.add(n.level_number);
+  }
+  return Array.from(set).sort((a, b) => a - b);
+}
+
 interface Props {
   client: ClientSummary;
 }
@@ -90,14 +110,6 @@ export function ClientFilesCard({ client }: Props) {
   // Build role groups: for each role, which levels it's allowed at + its users.
   const groups = useMemo<RoleGroup[]>(() => {
     if (roles.length === 0) return [];
-    const levelsByRole = new Map<string, number[]>();
-    for (const lv of levels) {
-      for (const rid of lv.allowed_role_ids) {
-        const arr = levelsByRole.get(rid) ?? [];
-        arr.push(lv.level_number);
-        levelsByRole.set(rid, arr);
-      }
-    }
     const usersByRole = new Map<string, UserNode[]>();
     for (const n of nodes) {
       const arr = usersByRole.get(n.role_id) ?? [];
@@ -105,14 +117,15 @@ export function ClientFilesCard({ client }: Props) {
       usersByRole.set(n.role_id, arr);
     }
     const result: RoleGroup[] = roles.map((r) => {
-      const allowed = (levelsByRole.get(r.id) ?? []).slice().sort((a, b) => a - b);
+      const primaryLevel = primaryLevelFor(r, nodes);
+      const allowedLevels = allowedLevelsFor(r, nodes);
       const users = (usersByRole.get(r.id) ?? []).slice().sort(
         (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
       );
       return {
         role: r,
-        primaryLevel: allowed.length > 0 ? allowed[0]! : null,
-        allowedLevels: allowed,
+        primaryLevel,
+        allowedLevels,
         users,
       };
     });
@@ -129,7 +142,7 @@ export function ClientFilesCard({ client }: Props) {
         || a.role.label.localeCompare(b.role.label);
     });
     return result;
-  }, [roles, levels, nodes]);
+  }, [roles, nodes]);
 
   return (
     <div style={{

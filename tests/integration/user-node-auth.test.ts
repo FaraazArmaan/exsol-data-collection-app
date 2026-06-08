@@ -93,7 +93,7 @@ beforeEach(async () => {
   roleId = (await rr.json() as { role: { id: string } }).role.id;
   await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-    body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+    body: JSON.stringify({ level_number: 1 }),
   }), CTX);
 });
 
@@ -531,7 +531,7 @@ describe('user-node auth', () => {
     const role2 = (await r2.json() as { role: { id: string } }).role.id;
     await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${c2.id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 1, allowed_role_ids: [role2] }),
+      body: JSON.stringify({ level_number: 1 }),
     }), CTX);
     await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${c2.id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
@@ -737,12 +737,12 @@ describe('client-roles bucket_family', () => {
 });
 
 describe('u-me payload extensions (dashboard)', () => {
-  // Helper: create L2 level allowed for the test role, and return its id.
+  // Helper: create L2 level and return its id.
   async function createL2Level(): Promise<string> {
     const r = await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleId] }),
+        body: JSON.stringify({ level_number: 2 }),
       }), CTX,
     );
     if (r.status !== 201) throw new Error(`create L2 failed: ${r.status} ${await r.text()}`);
@@ -1030,7 +1030,7 @@ describe('user-node-credential — bucket-user widening', () => {
     const roleB = (await rrB.json() as { role: { id: string } }).role.id;
     await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${clientB.id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleB] }),
+      body: JSON.stringify({ level_number: 1 }),
     }), CTX);
     const targetEmailB = `cred-target-B-${Date.now()}@example.com`;
     const nodeBResp = await userNodesHandler(

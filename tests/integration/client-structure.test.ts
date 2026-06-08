@@ -200,7 +200,7 @@ describe('client-structure', () => {
     const r = await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, label: 'Top', allowed_role_ids: [] }),
+        body: JSON.stringify({ level_number: 1, label: 'Top' }),
       }),
       CTX,
     );
@@ -219,25 +219,25 @@ describe('client-structure', () => {
     await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 5, allowed_role_ids: [] }),
+        body: JSON.stringify({ level_number: 5 }),
       }),
       CTX,
     );
     const r = await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 5, allowed_role_ids: [] }),
+        body: JSON.stringify({ level_number: 5 }),
       }),
       CTX,
     );
     expect(r.status).toBe(409);
   });
 
-  test('PATCH client-levels-detail updates label + allowed_role_ids', async () => {
+  test('PATCH client-levels-detail updates label', async () => {
     const c = await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 7, allowed_role_ids: [] }),
+        body: JSON.stringify({ level_number: 7 }),
       }),
       CTX,
     );
@@ -333,7 +333,7 @@ describe('client-structure — bucket-user widening', () => {
     const lr = await clientLevelsHandler(
       new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-        body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+        body: JSON.stringify({ level_number: 1 }),
       }), CTX,
     );
     if (lr.status !== 201) throw new Error(`level create failed: ${lr.status}`);

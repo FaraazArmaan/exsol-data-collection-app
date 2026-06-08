@@ -59,16 +59,9 @@ export default async (req: Request, _ctx: Context) => {
     `) as { id: string }[];
     const role = rows[0]!;
 
-    // Friendly default: a new role is auto-added to every existing level's
-    // allowed_role_ids. Admin can opt-out by toggling the chip in LevelEditor.
-    // array_append is idempotent vs duplicate ids; the safeguard is the WHERE
-    // clause ensuring we don't double-append if the id is somehow already in.
-    await sql`
-      UPDATE public.client_levels
-      SET allowed_role_ids = array_append(allowed_role_ids, ${role.id}::uuid)
-      WHERE client_id = ${clientId}::uuid
-        AND NOT (${role.id}::uuid = ANY(allowed_role_ids))
-    `;
+    // Roles are orthogonal to levels after the 2026-06-08 decoupling refactor:
+    // any role can be assigned at any level, so role creation no longer touches
+    // client_levels. The allowed_role_ids column was dropped in migration 036.
 
     await logAudit(sql, {
       session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
