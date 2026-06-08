@@ -72,7 +72,10 @@ async function makeProduct(): Promise<{ id: string }> {
 async function uploadImage(productId: string, bytes: Uint8Array = new Uint8Array([1, 2, 3]), mime = 'image/png'): Promise<Response> {
   const fd = new FormData();
   fd.append('product_id', productId);
-  fd.append('file', new Blob([bytes], { type: mime }), 'img.png');
+  // Copy to plain ArrayBuffer to keep TS happy across SharedArrayBuffer overload.
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  fd.append('file', new Blob([ab], { type: mime }), 'img.png');
   return uProductsImageHandler(new Request('http://localhost/api/u-products-image', {
     method: 'POST', headers: { cookie: buCookie },
     body: fd,
