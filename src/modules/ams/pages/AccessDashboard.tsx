@@ -280,6 +280,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
             node={editingChip}
             role={rolesById[editingChip.role_id]}
             clientSlug={clientSlug}
+            nodes={nodes}
             onClose={() => setEditingChip(null)}
             onSaved={async () => { setEditingChip(null); await refreshNodes(); }}
             onDeleted={async () => { setEditingChip(null); await refreshNodes(); }}
