@@ -280,22 +280,26 @@ describe('POST /api/user-nodes-role-change', () => {
     expect(body.error.code).toBe('self_role_change_forbidden');
   });
 
-  test('new role not in level allowed_role_ids → level_disallows_role', async () => {
+  test('cross-level role assignment now allowed (level-allows filter removed)', async () => {
     const shopId = await createNode({ role_id: roleShop, level_number: 1, parent_id: null, display_name: 'Shop' });
     const mgrId = await createNode({ role_id: roleA, level_number: 2, parent_id: shopId, display_name: 'M' });
 
-    // Try to assign roleShop (an L1 role) to an L2 node.
+    // Previously this would have been rejected with level_disallows_role
+    // because roleShop is not in client_levels.allowed_role_ids for L2.
+    // The filter has been removed — the role change should now succeed.
+    //
+    // Note: roleShop has cardinality cap 1 at the root level (parent_role_id IS NULL),
+    // not under shopId — so the cardinality check for roleShop under shopId returns ok
+    // (no rule applies). The endpoint commits the change.
     const r = await roleChangeHandler(
       new Request(`http://localhost/api/user-nodes-role-change?client=${clientId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
         body: JSON.stringify({ node_id: mgrId, new_role_id: roleShop }),
       }), CTX,
     );
-    expect(r.status).toBe(400);
-    const body = await r.json() as { error: { code: string } };
-    expect(body.error.code).toBe('level_disallows_role');
+    expect(r.status).toBe(200);
     const after = (await sql`SELECT role_id FROM public.user_nodes WHERE id = ${mgrId}::uuid`) as { role_id: string }[];
-    expect(after[0]!.role_id).toBe(roleA);
+    expect(after[0]!.role_id).toBe(roleShop);
   });
 
   test('cardinality cap exceeded → cardinality_exceeded with max', async () => {

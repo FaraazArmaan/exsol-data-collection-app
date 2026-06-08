@@ -15,7 +15,7 @@ import {
 } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
-import { validateLevelAllowsRole, validateCardinality } from './_shared/role-change';
+import { validateCardinality } from './_shared/role-change';
 
 const Body = z.object({
   node_id: z.string().uuid(),
@@ -72,10 +72,6 @@ export default async (req: Request, _ctx: Context) => {
   if (target.level_number === null) {
     return jsonError(400, 'unassigned_node');
   }
-
-  // Level allows role?
-  const lv = await validateLevelAllowsRole(sql, clientId, target.level_number, new_role_id);
-  if (!lv.ok) return jsonError(400, lv.code);
 
   // Cardinality projection.
   const card = await validateCardinality(sql, clientId, target.parent_id, new_role_id, target.role_id);
