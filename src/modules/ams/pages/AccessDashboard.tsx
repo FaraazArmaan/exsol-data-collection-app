@@ -90,16 +90,13 @@ function DashboardInner({ clientId }: { clientId: string }) {
   function nodesForLevel(l: ClientLevel): UserNode[] {
     const all = nodesByLevel.get(l.level_number) ?? [];
     if (l.level_number === 1) return all;
-    // Filter by narrowed parent at the level above, if set.
+    // When the admin has drilled into a specific parent at the level above, narrow
+    // to just that parent's children. Otherwise show every node at this level
+    // regardless of which parent they belong to — otherwise users under a
+    // non-first parent at level-above become invisible on the dashboard.
     const parentLevel = l.level_number - 1;
     const parentId = narrowed[parentLevel];
-    if (parentId === null || parentId === undefined) {
-      // Default: pick first parent at the level above if any exist.
-      const parentList = nodesByLevel.get(parentLevel) ?? [];
-      const firstParent = parentList[0];
-      if (!firstParent) return [];
-      return all.filter((n) => n.parent_id === firstParent.id);
-    }
+    if (parentId === null || parentId === undefined) return all;
     return all.filter((n) => n.parent_id === parentId);
   }
 
@@ -228,9 +225,12 @@ function DashboardInner({ clientId }: { clientId: string }) {
         {moveError && <p className="error">{moveError}</p>}
 
         {structure.levels.map((l) => {
+          // Subtitle only when the admin has actually drilled into a specific
+          // parent. Without narrowing, this row shows users under ALL parents,
+          // so labelling it "under <first owner>" would be misleading.
           const parentLevel = l.level_number - 1;
           const parentId = narrowed[parentLevel];
-          const parentNode = parentId ? nodes.find((n) => n.id === parentId) : (nodesByLevel.get(parentLevel) ?? [])[0];
+          const parentNode = parentId ? nodes.find((n) => n.id === parentId) : null;
           const subtitle = l.level_number > 1 && parentNode ? `under ${parentNode.display_name}` : undefined;
           return (
             <LevelRow
