@@ -129,6 +129,9 @@ export default async (req: Request, _ctx: Context) => {
   const parentRoleById = new Map(parentRows.map((r) => [r.id, r.role_id]));
 
   // Per-target validation pass.
+  // NOTE: semantics here MUST mirror _shared/role-change.ts's validateLevelAllowsRole
+  // and validateCardinality (used by user-nodes-role-change.ts). If you tighten one,
+  // tighten the other — they encode the same business rule.
   const errors: TargetError[] = [];
   const deltas = new Map<string, number>(); // pending changes to count toward cap
   for (const t of targets) {
