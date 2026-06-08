@@ -280,6 +280,7 @@ export default function UserManageTeam() {
             node={editingChip}
             role={rolesById[editingChip.role_id]}
             clientSlug={slug}
+            nodes={nodes}
             onClose={() => setEditingChip(null)}
             onSaved={async () => { setEditingChip(null); await refreshNodes(); }}
             onDeleted={async () => { setEditingChip(null); await refreshNodes(); }}

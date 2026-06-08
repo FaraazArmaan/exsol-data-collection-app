@@ -2,7 +2,7 @@
 // wrappers around src/modules/shared/team-modals/*.
 
 import {
-  createUserNode, patchUserNode, deleteUserNode,
+  createUserNode, patchUserNode, deleteUserNode, moveUserNode,
   getUserNodeCredential, peekUserNodeCredential,
   resetUserNodeCredential, deleteUserNodeCredential,
   bulkInviteUsers, bulkRoleChange,
@@ -17,6 +17,7 @@ export function buildAdminApi(clientId: string): TeamMemberApi {
     createNode: (body) => createUserNode(clientId, body),
     updateNode: (id, body) => patchUserNode(id, body),
     deleteNode: (id, cascade) => deleteUserNode(id, cascade),
+    moveNode: (id, p, l) => moveUserNode(id, p, l),
     getCredential: (id) => getUserNodeCredential(id),
     peekCredential: (id) => peekUserNodeCredential(id),
     resetCredential: (id, pw) => resetUserNodeCredential(id, pw),
@@ -32,6 +33,7 @@ export const adminApiNoCreate: TeamMemberApi = {
   createNode: () => Promise.resolve({ ok: false, error: { code: 'not_supported' } }),
   updateNode: (id, body) => patchUserNode(id, body),
   deleteNode: (id, cascade) => deleteUserNode(id, cascade),
+  moveNode: (id, p, l) => moveUserNode(id, p, l),
   getCredential: (id) => getUserNodeCredential(id),
   peekCredential: (id) => peekUserNodeCredential(id),
   resetCredential: (id, pw) => resetUserNodeCredential(id, pw),

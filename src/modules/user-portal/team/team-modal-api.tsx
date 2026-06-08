@@ -5,7 +5,7 @@
 // factory.
 
 import {
-  createNode, updateNode, deleteNode,
+  createNode, updateNode, deleteNode, moveNode as moveOwnerNode,
   getCredential, peekCredential, resetCredential, deleteCredential,
   bulkInvite, bulkRoleChangeOwner,
 } from './api';
@@ -15,6 +15,7 @@ export const ownerApi: TeamMemberApi = {
   createNode: (body) => createNode(body),
   updateNode: (id, body) => updateNode(id, body),
   deleteNode: (id, cascade) => deleteNode(id, cascade),
+  moveNode: (id, p, l) => moveOwnerNode(id, p, l),
   getCredential: (id) => getCredential(id),
   peekCredential: (id) => peekCredential(id),
   resetCredential: (id, pw) => resetCredential(id, pw),

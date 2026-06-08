@@ -49,6 +49,14 @@ export interface TeamMemberApi {
     nodeId: string,
     cascade?: boolean,
   ) => Promise<ApiResult<{ ok: true; deleted_count?: number }>>;
+  // Owner-side may return `{ moved_to: 'unassigned' }` when level becomes null;
+  // the consolidated modals only care about the ok flag + error code, so we
+  // type the union loosely.
+  moveNode: (
+    nodeId: string,
+    parent_id: string | null,
+    level_number: number | null,
+  ) => Promise<ApiResult<{ node: UserNode } | { moved_to: 'unassigned' }>>;
   getCredential: (nodeId: string) => Promise<ApiResult<UserNodeCredentialStatus>>;
   peekCredential: (nodeId: string) => Promise<ApiResult<UserNodeCredentialStatus>>;
   resetCredential: (

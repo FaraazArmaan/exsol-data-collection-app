@@ -8,6 +8,7 @@ interface Props {
   node: UserNode;
   role: ClientRole | undefined;
   clientSlug: string;
+  nodes: UserNode[];
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;

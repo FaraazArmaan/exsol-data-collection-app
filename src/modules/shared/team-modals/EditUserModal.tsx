@@ -11,6 +11,10 @@ interface Props {
   node: UserNode;
   role: ClientRole | undefined;
   clientSlug: string;
+  // All user nodes in the workspace. Used to populate the Parent picker with
+  // siblings at the level above this node. Pass an empty array if the caller
+  // doesn't want to expose the parent-change UI.
+  nodes: UserNode[];
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;
@@ -23,15 +27,25 @@ interface Props {
 // Deep "manage credential" flows (reveal counter, remove login) live in
 // LoginManageModal — this modal exposes a button to hand off to it.
 export function EditUserModal({
-  api, copy, node, role, clientSlug, onClose, onSaved, onDeleted, onManageLogin,
+  api, copy, node, role, clientSlug, nodes, onClose, onSaved, onDeleted, onManageLogin,
 }: Props) {
   const [displayName, setDisplayName] = useState(node.display_name);
   const [email, setEmail] = useState(node.email ?? '');
   const [phone, setPhone] = useState(node.phone ?? '');
   const [notes, setNotes] = useState(node.notes ?? '');
   const [fields, setFields] = useState<Record<string, unknown>>(node.fields ?? {});
+  const [parentId, setParentId] = useState<string | null>(node.parent_id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Parent picker is only meaningful for nodes that already sit under someone
+  // (L2+). L1 nodes have no parent by definition; unassigned nodes have neither
+  // level nor parent. To move into/out of those states, use drag-drop on the
+  // dashboard.
+  const parentCandidates =
+    node.level_number !== null && node.level_number > 1
+      ? nodes.filter((n) => n.level_number === node.level_number! - 1)
+      : [];
 
   // Sign-in status (peeked — does NOT decrement reveal counter).
   const [status, setStatus] = useState<UserNodeCredentialStatus | null>(null);
@@ -55,12 +69,14 @@ export function EditUserModal({
     return () => { cancelled = true; };
   }, [api, node.id]);
 
-  const dirty =
+  const parentChanged = parentId !== (node.parent_id ?? null);
+  const identityDirty =
     displayName.trim() !== node.display_name ||
     (email.trim() || null) !== (node.email ?? null) ||
     (phone.trim() || null) !== (node.phone ?? null) ||
     (notes.trim() || null) !== (node.notes ?? null) ||
     JSON.stringify(fields) !== JSON.stringify(node.fields ?? {});
+  const dirty = identityDirty || parentChanged;
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -68,20 +84,44 @@ export function EditUserModal({
     if (!displayName.trim()) { setError('Display name is required.'); return; }
     if (!dirty) { onClose(); return; }
     setSubmitting(true);
-    const r = await api.updateNode(node.id, {
-      display_name: displayName.trim(),
-      email: email.trim() || null,
-      phone: phone.trim() || null,
-      notes: notes.trim() || null,
-      fields,
-    });
-    setSubmitting(false);
-    if (!r.ok) {
-      setError(r.error.code === 'email_already_has_login_in_this_client'
-        ? `Email is already taken by another user in this ${copy.scopeNoun}.`
-        : `Failed (${r.error.code}).`);
-      return;
+
+    if (identityDirty) {
+      const r = await api.updateNode(node.id, {
+        display_name: displayName.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        notes: notes.trim() || null,
+        fields,
+      });
+      if (!r.ok) {
+        setSubmitting(false);
+        setError(r.error.code === 'email_already_has_login_in_this_client'
+          ? `Email is already taken by another user in this ${copy.scopeNoun}.`
+          : `Failed (${r.error.code}).`);
+        return;
+      }
     }
+
+    if (parentChanged) {
+      const r = await api.moveNode(node.id, parentId, node.level_number);
+      if (!r.ok) {
+        setSubmitting(false);
+        const code = r.error.code;
+        const details = r.error.details as { max?: number } | undefined;
+        const msg =
+          code === 'cardinality_exceeded'
+            ? `Per-parent limit reached at the target${details?.max !== undefined ? ` (max ${details.max})` : ''}.`
+            : code === 'cycle_detected'
+              ? 'That would create a cycle (you can’t move a user under their own descendant).'
+              : code === 'parent_level_mismatch'
+                ? 'The chosen parent is not at the level above this user.'
+                : `Failed (${code}).`;
+        setError(msg);
+        return;
+      }
+    }
+
+    setSubmitting(false);
     onSaved();
   }
 
@@ -192,6 +232,19 @@ export function EditUserModal({
               )}
             </label>
           ))}
+
+          {parentCandidates.length > 0 && (
+            <label>Reports to (Level {node.level_number! - 1} parent)
+              <select
+                value={parentId ?? ''}
+                onChange={(e) => setParentId(e.target.value || null)}
+              >
+                {parentCandidates.map((p) => (
+                  <option key={p.id} value={p.id}>{p.display_name}</option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <section style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border, #2a2a2a)' }}>
             <strong style={{ fontSize: 13 }}>Sign-in</strong>
