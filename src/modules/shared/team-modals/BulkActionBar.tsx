@@ -1,6 +1,6 @@
 // Fixed-position action bar shown when ≥1 chip is selected. The role
-// dropdown filters to roles allowed on EVERY level present in the
-// selection — so the user can't pick an invalid target.
+// dropdown shows all workspace roles since any role can be assigned at
+// any level. See docs/superpowers/specs/2026-06-08-levels-roles-decoupling-design.md.
 
 import { useMemo, useState } from 'react';
 import type { ClientRole, ClientLevel, UserNode } from '../../ams/api';
@@ -23,22 +23,9 @@ export function BulkActionBar({ api, selectedIds, nodes, roles, levels, onCleare
   const [error, setError] = useState<string | null>(null);
   const [targetErrors, setTargetErrors] = useState<TargetError[]>([]);
 
-  const selectedLevels = useMemo(() => {
-    const s = new Set<number>();
-    for (const n of nodes) if (selectedIds.has(n.id) && n.level_number !== null) s.add(n.level_number);
-    return s;
-  }, [selectedIds, nodes]);
-
-  const eligibleRoles = useMemo(() => {
-    // Role must be allowed on EVERY level in selectedLevels.
-    return roles.filter((r) => {
-      for (const lvNum of selectedLevels) {
-        const lv = levels.find((l) => l.level_number === lvNum);
-        if (!lv || !lv.allowed_role_ids.includes(r.id)) return false;
-      }
-      return true;
-    });
-  }, [roles, levels, selectedLevels]);
+  // Any role can be assigned at any level. See
+  // docs/superpowers/specs/2026-06-08-levels-roles-decoupling-design.md.
+  const eligibleRoles = roles;
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -79,16 +66,13 @@ export function BulkActionBar({ api, selectedIds, nodes, roles, levels, onCleare
           {selectedIds.size} selected
         </span>
         <select
-          disabled={submitting || eligibleRoles.length === 0}
+          disabled={submitting}
           defaultValue=""
           onChange={(e) => { if (e.target.value) void handlePick(e.target.value); }}
         >
           <option value="">Change role to…</option>
           {eligibleRoles.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
         </select>
-        {eligibleRoles.length === 0 && (
-          <span className="muted" style={{ fontSize: 11 }}>No role allowed across all selected levels.</span>
-        )}
         <button type="button" className="btn btn-ghost" onClick={onCleared} disabled={submitting}>Clear</button>
       </div>
       {error && <p className="error" style={{ margin: 0, fontSize: 12 }}>{error}</p>}
