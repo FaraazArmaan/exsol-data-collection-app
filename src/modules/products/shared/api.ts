@@ -67,14 +67,14 @@ export const productsApi = {
     const q = qs(f);
     return jsonFetch(`/api/u-products${q ? `?${q}` : ''}`);
   },
-  get: (id: string): Promise<{ product: ProductWithImages }> =>
+  get: (id: string): Promise<ProductWithImages> =>
     jsonFetch(`/api/u-products/${id}`),
-  create: (body: Partial<Product>): Promise<{ product: Product }> =>
+  create: (body: Partial<Product>): Promise<Product> =>
     jsonFetch('/api/u-products', { method: 'POST', body: JSON.stringify(body) }),
-  update: (id: string, body: Partial<Product>): Promise<{ product: Product }> =>
+  update: (id: string, body: Partial<Product>): Promise<Product> =>
     jsonFetch(`/api/u-products/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  remove: (id: string): Promise<{ ok: true }> =>
-    jsonFetch(`/api/u-products/${id}`, { method: 'DELETE' }),
+  remove: (id: string): Promise<void> =>
+    jsonFetch<void>(`/api/u-products/${id}`, { method: 'DELETE' }),
   bulk: (body: BulkAction): Promise<BulkResult> =>
     jsonFetch('/api/u-products-bulk', { method: 'POST', body: JSON.stringify(body) }),
   exportUrl: (f: ProductFilters, format: 'csv' | 'xlsx'): string => {
@@ -99,26 +99,33 @@ export const productsApi = {
 export const categoriesApi = {
   list: (): Promise<{ items: ProductCategory[] }> =>
     jsonFetch('/api/u-product-categories'),
-  create: (name: string): Promise<{ category: ProductCategory }> =>
+  create: (name: string): Promise<ProductCategory> =>
     jsonFetch('/api/u-product-categories', { method: 'POST', body: JSON.stringify({ name }) }),
-  update: (id: string, body: { name?: string; sort_order?: number }): Promise<{ category: ProductCategory }> =>
+  update: (id: string, body: { name?: string; sort_order?: number }): Promise<ProductCategory> =>
     jsonFetch(`/api/u-product-categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  remove: (id: string): Promise<{ ok: true }> =>
-    jsonFetch(`/api/u-product-categories/${id}`, { method: 'DELETE' }),
+  remove: (id: string): Promise<void> =>
+    jsonFetch<void>(`/api/u-product-categories/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Images ──────────────────────────────────────────────────────────────────
 // Single-step multipart upload (the server has u-products-image POST with
 // product_id + file, NOT a separate reserve/PUT/register triad).
 
+export interface ProductImageRow {
+  id: string;
+  product_id: string;
+  blob_key: string;
+  sort_order: number;
+}
+
 export const imagesApi = {
-  upload: (product_id: string, file: File, sort_order?: number): Promise<{ image: { id: string; blob_key: string; sort_order: number } }> => {
+  upload: (product_id: string, file: File, sort_order?: number): Promise<ProductImageRow> => {
     const fd = new FormData();
     fd.append('product_id', product_id);
     if (sort_order != null) fd.append('sort_order', String(sort_order));
     fd.append('file', file);
     return formFetch('/api/u-products-image', fd);
   },
-  remove: (image_id: string): Promise<{ ok: true }> =>
-    jsonFetch(`/api/u-products-image/${image_id}`, { method: 'DELETE' }),
+  remove: (image_id: string): Promise<void> =>
+    jsonFetch<void>(`/api/u-products-image/${image_id}`, { method: 'DELETE' }),
 };
