@@ -28,7 +28,6 @@ export interface LevelRow {
   client_id: string;
   level_number: number;
   label: string | null;
-  allowed_role_ids: string[];
   created_at: string;
 }
 
@@ -74,7 +73,7 @@ export async function loadStructure(
     ORDER BY sort_order, created_at
   `) as RoleRow[];
   const levels = (await sql`
-    SELECT id, client_id, level_number, label, allowed_role_ids, created_at
+    SELECT id, client_id, level_number, label, created_at
     FROM public.client_levels WHERE client_id = ${clientId}::uuid
     ORDER BY level_number
   `) as LevelRow[];

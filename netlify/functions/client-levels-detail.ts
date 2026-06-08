@@ -8,7 +8,6 @@ import { logAudit } from './_shared/audit';
 
 const PatchBody = z.object({
   label: z.string().min(1).max(100).optional(),
-  allowed_role_ids: z.array(z.string().uuid()).optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
@@ -30,10 +29,9 @@ export default async (req: Request, _ctx: Context) => {
 
     const rows = (await sql`
       UPDATE public.client_levels
-      SET label            = COALESCE(${parsed.data.label ?? null}::text, label),
-          allowed_role_ids = COALESCE(${parsed.data.allowed_role_ids ?? null}::uuid[], allowed_role_ids)
+      SET label = COALESCE(${parsed.data.label ?? null}::text, label)
       WHERE id = ${id}::uuid
-      RETURNING id, client_id, level_number, label, allowed_role_ids, created_at
+      RETURNING id, client_id, level_number, label, created_at
     `) as Array<{ client_id: string }>;
     if (rows.length === 0) return jsonError(404, 'not_found');
     await logAudit(sql, {

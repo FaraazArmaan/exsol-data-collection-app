@@ -5,11 +5,11 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { defaultPermissionsForLevel } from './_shared/level-permissions';
 
 const CreateBody = z.object({
   level_number: z.number().int().positive(),
   label: z.string().min(1).max(100).optional(),
-  allowed_role_ids: z.array(z.string().uuid()).default([]),
 });
 
 export default async (req: Request, _ctx: Context) => {
@@ -29,23 +29,20 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
 
-  // Friendly default: if the request didn't supply allowed_role_ids (or sent
-  // an empty array), pre-populate with ALL existing roles for this client.
-  // Admin can toggle individual roles off via the chips in LevelEditor.
-  let effectiveAllowedRoleIds = parsed.data.allowed_role_ids;
-  if (effectiveAllowedRoleIds.length === 0) {
-    const existing = (await sql`
-      SELECT id FROM public.client_roles WHERE client_id = ${clientId}::uuid
-    `) as { id: string }[];
-    effectiveAllowedRoleIds = existing.map((r) => r.id);
-  }
-
   try {
+    // Fetch enabled product keys for this client.
+    const products = (await sql`
+      SELECT product_key FROM public.client_enabled_products
+      WHERE client_id = ${clientId}::uuid
+    `) as { product_key: string }[];
+    const enabledProductKeys = products.map((p) => p.product_key);
+    const permissions = defaultPermissionsForLevel(parsed.data.level_number, enabledProductKeys);
+
     const rows = (await sql`
-      INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
+      INSERT INTO public.client_levels (client_id, level_number, label, permissions)
       VALUES (${clientId}::uuid, ${parsed.data.level_number},
-              ${parsed.data.label ?? null}, ${effectiveAllowedRoleIds}::uuid[])
-      RETURNING id, client_id, level_number, label, allowed_role_ids, created_at
+              ${parsed.data.label ?? null}, ${JSON.stringify(permissions)}::jsonb)
+      RETURNING id, client_id, level_number, label, permissions, created_at
     `) as Array<{ id: string }>;
     await logAudit(sql, {
       session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
