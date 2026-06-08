@@ -6,5 +6,6 @@ export const saloonBookingProduct: ProductManifest = {
   modules: [
     { module: 'booking',  side: 'both' },
     { module: 'payments', side: 'both' },
+    { module: 'products', side: 'both' },
   ],
 };

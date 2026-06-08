@@ -87,7 +87,7 @@ Added under the workspace router (`/w/:slug/*`):
 
 ### 2.3 Sidebar entry
 
-"Product Manager" link visible to any workspace user whose level grants `products.catalog.view`. Placed in the sidebar after "My Files".
+"Product Manager" link visible to any workspace user whose level grants `products.products.view`. Placed in the sidebar after "My Files".
 
 ### 2.4 Reused infrastructure
 
@@ -200,24 +200,25 @@ CREATE INDEX product_images_product_sort_idx
 
 ## 4. Permissions
 
-Four new flags added to the `client_levels.permissions` JSONB column (migration 021 schema, no schema change needed — sparse map convention).
+The existing `<module>.<bucket>.<verb>` system gives us four flags naturally — the `products` module uses the existing `products` data bucket and the four standard verbs (`view`, `create`, `edit`, `delete`). Flags live in the `client_levels.permissions` JSONB (migration 021), sparse-map convention; missing key = false.
 
 | Flag | Grants |
 |---|---|
-| `products.catalog.view` | See the sidebar entry, list page, and individual products |
-| `products.catalog.edit` | Create and update products; manage product images |
-| `products.catalog.delete` | Archive (soft-delete) and hard-delete products |
-| `products.categories.manage` | CRUD the workspace's category list |
+| `products.products.view` | See sidebar entry + list page + individual products + categories list |
+| `products.products.create` | Add new products; add new categories; auto-create categories on import |
+| `products.products.edit` | Modify existing products; rename categories; upload/delete images |
+| `products.products.delete` | Archive products (soft delete) + delete categories |
 
 **Notes:**
 
 - `view` is NOT implicit — must be granted. (Decision from brainstorming.)
-- Publish (changing status to `active`) is part of `edit`, not a separate flag.
-- A user with `delete` but not `edit` can archive existing products but not modify them — matches the existing AMS `role.delete` pattern.
+- Category management is folded into the same four flags rather than a separate `categories.manage`, because the existing type system has a fixed verb set (`view`/`create`/`edit`/`delete`) and a fixed bucket set. Conceptually: categories are part of the products module's domain, gated by the same verbs.
+- Publish (changing status to `active`) is part of `.edit`, not a separate flag.
+- A user with `.delete` but not `.edit` can archive existing products and delete categories but not modify either — matches AMS `role.delete` pattern.
 - Server enforces all gates; UI affordances are convenience only.
-- A "lead" person responsible for the catalog is whoever holds all four flags; the matrix in the Access Levels UI exposes them like any other module permissions (see `2026-06-01-access-levels-design.md`).
+- A "lead" person responsible for the catalog holds all four flags; the matrix in the Access Levels UI exposes them like any other module permissions.
 
-The Module manifest (`registry/`) registers the four flags so the access-levels UI surfaces them automatically.
+The Module manifest (`src/modules/registry/manifests/products.ts`) registers the module so the access-levels UI surfaces the four flags automatically (one row per verb in the `products` data bucket).
 
 ---
 
@@ -229,21 +230,21 @@ All endpoints under `netlify/functions/` and use the bucket-user JWT (`u-` prefi
 
 | File | Method | Path | Purpose | Flag |
 |---|---|---|---|---|
-| `u-products.ts` | GET | `/u-products` | List w/ filters, search, paging | `products.catalog.view` |
-| `u-products.ts` | POST | `/u-products` | Create | `products.catalog.edit` |
-| `u-products-detail.ts` | GET | `/u-products/:id` | Fetch one (with images + category) | `products.catalog.view` |
-| `u-products-detail.ts` | PATCH | `/u-products/:id` | Update | `products.catalog.edit` |
-| `u-products-detail.ts` | DELETE | `/u-products/:id` | Soft-delete | `products.catalog.delete` |
-| `u-products-bulk.ts` | POST | `/u-products-bulk` | Bulk actions | depends on action |
-| `u-products-upload-url.ts` | POST | `/u-products-upload-url` | Issue presigned blob URL | `products.catalog.edit` |
-| `u-products-image.ts` | POST | `/u-products-image` | Register uploaded blob as image | `products.catalog.edit` |
-| `u-products-image.ts` | DELETE | `/u-products-image/:id` | Remove image | `products.catalog.edit` |
-| `u-product-categories.ts` | GET | `/u-product-categories` | List | `products.catalog.view` |
-| `u-product-categories.ts` | POST | `/u-product-categories` | Create | `products.categories.manage` |
-| `u-product-categories.ts` | PATCH | `/u-product-categories/:id` | Update | `products.categories.manage` |
-| `u-product-categories.ts` | DELETE | `/u-product-categories/:id` | Soft-delete | `products.categories.manage` |
-| `u-products-export.ts` | GET | `/u-products-export` | CSV/XLSX download | `products.catalog.view` |
-| `u-products-import.ts` | POST | `/u-products-import` | Dry-run + commit import | `products.catalog.edit` (+ `.categories.manage` for auto-create) |
+| `u-products.ts` | GET | `/u-products` | List w/ filters, search, paging | `products.products.view` |
+| `u-products.ts` | POST | `/u-products` | Create | `products.products.create` |
+| `u-products-detail.ts` | GET | `/u-products/:id` | Fetch one (with images + category) | `products.products.view` |
+| `u-products-detail.ts` | PATCH | `/u-products/:id` | Update | `products.products.edit` |
+| `u-products-detail.ts` | DELETE | `/u-products/:id` | Soft-delete | `products.products.delete` |
+| `u-products-bulk.ts` | POST | `/u-products-bulk` | Bulk actions | depends on action (see §5.3) |
+| `u-products-upload-url.ts` | POST | `/u-products-upload-url` | Issue presigned blob URL | `products.products.edit` |
+| `u-products-image.ts` | POST | `/u-products-image` | Register uploaded blob as image | `products.products.edit` |
+| `u-products-image.ts` | DELETE | `/u-products-image/:id` | Remove image | `products.products.edit` |
+| `u-product-categories.ts` | GET | `/u-product-categories` | List | `products.products.view` |
+| `u-product-categories.ts` | POST | `/u-product-categories` | Create | `products.products.create` |
+| `u-product-categories.ts` | PATCH | `/u-product-categories/:id` | Update | `products.products.edit` |
+| `u-product-categories.ts` | DELETE | `/u-product-categories/:id` | Soft-delete | `products.products.delete` |
+| `u-products-export.ts` | GET | `/u-products-export` | CSV/XLSX download | `products.products.view` |
+| `u-products-import.ts` | POST | `/u-products-import` | Dry-run + commit import | `products.products.create` for new rows + `.edit` for updates; auto-create cats requires `.create` |
 
 ### 5.2 List query (`GET /u-products`)
 
@@ -338,7 +339,7 @@ Commit (no `dry_run`) returns the same shape plus `committed: true` and IDs of c
 
 - SKU is the upsert key for physical products: matches on `(client_id, sku)` if `sku` provided.
 - Services match on `(client_id, name, type)` when no SKU.
-- Category lookup by name. Missing categories: warning + auto-create iff caller has `products.categories.manage`; otherwise hard error.
+- Category lookup by name. Missing categories: warning + auto-create iff caller has `products.products.create`; otherwise hard error.
 - Tags: semicolon-separated within one cell (e.g., `"electronics;wireless;new"`).
 - Status defaults to `draft` if column blank.
 - Archived rows: skipped with warning, never silently re-activated.
@@ -366,7 +367,7 @@ Each row carries `actor_user_node_id`, `client_id`, `entity_id`, and a JSON `met
 
 ### 6.1 List page (`/w/:slug/products`)
 
-Header row: page title + breadcrumb. Link to "Categories →" if `products.categories.manage` granted.
+Header row: page title + breadcrumb. Link to "Categories →" if `products.products.create` granted.
 
 **Status tabs:** All · Active · Draft · Archived — with live counts.
 
@@ -389,7 +390,7 @@ Buttons hidden/disabled per permission flags. `+ Add Product` navigates to `/pro
 - S.no resets per page.
 - Service rows show `—` for SKU and Stock; price shown as `$80.00 /hr` (unit suffix).
 - Header checkbox selects the current page.
-- `🗑` is hidden if user lacks `products.catalog.delete`.
+- `🗑` is hidden if user lacks `products.products.delete`.
 
 **Pagination:** classic Prev / 1 / 2 / 3 / Next with "Showing X–Y of Z" on the left. Page size selector (20 / 50 / 100).
 
@@ -424,7 +425,7 @@ Full-page two-column form, sticky header with `← Back`, `Save Draft`, `Publish
 
 ### 6.3 Categories page (`/w/:slug/products/categories`)
 
-Visible only with `products.categories.manage`.
+Visible only with `products.products.create`.
 
 - List of categories with drag-to-reorder (updates `sort_order`)
 - Inline "Add category" input at bottom
@@ -498,11 +499,11 @@ Create physical → image upload → publish → bulk archive → export → imp
 | Archived product import row | Skipped with warning; never silently re-activated |
 | SKU collision on import | Upsert that product; surfaced as `action: "update"` in dry-run |
 | Category deleted while referenced | `ON DELETE SET NULL`; products show "(no category)" until reassigned |
-| User loses `products.catalog.edit` mid-session | Next mutation returns 403; UI re-fetches `u-me` and updates affordances |
+| User loses `products.products.edit` mid-session | Next mutation returns 403; UI re-fetches `u-me` and updates affordances |
 | Image upload succeeds but register fails | Orphan blob; cleaned by weekly GC job (follow-up ticket) |
 | Concurrent edit (two users) | Last-write-wins; audit log gives the trail. Optimistic lock deferred. |
 | Service product with `stock_qty` in CSV | Dry-run error: "Services cannot have stock_qty" |
-| `products.catalog.delete` without `.edit` | Allowed (archive existing, can't modify) — matches AMS `role.delete` pattern |
+| `products.products.delete` without `.edit` | Allowed (archive existing, can't modify) — matches AMS `role.delete` pattern |
 | Tab counts when filtering | Reflect base filter set (Type/Category/Brand/search), not active tab. Matches Shopify. |
 | Currency column in import | Phase A locks currency to `USD`. Non-`USD` values in the import file produce a row-level error. The `currency` DB column exists for forward-compatibility (Phase B multi-currency). |
 | `category_id` of a soft-deleted category | Treated as "(no category)" in UI; cannot select on edit |
@@ -517,7 +518,7 @@ Create physical → image upload → publish → bulk archive → export → imp
 2. Module manifest (registry) entry for the four permission flags
 3. Endpoints: list/CRUD/bulk/categories/images/import/export
 4. Workspace UI: list page, edit page, categories page, import modal
-5. Permission helpers + sidebar entry gated by `products.catalog.view`
+5. Permission helpers + sidebar entry gated by `products.products.view`
 6. Audit log integration
 7. Full test suite
 8. Local end-to-end verification

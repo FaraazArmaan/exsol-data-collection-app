@@ -51,7 +51,7 @@
 - `db/migrations/035_product_images.sql`
 
 **New files (registry):**
-- `src/modules/registry/modules-list/products.ts` — module manifest
+- `src/modules/registry/manifests/products.ts` — module manifest
 - (no new product manifest; products module attaches to existing default product OR a workspace-default product key — see Task 4)
 
 **New files (tests):**
@@ -332,71 +332,54 @@ git commit -m "feat(products): migration 035 product_images"
 ## Task 5: Register `products` module in the manifest registry
 
 **Files:**
-- Create: `src/modules/registry/modules-list/products.ts`
+- Create: `src/modules/registry/manifests/products.ts`
 - Modify: `src/modules/registry/modules.ts` — register the module
 - Modify: `src/modules/registry/products-list/saloon-booking.ts` (and any other product manifests) — reference the `products` module so existing workspaces see the flags
 
-- [ ] **Step 1: Read existing module manifest pattern**
+The existing `ModuleManifest` shape is `{ key, label, data_buckets, verbs, vendor_side, customer_side }` (see `src/modules/registry/types.ts`). `DataBucket` is a fixed enum that already includes `'products'`. `Verb` is fixed at `['view','create','edit','delete']`. The four permission flags appear automatically as `products.products.<verb>` once the manifest is registered.
 
-Run:
-```bash
-ls src/modules/registry/modules-list/
-cat src/modules/registry/modules-list/$(ls src/modules/registry/modules-list/ | head -1)
-```
-Expected: see the shape — `ModuleManifest` with `key`, `name`, `data_buckets`, `permissions`.
+- [ ] **Step 1: Create products module manifest**
 
-- [ ] **Step 2: Create products module manifest**
-
-Create `src/modules/registry/modules-list/products.ts`:
+Create `src/modules/registry/manifests/products.ts`:
 ```ts
 import type { ModuleManifest } from '../types';
 
-export const productsModule: ModuleManifest = {
+export const productsManifest: ModuleManifest = {
   key: 'products',
-  name: 'Product Manager',
-  description: 'Manage the catalog of products and services your business offers.',
-  data_buckets: ['catalog', 'categories'],
-  permissions: {
-    catalog: {
-      view: { label: 'View products' },
-      edit: { label: 'Create & edit products' },
-      delete: { label: 'Archive & delete products' },
-    },
-    categories: {
-      manage: { label: 'Manage product categories' },
-    },
-  },
+  label: 'Product Manager',
+  data_buckets: ['products'],
+  verbs: ['view', 'create', 'edit', 'delete'],
+  vendor_side: true,
+  customer_side: true,
 };
 ```
 
-Adjust property names if `ModuleManifest` differs — read `src/modules/registry/types.ts` first to confirm shape.
+- [ ] **Step 2: Register in modules.ts**
 
-- [ ] **Step 3: Register in modules.ts**
-
-Open `src/modules/registry/modules.ts` and add:
+Open `src/modules/registry/modules.ts` and add the import + registry entry:
 ```ts
-import { productsModule } from './modules-list/products';
+import { productsManifest } from './manifests/products';
 // inside moduleRegistry object literal:
-'products': productsModule,
+products: productsManifest,
 ```
 
-- [ ] **Step 4: Reference from product manifest(s)**
+- [ ] **Step 3: Reference from product manifest(s)**
 
-Open `src/modules/registry/products-list/saloon-booking.ts` and add a module reference under `modules` array:
+Open `src/modules/registry/products-list/saloon-booking.ts` and append to the `modules` array:
 ```ts
-{ module: 'products' },
+{ module: 'products', side: 'both' },
 ```
-Repeat for any other product manifests.
+Repeat for any other product manifests where products should be available.
 
-- [ ] **Step 5: Verify Access-Levels UI renders the new rows**
+- [ ] **Step 4: Verify Access-Levels UI renders the new rows**
 
 Run:
 ```bash
 npm run dev
 ```
-Open the AccessLevels page in a browser — confirm `Product Manager → catalog (view/edit/delete)` and `Product Manager → categories (manage)` rows appear.
+Open the AccessLevels page for a client with a product that includes the products module enabled. Confirm a `Product Manager` row group appears with four columns (view/create/edit/delete).
 
-- [ ] **Step 6: Add typecheck-only quick test**
+- [ ] **Step 5: Typecheck**
 
 Run:
 ```bash
@@ -404,7 +387,7 @@ npm run typecheck
 ```
 Expected: no new errors.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/modules/registry/
@@ -598,8 +581,8 @@ git commit -m "feat(products): shared validation helper + unit tests"
 - [ ] **Step 1: Write failing integration tests**
 
 Create `tests/integration/products/product-categories.test.ts` covering:
-  - GET returns empty list for new client; `products.catalog.view` required
-  - POST creates a category; requires `products.categories.manage`; 403 without
+  - GET returns empty list for new client; `products.products.view` required
+  - POST creates a category; requires `products.products.create`; 403 without
   - POST duplicate name → 409
   - PATCH updates name; missing → 404
   - DELETE soft-deletes; products with that category get `category_id = null`
@@ -614,7 +597,7 @@ import { withFreshDb, makeBucketUser, fetchAs } from '../_helpers/harness';
 describe('u-product-categories', () => {
   it('GET returns 200 with empty list', async () => {
     await withFreshDb(async () => {
-      const session = await makeBucketUser({ level: 1, perms: { 'products.catalog.view': true } });
+      const session = await makeBucketUser({ level: 1, perms: { 'products.products.view': true } });
       const res = await fetchAs(session, 'GET', '/u-product-categories');
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -622,9 +605,9 @@ describe('u-product-categories', () => {
     });
   });
 
-  it('POST 403 without products.categories.manage', async () => {
+  it('POST 403 without products.products.create', async () => {
     await withFreshDb(async () => {
-      const session = await makeBucketUser({ level: 1, perms: { 'products.catalog.view': true } });
+      const session = await makeBucketUser({ level: 1, perms: { 'products.products.view': true } });
       const res = await fetchAs(session, 'POST', '/u-product-categories', { name: 'Electronics' });
       expect(res.status).toBe(403);
     });
@@ -632,7 +615,7 @@ describe('u-product-categories', () => {
 
   it('POST creates + writes audit row', async () => {
     await withFreshDb(async (db) => {
-      const session = await makeBucketUser({ level: 1, perms: { 'products.categories.manage': true, 'products.catalog.view': true } });
+      const session = await makeBucketUser({ level: 1, perms: { 'products.products.create': true, 'products.products.view': true } });
       const res = await fetchAs(session, 'POST', '/u-product-categories', { name: 'Electronics' });
       expect(res.status).toBe(201);
       const body = await res.json();
@@ -644,7 +627,7 @@ describe('u-product-categories', () => {
 
   it('POST duplicate name returns 409', async () => {
     await withFreshDb(async () => {
-      const session = await makeBucketUser({ level: 1, perms: { 'products.categories.manage': true } });
+      const session = await makeBucketUser({ level: 1, perms: { 'products.products.create': true } });
       await fetchAs(session, 'POST', '/u-product-categories', { name: 'Dup' });
       const res = await fetchAs(session, 'POST', '/u-product-categories', { name: 'Dup' });
       expect(res.status).toBe(409);
@@ -653,7 +636,7 @@ describe('u-product-categories', () => {
 
   it('DELETE soft-deletes and nulls product.category_id', async () => {
     await withFreshDb(async (db) => {
-      const session = await makeBucketUser({ level: 1, perms: { 'products.categories.manage': true, 'products.catalog.edit': true, 'products.catalog.view': true } });
+      const session = await makeBucketUser({ level: 1, perms: { 'products.products.create': true, 'products.products.edit': true, 'products.products.view': true } });
       const cat = await (await fetchAs(session, 'POST', '/u-product-categories', { name: 'X' })).json();
       const prod = await (await fetchAs(session, 'POST', '/u-products', { type: 'physical', name: 'P', price_cents: 100, category_id: cat.id })).json();
       const res = await fetchAs(session, 'DELETE', `/u-product-categories/${cat.id}`);
@@ -683,8 +666,8 @@ import { jsonOk, jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { writeAudit } from './_shared/audit';
 
-const MANAGE = 'products.categories.manage';
-const VIEW   = 'products.catalog.view';
+const MANAGE = 'products.products.create';
+const VIEW   = 'products.products.view';
 
 function levelHas(levelPerms: Record<string, boolean> | null | undefined, key: string): boolean {
   return Boolean(levelPerms?.[key]);
@@ -845,7 +828,7 @@ import { withFreshDb, makeBucketUser, fetchAs, seedProducts } from '../_helpers/
 describe('GET /u-products', () => {
   it('returns paged list with counts shape', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true } });
       await seedProducts(s, [
         { name: 'A', type: 'physical', price_cents: 100, status: 'active' },
         { name: 'B', type: 'physical', price_cents: 200, status: 'draft' },
@@ -861,7 +844,7 @@ describe('GET /u-products', () => {
 
   it('filters by status without affecting tab counts', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true } });
       await seedProducts(s, [
         { name: 'A', type: 'physical', price_cents: 100, status: 'active' },
         { name: 'B', type: 'physical', price_cents: 200, status: 'draft' },
@@ -875,7 +858,7 @@ describe('GET /u-products', () => {
 
   it('filters by type', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true } });
       await seedProducts(s, [
         { name: 'A', type: 'physical', price_cents: 100, status: 'active' },
         { name: 'B', type: 'service',  price_cents: 100, status: 'active' },
@@ -889,7 +872,7 @@ describe('GET /u-products', () => {
 
   it('search matches name, SKU, brand', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true } });
       await seedProducts(s, [
         { name: 'Headphones', type: 'physical', sku: 'WH-1', brand: 'SoundLab', price_cents: 100, status: 'active' },
         { name: 'USB Hub',    type: 'physical', sku: 'USB-1', brand: 'HubCo',   price_cents: 100, status: 'active' },
@@ -903,7 +886,7 @@ describe('GET /u-products', () => {
 
   it('pagination respects page_size', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true } });
       const items = Array.from({ length: 5 }, (_, i) => ({
         name: `P${i}`, type: 'physical' as const, price_cents: i * 10, status: 'active' as const,
       }));
@@ -948,8 +931,8 @@ import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { writeAudit } from './_shared/audit';
 import { parseCreateProduct } from './_shared/products-validate';
 
-const VIEW = 'products.catalog.view';
-const EDIT = 'products.catalog.edit';
+const VIEW   = 'products.products.view';
+const CREATE = 'products.products.create';
 
 function levelHas(p: Record<string, boolean> | null | undefined, k: string) { return Boolean(p?.[k]); }
 
@@ -973,7 +956,7 @@ export default async function handler(req: Request) {
       return handleList(sql, req, credential.client_id);
     }
     if (req.method === 'POST') {
-      if (!levelHas(perms, EDIT)) return jsonError(403, 'forbidden');
+      if (!levelHas(perms, CREATE)) return jsonError(403, 'forbidden');
       return handleCreate(sql, req, credential);
     }
     return jsonError(405, 'method_not_allowed');
@@ -1131,8 +1114,8 @@ Cover happy paths + edge cases:
 - PATCH category_id change emits `products.category_changed`
 - PATCH 422 when type=service and stock_qty provided
 - DELETE soft-deletes and emits `products.archived`
-- DELETE 403 without `products.catalog.delete`
-- PATCH 403 without `products.catalog.edit`
+- DELETE 403 without `products.products.delete`
+- PATCH 403 without `products.products.edit`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -1141,7 +1124,7 @@ import { withFreshDb, makeBucketUser, fetchAs, createProduct } from '../_helpers
 describe('u-products-detail', () => {
   it('GET returns product + empty images', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       const res = await fetchAs(s, 'GET', `/u-products/${p.id}`);
       expect(res.status).toBe(200);
@@ -1151,10 +1134,10 @@ describe('u-products-detail', () => {
     });
   });
 
-  it('PATCH 403 without products.catalog.edit', async () => {
+  it('PATCH 403 without products.products.edit', async () => {
     await withFreshDb(async () => {
-      const editor = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
-      const viewer = await makeBucketUser({ perms: { 'products.catalog.view': true } });
+      const editor = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
+      const viewer = await makeBucketUser({ perms: { 'products.products.view': true } });
       const p = await createProduct(editor, { type: 'physical', name: 'X', price_cents: 100 });
       const res = await fetchAs(viewer, 'PATCH', `/u-products/${p.id}`, { name: 'Y' });
       expect(res.status).toBe(403);
@@ -1163,7 +1146,7 @@ describe('u-products-detail', () => {
 
   it('PATCH status change emits products.status_changed', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100, status: 'draft' });
       await fetchAs(s, 'PATCH', `/u-products/${p.id}`, { status: 'active' });
       const audit = await db`SELECT op FROM audit_log WHERE entity_id = ${p.id} ORDER BY created_at`;
@@ -1173,7 +1156,7 @@ describe('u-products-detail', () => {
 
   it('DELETE soft-deletes', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true, 'products.catalog.delete': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.edit': true, 'products.products.delete': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       const res = await fetchAs(s, 'DELETE', `/u-products/${p.id}`);
       expect(res.status).toBe(204);
@@ -1200,9 +1183,9 @@ import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { writeAudit } from './_shared/audit';
 import { parsePatchProduct, validateTypeFields } from './_shared/products-validate';
 
-const VIEW   = 'products.catalog.view';
-const EDIT   = 'products.catalog.edit';
-const DELETE = 'products.catalog.delete';
+const VIEW   = 'products.products.view';
+const EDIT   = 'products.products.edit';
+const DELETE = 'products.products.delete';
 
 function levelHas(p: Record<string, boolean> | null | undefined, k: string) { return Boolean(p?.[k]); }
 
@@ -1360,17 +1343,17 @@ For each endpoint + method combo, verify:
 - No bucket-user JWT → 401
 - Authenticated but no relevant flag → 403
 - Correct flag → 200/201/204
-- A flag *adjacent* but wrong (e.g., `products.categories.manage` for product create) → 403
+- A flag *adjacent* but wrong (e.g., `products.products.create` for product create) → 403
 
 ```ts
 import { describe, it, expect } from 'vitest';
 import { withFreshDb, makeBucketUser, fetchAs } from '../_helpers/harness';
 
 const cases = [
-  { method: 'GET',    path: '/u-products',                requiresAny: ['products.catalog.view'] },
-  { method: 'POST',   path: '/u-products',                requiresAny: ['products.catalog.edit'], body: { type: 'physical', name: 'X', price_cents: 100 } },
-  { method: 'GET',    path: '/u-product-categories',      requiresAny: ['products.catalog.view'] },
-  { method: 'POST',   path: '/u-product-categories',      requiresAny: ['products.categories.manage'], body: { name: 'C' } },
+  { method: 'GET',    path: '/u-products',                requiresAny: ['products.products.view'] },
+  { method: 'POST',   path: '/u-products',                requiresAny: ['products.products.edit'], body: { type: 'physical', name: 'X', price_cents: 100 } },
+  { method: 'GET',    path: '/u-product-categories',      requiresAny: ['products.products.view'] },
+  { method: 'POST',   path: '/u-product-categories',      requiresAny: ['products.products.create'], body: { name: 'C' } },
 ];
 
 describe('permission gates', () => {
@@ -1446,7 +1429,7 @@ import { withFreshDb, makeBucketUser, fetchAs, createProduct } from '../_helpers
 describe('product images', () => {
   it('POST /u-products-upload-url returns uploadUrl + blob_key', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       const res = await fetchAs(s, 'POST', '/u-products-upload-url', { product_id: p.id, mime: 'image/png', byte_size: 1024 });
       expect(res.status).toBe(200);
@@ -1458,7 +1441,7 @@ describe('product images', () => {
 
   it('POST /u-products-image registers a row + sets hero on first image', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       // Skip the actual PUT — in test env we trust the storage helper or stub it.
       const blob_key = 'product-images/test-fake';
@@ -1471,7 +1454,7 @@ describe('product images', () => {
 
   it('enforces 20-image cap', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       // Insert 20 images directly via DB
       for (let i = 0; i < 20; i++) {
@@ -1484,7 +1467,7 @@ describe('product images', () => {
 
   it('DELETE removes image + reassigns hero if hero was deleted', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p = await createProduct(s, { type: 'physical', name: 'X', price_cents: 100 });
       const im1 = await (await fetchAs(s, 'POST', '/u-products-image', { product_id: p.id, blob_key: 'k1', sort_order: 0 })).json();
       const im2 = await (await fetchAs(s, 'POST', '/u-products-image', { product_id: p.id, blob_key: 'k2', sort_order: 1 })).json();
@@ -1506,7 +1489,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { presignPut } from './_shared/products-storage';
 
-const EDIT = 'products.catalog.edit';
+const EDIT = 'products.products.edit';
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 export default async function handler(req: Request) {
@@ -1557,7 +1540,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { blobExists, deleteBlob } from './_shared/products-storage';
 
-const EDIT = 'products.catalog.edit';
+const EDIT = 'products.products.edit';
 const MAX_IMAGES = 20;
 
 export default async function handler(req: Request) {
@@ -1663,7 +1646,7 @@ import { withFreshDb, makeBucketUser, fetchAs, createProduct } from '../_helpers
 describe('u-products-bulk', () => {
   it('set_status: archives selected', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p1 = await createProduct(s, { type: 'physical', name: 'A', price_cents: 100 });
       const p2 = await createProduct(s, { type: 'physical', name: 'B', price_cents: 100 });
       const res = await fetchAs(s, 'POST', '/u-products-bulk', { ids: [p1.id, p2.id], action: 'set_status', value: 'archived' });
@@ -1675,7 +1658,7 @@ describe('u-products-bulk', () => {
 
   it('partial success: missing id reports forbidden/not_found', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const p1 = await createProduct(s, { type: 'physical', name: 'A', price_cents: 100 });
       const res = await fetchAs(s, 'POST', '/u-products-bulk', { ids: [p1.id, '00000000-0000-0000-0000-000000000000'], action: 'set_status', value: 'archived' });
       const body = await res.json();
@@ -1686,7 +1669,7 @@ describe('u-products-bulk', () => {
 
   it('delete requires .delete flag', async () => {
     await withFreshDb(async () => {
-      const editor = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const editor = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       const res = await fetchAs(editor, 'POST', '/u-products-bulk', { ids: ['00000000-0000-0000-0000-000000000000'], action: 'delete' });
       expect(res.status).toBe(403);
     });
@@ -1722,8 +1705,8 @@ export default async function handler(req: Request) {
     if (!body.action) return jsonError(422, 'invalid_action');
 
     const requiredFlag =
-      body.action === 'delete' ? 'products.catalog.delete' :
-      body.action === 'set_status' || body.action === 'set_category' ? 'products.catalog.edit' :
+      body.action === 'delete' ? 'products.products.delete' :
+      body.action === 'set_status' || body.action === 'set_category' ? 'products.products.edit' :
       null;
     if (!requiredFlag || !perms[requiredFlag]) return jsonError(403, 'forbidden');
 
@@ -1802,7 +1785,7 @@ import { withFreshDb, makeBucketUser, fetchAs, createProduct } from '../_helpers
 describe('u-products-export', () => {
   it('CSV export with header + matching rows', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       await createProduct(s, { type: 'physical', name: 'Apple', price_cents: 100, sku: 'A1' });
       await createProduct(s, { type: 'service',  name: 'Repair', price_cents: 8000 });
       const res = await fetchAs(s, 'GET', '/u-products-export?format=csv');
@@ -1817,7 +1800,7 @@ describe('u-products-export', () => {
 
   it('filter parity with list endpoint', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.create': true, 'products.products.edit': true } });
       await createProduct(s, { type: 'physical', name: 'P', price_cents: 100, status: 'active' });
       await createProduct(s, { type: 'physical', name: 'D', price_cents: 100, status: 'draft' });
       const res = await fetchAs(s, 'GET', '/u-products-export?format=csv&status=active');
@@ -1838,7 +1821,7 @@ import { jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import * as XLSX from 'xlsx';
 
-const VIEW = 'products.catalog.view';
+const VIEW = 'products.products.view';
 const HEADERS = ['sku','name','type','category','brand','price','currency','stock_qty','unit','status','tags','description','created_at','hero_image_filename'];
 
 function csvEscape(v: unknown): string {
@@ -2123,7 +2106,7 @@ async function postFile(session: any, path: string, file: Blob, qs = '') {
 describe('u-products-import', () => {
   it('dry-run returns summary without writing', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true, 'products.categories.manage': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.edit': true, 'products.products.create': true } });
       const res = await postFile(s, '/u-products-import', validCsv(), '?dry_run=true');
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -2135,7 +2118,7 @@ describe('u-products-import', () => {
 
   it('commit writes rows and creates missing categories with manage flag', async () => {
     await withFreshDb(async (db) => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true, 'products.categories.manage': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.edit': true, 'products.products.create': true } });
       const res = await postFile(s, '/u-products-import', validCsv());
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -2147,7 +2130,7 @@ describe('u-products-import', () => {
 
   it('missing category + no manage flag → error', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.edit': true, 'products.catalog.view': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.edit': true, 'products.products.view': true } });
       const res = await postFile(s, '/u-products-import', validCsv(), '?dry_run=true');
       const body = await res.json();
       expect(body.errors.some((e: any) => /category/i.test(e.message))).toBe(true);
@@ -2156,7 +2139,7 @@ describe('u-products-import', () => {
 
   it('mixed errors surface per-row', async () => {
     await withFreshDb(async () => {
-      const s = await makeBucketUser({ perms: { 'products.catalog.view': true, 'products.catalog.edit': true, 'products.categories.manage': true } });
+      const s = await makeBucketUser({ perms: { 'products.products.view': true, 'products.products.edit': true, 'products.products.create': true } });
       const res = await postFile(s, '/u-products-import', mixedCsv(), '?dry_run=true');
       const body = await res.json();
       expect(body.errors.length).toBeGreaterThanOrEqual(2);
@@ -2175,8 +2158,8 @@ import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { writeAudit } from './_shared/audit';
 import { parseCsvBytes, type ParsedImportRow } from './_shared/products-import-parse';
 
-const EDIT   = 'products.catalog.edit';
-const MANAGE = 'products.categories.manage';
+const EDIT   = 'products.products.edit';
+const MANAGE = 'products.products.create';
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
@@ -2349,8 +2332,8 @@ describe('products audit ops', () => {
   it('emits the full expected op set across a lifecycle', async () => {
     await withFreshDb(async (db) => {
       const s = await makeBucketUser({ perms: {
-        'products.catalog.view': true, 'products.catalog.edit': true,
-        'products.catalog.delete': true, 'products.categories.manage': true,
+        'products.products.view': true, 'products.products.edit': true,
+        'products.products.delete': true, 'products.products.create': true,
       } });
 
       const cat = await (await fetchAs(s, 'POST', '/u-product-categories', { name: 'C' })).json();
@@ -2562,10 +2545,14 @@ Create `src/modules/products/shared/permissions.ts`:
 ```ts
 type LevelPerms = Record<string, boolean> | null | undefined;
 
-export const canViewProducts        = (p: LevelPerms) => Boolean(p?.['products.catalog.view']);
-export const canEditProducts        = (p: LevelPerms) => Boolean(p?.['products.catalog.edit']);
-export const canDeleteProducts      = (p: LevelPerms) => Boolean(p?.['products.catalog.delete']);
-export const canManageCategories    = (p: LevelPerms) => Boolean(p?.['products.categories.manage']);
+export const canViewProducts        = (p: LevelPerms) => Boolean(p?.['products.products.view']);
+export const canCreateProducts      = (p: LevelPerms) => Boolean(p?.['products.products.create']);
+export const canEditProducts        = (p: LevelPerms) => Boolean(p?.['products.products.edit']);
+export const canDeleteProducts      = (p: LevelPerms) => Boolean(p?.['products.products.delete']);
+
+// Category management uses the same per-verb flags as products themselves —
+// no separate `categories.manage` flag exists in the current type system.
+// (Adding a new category requires .create; renaming requires .edit; deleting requires .delete.)
 ```
 
 - [ ] **Step 4: Typecheck + commit**
@@ -3503,7 +3490,7 @@ Import `canViewProducts` from `src/modules/products/shared/permissions`.
 - [ ] **Step 3: Manual smoke**
 
 Verify:
-- Sidebar entry appears for a user with `products.catalog.view` and is hidden otherwise
+- Sidebar entry appears for a user with `products.products.view` and is hidden otherwise
 - Clicking opens the list page
 - Import button opens the modal; uploading the valid fixture shows "Create: 3" summary; commit refreshes the list
 - Uploading the mixed-errors fixture shows errors + disables apply
@@ -3550,7 +3537,7 @@ Walk through (with a level granted all four flags):
 6. Select two rows → bulk Archive
 7. Export CSV → confirm filename + first row matches
 8. Import the same CSV — dry-run shows 0 errors, commit creates updates rather than duplicates (SKU upsert)
-9. Login as a user without `products.catalog.edit` → confirm sidebar still shows but buttons hidden / disabled
+9. Login as a user without `products.products.edit` → confirm sidebar still shows but buttons hidden / disabled
 
 - [ ] **Step 4: Prod migration pre-flight**
 
@@ -3592,7 +3579,7 @@ If any small fixes emerged in steps 1-5, commit them with a `chore(products): fi
 
 **No placeholder scan:** no "TBD"/"implement later"; every code block is concrete; permissions, audit ops, file paths all specified.
 
-**Type consistency:** `Product`, `ProductWithImages`, `ProductFilters`, `BulkAction`, `ImportDryRun` are defined in Task 16 and used consistently in Tasks 17-20. Endpoint function names (`u-products`, `u-products-detail`, etc.) match the spec table and `config.path` declarations. Permission flag keys (`products.catalog.view/edit/delete`, `products.categories.manage`) appear identically server-side (Tasks 5, 7-14) and client-side (Task 16).
+**Type consistency:** `Product`, `ProductWithImages`, `ProductFilters`, `BulkAction`, `ImportDryRun` are defined in Task 16 and used consistently in Tasks 17-20. Endpoint function names (`u-products`, `u-products-detail`, etc.) match the spec table and `config.path` declarations. Permission flag keys (`products.products.view/edit/delete`, `products.products.create`) appear identically server-side (Tasks 5, 7-14) and client-side (Task 16).
 
 Issues found and fixed inline:
 - Image thumbnail endpoint isn't in the spec. Task 18 notes this and tolerates either a `/u-product-image-thumb` or direct blob URL; not blocking.
