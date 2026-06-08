@@ -2,9 +2,9 @@
 // Lifted from user-nodes-bulk-role-change.ts to keep validation identical
 // across both code paths. No new behavior here.
 
-import type { neon } from '@neondatabase/serverless';
+import type { NeonQueryFunction } from '@neondatabase/serverless';
 
-type SQL = ReturnType<typeof neon>;
+type SQL = NeonQueryFunction<false, false>;
 
 export interface LevelAllowsRoleOk { ok: true }
 export interface LevelAllowsRoleFail { ok: false; code: 'level_disallows_role' }
