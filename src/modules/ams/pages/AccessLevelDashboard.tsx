@@ -47,22 +47,27 @@ function Inner({ clientId }: { clientId: string }) {
   if (!structure) return null;
 
   return (
-    <section>
-      <header style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>Access Level Dashboard</h1>
+    <section className="page">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="page-title">Access Level Dashboard</h1>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            Configure what each Level can do. Primary (Level 1) always has full access.
+          </p>
+        </div>
         <Link to={`/clients/${clientId}`} className="btn btn-secondary">← Back</Link>
       </header>
-      <p className="muted" style={{ marginBottom: 16 }}>
-        Configure what each Level can do. Primary (Level 1) always has full access.
-      </p>
 
       {structure.levels.map((lvl) => {
         const label = lvl.label ?? DEFAULT_LABELS[lvl.level_number - 1] ?? `Level ${lvl.level_number}`;
         if (lvl.level_number === 1) {
           return (
             <div key={lvl.id} className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ marginTop: 0 }}>{label} <span className="muted" style={{ fontSize: 12 }}>Level 1 — Full access</span></h3>
-              <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+              <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h3 style={{ margin: 0 }}>{label}</h3>
+                <span className="perm-level-chip">Level 1 — Full access</span>
+              </header>
+              <p className="muted" style={{ margin: 0 }}>
                 The Primary level always has every permission. To delegate, configure the levels below.
               </p>
             </div>

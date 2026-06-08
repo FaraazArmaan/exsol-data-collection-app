@@ -1,8 +1,9 @@
 // src/modules/ams/components/PermissionMatrixCard.tsx
 //
-// One Level's permission card: Modules grid (auto-generated from the
-// active Products' Modules × their DataBuckets) plus a fixed Platform
-// grid. Save replaces the entire JSONB matrix server-side.
+// One Level's permission card: a single matrix table that banded-groups
+// Modules (auto-generated from active Products × DataBuckets) and the
+// fixed Platform surfaces. All four verb columns share fixed widths so
+// the grid stays aligned. Save replaces the entire JSONB matrix.
 
 import { useState } from 'react';
 import {
@@ -14,6 +15,29 @@ interface Props {
   data: LevelPermissionsResponse;
   levelLabel: string;
   onSaved: () => void;
+}
+
+const VERBS = ['view', 'create', 'edit', 'delete'] as const;
+type Verb = (typeof VERBS)[number];
+
+function PermissionToggle({
+  checked, onChange, disabled, ariaLabel,
+}: { checked: boolean; onChange: () => void; disabled?: boolean; ariaLabel: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      className="toggle"
+      onClick={onChange}
+      disabled={disabled}
+    >
+      <span className="toggle-label toggle-label-on">ON</span>
+      <span className="toggle-label toggle-label-off">OFF</span>
+      <span className="toggle-knob" />
+    </button>
+  );
 }
 
 export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
@@ -42,68 +66,82 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
     onSaved();
   }
 
+  const hasModules = data.module_rows.length > 0;
+
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ margin: 0 }}>{levelLabel}</h3>
-        <span className="muted" style={{ fontSize: 12 }}>Level {data.level_number}</span>
+        <span className="perm-level-chip">Level {data.level_number}</span>
       </header>
 
-      {data.module_rows.length === 0 && (
-        <p className="muted" style={{ fontSize: 12 }}>
-          No Modules enabled yet — toggle Products on the Admin page first.
-        </p>
-      )}
-
-      {data.module_rows.length > 0 && (
-        <table style={{ width: '100%', fontSize: 13, marginBottom: 16 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left' }}>Module × Data</th>
-              <th>View</th><th>Create</th><th>Edit</th><th>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.module_rows.map((row: ModuleRow) => (
-              <tr key={`${row.module_key}.${row.bucket}`}>
-                <td>{row.label} <span className="muted">— {row.bucket}</span></td>
-                {(['view', 'create', 'edit', 'delete'] as const).map((v) => {
-                  const supported = row.verbs.includes(v);
-                  const key = `${row.module_key}.${row.bucket}.${v}`;
-                  return (
-                    <td key={v} style={{ textAlign: 'center' }}>
-                      {supported ? (
-                        <input type="checkbox" checked={isOn(key)} onChange={() => toggle(key)} disabled={saving} />
-                      ) : <span className="muted">—</span>}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <h4 style={{ marginTop: 8, marginBottom: 6, fontSize: 13 }}>Platform</h4>
-      <table style={{ width: '100%', fontSize: 13 }}>
+      <table className="perm-matrix">
+        <colgroup>
+          <col />
+          <col style={{ width: 92 }} />
+          <col style={{ width: 92 }} />
+          <col style={{ width: 92 }} />
+          <col style={{ width: 92 }} />
+        </colgroup>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left' }}>Surface</th>
-            <th>View</th><th>Create</th><th>Edit</th><th>Delete</th>
+            <th>Resource</th>
+            <th>View</th>
+            <th>Create</th>
+            <th>Edit</th>
+            <th>Delete</th>
           </tr>
         </thead>
         <tbody>
+          <tr className="perm-section-row"><td colSpan={5}>Modules</td></tr>
+          {!hasModules && (
+            <tr>
+              <td colSpan={5} className="muted" style={{ padding: '12px' }}>
+                No Modules enabled yet — toggle Products on the Admin page first.
+              </td>
+            </tr>
+          )}
+          {data.module_rows.map((row: ModuleRow) => (
+            <tr key={`${row.module_key}.${row.bucket}`} className="perm-row">
+              <td className="perm-resource">
+                {row.label}<span className="perm-bucket">— {row.bucket}</span>
+              </td>
+              {VERBS.map((v: Verb) => {
+                const supported = row.verbs.includes(v);
+                const key = `${row.module_key}.${row.bucket}.${v}`;
+                return (
+                  <td key={v} className="perm-cell">
+                    {supported ? (
+                      <PermissionToggle
+                        checked={isOn(key)}
+                        onChange={() => toggle(key)}
+                        disabled={saving}
+                        ariaLabel={`${row.label} ${row.bucket} ${v}`}
+                      />
+                    ) : <span className="perm-cell-na">—</span>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+
+          <tr className="perm-section-row"><td colSpan={5}>Platform</td></tr>
           {data.platform_rows.map((row: PlatformRow) => (
-            <tr key={row.surface}>
-              <td>{row.surface}</td>
-              {(['view', 'create', 'edit', 'delete'] as const).map((v) => {
+            <tr key={row.surface} className="perm-row">
+              <td className="perm-resource">{row.surface}</td>
+              {VERBS.map((v: Verb) => {
                 const supported = row.verbs.includes(v);
                 const key = `_platform.${row.surface}.${v}`;
                 return (
-                  <td key={v} style={{ textAlign: 'center' }}>
+                  <td key={v} className="perm-cell">
                     {supported ? (
-                      <input type="checkbox" checked={isOn(key)} onChange={() => toggle(key)} disabled={saving} />
-                    ) : <span className="muted">—</span>}
+                      <PermissionToggle
+                        checked={isOn(key)}
+                        onChange={() => toggle(key)}
+                        disabled={saving}
+                        ariaLabel={`platform ${row.surface} ${v}`}
+                      />
+                    ) : <span className="perm-cell-na">—</span>}
                   </td>
                 );
               })}
@@ -112,10 +150,12 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
         </tbody>
       </table>
 
-      {error && <p className="error" style={{ marginTop: 8 }}>{error}</p>}
-      <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save} disabled={saving}>
-        {saving ? 'Saving…' : 'Save'}
-      </button>
+      <div className="perm-card-footer">
+        {error && <span className="error" style={{ margin: 0 }}>{error}</span>}
+        <button className="btn btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
     </div>
   );
 }
