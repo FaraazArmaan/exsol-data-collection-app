@@ -79,7 +79,7 @@ beforeEach(async () => {
 
   await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${clientId}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
-    body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+    body: JSON.stringify({ level_number: 1 }),
   }), CTX);
 
   // L1 bucket user — bypasses the permission matrix automatically.

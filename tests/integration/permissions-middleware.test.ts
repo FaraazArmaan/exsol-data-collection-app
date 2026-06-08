@@ -64,7 +64,7 @@ beforeEach(async () => {
   for (const lvl of [1, 2, 3]) {
     await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${testClientId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-      body: JSON.stringify({ level_number: lvl, allowed_role_ids: [roleId] }),
+      body: JSON.stringify({ level_number: lvl }),
     }), CTX);
   }
 });

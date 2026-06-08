@@ -40,11 +40,11 @@ async function setupClientWithLevel2(): Promise<{ clientId: string; l2Id: string
   const roleId = ((await rr.json()) as { role: { id: string } }).role.id;
   await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${cid}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-    body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+    body: JSON.stringify({ level_number: 1 }),
   }), CTX);
   const l2r = await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${cid}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
-    body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleId] }),
+    body: JSON.stringify({ level_number: 2 }),
   }), CTX);
   const l2 = ((await l2r.json()) as { level: { id: string } }).level.id;
   return { clientId: cid, l2Id: l2 };

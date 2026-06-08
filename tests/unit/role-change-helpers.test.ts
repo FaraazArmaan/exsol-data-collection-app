@@ -57,8 +57,8 @@ beforeAll(async () => {
   `) as { id: string }[];
   roleB = rb[0]!.id;
   await sql`
-    INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
-    VALUES (${clientId}::uuid, 2, 'L2', ARRAY[${roleA}::uuid])
+    INSERT INTO public.client_levels (client_id, level_number, label)
+    VALUES (${clientId}::uuid, 2, 'L2')
   `;
   await sql`
     INSERT INTO public.client_cardinality_rules (client_id, parent_role_id, child_role_id, max_children)
