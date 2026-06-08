@@ -238,3 +238,31 @@ The existing 5 tests in `tests/integration/user-nodes-bulk-role-change.test.ts` 
 - `feedback_implementer_verify_typecheck.md` — `npm run typecheck` runs after every TS-touching commit in the implementation plan.
 - `feedback_no_deploy_previews.md` and `feedback_no_push_without_approval.md` — feature branch is local-only until merged to `main` and pushed on explicit ask.
 - `feedback_api_ui_error_precedence.md` — error precedence in §6.2: `forbidden_role_change_scope` is checked before `self_role_change_forbidden`, which is checked before validation errors. UI tooltips for picker disabled-state mirror this precedence.
+
+---
+
+## 11. Revision history
+
+### 2026-06-08 (post-smoke) — drop level-allows filter
+
+User smoke-test surfaced that filtering the role picker by
+`client_levels.allowed_role_ids` (§3 decision row 2) blocks legitimate
+workspace shapes — for example, a "Doctor" role with Owner-level
+privileges. **The level-allows filter is removed from this feature:**
+
+- Modal picker shows all roles in the workspace.
+- `POST /api/user-nodes-role-change` no longer calls
+  `validateLevelAllowsRole`; the `level_disallows_role` error code is
+  removed from the response surface.
+- The `validateLevelAllowsRole` helper remains in
+  `netlify/functions/_shared/role-change.ts` (no callers) pending the
+  larger refactor that drops `client_levels.allowed_role_ids` entirely
+  and makes levels purely numeric hierarchy + access permissions.
+
+The bulk endpoint (`user-nodes-bulk-role-change.ts`) still applies
+the level-allows check on its own batch path. Intentional —
+consistency comes with the larger refactor.
+
+Tests adjusted: 8 integration tests still pass; the previously-failing
+"level_disallows_role" test now verifies that the previously-blocked
+assignment succeeds.

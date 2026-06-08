@@ -278,8 +278,11 @@ function DashboardInner({ clientId }: { clientId: string }) {
 
         {editingChip && (
           <EditUserNodeModal
+            clientId={clientId}
             node={editingChip}
             role={rolesById[editingChip.role_id]}
+            roles={structure.roles}
+            levels={structure.levels}
             clientSlug={clientSlug}
             nodes={nodes}
             onClose={() => setEditingChip(null)}
@@ -296,6 +299,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
 
         {loginChip && (
           <LoginManageModal
+            clientId={clientId}
             node={loginChip}
             clientSlug={clientSlug}
             onClose={() => setLoginChip(null)}

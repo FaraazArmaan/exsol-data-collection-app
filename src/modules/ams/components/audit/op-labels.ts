@@ -22,6 +22,7 @@ export const OP_LABELS: Record<string, string> = {
   'user_node.moved': 'Moved team member',
   'users.bulk_invited': 'Bulk-invited team members',
   'users.bulk_role_changed': 'Bulk-changed roles',
+  'users.role_changed': 'Changed role',
   'credential.peeked': 'Viewed temp password',
   'credential.reset': 'Reset password',
   'credential.deleted': 'Removed login',
@@ -75,6 +76,12 @@ export function summarize(op: string, detail: Record<string, unknown> | null): s
     if (typeof v.login_count === 'number' && v.login_count > 0) parts.push(`${v.login_count} login${v.login_count === 1 ? '' : 's'}`);
     if (Array.isArray(v.role_keys) && v.role_keys.length > 0) parts.push(`role${v.role_keys.length === 1 ? '' : 's'}: ${v.role_keys.join(', ')}`);
     return parts.join(' · ');
+  }
+  if (op === 'users.role_changed') {
+    const v = detail as { from_role_key?: string; to_role_key?: string };
+    if (v.from_role_key && v.to_role_key) return `${v.from_role_key} → ${v.to_role_key}`;
+    if (v.to_role_key) return `→ ${v.to_role_key}`;
+    return '';
   }
   if (op === 'users.bulk_role_changed') {
     const v = detail as { count?: number; to_role_key?: string; from_role_keys?: string[] };

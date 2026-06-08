@@ -1406,3 +1406,16 @@ All of the following must hold before declaring the feature complete:
 - Drop `ClientFilesCard.tsx` `POLL_MS` from 5000 to 2000.
 - Fix `AccessDashboard.tsx:143` drag-drop first-parent default.
 - Tighten the bulk endpoint to also reject L2+ callers (intentionally untouched).
+
+---
+
+## Revision history
+
+### 2026-06-08 (post-smoke) — drop level-allows filter
+
+The level-allows filter on the role picker was removed after smoke
+testing surfaced legitimate workspace shapes it blocked (e.g. a
+"Doctor" role with Owner-level privileges). The endpoint also stopped
+calling `validateLevelAllowsRole`. Test #5 was rewritten to verify the
+previously-blocked cross-level assignment now succeeds. See spec §11
+for full details and the deferred larger refactor.
