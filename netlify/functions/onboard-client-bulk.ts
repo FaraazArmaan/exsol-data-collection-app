@@ -21,6 +21,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { deriveSlug } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
+import { defaultPermissionsForLevel } from './_shared/level-permissions';
 import { getProduct } from '../../src/modules/registry/products';
 
 // ----- Validation (Zod) -----
@@ -240,10 +241,15 @@ export default async (req: Request, _ctx: Context) => {
       VALUES (${roleIds[i]!}::uuid, ${clientId}::uuid, ${key}, ${r.label}, ${colorForRoleIndex(i)}, 'employees')
     `);
   }
+  // Levels — permissions default via helper (L1 = all keys for enabled products; L2+ = {}).
+  const enabledProductKeys: string[] = data.workspace.enabled_products ?? [];
   for (let i = 0; i < data.roles.length; i++) {
+    const levelNumber = i + 1;
+    const permissions = defaultPermissionsForLevel(levelNumber, enabledProductKeys);
     queries.push(sql`
-      INSERT INTO public.client_levels (client_id, level_number, label, allowed_role_ids)
-      VALUES (${clientId}::uuid, ${i + 1}, ${data.roles[i]!.label}, ${[roleIds[i]!]}::uuid[])
+      INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+      VALUES (${clientId}::uuid, ${levelNumber}, ${data.roles[i]!.label},
+              ${JSON.stringify(permissions)}::jsonb)
     `);
   }
   for (let i = 0; i < data.roles.length; i++) {

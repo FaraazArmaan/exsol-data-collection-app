@@ -50,8 +50,8 @@ function fullBody(name: string) {
       { key: 'staff', label: 'Staff', color: '#22c55e' },
     ],
     levels: [
-      { level_number: 1, label: 'Primary', allowed_role_keys: ['owner'] },
-      { level_number: 2, label: 'Secondary', allowed_role_keys: ['staff'] },
+      { level_number: 1, label: 'Primary' },
+      { level_number: 2, label: 'Secondary' },
     ],
     cardinality_rules: [
       { parent_role_key: null, child_role_key: 'owner', max_children: 1 },
@@ -133,33 +133,13 @@ describe('onboard-client', () => {
     expect(nodes[0]!.level_number).toBe(1);
   });
 
-  test('invalid_reference rolls back — level allowed_role_keys references nonexistent role', async () => {
-    const uniqName = `Onboard Bad Ref ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-    const r = await call({
-      name: uniqName,
-      enabled_products: [],
-      roles: [{ key: 'owner', label: 'Owner', color: '#3b82f6' }],
-      levels: [{ level_number: 1, allowed_role_keys: ['nonexistent'] }],
-      cardinality_rules: [],
-      owner: { display_name: 'X', email: `bad-${Date.now()}@example.com`, temp_password: 'bad-pw-1234' },
-    });
-    expect(r.status).toBe(400);
-    const body = await r.json() as { error: { code: string; details: { section: string } } };
-    expect(body.error.code).toBe('invalid_reference');
-    expect(body.error.details.section).toBe('levels');
-    // No client row should exist for THIS submission's derived slug.
-    // Asserting by name (precise) instead of by global count (race-prone in parallel suites).
-    const leak = (await sql`SELECT id FROM public.clients WHERE name = ${uniqName} LIMIT 1`) as { id: string }[];
-    expect(leak.length).toBe(0);
-  });
-
   test('cardinality_violation rolls back — rule + owner conflict', async () => {
     const uniqName = `Onboard Card Viol ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const r = await call({
       name: uniqName,
       enabled_products: [],
       roles: [{ key: 'owner', label: 'Owner', color: '#3b82f6' }],
-      levels: [{ level_number: 1, allowed_role_keys: ['owner'] }],
+      levels: [{ level_number: 1 }],
       // Cap = 0 owners at top, then try to seed one.
       cardinality_rules: [{ parent_role_key: null, child_role_key: 'owner', max_children: 0 }],
       owner: { display_name: 'X', email: `cv-${Date.now()}@example.com`, temp_password: 'cv-pw-1234' },
