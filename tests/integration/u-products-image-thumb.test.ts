@@ -318,3 +318,25 @@ describe('u-products-image-thumb — tenant + permissions', () => {
     expect(r.status).toBe(200);
   });
 });
+
+describe('u-products-image DELETE — clears cached thumbnail', () => {
+  test('DELETE on an image also removes its cached thumb', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    // Warm the cache.
+    await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(thumbStore.has(`thumb/${img.blob_key}.webp`)).toBe(true);
+
+    // DELETE the image.
+    const r = await uProductsImageHandler(
+      new Request(`http://localhost/api/u-products-image/${img.id}`, { method: 'DELETE', headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(204);
+
+    expect(thumbStore.has(`thumb/${img.blob_key}.webp`)).toBe(false);
+  });
+});

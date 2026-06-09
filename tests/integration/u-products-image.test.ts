@@ -4,6 +4,7 @@ import { neon } from '@neondatabase/serverless';
 
 // In-memory Blobs mock — mirrors the pattern in files-detail.test.ts.
 const blobStore = new Map<string, ArrayBuffer>();
+const thumbStore = new Map<string, ArrayBuffer>();
 vi.mock('../../netlify/functions/_shared/products-storage', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../netlify/functions/_shared/products-storage')>();
   return {
@@ -13,6 +14,18 @@ vi.mock('../../netlify/functions/_shared/products-storage', async (importOrigina
       get:    async (key: string) => blobStore.get(key) ?? null,
       delete: async (key: string) => { blobStore.delete(key); },
       getMetadata: async (key: string) => blobStore.has(key) ? { etag: 'mock', metadata: {} } : null,
+    }),
+  };
+});
+vi.mock('../../netlify/functions/_shared/products-thumbnails', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../netlify/functions/_shared/products-thumbnails')>();
+  return {
+    ...original,
+    productThumbnailsStore: () => ({
+      set:    async (key: string, data: ArrayBuffer) => { thumbStore.set(key, data); },
+      get:    async (key: string) => thumbStore.get(key) ?? null,
+      delete: async (key: string) => { thumbStore.delete(key); },
+      getMetadata: async (key: string) => thumbStore.has(key) ? { etag: 'mock', metadata: {} } : null,
     }),
   };
 });

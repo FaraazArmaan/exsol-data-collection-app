@@ -16,6 +16,7 @@ import {
   productImagesStore, productImageKey,
   ALLOWED_MIME, MAX_IMAGE_BYTES, MAX_IMAGES_PER_PRODUCT,
 } from './_shared/products-storage';
+import { productThumbnailsStore, productThumbKeyFor } from './_shared/products-thumbnails';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -125,6 +126,7 @@ async function handleDelete(
 
   await sql`DELETE FROM public.product_images WHERE id = ${imgId}::uuid`;
   await productImagesStore().delete(row.blob_key).catch(() => { /* orphan tolerated */ });
+  await productThumbnailsStore().delete(productThumbKeyFor(row.blob_key)).catch(() => { /* orphan tolerated */ });
 
   // If this was the hero, pick the next image (lowest sort_order) as the new hero.
   if (row.hero_image_key === row.blob_key) {
