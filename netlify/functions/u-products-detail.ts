@@ -21,7 +21,7 @@ import { validateTypeFields } from './_shared/products-validate';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function idFromUrl(req: Request): string | null {
-  const m = new URL(req.url).pathname.match(/u-products\/([^/?]+)/);
+  const m = new URL(req.url).pathname.match(/u-products(?:-detail)?\/([^/?]+)/);
   return m && UUID_RE.test(m[1]!) ? m[1]! : null;
 }
 

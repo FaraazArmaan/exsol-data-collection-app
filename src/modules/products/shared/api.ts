@@ -78,13 +78,13 @@ export const productsApi = {
     return jsonFetch(withScope(`/api/u-products${q ? `?${q}` : ''}`, opts));
   },
   get: (id: string, opts?: ScopeOpts): Promise<ProductWithImages> =>
-    jsonFetch(withScope(`/api/u-products/${id}`, opts)),
+    jsonFetch(withScope(`/api/u-products-detail/${id}`, opts)),
   create: (body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
     jsonFetch(withScope('/api/u-products', opts), { method: 'POST', body: JSON.stringify(body) }),
   update: (id: string, body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
-    jsonFetch(withScope(`/api/u-products/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
+    jsonFetch(withScope(`/api/u-products-detail/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string, opts?: ScopeOpts): Promise<void> =>
-    jsonFetch<void>(withScope(`/api/u-products/${id}`, opts), { method: 'DELETE' }),
+    jsonFetch<void>(withScope(`/api/u-products-detail/${id}`, opts), { method: 'DELETE' }),
   bulk: (body: BulkAction, opts?: ScopeOpts): Promise<BulkResult> =>
     jsonFetch(withScope('/api/u-products-bulk', opts), { method: 'POST', body: JSON.stringify(body) }),
   exportUrl: (f: ProductFilters, format: 'csv' | 'xlsx', opts?: ScopeOpts): string => {
