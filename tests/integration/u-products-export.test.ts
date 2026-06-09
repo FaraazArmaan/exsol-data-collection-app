@@ -1,6 +1,23 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Context } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
+import JSZip from 'jszip';
+
+// In-memory Blobs mock — mirrors u-products-image.test.ts.
+const blobStore = new Map<string, ArrayBuffer>();
+vi.mock('../../netlify/functions/_shared/products-storage', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../netlify/functions/_shared/products-storage')>();
+  return {
+    ...original,
+    productImagesStore: () => ({
+      set:    async (key: string, data: ArrayBuffer) => { blobStore.set(key, data); },
+      get:    async (key: string) => blobStore.get(key) ?? null,
+      delete: async (key: string) => { blobStore.delete(key); },
+      getMetadata: async (key: string) => blobStore.has(key) ? { etag: 'mock', metadata: {} } : null,
+    }),
+  };
+});
+
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
@@ -9,6 +26,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
 import uProductsHandler from '../../netlify/functions/u-products';
+import uProductsImageHandler from '../../netlify/functions/u-products-image';
 import uProductsExportHandler from '../../netlify/functions/u-products-export';
 
 const CTX = {} as Context;
@@ -43,6 +61,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  blobStore.clear();
   adminCookie = await adminLogin();
   const cr = await clientsHandler(new Request('http://localhost/api/clients', {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
@@ -78,46 +97,153 @@ afterAll(async () => {
   }
 });
 
-async function makeProduct(name: string, opts: Partial<{ sku: string; brand: string; status: string }> = {}): Promise<void> {
-  await uProductsHandler(new Request('http://localhost/api/u-products', {
+async function makeProduct(
+  name: string,
+  opts: Partial<{ sku: string; brand: string; status: string }> = {},
+): Promise<{ id: string }> {
+  const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
     body: JSON.stringify({ type: 'physical', name, price_cents: 12900, ...opts }),
+  }), CTX);
+  return (await r.json()) as { id: string };
+}
+
+async function uploadImage(productId: string, bytes = new Uint8Array([1, 2, 3, 4])): Promise<void> {
+  const fd = new FormData();
+  fd.append('product_id', productId);
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  fd.append('file', new Blob([ab], { type: 'image/png' }), 'img.png');
+  await uProductsImageHandler(new Request('http://localhost/api/u-products-image', {
+    method: 'POST', headers: { cookie: buCookie }, body: fd,
+  }), CTX);
+}
+
+async function exportAs(format: string): Promise<Response> {
+  return uProductsExportHandler(new Request(`http://localhost/api/u-products-export?format=${format}`, {
+    method: 'GET', headers: { cookie: buCookie },
   }), CTX);
 }
 
 describe('u-products-export', () => {
-  test('CSV export has the header + one row per product', async () => {
+  test('unknown format returns 400 unknown_format', async () => {
+    await makeProduct('X');
+    const r = await exportAs('invalid');
+    expect(r.status).toBe(400);
+    const body = (await r.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('unknown_format');
+  });
+
+  test('CSV export returns a ZIP with products.csv + README.txt', async () => {
     await makeProduct('Wireless Headphones', { sku: 'WH-1', brand: 'SoundLab', status: 'active' });
     await makeProduct('USB Hub', { sku: 'USB-1', brand: 'HubCo', status: 'draft' });
-    const r = await uProductsExportHandler(new Request('http://localhost/api/u-products-export?format=csv', { method: 'GET', headers: { cookie: buCookie } }), CTX);
+    const r = await exportAs('csv');
     expect(r.status).toBe(200);
-    expect(r.headers.get('content-type')).toContain('text/csv');
+    expect(r.headers.get('content-type')).toContain('application/zip');
     expect(r.headers.get('content-disposition')).toContain('attachment');
-    const csv = await r.text();
-    const lines = csv.trim().split('\n');
-    expect(lines[0]).toContain('sku,name,type,category');
-    expect(lines).toHaveLength(3);
+    expect(r.headers.get('cache-control')).toBe('no-store');
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const z = await JSZip.loadAsync(buf);
+    expect(z.file('products.csv')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    const csv = await z.file('products.csv')!.async('string');
     expect(csv).toContain('Wireless Headphones');
     expect(csv).toContain('USB Hub');
   });
 
   test('status filter narrows the export', async () => {
-    await makeProduct('A', { status: 'active' });
-    await makeProduct('D', { status: 'draft' });
+    await makeProduct('A', { sku: 'A-1', status: 'active' });
+    await makeProduct('D', { sku: 'D-1', status: 'draft' });
     const r = await uProductsExportHandler(new Request('http://localhost/api/u-products-export?format=csv&status=active', { method: 'GET', headers: { cookie: buCookie } }), CTX);
-    const csv = await r.text();
-    expect(csv).toContain('A,physical');
-    expect(csv).not.toContain('D,physical');
+    expect(r.status).toBe(200);
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    const csv = await z.file('products.csv')!.async('string');
+    expect(csv).toContain('A');
+    // Quick negative: row count is header + 1 data row.
+    expect(csv.trim().split('\n')).toHaveLength(2);
   });
 
-  test('XLSX returns a binary spreadsheet', async () => {
-    await makeProduct('Hello');
-    const r = await uProductsExportHandler(new Request('http://localhost/api/u-products-export?format=xlsx', { method: 'GET', headers: { cookie: buCookie } }), CTX);
+  test('XLSX format → products.xlsx inside ZIP', async () => {
+    await makeProduct('Hello', { sku: 'HELLO-1' });
+    const r = await exportAs('xlsx');
     expect(r.status).toBe(200);
-    expect(r.headers.get('content-type')).toContain('spreadsheetml');
-    const buf = new Uint8Array(await r.arrayBuffer());
-    // XLSX is a ZIP (starts with PK\x03\x04)
-    expect(buf[0]).toBe(0x50);
-    expect(buf[1]).toBe(0x4b);
+    expect(r.headers.get('content-type')).toContain('application/zip');
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    expect(z.file('products.xlsx')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    const xlsxBytes = await z.file('products.xlsx')!.async('uint8array');
+    // XLSX is itself a ZIP — PK header.
+    expect(xlsxBytes[0]).toBe(0x50);
+    expect(xlsxBytes[1]).toBe(0x4b);
+  });
+
+  test('Meta format → products.csv + image included for product with an image', async () => {
+    const withImg = await makeProduct('Meta-A', { sku: 'META-A' });
+    await makeProduct('Meta-B', { sku: 'META-B' });
+    await uploadImage(withImg.id);
+
+    const r = await exportAs('meta');
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('application/zip');
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    expect(z.file('products.csv')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    // Image lands under images/<sku>_main.jpg
+    expect(z.file('images/META-A_main.jpg')).not.toBeNull();
+    // No image for META-B.
+    expect(z.file('images/META-B_main.jpg')).toBeNull();
+    const csv = await z.file('products.csv')!.async('string');
+    // Meta uses "in stock" with space.
+    expect(csv).toMatch(/in stock/);
+  });
+
+  test('WhatsApp format → products.csv with the WhatsApp subset', async () => {
+    await makeProduct('WA-1', { sku: 'WA-1' });
+    const r = await exportAs('whatsapp');
+    expect(r.status).toBe(200);
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    expect(z.file('products.csv')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    const csv = await z.file('products.csv')!.async('string');
+    const header = csv.split('\n')[0]!;
+    // WhatsApp subset must NOT include the wide `gtin`/`google_product_category` columns.
+    expect(header).toContain('title');
+    expect(header).toContain('availability');
+    expect(header).not.toContain('google_product_category');
+  });
+
+  test('Amazon format → products.tsv (tab-delimited)', async () => {
+    const withImg = await makeProduct('Amzn-A', { sku: 'AMZN-A' });
+    await makeProduct('Amzn-B', { sku: 'AMZN-B' });
+    await uploadImage(withImg.id);
+
+    const r = await exportAs('amazon');
+    expect(r.status).toBe(200);
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    expect(z.file('products.tsv')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    expect(z.file('images/AMZN-A_main.jpg')).not.toBeNull();
+    const tsv = await z.file('products.tsv')!.async('string');
+    const header = tsv.split('\n')[0]!;
+    expect(header.split('\t')).toContain('sku');
+    expect(header.split('\t')).toContain('item-condition');
+    // 2 data rows + header
+    expect(tsv.trim().split('\n')).toHaveLength(3);
+  });
+
+  test('Flipkart format → products.xlsx inside ZIP', async () => {
+    const withImg = await makeProduct('Fk-A', { sku: 'FK-A' });
+    await makeProduct('Fk-B', { sku: 'FK-B' });
+    await uploadImage(withImg.id);
+
+    const r = await exportAs('flipkart');
+    expect(r.status).toBe(200);
+    const z = await JSZip.loadAsync(new Uint8Array(await r.arrayBuffer()));
+    expect(z.file('products.xlsx')).not.toBeNull();
+    expect(z.file('README.txt')).not.toBeNull();
+    expect(z.file('images/FK-A_main.jpg')).not.toBeNull();
+    const xlsxBytes = await z.file('products.xlsx')!.async('uint8array');
+    expect(xlsxBytes[0]).toBe(0x50);
+    expect(xlsxBytes[1]).toBe(0x4b);
   });
 });
