@@ -43,6 +43,32 @@ export default function ProductEditPage() {
       status: p.status,
       hero_image_key: p.hero_image_key,
       hero_image_id: p.hero_image_id,
+
+      // Phase B
+      gtin: p.gtin,
+      mpn: p.mpn,
+      condition: p.condition,
+      availability: p.availability,
+      sale_price_cents: p.sale_price_cents,
+      sale_starts_at: p.sale_starts_at,
+      sale_ends_at: p.sale_ends_at,
+      weight_grams: p.weight_grams,
+      length_mm: p.length_mm,
+      width_mm: p.width_mm,
+      height_mm: p.height_mm,
+      color: p.color,
+      size: p.size,
+      material: p.material,
+      gender: p.gender,
+      age_group: p.age_group,
+      manufacturer: p.manufacturer,
+      country_of_origin: p.country_of_origin,
+      hsn_code: p.hsn_code,
+      gst_rate: p.gst_rate,
+      google_category: p.google_category,
+      meta_category: p.meta_category,
+      product_url: p.product_url,
+      platform_extras: p.platform_extras,
     });
   }, [params.productId, clientQuery]);
 

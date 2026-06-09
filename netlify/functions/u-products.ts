@@ -24,6 +24,32 @@ const CreateBody = z.object({
   stock_qty: z.number().int().min(0).nullable().optional(),
   unit: z.string().max(20).nullable().optional(),
   status: z.enum(['active', 'draft', 'archived']).optional(),
+
+  // Phase B
+  gtin: z.string().max(40).nullable().optional(),
+  mpn: z.string().max(80).nullable().optional(),
+  condition: z.enum(['new', 'refurbished', 'used']).optional(),
+  availability: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']).optional(),
+  sale_price_cents: z.number().int().min(0).nullable().optional(),
+  sale_starts_at: z.string().datetime().nullable().optional(),
+  sale_ends_at: z.string().datetime().nullable().optional(),
+  weight_grams: z.number().int().min(0).nullable().optional(),
+  length_mm: z.number().int().min(0).nullable().optional(),
+  width_mm: z.number().int().min(0).nullable().optional(),
+  height_mm: z.number().int().min(0).nullable().optional(),
+  color: z.string().max(40).nullable().optional(),
+  size: z.string().max(40).nullable().optional(),
+  material: z.string().max(80).nullable().optional(),
+  gender: z.string().max(20).nullable().optional(),
+  age_group: z.string().max(20).nullable().optional(),
+  manufacturer: z.string().max(120).nullable().optional(),
+  country_of_origin: z.string().max(80).nullable().optional(),
+  hsn_code: z.string().max(20).nullable().optional(),
+  gst_rate: z.number().min(0).max(100).nullable().optional(),
+  google_category: z.string().max(120).nullable().optional(),
+  meta_category: z.string().max(120).nullable().optional(),
+  product_url: z.string().url().max(500).nullable().optional(),
+  platform_extras: z.record(z.unknown()).optional(),
 });
 
 const SORT_COLUMNS = new Set(['created_at', 'name', 'price_cents']);

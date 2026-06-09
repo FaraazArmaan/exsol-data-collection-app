@@ -24,6 +24,32 @@ export const emptyDraft = (): ProductDraft => ({
   status: 'draft',
   hero_image_key: null,
   hero_image_id: null,
+
+  // Phase B
+  gtin: null,
+  mpn: null,
+  condition: 'new',
+  availability: 'in_stock',
+  sale_price_cents: null,
+  sale_starts_at: null,
+  sale_ends_at: null,
+  weight_grams: null,
+  length_mm: null,
+  width_mm: null,
+  height_mm: null,
+  color: null,
+  size: null,
+  material: null,
+  gender: null,
+  age_group: null,
+  manufacturer: null,
+  country_of_origin: null,
+  hsn_code: null,
+  gst_rate: null,
+  google_category: null,
+  meta_category: null,
+  product_url: null,
+  platform_extras: {},
 });
 
 export function ProductForm(props: {

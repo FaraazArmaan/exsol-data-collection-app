@@ -1,5 +1,7 @@
 export type ProductType   = 'physical' | 'service';
 export type ProductStatus = 'active' | 'draft' | 'archived';
+export type Condition    = 'new' | 'refurbished' | 'used';
+export type Availability = 'in_stock' | 'out_of_stock' | 'preorder' | 'discontinued';
 
 export interface ProductImage {
   id: string;
@@ -25,6 +27,32 @@ export interface Product {
   hero_image_id: string | null;
   created_at: string;
   updated_at: string;
+
+  // Phase B
+  gtin: string | null;
+  mpn: string | null;
+  condition: Condition;
+  availability: Availability;
+  sale_price_cents: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  weight_grams: number | null;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  color: string | null;
+  size: string | null;
+  material: string | null;
+  gender: string | null;
+  age_group: string | null;
+  manufacturer: string | null;
+  country_of_origin: string | null;
+  hsn_code: string | null;
+  gst_rate: number | null;
+  google_category: string | null;
+  meta_category: string | null;
+  product_url: string | null;
+  platform_extras: Record<string, unknown>;
 }
 
 export interface ProductWithImages extends Product {
