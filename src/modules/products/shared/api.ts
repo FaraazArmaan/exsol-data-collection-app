@@ -128,4 +128,6 @@ export const imagesApi = {
   },
   remove: (image_id: string): Promise<void> =>
     jsonFetch<void>(`/api/u-products-image/${image_id}`, { method: 'DELETE' }),
+  thumbUrl: (image_id: string): string =>
+    `/api/u-products-image-thumb/${image_id}`,
 };
