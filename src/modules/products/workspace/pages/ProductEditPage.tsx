@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { productsApi, categoriesApi } from '../../shared/api';
+import { productsApi, categoriesApi, imagesApi } from '../../shared/api';
 import type {
   ProductCategory, ProductStatus, ProductWithImages,
 } from '../../shared/types';
@@ -23,6 +23,7 @@ export default function ProductEditPage() {
   const [cats, setCats]     = useState<ProductCategory[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
 
   const reloadProduct = useCallback(async () => {
     if (!params.productId) return;
@@ -68,6 +69,15 @@ export default function ProductEditPage() {
       const payload: Partial<ProductDraft> = { ...draft, ...(targetStatus ? { status: targetStatus } : {}) };
       if (mode === 'create') {
         const saved = await productsApi.create(payload, { clientId: clientQuery });
+        // Upload any buffered images now that we have a product_id.
+        for (const f of pendingImages) {
+          try {
+            await imagesApi.upload(saved.id, f, undefined, { clientId: clientQuery });
+          } catch (e) {
+            // Don't block navigation on image upload failure; surface a soft error.
+            console.warn('Pending image upload failed', { name: f.name, reason: e });
+          }
+        }
         nav(`${basePath}/${saved.id}/edit`, { replace: true });
       } else {
         await productsApi.update(params.productId!, payload, { clientId: clientQuery });
@@ -112,6 +122,8 @@ export default function ProductEditPage() {
         draft={draft}
         loaded={loaded}
         categories={cats}
+        pendingImages={pendingImages}
+        onPendingImagesChange={setPendingImages}
         onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
         onReloadImages={reloadProduct}
       />

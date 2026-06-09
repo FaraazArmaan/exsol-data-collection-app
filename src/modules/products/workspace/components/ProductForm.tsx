@@ -30,6 +30,8 @@ export function ProductForm(props: {
   draft: ProductDraft;
   loaded: ProductWithImages | null;
   categories: ProductCategory[];
+  pendingImages: File[];
+  onPendingImagesChange: (files: File[]) => void;
   onChange: (patch: Partial<ProductDraft>) => void;
   onReloadImages: () => Promise<void>;
 }) {
@@ -66,6 +68,8 @@ export function ProductForm(props: {
           productId={props.loaded?.id ?? null}
           images={props.loaded?.images ?? []}
           heroKey={props.loaded?.hero_image_key ?? null}
+          pendingImages={props.pendingImages}
+          onPendingImagesChange={props.onPendingImagesChange}
           onChange={props.onReloadImages}
         />
         <ProductOrgSection
