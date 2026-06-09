@@ -23,6 +23,7 @@ import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
 import ProductsListPage from '../modules/products/workspace/pages/ProductsListPage';
 import ProductEditPage from '../modules/products/workspace/pages/ProductEditPage';
 import ProductCategoriesPage from '../modules/products/workspace/pages/ProductCategoriesPage';
+import { WorkspaceProductsScopeProvider } from '../modules/products/shared/scope';
 
 function ShellLayout() {
   return (
@@ -60,10 +61,19 @@ export const router = createBrowserRouter([
               { path: 'account', element: <UserAccount /> },
               { path: 'team', element: <UserManageTeam /> },
               { path: 'file-manager', element: <WorkspaceFilesPage /> },
-              { path: 'products', element: <ProductsListPage /> },
-              { path: 'products/new', element: <ProductEditPage /> },
-              { path: 'products/:productId/edit', element: <ProductEditPage /> },
-              { path: 'products/categories', element: <ProductCategoriesPage /> },
+              {
+                element: (
+                  <WorkspaceProductsScopeProvider>
+                    <Outlet />
+                  </WorkspaceProductsScopeProvider>
+                ),
+                children: [
+                  { path: 'products', element: <ProductsListPage /> },
+                  { path: 'products/new', element: <ProductEditPage /> },
+                  { path: 'products/:productId/edit', element: <ProductEditPage /> },
+                  { path: 'products/categories', element: <ProductCategoriesPage /> },
+                ],
+              },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
