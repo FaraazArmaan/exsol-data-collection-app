@@ -34,7 +34,7 @@ describe('products-api client scope threading', () => {
 
   test('productsApi.get with clientId appends ?client=<id>', async () => {
     await productsApi.get('prod-1', { clientId: 'abc-123' });
-    expect(capturedUrls[0]).toBe('/api/u-products/prod-1?client=abc-123');
+    expect(capturedUrls[0]).toBe('/api/u-products-detail/prod-1?client=abc-123');
   });
 
   test('productsApi.create with clientId POSTs to ?client=<id>', async () => {
@@ -44,12 +44,12 @@ describe('products-api client scope threading', () => {
 
   test('productsApi.update with clientId PATCHes to ?client=<id>', async () => {
     await productsApi.update('prod-1', { name: 'Y' }, { clientId: 'abc-123' });
-    expect(capturedUrls[0]).toBe('/api/u-products/prod-1?client=abc-123');
+    expect(capturedUrls[0]).toBe('/api/u-products-detail/prod-1?client=abc-123');
   });
 
   test('productsApi.remove with clientId DELETEs at ?client=<id>', async () => {
     await productsApi.remove('prod-1', { clientId: 'abc-123' });
-    expect(capturedUrls[0]).toBe('/api/u-products/prod-1?client=abc-123');
+    expect(capturedUrls[0]).toBe('/api/u-products-detail/prod-1?client=abc-123');
   });
 
   test('productsApi.bulk with clientId posts to /api/u-products-bulk?client=<id>', async () => {
