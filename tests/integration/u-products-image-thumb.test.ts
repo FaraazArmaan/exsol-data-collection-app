@@ -171,3 +171,39 @@ describe('u-products-image-thumb — auth + method + path', () => {
     expect(r.status).toBe(401);
   });
 });
+
+describe('u-products-image-thumb — happy path', () => {
+  test('cache miss generates, stores, and serves a webp', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toBe('image/webp');
+    expect(r.headers.get('cache-control')).toContain('immutable');
+    // Thumb is now cached.
+    const cached = thumbStore.get(`thumb/${img.blob_key}.webp`);
+    expect(cached).toBeDefined();
+    expect(cached!.byteLength).toBeGreaterThan(0);
+  });
+
+  test('cache hit returns stored thumbnail without re-reading source', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    // Pre-seed the cache; then delete the source so we KNOW a cache hit served us.
+    const sentinel = new TextEncoder().encode('CACHED-THUMB-BYTES').buffer;
+    thumbStore.set(`thumb/${img.blob_key}.webp`, sentinel);
+    sourceStore.delete(img.blob_key);
+
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toBe('image/webp');
+    const body = new Uint8Array(await r.arrayBuffer());
+    expect(new TextDecoder().decode(body)).toBe('CACHED-THUMB-BYTES');
+  });
+});
