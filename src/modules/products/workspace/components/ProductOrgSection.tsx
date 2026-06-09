@@ -1,4 +1,5 @@
 import type { ProductCategory, ProductStatus } from '../../shared/types';
+import { CategoryCombobox } from './CategoryCombobox';
 
 type Patch = Partial<{
   category_id: string | null;
@@ -13,6 +14,8 @@ export function ProductOrgSection(props: {
   tags: string[];
   status: ProductStatus;
   categories: ProductCategory[];
+  canManageCategories?: boolean;
+  onCreateCategory?: (name: string) => Promise<ProductCategory>;
   onChange: (patch: Patch) => void;
 }) {
   return (
@@ -20,14 +23,13 @@ export function ProductOrgSection(props: {
       <h3>Organization</h3>
 
       <label htmlFor="pm-cat">Category</label>
-      <select
-        id="pm-cat"
-        value={props.category_id ?? ''}
-        onChange={(e) => props.onChange({ category_id: e.target.value || null })}
-      >
-        <option value="">— uncategorized —</option>
-        {props.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </select>
+      <CategoryCombobox
+        value={props.category_id}
+        categories={props.categories}
+        canCreate={(props.canManageCategories ?? false) && !!props.onCreateCategory}
+        onSelect={(id) => props.onChange({ category_id: id })}
+        onCreate={async (name) => props.onCreateCategory!(name)}
+      />
 
       <label htmlFor="pm-brand">Brand</label>
       <input

@@ -424,3 +424,39 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .pm-advanced-section select {
   width: 100%;
 }
+
+/* Category typeahead combobox */
+.pm-combobox {
+  position: relative;
+}
+.pm-combobox-input {
+  width: 100%;
+}
+.pm-combobox-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--pm-bg, #1a1a1a);
+  border: 1px solid var(--pm-border, #2a2a2a);
+  border-radius: 4px;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+}
+.pm-combobox-option {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.pm-combobox-option[aria-selected="true"] {
+  background: var(--pm-highlight, rgba(255, 255, 255, 0.08));
+}
+.pm-combobox-create {
+  font-style: italic;
+  border-top: 1px solid var(--pm-border, #2a2a2a);
+  margin-top: 4px;
+  padding-top: 8px;
+}

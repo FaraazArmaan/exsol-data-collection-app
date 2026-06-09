@@ -63,6 +63,8 @@ export function ProductForm(props: {
   onPendingImagesChange: (files: File[]) => void;
   onChange: (patch: Partial<ProductDraft>) => void;
   onReloadImages: () => Promise<void>;
+  canManageCategories?: boolean;
+  onCreateCategory?: (name: string) => Promise<ProductCategory>;
 }) {
   // When type flips to 'service', null out physical-only fields so they don't
   // leak in the PATCH payload. The server also validates this, but doing it
@@ -108,6 +110,8 @@ export function ProductForm(props: {
             tags={props.draft.tags}
             status={props.draft.status}
             categories={props.categories}
+            canManageCategories={props.canManageCategories}
+            onCreateCategory={props.onCreateCategory}
             onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
           />
         </div>

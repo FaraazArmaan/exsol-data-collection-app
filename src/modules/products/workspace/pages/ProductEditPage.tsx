@@ -5,7 +5,7 @@ import type {
   ProductCategory, ProductStatus, ProductWithImages,
 } from '../../shared/types';
 import {
-  canCreateProducts, canEditProducts, canViewProducts,
+  canCreateProducts, canEditProducts, canViewProducts, canManageCategories,
 } from '../../shared/permissions';
 import { useProductsScope } from '../../shared/scope';
 import { ProductForm, emptyDraft, type ProductDraft } from '../components/ProductForm';
@@ -116,6 +116,12 @@ export default function ProductEditPage() {
     }
   }
 
+  async function createCategory(name: string): Promise<ProductCategory> {
+    const cat = await categoriesApi.create(name, { clientId: clientQuery });
+    setCats((prev) => [...prev, cat]);
+    return cat;
+  }
+
   const title = mode === 'create'
     ? 'New Product'
     : (draft.name || loaded?.name || 'Edit Product');
@@ -152,6 +158,8 @@ export default function ProductEditPage() {
         onPendingImagesChange={setPendingImages}
         onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
         onReloadImages={reloadProduct}
+        canManageCategories={canManageCategories(permissions, levelNumber)}
+        onCreateCategory={createCategory}
       />
     </div>
   );
