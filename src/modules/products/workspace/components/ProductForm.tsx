@@ -6,6 +6,9 @@ import { ProductBasicsSection } from './ProductBasicsSection';
 import { ProductPricingSection } from './ProductPricingSection';
 import { ProductMediaSection } from './ProductMediaSection';
 import { ProductOrgSection } from './ProductOrgSection';
+import { ProductCommerceSection } from './ProductCommerceSection';
+import { ProductPhysicalAttrsSection } from './ProductPhysicalAttrsSection';
+import { ProductTaxonomySection } from './ProductTaxonomySection';
 
 export interface ProductDraft
   extends Omit<Product, 'id' | 'created_at' | 'updated_at' | 'currency'> {}
@@ -72,42 +75,79 @@ export function ProductForm(props: {
   }, [props.draft.type]);
 
   return (
-    <div className="pm-form-grid">
-      <div className="pm-form-col">
-        <ProductBasicsSection
-          type={props.draft.type}
-          name={props.draft.name}
-          description={props.draft.description}
-          onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
-        />
-        <ProductPricingSection
-          type={props.draft.type}
-          price_cents={props.draft.price_cents}
-          sku={props.draft.sku}
-          stock_qty={props.draft.stock_qty}
-          unit={props.draft.unit}
-          onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
-        />
+    <>
+      <div className="pm-form-grid">
+        <div className="pm-form-col">
+          <ProductBasicsSection
+            type={props.draft.type}
+            name={props.draft.name}
+            description={props.draft.description}
+            onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+          />
+          <ProductPricingSection
+            type={props.draft.type}
+            price_cents={props.draft.price_cents}
+            sku={props.draft.sku}
+            stock_qty={props.draft.stock_qty}
+            unit={props.draft.unit}
+            onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+          />
+        </div>
+        <div className="pm-form-col">
+          <ProductMediaSection
+            productId={props.loaded?.id ?? null}
+            images={props.loaded?.images ?? []}
+            heroKey={props.loaded?.hero_image_key ?? null}
+            pendingImages={props.pendingImages}
+            onPendingImagesChange={props.onPendingImagesChange}
+            onChange={props.onReloadImages}
+          />
+          <ProductOrgSection
+            category_id={props.draft.category_id}
+            brand={props.draft.brand}
+            tags={props.draft.tags}
+            status={props.draft.status}
+            categories={props.categories}
+            onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+          />
+        </div>
       </div>
-      <div className="pm-form-col">
-        <ProductMediaSection
-          productId={props.loaded?.id ?? null}
-          images={props.loaded?.images ?? []}
-          heroKey={props.loaded?.hero_image_key ?? null}
-          pendingImages={props.pendingImages}
-          onPendingImagesChange={props.onPendingImagesChange}
-          onChange={props.onReloadImages}
-        />
-        <ProductOrgSection
-          category_id={props.draft.category_id}
-          brand={props.draft.brand}
-          tags={props.draft.tags}
-          status={props.draft.status}
-          categories={props.categories}
-          onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
-        />
-      </div>
-    </div>
+
+      <ProductCommerceSection
+        gtin={props.draft.gtin}
+        mpn={props.draft.mpn}
+        condition={props.draft.condition}
+        availability={props.draft.availability}
+        sale_price_cents={props.draft.sale_price_cents}
+        sale_starts_at={props.draft.sale_starts_at}
+        sale_ends_at={props.draft.sale_ends_at}
+        weight_grams={props.draft.weight_grams}
+        onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+      />
+
+      <ProductPhysicalAttrsSection
+        length_mm={props.draft.length_mm}
+        width_mm={props.draft.width_mm}
+        height_mm={props.draft.height_mm}
+        color={props.draft.color}
+        size={props.draft.size}
+        material={props.draft.material}
+        gender={props.draft.gender}
+        age_group={props.draft.age_group}
+        manufacturer={props.draft.manufacturer}
+        country_of_origin={props.draft.country_of_origin}
+        onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+      />
+
+      <ProductTaxonomySection
+        google_category={props.draft.google_category}
+        meta_category={props.draft.meta_category}
+        hsn_code={props.draft.hsn_code}
+        gst_rate={props.draft.gst_rate}
+        product_url={props.draft.product_url}
+        onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
+      />
+    </>
   );
 }
 

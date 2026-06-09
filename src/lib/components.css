@@ -391,3 +391,36 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .pm-errors li { color: var(--danger); padding: 4px 0; border-bottom: 1px solid var(--border-subtle); }
 .pm-warnings li { color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid var(--border-subtle); }
 .pm-errors code, .pm-warnings code { background: var(--bg-elevated); padding: 1px 6px; border-radius: 3px; }
+
+.pm-advanced-section {
+  margin-top: 16px;
+  border: 1px solid var(--pm-border, #2a2a2a);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.pm-advanced-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+  user-select: none;
+}
+.pm-advanced-section[open] > summary {
+  border-bottom: 1px solid var(--pm-border, #2a2a2a);
+  margin-bottom: 8px;
+}
+.pm-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 12px;
+}
+.pm-advanced-section label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--pm-muted, #888);
+  margin-top: 8px;
+}
+.pm-advanced-section input,
+.pm-advanced-section select {
+  width: 100%;
+}
