@@ -38,7 +38,7 @@ export default function ProductCategoriesPage() {
   const canAdd    = canCreateProducts(permissions, levelNumber);
 
   async function add() {
-    const trimmed = name.trim();
+    const trimmed = (name ?? '').trim();
     if (!trimmed) return;
     setBusy(true);
     setError(null);
@@ -113,7 +113,7 @@ export default function ProductCategoriesPage() {
             maxLength={80}
             onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
           />
-          <button type="button" className="pm-primary" disabled={busy || !name.trim()} onClick={add}>
+          <button type="button" className="pm-primary" disabled={busy || !(name ?? '').trim()} onClick={add}>
             + Add
           </button>
         </div>

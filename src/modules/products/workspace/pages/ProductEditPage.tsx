@@ -97,7 +97,7 @@ export default function ProductEditPage() {
             <button
               type="button"
               className="pm-primary"
-              disabled={saving || !draft.name.trim()}
+              disabled={saving || !(draft.name ?? '').trim()}
               onClick={() => save('active')}
             >
               {saving ? 'Saving…' : 'Publish'}
