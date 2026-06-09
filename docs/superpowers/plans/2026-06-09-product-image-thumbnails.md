@@ -4,9 +4,9 @@
 
 **Goal:** Add `GET /api/u-products-image-thumb/:image_id` that lazily generates 240px webp thumbnails for product images, caches them to a new Netlify Blob store, and renders them in `ProductTable` and `ProductImageGallery` in place of the current `.pm-thumb-placeholder` tiles.
 
-**Architecture:** Single Netlify Function handler + small storage helper. Cache key derived from immutable source `blob_key` — no schema migration. Resize via `jimp` (pure JS, no native deps). Falls back to streaming the original on resize failure. Frontend swaps placeholders for `<img>` via new `imagesApi.thumbUrl(id)` helper.
+**Architecture:** Single Netlify Function handler + small storage helper. Cache key derived from immutable source `blob_key` — no schema migration. Resize via `sharp` (libvips). Falls back to streaming the original on resize failure. Frontend swaps placeholders for `<img>` via new `imagesApi.thumbUrl(id)` helper.
 
-**Tech Stack:** TypeScript, Netlify Functions v2, `@netlify/blobs`, `jimp` (new dep), Neon `@neondatabase/serverless`, Vitest. Frontend: React 18 + react-router-dom.
+**Tech Stack:** TypeScript, Netlify Functions v2, `@netlify/blobs`, `sharp` (new dep, native libvips bindings — `external_node_modules` in `netlify.toml`), Neon `@neondatabase/serverless`, Vitest. Frontend: React 18 + react-router-dom.
 
 **Spec:** `docs/superpowers/specs/2026-06-09-product-image-thumbnails-design.md`
 
@@ -35,7 +35,8 @@
 
 | Path | Change |
 |---|---|
-| `package.json` | Add `jimp` to `dependencies`. |
+| `package.json` | Add `sharp` to `dependencies` (`^0.33.x`). |
+| `netlify.toml` | Add `"sharp"` to the existing `external_node_modules` array alongside `@node-rs/argon2`. |
 | `netlify/functions/u-products-image.ts` | DELETE handler best-effort removes cached thumbnail via `productThumbKeyFor(blob_key)`. |
 | `netlify/functions/u-products.ts` | List SELECT joins `product_images` by `(product_id, blob_key)` to expose `hero_image_id`. |
 | `src/modules/products/shared/types.ts` | Add `hero_image_id: string \| null` to `ProductListRow`. |
@@ -46,22 +47,43 @@
 
 ---
 
-## Task 1: Add `jimp` dependency
+## Task 1: Add `sharp` dependency + register as external_node_modules
 
 **Files:**
 - Modify: `package.json`
+- Modify: `netlify.toml`
 
-- [ ] **Step 1: Add jimp to dependencies**
+**Context for the pivot:** the original plan tried `jimp` (pure JS) to avoid native binaries. Smoke testing revealed `jimp@0.22.12` ships no WebP encoder, and `jimp@1.x`'s WASM WebP path is API-unstable. Switched to `sharp` (libvips bindings) and accepted the native-binary deploy risk by extending the `external_node_modules` pattern already used for `@node-rs/argon2`.
+
+- [ ] **Step 1: Add sharp to dependencies**
 
 Run from repo root:
 
 ```bash
-npm install jimp@^0.22.12 --save-exact
+npm install sharp@^0.33.5 --save-exact
 ```
 
-Expected: `package.json` `dependencies` now contains `"jimp": "0.22.12"`. `package-lock.json` updated. No native binaries pulled (jimp is pure JS).
+Expected: `package.json` `dependencies` now contains `"sharp": "0.33.5"` (or whatever exact version `^0.33.5` resolved to). `package-lock.json` updated. Platform-specific binary downloaded (e.g. `node_modules/@img/sharp-darwin-arm64/` on macOS). The install also pulls platform-specific optional deps; that's expected.
 
-- [ ] **Step 2: Verify typecheck still passes**
+- [ ] **Step 2: Register sharp in netlify.toml external_node_modules**
+
+In `netlify.toml`, find the `[functions]` block. It currently has:
+
+```toml
+[functions]
+  external_node_modules = ["@node-rs/argon2"]
+```
+
+Change to:
+
+```toml
+[functions]
+  external_node_modules = ["@node-rs/argon2", "sharp"]
+```
+
+Leave the surrounding comment intact (the one about not bundling native modules).
+
+- [ ] **Step 3: Verify typecheck still passes**
 
 ```bash
 npm run typecheck
@@ -69,36 +91,44 @@ npm run typecheck
 
 Expected: exits 0, no errors.
 
-- [ ] **Step 3: Quick smoke that jimp resolves and resizes a tiny image**
+- [ ] **Step 4: Smoke test sharp from within the repo (NOT /tmp — ESM resolution needs the project's node_modules)**
 
-Create a one-off scratch file at `/tmp/jimp-smoke.mjs`:
+Create a scratch file at the repo root: `scripts/sharp-smoke.mjs`:
 
 ```js
-import Jimp from 'jimp';
-const img = await new Jimp(8, 8, 0xff0000ff);
-const out = await img.scaleToFit(4, 4, Jimp.RESIZE_BEZIER).getBufferAsync(Jimp.MIME_WEBP);
-console.log('ok bytes=', out.length);
+import sharp from 'sharp';
+// 8x8 raw RGBA red square → resize to 4x4 → encode webp.
+const buf = await sharp({
+  create: { width: 8, height: 8, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } },
+})
+  .resize(4, 4, { fit: 'inside' })
+  .webp({ quality: 80 })
+  .toBuffer();
+console.log('ok bytes=', buf.length);
 ```
 
+Run:
+
 ```bash
-node /tmp/jimp-smoke.mjs
+node scripts/sharp-smoke.mjs
 ```
 
-Expected output: `ok bytes= <some positive integer>`. Delete the scratch file:
+Expected output: `ok bytes= <some positive integer between roughly 60 and 200>`. Then delete the scratch file:
 
 ```bash
-rm /tmp/jimp-smoke.mjs
+rm scripts/sharp-smoke.mjs
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add package.json package-lock.json
+git add package.json package-lock.json netlify.toml
 git commit -m "$(cat <<'EOF'
-chore(products): add jimp dep for thumbnail resize
+chore(products): add sharp dep for WebP thumbnail resize
 
-Pure-JS image library — avoids the native-binary deploy class of bug
-that @node-rs/argon2 already taught us about.
+jimp@0.22 ships no WebP encoder; jimp@1.x's WASM path is API-unstable.
+Switching to sharp (libvips) — native binary, but mitigated via
+external_node_modules in netlify.toml, same pattern as @node-rs/argon2.
 EOF
 )"
 ```
@@ -598,16 +628,20 @@ Replace the body of `netlify/functions/u-products-image-thumb.ts` (everything af
     return jsonError(404, 'source_missing');
   }
 
-  // Resize via jimp. Lazy-import so the handler still type-checks if the lib
+  // Resize via sharp. Lazy-import so the handler still type-checks if the lib
   // is missing — the actual call will throw and trip the fallback. Tasks 5+6
   // exercise both branches.
   try {
-    const Jimp = (await import('jimp')).default;
-    const image = await Jimp.read(Buffer.from(sourceBytes));
-    image.scaleToFit(240, 240, Jimp.RESIZE_BEZIER).quality(80);
-    const webp = await image.getBufferAsync(Jimp.MIME_WEBP);
+    const sharp = (await import('sharp')).default;
+    const webp = await sharp(Buffer.from(sourceBytes))
+      .resize(240, 240, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
     try {
-      await thumbStore.set(thumbKey, webp);
+      // sharp returns a Node Buffer; copy to a plain ArrayBuffer slice so the
+      // Blobs store and Response constructor accept it uniformly.
+      const ab = webp.buffer.slice(webp.byteOffset, webp.byteOffset + webp.byteLength) as ArrayBuffer;
+      await thumbStore.set(thumbKey, ab);
     } catch (e) {
       // Cache write failed — serve the freshly-resized bytes anyway.
       console.warn('u-products-image-thumb: cache write failed', { image_id: id, reason: String(e) });
@@ -665,7 +699,7 @@ git commit -m "$(cat <<'EOF'
 feat(products): thumbnails endpoint — cache hit + lazy resize
 
 Reads source from product-images blob store, resizes to 240px webp via
-jimp, caches to product-image-thumbnails, serves with 30d immutable
+sharp, caches to product-image-thumbnails, serves with 30d immutable
 cache headers. Cache writes are best-effort.
 EOF
 )"
@@ -1339,7 +1373,7 @@ Expected: 11 new commits (one per task 1–11), most-recent first.
 
 - Do not `git push` — the user pushes manually per `feedback_no_push_without_approval`.
 - Do not `gh pr create` — per `feedback_no_deploy_previews`.
-- Do not add `jimp` to `netlify.toml`'s `external_node_modules` unless a build later fails (it shouldn't — jimp is pure JS).
+- Do not remove `sharp` from `netlify.toml`'s `external_node_modules` — without it, the Netlify CI bundler tree-shakes the native binary out and the function 500s at runtime (same failure mode as `@node-rs/argon2` if it were ever removed).
 - Do not run a migration — this feature is schema-free.
 - Do not modify `Sidebar.tsx`, the AMS layout, or any admin route — that's the sibling spec's job.
 - Do not edit any audit ops or schemas. No new audit op for thumbnail reads.

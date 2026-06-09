@@ -23,9 +23,9 @@ Product Manager Phase A shipped full-size image upload (`POST /api/u-products-im
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Generation strategy | Lazy server-side, cache to blob | Avoids regenerating on every request; first-request cost amortized. |
+| Generation strategy | Lazy server-side, cache to blob | Avoids regenerating on every request; first-request cost amortized. With sharp the cold-path resize is ~10–40 ms — well under our 500 ms budget. |
 | Number of sizes | Single 240 px max edge, quality 80 | Covers both consumers; halves cache miss rate vs multi-size. |
-| Image library | `jimp` (pure JS) | No native binaries — avoids the `@node-rs/argon2` deploy class of bug already burned us. ~50–400 ms per resize is acceptable for cold path. |
+| Image library | `sharp` (libvips, native) | Best WebP quality and 10–20× faster than pure-JS alternatives. Pivoted from `jimp@0.22` after Task 1 smoke discovered it ships no WebP encoder; `jimp@1.x` WASM path is API-unstable. Sharp's native binary requires `external_node_modules = ["sharp"]` in `netlify.toml` — same pattern already in use for `@node-rs/argon2`. |
 | Failure behavior | Stream original bytes on resize failure | No broken-image tiles in the UI. Short Cache-Control on fallbacks retries soon. |
 | Storage | New `product-image-thumbnails` blob store, eventual consistency | Mirrors `files-thumbnails` pattern. Keeps thumbnails isolated from full-size for lifecycle clarity. |
 | Schema | None — derived key | Cache key is `thumb/<original_blob_key>.webp`. Source `blob_key` is immutable, so derivation is collision-free and migration-free. |
@@ -86,8 +86,8 @@ GET /api/u-products-image-thumb/:image_id
 |---|---|
 | `netlify/functions/u-products-image.ts` | DELETE handler also deletes `productThumbKeyFor(row.blob_key)` from `productThumbnailsStore()`, best-effort. |
 | `netlify/functions/u-products.ts` | List query adds `LEFT JOIN public.product_images pi_hero ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key` and selects `pi_hero.id AS hero_image_id`. Join is unique because `blob_key` is a freshly-minted UUID per upload (`productImageKey()`). Needed so the FE can construct the thumbnail URL. |
-| `package.json` | Add `jimp` (latest stable). |
-| `netlify.toml` | Add `jimp` to `external_node_modules` only if the bundler's tree-shaking fails it. Verify empirically. |
+| `package.json` | Add `sharp` (latest stable, `^0.33.x`). |
+| `netlify.toml` | Add `"sharp"` to the existing `external_node_modules = [...]` array (alongside `@node-rs/argon2`) so the platform-specific libvips binary ships with the function bundle. |
 | `src/modules/products/shared/types.ts` | Add `hero_image_id: string \| null` to `ProductListRow`. |
 | `src/modules/products/shared/api.ts` | Add `imagesApi.thumbUrl(imageId: string): string` returning `/api/u-products-image-thumb/${imageId}`. |
 | `src/modules/products/workspace/components/ProductTable.tsx` | Replace `.pm-thumb-placeholder` with `<img src={thumbUrl(p.hero_image_id)} loading="lazy" alt="" className="pm-thumb" />` when present. Keep placeholder div when `hero_image_id` is null. |
@@ -170,14 +170,14 @@ Uses the existing test DB fixture pattern + in-memory Blobs mock (mirror `tests/
 
 ## Performance budget (documented, not asserted in CI)
 
-- Cold path (resize 4 MB PNG): ≤500 ms
-- Warm path (cache hit): ≤80 ms
-- Jimp perf varies on Lambda; if cold path regresses past 1 s, revisit the library choice.
+- Cold path (resize 4 MB PNG via sharp): ≤80 ms
+- Warm path (cache hit): ≤50 ms
+- If cold path regresses past 500 ms, suspect sharp version drift or a missing `external_node_modules` entry causing a JS fallback path.
 
 ## Risks & follow-ups
 
-- **Jimp memory** — large source images (10 MB cap) decoded in pure JS can spike Function memory. Mitigation: scale-first via Jimp's read-time options if memory issues appear in prod. Track in a follow-up.
-- **`external_node_modules` for jimp** — Netlify's esbuild bundler usually inlines pure-JS deps fine; only mark external if a build fails. Don't speculatively add.
+- **Sharp native binary deploy risk** — same class as `@node-rs/argon2`. Mitigated by adding `"sharp"` to `external_node_modules` in `netlify.toml`. Direct CLI deploys (`netlify deploy --prod --dir dist`) cannot ship native binaries — same restriction already documented in `feedback_netlify_cache_clear` for argon2. Use CI builds only.
+- **Sharp version pinning** — sharp's libvips bindings can break across minor versions. Pin to `^0.33.x` and re-validate on upgrade.
 - **No retina source for the gallery** — at 240 px, gallery tiles up to ~120 px are crisp on retina but a 200 px tile could look slightly soft. Acceptable for Phase B; revisit if users complain.
 - **Multi-size endpoint** — `?size=sm|md` is the obvious extension if a future consumer needs it. Not designed in today.
 
