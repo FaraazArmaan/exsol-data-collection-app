@@ -13,6 +13,7 @@ export function Sidebar() {
         {inClient ? (
           <>
             <NavLink to={`/clients/${params.clientId}`} end>Dashboard</NavLink>
+            <NavLink to={`/clients/${params.clientId}/products`}>Product Manager</NavLink>
             <NavLink to={`/clients/${params.clientId}/audit`}>Audit</NavLink>
             <NavLink to={`/clients/${params.clientId}/settings`}>Settings</NavLink>
             <NavLink to="/">← back to admin</NavLink>

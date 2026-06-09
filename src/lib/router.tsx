@@ -24,6 +24,9 @@ import ProductsListPage from '../modules/products/workspace/pages/ProductsListPa
 import ProductEditPage from '../modules/products/workspace/pages/ProductEditPage';
 import ProductCategoriesPage from '../modules/products/workspace/pages/ProductCategoriesPage';
 import { WorkspaceProductsScopeProvider } from '../modules/products/shared/scope';
+import AdminProductsListPage from '../modules/products/admin/AdminProductsListPage';
+import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
+import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
 
 function ShellLayout() {
   return (
@@ -93,6 +96,10 @@ export const router = createBrowserRouter([
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },
       { path: '/clients/:clientId/configure', element: <ConfigureStructure /> },
+      { path: '/clients/:clientId/products', element: <AdminProductsListPage /> },
+      { path: '/clients/:clientId/products/new', element: <AdminProductEditPage /> },
+      { path: '/clients/:clientId/products/:productId/edit', element: <AdminProductEditPage /> },
+      { path: '/clients/:clientId/products/categories', element: <AdminProductCategoriesPage /> },
     ],
   },
 ]);
