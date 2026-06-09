@@ -247,7 +247,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   background: var(--bg-elevated); color: var(--text-muted);
 }
 .pm-chip-service { background: rgba(99, 102, 241, 0.18); color: var(--accent); }
-.pm-thumb { width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--bg-elevated); }
+.pm-thumb { width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--bg-elevated); object-fit: cover; }
 .pm-thumb-empty { border: 1px dashed var(--border-default); }
 .pm-thumb-placeholder { background: linear-gradient(135deg, var(--bg-elevated), var(--bg-surface)); }
 .pm-ops { display: flex; gap: 4px; }

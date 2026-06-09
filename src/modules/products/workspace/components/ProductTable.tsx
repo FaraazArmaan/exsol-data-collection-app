@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Product } from '../../shared/types';
+import { imagesApi } from '../../shared/api';
 
 function formatPrice(cents: number, unit: string | null, type: Product['type']): string {
   const usd = `$${(cents / 100).toFixed(2)}`;
@@ -79,8 +80,14 @@ export function ProductTable(props: {
             </td>
             <td>{startIndex + i + 1}</td>
             <td>
-              {p.hero_image_key
-                ? <div className="pm-thumb pm-thumb-placeholder" title={p.hero_image_key} />
+              {p.hero_image_id
+                ? <img
+                    className="pm-thumb"
+                    src={imagesApi.thumbUrl(p.hero_image_id)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
                 : <div className="pm-thumb pm-thumb-empty" aria-hidden />
               }
             </td>
