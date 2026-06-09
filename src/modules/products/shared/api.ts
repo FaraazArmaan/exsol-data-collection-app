@@ -8,6 +8,16 @@ import type {
   ProductFilters, BulkAction, BulkResult, ImportDryRun,
 } from './types';
 
+export interface ScopeOpts {
+  clientId?: string;
+}
+
+function withScope(url: string, opts?: ScopeOpts): string {
+  if (!opts?.clientId) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}client=${encodeURIComponent(opts.clientId)}`;
+}
+
 export class ProductsApiError extends Error {
   constructor(public status: number, public code: string, public detail: unknown) {
     super(`${code} (${status})`);
@@ -63,48 +73,48 @@ function qs(f: ProductFilters): string {
 // ─── Products ────────────────────────────────────────────────────────────────
 
 export const productsApi = {
-  list: (f: ProductFilters): Promise<ProductListResponse> => {
+  list: (f: ProductFilters, opts?: ScopeOpts): Promise<ProductListResponse> => {
     const q = qs(f);
-    return jsonFetch(`/api/u-products${q ? `?${q}` : ''}`);
+    return jsonFetch(withScope(`/api/u-products${q ? `?${q}` : ''}`, opts));
   },
-  get: (id: string): Promise<ProductWithImages> =>
-    jsonFetch(`/api/u-products/${id}`),
-  create: (body: Partial<Product>): Promise<Product> =>
-    jsonFetch('/api/u-products', { method: 'POST', body: JSON.stringify(body) }),
-  update: (id: string, body: Partial<Product>): Promise<Product> =>
-    jsonFetch(`/api/u-products/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  remove: (id: string): Promise<void> =>
-    jsonFetch<void>(`/api/u-products/${id}`, { method: 'DELETE' }),
-  bulk: (body: BulkAction): Promise<BulkResult> =>
-    jsonFetch('/api/u-products-bulk', { method: 'POST', body: JSON.stringify(body) }),
-  exportUrl: (f: ProductFilters, format: 'csv' | 'xlsx'): string => {
+  get: (id: string, opts?: ScopeOpts): Promise<ProductWithImages> =>
+    jsonFetch(withScope(`/api/u-products/${id}`, opts)),
+  create: (body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
+    jsonFetch(withScope('/api/u-products', opts), { method: 'POST', body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
+    jsonFetch(withScope(`/api/u-products/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (id: string, opts?: ScopeOpts): Promise<void> =>
+    jsonFetch<void>(withScope(`/api/u-products/${id}`, opts), { method: 'DELETE' }),
+  bulk: (body: BulkAction, opts?: ScopeOpts): Promise<BulkResult> =>
+    jsonFetch(withScope('/api/u-products-bulk', opts), { method: 'POST', body: JSON.stringify(body) }),
+  exportUrl: (f: ProductFilters, format: 'csv' | 'xlsx', opts?: ScopeOpts): string => {
     const q = qs(f);
     const sep = q ? '&' : '';
-    return `/api/u-products-export?${q}${sep}format=${format}`;
+    return withScope(`/api/u-products-export?${q}${sep}format=${format}`, opts);
   },
-  importDryRun: (file: File): Promise<ImportDryRun> => {
+  importDryRun: (file: File, opts?: ScopeOpts): Promise<ImportDryRun> => {
     const fd = new FormData();
     fd.append('file', file);
-    return formFetch(`/api/u-products-import?dry_run=true`, fd);
+    return formFetch(withScope(`/api/u-products-import?dry_run=true`, opts), fd);
   },
-  importCommit: (file: File): Promise<ImportDryRun & { committed: true }> => {
+  importCommit: (file: File, opts?: ScopeOpts): Promise<ImportDryRun & { committed: true }> => {
     const fd = new FormData();
     fd.append('file', file);
-    return formFetch('/api/u-products-import', fd);
+    return formFetch(withScope('/api/u-products-import', opts), fd);
   },
 };
 
 // ─── Categories ──────────────────────────────────────────────────────────────
 
 export const categoriesApi = {
-  list: (): Promise<{ items: ProductCategory[] }> =>
-    jsonFetch('/api/u-product-categories'),
-  create: (name: string): Promise<ProductCategory> =>
-    jsonFetch('/api/u-product-categories', { method: 'POST', body: JSON.stringify({ name }) }),
-  update: (id: string, body: { name?: string; sort_order?: number }): Promise<ProductCategory> =>
-    jsonFetch(`/api/u-product-categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  remove: (id: string): Promise<void> =>
-    jsonFetch<void>(`/api/u-product-categories/${id}`, { method: 'DELETE' }),
+  list: (opts?: ScopeOpts): Promise<{ items: ProductCategory[] }> =>
+    jsonFetch(withScope('/api/u-product-categories', opts)),
+  create: (name: string, opts?: ScopeOpts): Promise<ProductCategory> =>
+    jsonFetch(withScope('/api/u-product-categories', opts), { method: 'POST', body: JSON.stringify({ name }) }),
+  update: (id: string, body: { name?: string; sort_order?: number }, opts?: ScopeOpts): Promise<ProductCategory> =>
+    jsonFetch(withScope(`/api/u-product-categories/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (id: string, opts?: ScopeOpts): Promise<void> =>
+    jsonFetch<void>(withScope(`/api/u-product-categories/${id}`, opts), { method: 'DELETE' }),
 };
 
 // ─── Images ──────────────────────────────────────────────────────────────────
@@ -119,15 +129,15 @@ export interface ProductImageRow {
 }
 
 export const imagesApi = {
-  upload: (product_id: string, file: File, sort_order?: number): Promise<ProductImageRow> => {
+  upload: (product_id: string, file: File, sort_order?: number, opts?: ScopeOpts): Promise<ProductImageRow> => {
     const fd = new FormData();
     fd.append('product_id', product_id);
     if (sort_order != null) fd.append('sort_order', String(sort_order));
     fd.append('file', file);
-    return formFetch('/api/u-products-image', fd);
+    return formFetch(withScope('/api/u-products-image', opts), fd);
   },
-  remove: (image_id: string): Promise<void> =>
-    jsonFetch<void>(`/api/u-products-image/${image_id}`, { method: 'DELETE' }),
-  thumbUrl: (image_id: string): string =>
-    `/api/u-products-image-thumb/${image_id}`,
+  remove: (image_id: string, opts?: ScopeOpts): Promise<void> =>
+    jsonFetch<void>(withScope(`/api/u-products-image/${image_id}`, opts), { method: 'DELETE' }),
+  thumbUrl: (image_id: string, opts?: ScopeOpts): string =>
+    withScope(`/api/u-products-image-thumb/${image_id}`, opts),
 };
