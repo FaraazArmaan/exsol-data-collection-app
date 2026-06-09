@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { productsApi } from '../../shared/api';
+import { useProductsScope } from '../../shared/scope';
 import type { ImportDryRun } from '../../shared/types';
 
 export function ProductImportModal(props: {
@@ -11,6 +12,7 @@ export function ProductImportModal(props: {
   const [dryRun, setDryRun] = useState<ImportDryRun | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { queryParam: clientQuery } = useProductsScope();
 
   if (!props.open) return null;
 
@@ -26,7 +28,7 @@ export function ProductImportModal(props: {
     if (!picked) return;
     setBusy(true);
     try {
-      const result = await productsApi.importDryRun(picked);
+      const result = await productsApi.importDryRun(picked, { clientId: clientQuery });
       setDryRun(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -40,7 +42,7 @@ export function ProductImportModal(props: {
     setBusy(true);
     setError(null);
     try {
-      await productsApi.importCommit(file);
+      await productsApi.importCommit(file, { clientId: clientQuery });
       reset();
       props.onDone();
     } catch (e) {

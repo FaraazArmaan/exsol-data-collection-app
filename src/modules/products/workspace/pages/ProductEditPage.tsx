@@ -7,7 +7,7 @@ import type {
 import {
   canCreateProducts, canEditProducts, canViewProducts,
 } from '../../shared/permissions';
-import { useUserAuth } from '../../../user-portal/user-auth-context';
+import { useProductsScope } from '../../shared/scope';
 import { ProductForm, emptyDraft, type ProductDraft } from '../components/ProductForm';
 
 export default function ProductEditPage() {
@@ -15,7 +15,8 @@ export default function ProductEditPage() {
   const nav = useNavigate();
   const mode: 'create' | 'edit' = params.productId ? 'edit' : 'create';
   const basePath = `/c/${params.slug}/products`;
-  const { user, permissions, loading } = useUserAuth();
+  const scope = useProductsScope();
+  const { permissions, levelNumber, queryParam: clientQuery } = scope;
 
   const [draft, setDraft]   = useState<ProductDraft>(emptyDraft());
   const [loaded, setLoaded] = useState<ProductWithImages | null>(null);
@@ -25,7 +26,7 @@ export default function ProductEditPage() {
 
   const reloadProduct = useCallback(async () => {
     if (!params.productId) return;
-    const p = await productsApi.get(params.productId);
+    const p = await productsApi.get(params.productId, { clientId: clientQuery });
     setLoaded(p);
     setDraft({
       type: p.type,
@@ -42,22 +43,19 @@ export default function ProductEditPage() {
       hero_image_key: p.hero_image_key,
       hero_image_id: p.hero_image_id,
     });
-  }, [params.productId]);
+  }, [params.productId, clientQuery]);
 
   useEffect(() => {
-    categoriesApi.list().then((c) => setCats(c.items)).catch(() => {/* non-fatal */});
+    categoriesApi.list({ clientId: clientQuery }).then((c) => setCats(c.items)).catch(() => {/* non-fatal */});
     if (mode === 'edit') {
       reloadProduct().catch((e) => setError(e instanceof Error ? e.message : String(e)));
     }
   }, [mode, reloadProduct]);
 
-  if (loading) return <p className="pm-shell pm-muted">Loading…</p>;
-  if (!user) return <p className="pm-shell pm-muted">Sign in to edit products.</p>;
-  if (!canViewProducts(permissions, user.level_number)) {
+  if (!canViewProducts(permissions, levelNumber)) {
     return <p className="pm-shell pm-muted">You don't have access to Products.</p>;
   }
 
-  const levelNumber = user.level_number;
   const canCreate = canCreateProducts(permissions, levelNumber);
   const canEdit   = canEditProducts(permissions, levelNumber);
   const writeAllowed = mode === 'create' ? canCreate : canEdit;
@@ -69,10 +67,10 @@ export default function ProductEditPage() {
     try {
       const payload: Partial<ProductDraft> = { ...draft, ...(targetStatus ? { status: targetStatus } : {}) };
       if (mode === 'create') {
-        const saved = await productsApi.create(payload);
+        const saved = await productsApi.create(payload, { clientId: clientQuery });
         nav(`${basePath}/${saved.id}/edit`, { replace: true });
       } else {
-        await productsApi.update(params.productId!, payload);
+        await productsApi.update(params.productId!, payload, { clientId: clientQuery });
         await reloadProduct();
       }
     } catch (e) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { categoriesApi } from '../../shared/api';
 import type { ProductCategory } from '../../shared/types';
-import { useUserAuth } from '../../../user-portal/user-auth-context';
+import { useProductsScope } from '../../shared/scope';
 import {
   canCreateProducts, canDeleteProducts, canEditProducts, canManageCategories,
 } from '../../shared/permissions';
@@ -10,7 +10,8 @@ import {
 export default function ProductCategoriesPage() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
-  const { user, permissions, loading } = useUserAuth();
+  const scope = useProductsScope();
+  const { permissions, levelNumber, queryParam: clientQuery } = scope;
   const [items, setItems] = useState<ProductCategory[]>([]);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -18,7 +19,7 @@ export default function ProductCategoriesPage() {
 
   async function load() {
     try {
-      const r = await categoriesApi.list();
+      const r = await categoriesApi.list({ clientId: clientQuery });
       setItems(r.items);
       setError(null);
     } catch (e) {
@@ -28,13 +29,10 @@ export default function ProductCategoriesPage() {
 
   useEffect(() => { void load(); }, []);
 
-  if (loading) return <p className="pm-shell pm-muted">Loading…</p>;
-  if (!user) return <p className="pm-shell pm-muted">Sign in to manage categories.</p>;
-  if (!canManageCategories(permissions, user.level_number)) {
+  if (!canManageCategories(permissions, levelNumber)) {
     return <p className="pm-shell pm-muted">You don't have access to manage categories.</p>;
   }
 
-  const levelNumber = user.level_number;
   const canRename = canEditProducts(permissions, levelNumber);
   const canDelete = canDeleteProducts(permissions, levelNumber);
   const canAdd    = canCreateProducts(permissions, levelNumber);
@@ -45,7 +43,7 @@ export default function ProductCategoriesPage() {
     setBusy(true);
     setError(null);
     try {
-      await categoriesApi.create(trimmed);
+      await categoriesApi.create(trimmed, { clientId: clientQuery });
       setName('');
       await load();
     } catch (e) {
@@ -58,7 +56,7 @@ export default function ProductCategoriesPage() {
   async function remove(id: string, current: string) {
     if (!confirm(`Delete "${current}"? Products in this category will become uncategorized.`)) return;
     try {
-      await categoriesApi.remove(id);
+      await categoriesApi.remove(id, { clientId: clientQuery });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -71,7 +69,7 @@ export default function ProductCategoriesPage() {
     const trimmed = next.trim();
     if (!trimmed || trimmed === current) return;
     try {
-      await categoriesApi.update(id, { name: trimmed });
+      await categoriesApi.update(id, { name: trimmed }, { clientId: clientQuery });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

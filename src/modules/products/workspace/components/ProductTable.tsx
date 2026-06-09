@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Product } from '../../shared/types';
 import { imagesApi } from '../../shared/api';
+import { useProductsScope } from '../../shared/scope';
 
 function formatPrice(cents: number, unit: string | null, type: Product['type']): string {
   const usd = `$${(cents / 100).toFixed(2)}`;
@@ -24,6 +25,7 @@ export function ProductTable(props: {
     items, selected, basePath, canEdit, canDelete, startIndex, categoriesById,
     onToggleSelect, onToggleAll, onEdit, onDelete,
   } = props;
+  const { queryParam: clientQuery } = useProductsScope();
 
   const allSelected = items.length > 0 && items.every((p) => selected.has(p.id));
 
@@ -83,7 +85,7 @@ export function ProductTable(props: {
               {p.hero_image_id
                 ? <img
                     className="pm-thumb"
-                    src={imagesApi.thumbUrl(p.hero_image_id)}
+                    src={imagesApi.thumbUrl(p.hero_image_id, { clientId: clientQuery })}
                     alt=""
                     loading="lazy"
                     decoding="async"

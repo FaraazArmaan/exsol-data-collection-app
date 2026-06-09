@@ -8,7 +8,7 @@ import {
   canCreateProducts, canDeleteProducts, canEditProducts, canViewProducts,
   canManageCategories,
 } from '../../shared/permissions';
-import { useUserAuth } from '../../../user-portal/user-auth-context';
+import { useProductsScope } from '../../shared/scope';
 import { ProductStatusTabs, type StatusFilter } from '../components/ProductStatusTabs';
 import { ProductFiltersBar } from '../components/ProductFiltersBar';
 import { ProductBulkBar } from '../components/ProductBulkBar';
@@ -25,7 +25,8 @@ export default function ProductsListPage() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
   const [search, setSearch] = useSearchParams();
-  const { user, permissions, loading } = useUserAuth();
+  const scope = useProductsScope();
+  const { permissions, levelNumber, queryParam: clientQuery } = scope;
   const basePath = `/c/${slug}/products`;
 
   const filters: ProductFilters = useMemo(() => {
@@ -56,8 +57,8 @@ export default function ProductsListPage() {
   const load = useCallback(async () => {
     try {
       const [list, c] = await Promise.all([
-        productsApi.list(filtersRef.current),
-        categoriesApi.list(),
+        productsApi.list(filtersRef.current, { clientId: clientQuery }),
+        categoriesApi.list({ clientId: clientQuery }),
       ]);
       setData(list);
       setCats(c.items);
@@ -65,7 +66,7 @@ export default function ProductsListPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [clientQuery]);
 
   // Reload on filter change + start polling.
   useEffect(() => {
@@ -75,13 +76,10 @@ export default function ProductsListPage() {
     return () => { alive = false; window.clearInterval(id); };
   }, [load, filters]);
 
-  if (loading) return <p className="pm-shell pm-muted">Loading…</p>;
-  if (!user) return <p className="pm-shell pm-muted">Sign in to view products.</p>;
-  if (!canViewProducts(permissions, user.level_number)) {
+  if (!canViewProducts(permissions, levelNumber)) {
     return <p className="pm-shell pm-muted">You don't have access to Products.</p>;
   }
 
-  const levelNumber = user.level_number;
   const editAllowed   = canEditProducts(permissions, levelNumber);
   const createAllowed = canCreateProducts(permissions, levelNumber);
   const deleteAllowed = canDeleteProducts(permissions, levelNumber);
@@ -103,7 +101,7 @@ export default function ProductsListPage() {
   async function bulkSetStatus(value: ProductStatus) {
     if (selected.size === 0) return;
     try {
-      await productsApi.bulk({ ids: Array.from(selected), action: 'set_status', value });
+      await productsApi.bulk({ ids: Array.from(selected), action: 'set_status', value }, { clientId: clientQuery });
       setSelected(new Set());
       await load();
     } catch (e) {
@@ -114,7 +112,7 @@ export default function ProductsListPage() {
   async function archiveOne(id: string) {
     if (!confirm('Archive this product?')) return;
     try {
-      await productsApi.remove(id);
+      await productsApi.remove(id, { clientId: clientQuery });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -152,7 +150,7 @@ export default function ProductsListPage() {
         canCreate={createAllowed}
         onChange={(next) => update(next)}
         onExport={() => {
-          window.location.href = productsApi.exportUrl(filters, 'csv');
+          window.location.href = productsApi.exportUrl(filters, 'csv', { clientId: clientQuery });
         }}
         onImport={() => setImportOpen(true)}
         onAdd={() => nav(`${basePath}/new`)}

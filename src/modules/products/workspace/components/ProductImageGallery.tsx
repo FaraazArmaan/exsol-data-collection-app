@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import type { ProductImage } from '../../shared/types';
 import { imagesApi } from '../../shared/api';
+import { useProductsScope } from '../../shared/scope';
 
 const MAX_IMAGES = 20;
 
@@ -13,6 +14,7 @@ export function ProductImageGallery(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
+  const { queryParam: clientQuery } = useProductsScope();
 
   async function onFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -22,7 +24,7 @@ export function ProductImageGallery(props: {
       let next = props.images.length;
       for (const f of Array.from(files)) {
         if (next >= MAX_IMAGES) break;
-        await imagesApi.upload(props.productId, f, next++);
+        await imagesApi.upload(props.productId, f, next++, { clientId: clientQuery });
       }
       await props.onChange();
     } catch (e) {
@@ -66,7 +68,7 @@ export function ProductImageGallery(props: {
               <img
                 className="pm-thumb"
                 style={{ width: '100%', height: '100%' }}
-                src={imagesApi.thumbUrl(im.id)}
+                src={imagesApi.thumbUrl(im.id, { clientId: clientQuery })}
                 alt=""
                 loading="lazy"
                 decoding="async"
@@ -77,7 +79,7 @@ export function ProductImageGallery(props: {
                 aria-label="Remove image"
                 onClick={async () => {
                   if (!confirm('Remove this image?')) return;
-                  try { await imagesApi.remove(im.id); await props.onChange(); }
+                  try { await imagesApi.remove(im.id, { clientId: clientQuery }); await props.onChange(); }
                   catch (e) { setError(e instanceof Error ? e.message : String(e)); }
                 }}
               >
