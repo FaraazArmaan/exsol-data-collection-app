@@ -207,3 +207,57 @@ describe('u-products-image-thumb — happy path', () => {
     expect(new TextDecoder().decode(body)).toBe('CACHED-THUMB-BYTES');
   });
 });
+
+describe('u-products-image-thumb — failure paths', () => {
+  test('corrupt source bytes fall back to original with short cache', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    // Overwrite source with garbage — jimp.read will throw.
+    const garbage = new ArrayBuffer(16);
+    new Uint8Array(garbage).fill(0x00);
+    sourceStore.set(img.blob_key, garbage);
+
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('cache-control')).toContain('max-age=300');
+    expect(r.headers.get('cache-control')).not.toContain('immutable');
+    // Body is the garbage we put in.
+    const out = new Uint8Array(await r.arrayBuffer());
+    expect(out.byteLength).toBe(16);
+    // No cached thumb was written.
+    expect(thumbStore.has(`thumb/${img.blob_key}.webp`)).toBe(false);
+  });
+
+  test('missing source with no cached thumb returns 404 source_missing', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    sourceStore.delete(img.blob_key);
+    // No pre-seed of thumbStore.
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(404);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('source_missing');
+  });
+
+  test('missing source but cached thumb still serves cached bytes', async () => {
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    sourceStore.delete(img.blob_key);
+    const seed = new TextEncoder().encode('CACHED').buffer;
+    thumbStore.set(`thumb/${img.blob_key}.webp`, seed);
+
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+    const body = new Uint8Array(await r.arrayBuffer());
+    expect(new TextDecoder().decode(body)).toBe('CACHED');
+  });
+});
