@@ -460,3 +460,44 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   margin-top: 4px;
   padding-top: 8px;
 }
+
+/* Export dropdown menu (Product Manager filters bar) */
+.pm-export-menu {
+  position: relative;
+  display: inline-block;
+}
+.pm-export-menu > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 12px;
+  border: 1px solid var(--pm-border, #2a2a2a);
+  border-radius: 4px;
+  user-select: none;
+}
+.pm-export-menu > summary::-webkit-details-marker { display: none; }
+.pm-export-menu ul {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 220px;
+  z-index: 10;
+  background: var(--pm-bg, #1a1a1a);
+  border: 1px solid var(--pm-border, #2a2a2a);
+  border-radius: 4px;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+}
+.pm-export-menu li > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+.pm-export-menu li > button:hover {
+  background: var(--pm-highlight, rgba(255, 255, 255, 0.08));
+}

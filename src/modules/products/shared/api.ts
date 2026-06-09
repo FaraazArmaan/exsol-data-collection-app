@@ -87,7 +87,11 @@ export const productsApi = {
     jsonFetch<void>(withScope(`/api/u-products-detail/${id}`, opts), { method: 'DELETE' }),
   bulk: (body: BulkAction, opts?: ScopeOpts): Promise<BulkResult> =>
     jsonFetch(withScope('/api/u-products-bulk', opts), { method: 'POST', body: JSON.stringify(body) }),
-  exportUrl: (f: ProductFilters, format: 'csv' | 'xlsx', opts?: ScopeOpts): string => {
+  exportUrl: (
+    f: ProductFilters,
+    format: 'csv' | 'xlsx' | 'meta' | 'whatsapp' | 'amazon' | 'flipkart',
+    opts?: ScopeOpts,
+  ): string => {
     const q = qs(f);
     const sep = q ? '&' : '';
     return withScope(`/api/u-products-export?${q}${sep}format=${format}`, opts);

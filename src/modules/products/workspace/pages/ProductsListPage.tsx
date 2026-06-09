@@ -149,8 +149,8 @@ export default function ProductsListPage() {
         canEdit={editAllowed}
         canCreate={createAllowed}
         onChange={(next) => update(next)}
-        onExport={() => {
-          window.location.href = productsApi.exportUrl(filters, 'csv', { clientId: clientQuery });
+        onExport={(format) => {
+          window.location.href = productsApi.exportUrl(filters, format, { clientId: clientQuery });
         }}
         onImport={() => setImportOpen(true)}
         onAdd={() => nav(`${basePath}/new`)}
