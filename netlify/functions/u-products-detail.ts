@@ -59,10 +59,13 @@ async function handleGet(req: Request, id: string): Promise<Response> {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, type, name, description, category_id, brand, tags, price_cents, currency,
-           sku, stock_qty, unit, status, hero_image_key, created_at, updated_at
-    FROM public.products
-    WHERE id = ${id}::uuid AND client_id = ${scope.clientId}::uuid AND deleted_at IS NULL
+    SELECT p.id, p.type, p.name, p.description, p.category_id, p.brand, p.tags, p.price_cents, p.currency,
+           p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
+           p.created_at, p.updated_at
+    FROM public.products p
+    LEFT JOIN public.product_images pi_hero
+      ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key
+    WHERE p.id = ${id}::uuid AND p.client_id = ${scope.clientId}::uuid AND p.deleted_at IS NULL
     LIMIT 1
   `) as Array<Record<string, unknown>>;
   if (rows.length === 0) return jsonError(404, 'not_found');
