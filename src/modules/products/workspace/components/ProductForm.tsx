@@ -23,6 +23,7 @@ export const emptyDraft = (): ProductDraft => ({
   unit: 'each',
   status: 'draft',
   hero_image_key: null,
+  hero_image_id: null,
 });
 
 export function ProductForm(props: {

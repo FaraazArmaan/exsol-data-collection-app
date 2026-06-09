@@ -1,6 +1,22 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Context } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
+
+// In-memory Blobs mock so the hero_image_id assertions can drive a real upload.
+const blobStore = new Map<string, ArrayBuffer>();
+vi.mock('../../netlify/functions/_shared/products-storage', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../netlify/functions/_shared/products-storage')>();
+  return {
+    ...original,
+    productImagesStore: () => ({
+      set:    async (key: string, data: ArrayBuffer) => { blobStore.set(key, data); },
+      get:    async (key: string) => blobStore.get(key) ?? null,
+      delete: async (key: string) => { blobStore.delete(key); },
+      getMetadata: async (key: string) => blobStore.has(key) ? { etag: 'mock', metadata: {} } : null,
+    }),
+  };
+});
+
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
@@ -9,6 +25,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
 import uProductsHandler from '../../netlify/functions/u-products';
+import uProductsImageHandler from '../../netlify/functions/u-products-image';
 import { assertLastAudit } from '../helpers/audit';
 
 const CTX = {} as Context;
@@ -60,6 +77,20 @@ async function createProduct(body: Record<string, unknown>): Promise<{ id: strin
   return r.json() as Promise<{ id: string; status: string; name: string }>;
 }
 
+async function uploadImage(productId: string): Promise<{ id: string; blob_key: string }> {
+  const fd = new FormData();
+  fd.append('product_id', productId);
+  const ab = new ArrayBuffer(3);
+  new Uint8Array(ab).set([1, 2, 3]);
+  fd.append('file', new Blob([ab], { type: 'image/png' }), 'img.png');
+  const r = await uProductsImageHandler(new Request('http://localhost/api/u-products-image', {
+    method: 'POST', headers: { cookie: buCookie },
+    body: fd,
+  }), CTX);
+  if (r.status !== 201) throw new Error(`uploadImage failed: ${r.status} ${await r.text()}`);
+  return r.json() as Promise<{ id: string; blob_key: string }>;
+}
+
 beforeAll(async () => {
   sql = neon(process.env.DATABASE_URL!);
   const h = await hashPassword(ADMIN_PASSWORD);
@@ -71,6 +102,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  blobStore.clear();
   adminCookie = await adminLogin();
   const cr = await clientsHandler(new Request('http://localhost/api/clients', {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
@@ -201,5 +233,26 @@ describe('u-products list + create', () => {
       body: JSON.stringify({ type: 'physical', price_cents: 100 }),
     }), CTX);
     expect(r.status).toBe(400);
+  });
+
+  test('list returns hero_image_id for products with images', async () => {
+    const p = await createProduct({ type: 'physical', name: 'With Image', price_cents: 100 });
+    const img = await uploadImage(p.id);
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', { method: 'GET', headers: { cookie: buCookie } }), CTX);
+    const body = (await r.json()) as { items: Array<{ id: string; hero_image_id: string | null; hero_image_key: string | null }> };
+    const row = body.items.find((it) => it.id === p.id);
+    expect(row).toBeDefined();
+    expect(row!.hero_image_id).toBe(img.id);
+    expect(row!.hero_image_key).toBe(img.blob_key);
+  });
+
+  test('list returns null hero_image_id for products without images', async () => {
+    const p = await createProduct({ type: 'physical', name: 'No Image', price_cents: 100 });
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', { method: 'GET', headers: { cookie: buCookie } }), CTX);
+    const body = (await r.json()) as { items: Array<{ id: string; hero_image_id: string | null; hero_image_key: string | null }> };
+    const row = body.items.find((it) => it.id === p.id);
+    expect(row).toBeDefined();
+    expect(row!.hero_image_id).toBeNull();
+    expect(row!.hero_image_key).toBeNull();
   });
 });

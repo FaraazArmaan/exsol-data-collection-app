@@ -92,20 +92,23 @@ async function handleList(req: Request): Promise<Response> {
   // a whitelist (SORT_COLUMNS / ASC|DESC) so direct string interpolation
   // below cannot be exploited.
   const items = (await sql(
-    `SELECT id, type, name, description, category_id, brand, tags, price_cents, currency,
-            sku, stock_qty, unit, status, hero_image_key, created_at, updated_at
-     FROM public.products
-     WHERE client_id = $1::uuid
-       AND deleted_at IS NULL
-       AND ($2::product_type IS NULL OR type = $2::product_type)
-       AND ($3::uuid IS NULL OR category_id = $3::uuid)
-       AND ($4::text IS NULL OR brand = $4::text)
+    `SELECT p.id, p.type, p.name, p.description, p.category_id, p.brand, p.tags, p.price_cents, p.currency,
+            p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
+            p.created_at, p.updated_at
+     FROM public.products p
+     LEFT JOIN public.product_images pi_hero
+       ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key
+     WHERE p.client_id = $1::uuid
+       AND p.deleted_at IS NULL
+       AND ($2::product_type IS NULL OR p.type = $2::product_type)
+       AND ($3::uuid IS NULL OR p.category_id = $3::uuid)
+       AND ($4::text IS NULL OR p.brand = $4::text)
        AND ($5::text IS NULL OR (
-         lower(name) LIKE $5 OR lower(coalesce(sku,'')) LIKE $5 OR lower(coalesce(brand,'')) LIKE $5
+         lower(p.name) LIKE $5 OR lower(coalesce(p.sku,'')) LIKE $5 OR lower(coalesce(p.brand,'')) LIKE $5
        ))
-       AND ($6::text[] IS NULL OR tags @> $6::text[])
-       AND ($7::product_status IS NULL OR status = $7::product_status)
-     ORDER BY ${sort} ${order}
+       AND ($6::text[] IS NULL OR p.tags @> $6::text[])
+       AND ($7::product_status IS NULL OR p.status = $7::product_status)
+     ORDER BY p.${sort} ${order}
      LIMIT $8 OFFSET $9`,
     [clientId, type, category_id, brand, qLike, tagArr, statusFilter, page_size, (page - 1) * page_size],
   )) as Array<Record<string, unknown>>;

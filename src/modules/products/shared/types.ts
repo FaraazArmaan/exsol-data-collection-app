@@ -22,6 +22,7 @@ export interface Product {
   unit: string | null;
   status: ProductStatus;
   hero_image_key: string | null;
+  hero_image_id: string | null;
   created_at: string;
   updated_at: string;
 }

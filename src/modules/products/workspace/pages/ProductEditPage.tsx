@@ -40,6 +40,7 @@ export default function ProductEditPage() {
       unit: p.unit,
       status: p.status,
       hero_image_key: p.hero_image_key,
+      hero_image_id: p.hero_image_id,
     });
   }, [params.productId]);
 
