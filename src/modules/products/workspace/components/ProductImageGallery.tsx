@@ -63,10 +63,14 @@ export function ProductImageGallery(props: {
               className={`pm-img-tile${im.blob_key === props.heroKey ? ' is-hero' : ''}`}
               title={im.blob_key}
             >
-              {/* No thumbnail endpoint exists yet — render the blob_key as a
-                  placeholder. The hero outline still shows which image was
-                  picked. Wiring real thumbnails is a follow-up. */}
-              <div className="pm-thumb pm-thumb-placeholder" style={{ width: '100%', height: '100%' }} />
+              <img
+                className="pm-thumb"
+                style={{ width: '100%', height: '100%' }}
+                src={imagesApi.thumbUrl(im.id)}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
               <button
                 type="button"
                 className="pm-img-x"
