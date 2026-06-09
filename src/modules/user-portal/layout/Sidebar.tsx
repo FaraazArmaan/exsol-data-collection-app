@@ -22,13 +22,13 @@ export function Sidebar() {
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
-        {showProducts && (
-          <NavLink to={`/c/${slug}/products`}>Product Manager</NavLink>
-        )}
 
-        {items.length > 0 && (
+        {(showProducts || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
+            {showProducts && (
+              <NavLink to={`/c/${slug}/products`}>Product Manager</NavLink>
+            )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>
                 {item.label}
