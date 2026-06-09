@@ -261,3 +261,60 @@ describe('u-products-image-thumb — failure paths', () => {
     expect(new TextDecoder().decode(body)).toBe('CACHED');
   });
 });
+
+describe('u-products-image-thumb — tenant + permissions', () => {
+  test('cross-tenant image lookup returns 404', async () => {
+    // Make an image under the current (client A) bucket-user.
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+
+    // Spin up a SECOND client + bucket user and try to fetch client A's image id.
+    const cr = await clientsHandler(new Request('http://localhost/api/clients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ name: `Th Other ${Date.now()}` }),
+    }), CTX);
+    const otherClient = (await cr.json()) as { client: { id: string; slug: string } };
+    createdClients.push(otherClient.client.id);
+
+    const rr = await clientRolesHandler(new Request(`http://localhost/api/client-roles?client=${otherClient.client.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
+    }), CTX);
+    const otherRoleId = ((await rr.json()) as { role: { id: string } }).role.id;
+    await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${otherClient.client.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ level_number: 1, allowed_role_ids: [otherRoleId] }),
+    }), CTX);
+    const email = `pm-th-other-${Date.now()}@example.com`;
+    const password = 'pm-th-other-pw-123';
+    await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${otherClient.client.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ role_id: otherRoleId, level_number: 1, parent_id: null, display_name: 'Other', email, create_login: true, temp_password: password }),
+    }), CTX);
+    const lr = await uLoginHandler(new Request(`http://localhost/api/u-login?client=${otherClient.client.slug}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+    }), CTX);
+    const otherCookie = lr.headers.get('set-cookie')!.split(';')[0]!;
+
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: otherCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(404);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('image_not_found');
+  });
+
+  test('L1 owner with empty permissions matrix can view thumbnails', async () => {
+    // Default seed makes the bucket user an L1 owner already — verify by
+    // explicitly clearing the level matrix and confirming we still get a 200.
+    await sql`UPDATE public.client_levels SET permissions = '{}'::jsonb WHERE client_id = ${clientId}::uuid AND level_number = 1`;
+    const p = await makeProduct();
+    const img = await uploadImage(p.id);
+    const r = await uProductsImageThumbHandler(
+      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
+      CTX,
+    );
+    expect(r.status).toBe(200);
+  });
+});
