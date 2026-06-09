@@ -87,7 +87,13 @@ async function handleGet(req: Request, id: string): Promise<Response> {
   const rows = (await sql`
     SELECT p.id, p.type, p.name, p.description, p.category_id, p.brand, p.tags, p.price_cents, p.currency,
            p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
-           p.created_at, p.updated_at
+           p.created_at, p.updated_at,
+           p.gtin, p.mpn, p.condition, p.availability,
+           p.sale_price_cents, p.sale_starts_at, p.sale_ends_at,
+           p.weight_grams, p.length_mm, p.width_mm, p.height_mm,
+           p.color, p.size, p.material, p.gender, p.age_group,
+           p.manufacturer, p.country_of_origin, p.hsn_code, p.gst_rate,
+           p.google_category, p.meta_category, p.product_url, p.platform_extras
     FROM public.products p
     LEFT JOIN public.product_images pi_hero
       ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key
@@ -161,6 +167,32 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   if (v.status         !== undefined) setField('status',         v.status,         'product_status');
   if (v.hero_image_key !== undefined) setField('hero_image_key', v.hero_image_key);
 
+  // Phase B platform fields
+  if (v.gtin              !== undefined) setField('gtin',              v.gtin);
+  if (v.mpn               !== undefined) setField('mpn',               v.mpn);
+  if (v.condition         !== undefined) setField('condition',         v.condition);
+  if (v.availability      !== undefined) setField('availability',      v.availability);
+  if (v.sale_price_cents  !== undefined) setField('sale_price_cents',  v.sale_price_cents);
+  if (v.sale_starts_at    !== undefined) setField('sale_starts_at',    v.sale_starts_at,   'timestamptz');
+  if (v.sale_ends_at      !== undefined) setField('sale_ends_at',      v.sale_ends_at,     'timestamptz');
+  if (v.weight_grams      !== undefined) setField('weight_grams',      v.weight_grams);
+  if (v.length_mm         !== undefined) setField('length_mm',         v.length_mm);
+  if (v.width_mm          !== undefined) setField('width_mm',          v.width_mm);
+  if (v.height_mm         !== undefined) setField('height_mm',         v.height_mm);
+  if (v.color             !== undefined) setField('color',             v.color);
+  if (v.size              !== undefined) setField('size',              v.size);
+  if (v.material          !== undefined) setField('material',          v.material);
+  if (v.gender            !== undefined) setField('gender',            v.gender);
+  if (v.age_group         !== undefined) setField('age_group',         v.age_group);
+  if (v.manufacturer      !== undefined) setField('manufacturer',      v.manufacturer);
+  if (v.country_of_origin !== undefined) setField('country_of_origin', v.country_of_origin);
+  if (v.hsn_code          !== undefined) setField('hsn_code',          v.hsn_code);
+  if (v.gst_rate          !== undefined) setField('gst_rate',          v.gst_rate);
+  if (v.google_category   !== undefined) setField('google_category',   v.google_category);
+  if (v.meta_category     !== undefined) setField('meta_category',     v.meta_category);
+  if (v.product_url       !== undefined) setField('product_url',       v.product_url);
+  if (v.platform_extras   !== undefined) setField('platform_extras',   JSON.stringify(v.platform_extras), 'jsonb');
+
   if (sets.length === 0) return jsonError(400, 'empty_patch');
 
   // Append id + clientId for the WHERE clause.
@@ -175,7 +207,13 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
          SET ${sets.join(', ')}, updated_at = now()
        WHERE id = $${idIdx}::uuid AND client_id = $${cidIdx}::uuid AND deleted_at IS NULL
        RETURNING id, type, name, description, category_id, brand, tags, price_cents, currency,
-                 sku, stock_qty, unit, status, hero_image_key, created_at, updated_at`,
+                 sku, stock_qty, unit, status, hero_image_key, created_at, updated_at,
+                 gtin, mpn, condition, availability,
+                 sale_price_cents, sale_starts_at, sale_ends_at,
+                 weight_grams, length_mm, width_mm, height_mm,
+                 color, size, material, gender, age_group,
+                 manufacturer, country_of_origin, hsn_code, gst_rate,
+                 google_category, meta_category, product_url, platform_extras`,
       params,
     )) as Array<Record<string, unknown>>;
     if (rows.length === 0) return jsonError(404, 'not_found');

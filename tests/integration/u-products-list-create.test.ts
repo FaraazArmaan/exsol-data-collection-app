@@ -25,6 +25,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
 import uProductsHandler from '../../netlify/functions/u-products';
+import uProductsDetailHandler from '../../netlify/functions/u-products-detail';
 import uProductsImageHandler from '../../netlify/functions/u-products-image';
 import { assertLastAudit } from '../helpers/audit';
 
@@ -254,5 +255,33 @@ describe('u-products list + create', () => {
     expect(row).toBeDefined();
     expect(row!.hero_image_id).toBeNull();
     expect(row!.hero_image_key).toBeNull();
+  });
+
+  test('CREATE+GET round-trip persists Phase B fields', async () => {
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({
+        type: 'physical', name: 'Egg', price_cents: 200,
+        gtin: '0123456789012', condition: 'new', availability: 'in_stock',
+        weight_grams: 50, color: 'white', country_of_origin: 'IN',
+        hsn_code: '0407', gst_rate: 5,
+      }),
+    }), CTX);
+    expect(r.status).toBe(201);
+    const created = await r.json() as { id: string };
+    const gr = await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${created.id}`, {
+      headers: { cookie: buCookie },
+    }), CTX);
+    expect(gr.status).toBe(200);
+    const fetched = await gr.json() as Record<string, unknown>;
+    expect(fetched.gtin).toBe('0123456789012');
+    expect(fetched.condition).toBe('new');
+    expect(fetched.availability).toBe('in_stock');
+    expect(fetched.weight_grams).toBe(50);
+    expect(fetched.color).toBe('white');
+    expect(fetched.country_of_origin).toBe('IN');
+    expect(fetched.hsn_code).toBe('0407');
+    // numeric(5,2) returns as string from the Neon driver.
+    expect(fetched.gst_rate).toBe('5.00');
   });
 });
