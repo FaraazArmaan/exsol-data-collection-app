@@ -166,11 +166,24 @@ export default async (req: Request, _ctx: Context) => {
       const ins = (await sql`
         INSERT INTO public.products (
           client_id, type, name, description, category_id, brand, tags,
-          price_cents, sku, stock_qty, unit, status, created_by_user_node
+          price_cents, sku, stock_qty, unit, status, created_by_user_node,
+          gtin, mpn, condition, availability,
+          sale_price_cents, sale_starts_at, sale_ends_at,
+          weight_grams, length_mm, width_mm, height_mm,
+          color, size, material, gender, age_group,
+          manufacturer, country_of_origin, hsn_code, gst_rate,
+          google_category, meta_category, product_url
         ) VALUES (
           ${clientId}::uuid, ${r.type}, ${r.name}, ${r.description},
           ${category_id}::uuid, ${r.brand}, ${r.tags}::text[], ${r.price_cents},
-          ${r.sku}, ${r.stock_qty}, ${r.unit}, ${r.status}, ${userNodeId}::uuid
+          ${r.sku}, ${r.stock_qty}, ${r.unit}, ${r.status}, ${userNodeId}::uuid,
+          ${r.gtin}, ${r.mpn},
+          ${r.condition ?? 'new'}, ${r.availability ?? 'in_stock'},
+          ${r.sale_price_cents}, ${r.sale_starts_at}::timestamptz, ${r.sale_ends_at}::timestamptz,
+          ${r.weight_grams}, ${r.length_mm}, ${r.width_mm}, ${r.height_mm},
+          ${r.color}, ${r.size}, ${r.material}, ${r.gender}, ${r.age_group},
+          ${r.manufacturer}, ${r.country_of_origin}, ${r.hsn_code}, ${r.gst_rate},
+          ${r.google_category}, ${r.meta_category}, ${r.product_url}
         ) RETURNING id
       `) as Array<{ id: string }>;
       createdIds.push(ins[0]!.id);

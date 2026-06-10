@@ -148,6 +148,39 @@ describe('u-products-import', () => {
     expect(body.warnings.some((w) => /sale price.*no sale window/i.test(w.message))).toBe(true);
   });
 
+  test('imports new products with full Phase B field set', async () => {
+    const csv = readFileSync(join(__dirname, '../fixtures/products/import-phase-b-full.csv'));
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(csv);
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const body = await r.json() as { committed: boolean; summary: { to_create: number; to_update: number; errors: number } };
+    expect(body.committed).toBe(true);
+    expect(body.summary.errors).toBe(0);
+
+    const rows = await sql`
+      SELECT sku, gtin, condition, availability, sale_price_cents,
+             weight_grams, length_mm, color, gst_rate, country_of_origin
+      FROM public.products
+      WHERE client_id = ${clientId}::uuid AND sku = 'WH-1'
+    ` as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.gtin).toBe('1234567890123');
+    expect(row.condition).toBe('new');
+    expect(row.availability).toBe('in_stock');
+    expect(row.sale_price_cents).toBe(9900);
+    expect(row.weight_grams).toBe(250);
+    expect(row.length_mm).toBe(200);
+    expect(row.color).toBe('Black');
+    expect(String(row.gst_rate)).toBe('18.00');
+    expect(row.country_of_origin).toBe('India');
+  });
+
   test('legacy 12-column CSV does NOT wipe Phase B columns on existing products', async () => {
     // Seed an existing product with all Phase B columns populated via SQL directly.
     const seededSku = `BC-${Date.now()}`;
