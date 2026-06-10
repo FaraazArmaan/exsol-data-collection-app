@@ -158,6 +158,7 @@ export default async (req: Request, _ctx: Context) => {
   const createdIds: string[] = [];
   const updatedIds: string[] = [];
   const userNodeId = session.kind === 'bucket_user' ? session.user_node_id : null;
+  const present = parsed.present_columns;
 
   for (const v of valid) {
     const r = v._row;
@@ -201,7 +202,30 @@ export default async (req: Request, _ctx: Context) => {
           stock_qty   = ${r.stock_qty},
           unit        = ${r.unit},
           status      = ${r.status}::product_status,
-          updated_at  = now()
+          gtin              = CASE WHEN ${present.has('gtin')}::boolean              THEN ${r.gtin}              ELSE gtin              END,
+          mpn               = CASE WHEN ${present.has('mpn')}::boolean               THEN ${r.mpn}               ELSE mpn               END,
+          condition         = CASE WHEN ${present.has('condition')}::boolean         THEN COALESCE(${r.condition}, 'new')         ELSE condition         END,
+          availability      = CASE WHEN ${present.has('availability')}::boolean      THEN COALESCE(${r.availability}, 'in_stock') ELSE availability      END,
+          sale_price_cents  = CASE WHEN ${present.has('sale_price')}::boolean        THEN ${r.sale_price_cents}  ELSE sale_price_cents  END,
+          sale_starts_at    = CASE WHEN ${present.has('sale_starts_at')}::boolean    THEN ${r.sale_starts_at}::timestamptz ELSE sale_starts_at    END,
+          sale_ends_at      = CASE WHEN ${present.has('sale_ends_at')}::boolean      THEN ${r.sale_ends_at}::timestamptz   ELSE sale_ends_at      END,
+          weight_grams      = CASE WHEN ${present.has('weight_grams')}::boolean      THEN ${r.weight_grams}      ELSE weight_grams      END,
+          length_mm         = CASE WHEN ${present.has('length_mm')}::boolean         THEN ${r.length_mm}         ELSE length_mm         END,
+          width_mm          = CASE WHEN ${present.has('width_mm')}::boolean          THEN ${r.width_mm}          ELSE width_mm          END,
+          height_mm         = CASE WHEN ${present.has('height_mm')}::boolean         THEN ${r.height_mm}         ELSE height_mm         END,
+          color             = CASE WHEN ${present.has('color')}::boolean             THEN ${r.color}             ELSE color             END,
+          size              = CASE WHEN ${present.has('size')}::boolean              THEN ${r.size}              ELSE size              END,
+          material          = CASE WHEN ${present.has('material')}::boolean          THEN ${r.material}          ELSE material          END,
+          gender            = CASE WHEN ${present.has('gender')}::boolean            THEN ${r.gender}            ELSE gender            END,
+          age_group         = CASE WHEN ${present.has('age_group')}::boolean         THEN ${r.age_group}         ELSE age_group         END,
+          manufacturer      = CASE WHEN ${present.has('manufacturer')}::boolean      THEN ${r.manufacturer}      ELSE manufacturer      END,
+          country_of_origin = CASE WHEN ${present.has('country_of_origin')}::boolean THEN ${r.country_of_origin} ELSE country_of_origin END,
+          hsn_code          = CASE WHEN ${present.has('hsn_code')}::boolean          THEN ${r.hsn_code}          ELSE hsn_code          END,
+          gst_rate          = CASE WHEN ${present.has('gst_rate')}::boolean          THEN ${r.gst_rate}          ELSE gst_rate          END,
+          google_category   = CASE WHEN ${present.has('google_category')}::boolean   THEN ${r.google_category}   ELSE google_category   END,
+          meta_category     = CASE WHEN ${present.has('meta_category')}::boolean     THEN ${r.meta_category}     ELSE meta_category     END,
+          product_url       = CASE WHEN ${present.has('product_url')}::boolean       THEN ${r.product_url}       ELSE product_url       END,
+          updated_at        = now()
         WHERE id = ${v.id}::uuid AND client_id = ${clientId}::uuid
       `;
       updatedIds.push(v.id);

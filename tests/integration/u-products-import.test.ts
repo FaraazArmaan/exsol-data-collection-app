@@ -181,6 +181,64 @@ describe('u-products-import', () => {
     expect(row.country_of_origin).toBe('India');
   });
 
+  test('partial UPDATE: present headers overwrite; absent headers preserve', async () => {
+    const seededSku = `P-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (
+        client_id, type, name, sku, price_cents,
+        gtin, mpn, condition, availability, weight_grams, color, gst_rate
+      ) VALUES (
+        ${clientId}::uuid, 'physical', 'Seed', ${seededSku}, 1000,
+        'OLD-GTIN', 'OLD-MPN', 'refurbished', 'preorder', 500, 'Blue', 12.0
+      )
+    `;
+    const csv = [
+      'sku,name,type,price,condition,gst_rate',
+      `${seededSku},Seed,physical,10.00,new,18`,
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const rows = await sql`
+      SELECT gtin, mpn, condition, availability, weight_grams, color, gst_rate
+      FROM public.products WHERE sku = ${seededSku} AND client_id = ${clientId}::uuid
+    ` as Array<Record<string, unknown>>;
+    const row = rows[0]!;
+    expect(row.condition).toBe('new');               // overwritten (header present)
+    expect(String(row.gst_rate)).toBe('18.00');      // overwritten
+    expect(row.gtin).toBe('OLD-GTIN');               // preserved (header absent)
+    expect(row.mpn).toBe('OLD-MPN');                 // preserved
+    expect(row.availability).toBe('preorder');       // preserved
+    expect(row.weight_grams).toBe(500);              // preserved
+    expect(row.color).toBe('Blue');                  // preserved
+  });
+
+  test('empty cell in present header clears the column to NULL', async () => {
+    const seededSku = `EC-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, gtin)
+      VALUES (${clientId}::uuid, 'physical', 'Seed', ${seededSku}, 1000, 'WILL-CLEAR')
+    `;
+    const csv = [
+      'sku,name,type,price,gtin',
+      `${seededSku},Seed,physical,10.00,`,
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    const rows = await sql`SELECT gtin FROM public.products WHERE sku = ${seededSku} AND client_id = ${clientId}::uuid` as Array<Record<string, unknown>>;
+    expect(rows[0]!.gtin).toBeNull();
+  });
+
   test('legacy 12-column CSV does NOT wipe Phase B columns on existing products', async () => {
     // Seed an existing product with all Phase B columns populated via SQL directly.
     const seededSku = `BC-${Date.now()}`;
