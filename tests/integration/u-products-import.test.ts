@@ -179,6 +179,13 @@ describe('u-products-import', () => {
     expect(row.color).toBe('Black');
     expect(String(row.gst_rate)).toBe('18.00');
     expect(row.country_of_origin).toBe('India');
+
+    const audits = await sql`
+      SELECT detail FROM public.audit_log
+      WHERE client_id = ${clientId}::uuid AND op = 'products.imported'
+      ORDER BY occurred_at DESC LIMIT 1
+    ` as Array<{ detail: Record<string, unknown> }>;
+    expect(audits[0]!.detail.phase_b_columns_touched).toBe(23);
   });
 
   test('partial UPDATE: present headers overwrite; absent headers preserve', async () => {

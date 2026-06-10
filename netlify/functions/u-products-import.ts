@@ -16,7 +16,7 @@ import { db } from './_shared/db';
 import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission, resolveClientIdOrRespond } from './_shared/permissions';
 import { logAudit } from './_shared/audit';
-import { parseCsvBytes, type ParsedImportRow } from './_shared/products-import-parse';
+import { parseCsvBytes, PHASE_B_HEADERS, type ParsedImportRow } from './_shared/products-import-parse';
 
 interface ValidEntry {
   row: number;
@@ -235,7 +235,11 @@ export default async (req: Request, _ctx: Context) => {
   await logAudit(sql, {
     session, op: 'products.imported',
     clientId, targetType: 'product', targetId: clientId,
-    detail: { created: createdIds.length, updated: updatedIds.length },
+    detail: {
+      created: createdIds.length,
+      updated: updatedIds.length,
+      phase_b_columns_touched: PHASE_B_HEADERS.filter((h) => parsed.present_columns.has(h)).length,
+    },
   });
 
   return jsonOk({
