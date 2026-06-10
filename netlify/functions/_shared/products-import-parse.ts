@@ -4,6 +4,16 @@
 import * as XLSX from 'xlsx';
 import { validateTypeFields, type FieldError } from './products-validate';
 
+export const PHASE_B_HEADERS = [
+  'gtin', 'mpn', 'condition', 'availability',
+  'sale_price', 'sale_starts_at', 'sale_ends_at',
+  'weight_grams', 'length_mm', 'width_mm', 'height_mm',
+  'color', 'size', 'material', 'gender', 'age_group',
+  'manufacturer', 'country_of_origin', 'hsn_code', 'gst_rate',
+  'google_category', 'meta_category', 'product_url',
+] as const;
+export type PhaseBHeader = typeof PHASE_B_HEADERS[number];
+
 export interface ParsedImportRow {
   row_index: number;             // 1-based, including header row (so first data row = 2)
   sku: string | null;
@@ -39,6 +49,117 @@ function parsePrice(s: string | null, errors: FieldError[]): number {
   if (!Number.isFinite(n)) { errors.push({ field: 'price', message: 'not a number' }); return 0; }
   if (n < 0) { errors.push({ field: 'price', message: 'must be >= 0' }); return 0; }
   return Math.round(n * 100);
+}
+
+export function parseDecimal(
+  s: string | null,
+  errors: FieldError[],
+  opts: { field: string; min?: number; max?: number; allowNull?: boolean },
+): number | null {
+  if (s == null || s.trim() === '') {
+    if (opts.allowNull) return null;
+    errors.push({ field: opts.field, message: 'required' });
+    return null;
+  }
+  const cleaned = s.replace(/[^0-9.\-]/g, '');
+  if (cleaned === '' || cleaned === '-' || cleaned === '.') {
+    errors.push({ field: opts.field, message: 'not a number' });
+    return null;
+  }
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) {
+    errors.push({ field: opts.field, message: 'not a number' });
+    return null;
+  }
+  if (opts.min != null && n < opts.min) {
+    errors.push({ field: opts.field, message: `must be >= ${opts.min}` });
+    return null;
+  }
+  if (opts.max != null && n > opts.max) {
+    errors.push({ field: opts.field, message: `must be <= ${opts.max}` });
+    return null;
+  }
+  return n;
+}
+
+export function parseIntCell(
+  s: string | null,
+  errors: FieldError[],
+  opts: { field: string; min: number; allowNull?: boolean },
+): number | null {
+  if (s == null || s.trim() === '') {
+    if (opts.allowNull) return null;
+    errors.push({ field: opts.field, message: 'required' });
+    return null;
+  }
+  const n = Number(s);
+  if (!Number.isFinite(n)) {
+    errors.push({ field: opts.field, message: 'not a number' });
+    return null;
+  }
+  if (!Number.isInteger(n)) {
+    errors.push({ field: opts.field, message: 'must be an integer' });
+    return null;
+  }
+  if (n < opts.min) {
+    errors.push({ field: opts.field, message: `must be >= ${opts.min}` });
+    return null;
+  }
+  return n;
+}
+
+export function parseTimestamp(
+  s: string | number | null,
+  errors: FieldError[],
+  opts: { field: string },
+): string | null {
+  if (s == null || (typeof s === 'string' && s.trim() === '')) return null;
+
+  // Excel-serial date (XLSX emits these as numbers when cellDates is false).
+  if (typeof s === 'number') {
+    const parts = XLSX.SSF.parse_date_code(s);
+    if (!parts) {
+      errors.push({ field: opts.field, message: 'invalid date serial' });
+      return null;
+    }
+    const iso = new Date(Date.UTC(parts.y, parts.m - 1, parts.d, parts.H, parts.M, Math.floor(parts.S))).toISOString();
+    return iso;
+  }
+
+  // YYYY-MM-DD shorthand
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(s + 'T00:00:00Z');
+    if (Number.isNaN(d.getTime())) {
+      errors.push({ field: opts.field, message: 'invalid date' });
+      return null;
+    }
+    return d.toISOString();
+  }
+
+  // Full ISO
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    errors.push({ field: opts.field, message: 'invalid date' });
+    return null;
+  }
+  return d.toISOString();
+}
+
+export function parseEnum<T extends string>(
+  s: string | null,
+  whitelist: readonly T[],
+  errors: FieldError[],
+  opts: { field: string; allowNull?: boolean },
+): T | null {
+  if (s == null || s.trim() === '') {
+    if (opts.allowNull) return null;
+    errors.push({ field: opts.field, message: 'required' });
+    return null;
+  }
+  const normalized = s.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (whitelist.includes(normalized as T)) return normalized as T;
+  errors.push({ field: opts.field, message: `must be ${whitelist.join('|')}` });
+  return null;
 }
 
 function parseRow(raw: Record<string, unknown>, idx: number): ParsedImportRow {
