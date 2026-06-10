@@ -291,4 +291,24 @@ describe('u-products-import', () => {
     expect(row.country_of_origin).toBe('India');
     expect(row.hsn_code).toBe('HSN-X');
   });
+
+  test('dry_run includes Phase B fields in the valid[] payload', async () => {
+    const csv = [
+      'sku,name,type,price,gtin,condition,gst_rate',
+      'D-1,Widget,physical,12.00,9999,refurbished,18',
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?dry_run=1&client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const body = await r.json() as { valid: Array<{ row: number; name: string; action: string; id?: string }>; summary: { to_create: number } };
+    expect(body.summary.to_create).toBe(1);
+    // Dry-run does NOT write — confirm no row exists.
+    const rows = await sql`SELECT id FROM public.products WHERE sku = 'D-1' AND client_id = ${clientId}::uuid` as Array<{ id: string }>;
+    expect(rows).toHaveLength(0);
+  });
 });
