@@ -130,4 +130,21 @@ describe('u-products-import', () => {
     expect(body.summary.to_update).toBeGreaterThan(0);
     expect(body.valid.some((v) => v.action === 'update')).toBe(true);
   });
+
+  test('emits a warning when sale_price is set without a sale window', async () => {
+    const csv = [
+      'sku,name,type,price,sale_price,sale_starts_at',
+      'W-SP,Widget,physical,10.00,5.00,',
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?dry_run=1&client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const body = await r.json() as { warnings: Array<{ row: number; message: string }> };
+    expect(body.warnings.some((w) => /sale price.*no sale window/i.test(w.message))).toBe(true);
+  });
 });

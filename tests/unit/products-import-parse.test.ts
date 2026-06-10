@@ -215,3 +215,11 @@ describe('parseRow Phase B fields', () => {
     expect(r.rows[0]!.gtin).toBeNull();
   });
 });
+
+describe('parseRow cross-field validation', () => {
+  it('errors when sale_starts_at > sale_ends_at', () => {
+    const csv = `sku,name,type,price,sale_starts_at,sale_ends_at\nW,Widget,physical,1,2026-08-01,2026-07-15`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.rows[0]!.errors.some((e) => e.field === 'sale_ends_at' && /before sale_starts_at/.test(e.message))).toBe(true);
+  });
+});

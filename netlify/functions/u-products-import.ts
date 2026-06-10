@@ -102,6 +102,11 @@ export default async (req: Request, _ctx: Context) => {
       }
     }
 
+    // Phase B: warn if sale_price set without a sale window.
+    if (r.sale_price_cents != null && r.sale_starts_at == null) {
+      warnings.push({ row: r.row_index, message: 'sale price set but no sale window — will apply immediately' });
+    }
+
     if (r.errors.length > 0) continue;
 
     // Determine action: create vs update

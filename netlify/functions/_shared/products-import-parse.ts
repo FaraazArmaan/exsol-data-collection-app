@@ -276,6 +276,12 @@ function parseRow(raw: Record<string, unknown>, idx: number, present: Set<string
     ? parseDecimal(trimStr(raw, present, 'gst_rate'), errors, { field: 'gst_rate', min: 0, max: 100, allowNull: true })
     : null;
 
+  // Cross-field validation: sale window date order
+  if (sale_starts_at && sale_ends_at && new Date(sale_starts_at).getTime() > new Date(sale_ends_at).getTime()) {
+    errors.push({ field: 'sale_ends_at', message: 'must not be before sale_starts_at' });
+  }
+
+
   return {
     row_index: idx + 2,
     sku, name: name ?? '', type,
