@@ -3,6 +3,7 @@
 
 import * as XLSX from 'xlsx';
 import { validateTypeFields, type FieldError } from './products-validate';
+import type { Condition, Availability } from './products-validate';
 
 export const PHASE_B_HEADERS = [
   'gtin', 'mpn', 'condition', 'availability',
@@ -28,6 +29,32 @@ export interface ParsedImportRow {
   status: 'active' | 'draft' | 'archived';
   tags: string[];
   description: string | null;
+
+  // Phase B
+  gtin: string | null;
+  mpn: string | null;
+  condition: Condition | null;
+  availability: Availability | null;
+  sale_price_cents: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  weight_grams: number | null;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  color: string | null;
+  size: string | null;
+  material: string | null;
+  gender: string | null;
+  age_group: string | null;
+  manufacturer: string | null;
+  country_of_origin: string | null;
+  hsn_code: string | null;
+  gst_rate: number | null;
+  google_category: string | null;
+  meta_category: string | null;
+  product_url: string | null;
+
   errors: FieldError[];
 }
 
@@ -117,8 +144,10 @@ export function parseTimestamp(
   if (s == null || (typeof s === 'string' && s.trim() === '')) return null;
 
   // Excel-serial date (XLSX emits these as numbers when cellDates is false).
+  // Use Math.floor to strip any timezone-offset fractional that XLSX adds when
+  // parsing bare YYYY-MM-DD strings from CSV in local time — ensures midnight UTC.
   if (typeof s === 'number') {
-    const parts = XLSX.SSF.parse_date_code(s);
+    const parts = XLSX.SSF.parse_date_code(Math.floor(s));
     if (!parts) {
       errors.push({ field: opts.field, message: 'invalid date serial' });
       return null;
@@ -163,7 +192,18 @@ export function parseEnum<T extends string>(
   return null;
 }
 
-function parseRow(raw: Record<string, unknown>, idx: number, _present: Set<string>): ParsedImportRow {
+function trimStr(raw: Record<string, unknown>, present: Set<string>, key: string): string | null {
+  if (!present.has(key)) return null;
+  const v = raw[key];
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s.length === 0 ? null : s;
+}
+
+const CONDITION_VALUES = ['new', 'refurbished', 'used'] as const;
+const AVAILABILITY_VALUES = ['in_stock', 'out_of_stock', 'preorder', 'discontinued'] as const;
+
+function parseRow(raw: Record<string, unknown>, idx: number, present: Set<string>): ParsedImportRow {
   const errors: FieldError[] = [];
   const sku  = trim(raw['sku']);
   const name = trim(raw['name']);
@@ -195,6 +235,47 @@ function parseRow(raw: Record<string, unknown>, idx: number, _present: Set<strin
 
   errors.push(...validateTypeFields({ type, sku, stock_qty, unit }));
 
+  // Phase B reads (only when header present)
+  const gtin = trimStr(raw, present, 'gtin');
+  const mpn = trimStr(raw, present, 'mpn');
+  const conditionCell = trimStr(raw, present, 'condition');
+  const condition = present.has('condition')
+    ? parseEnum(conditionCell, CONDITION_VALUES, errors, { field: 'condition', allowNull: true })
+    : null;
+  const availabilityCell = trimStr(raw, present, 'availability');
+  const availability = present.has('availability')
+    ? parseEnum(availabilityCell, AVAILABILITY_VALUES, errors, { field: 'availability', allowNull: true })
+    : null;
+
+  const salePriceCell = trimStr(raw, present, 'sale_price');
+  const sale_price_cents = present.has('sale_price')
+    ? (salePriceCell == null ? null : Math.round((parseDecimal(salePriceCell, errors, { field: 'sale_price', min: 0, allowNull: true }) ?? 0) * 100))
+    : null;
+
+  const sale_starts_at = present.has('sale_starts_at')
+    ? parseTimestamp(typeof raw['sale_starts_at'] === 'number' ? raw['sale_starts_at'] as number : trimStr(raw, present, 'sale_starts_at'), errors, { field: 'sale_starts_at' })
+    : null;
+  const sale_ends_at = present.has('sale_ends_at')
+    ? parseTimestamp(typeof raw['sale_ends_at'] === 'number' ? raw['sale_ends_at'] as number : trimStr(raw, present, 'sale_ends_at'), errors, { field: 'sale_ends_at' })
+    : null;
+
+  const weight_grams = present.has('weight_grams')
+    ? parseIntCell(trimStr(raw, present, 'weight_grams'), errors, { field: 'weight_grams', min: 0, allowNull: true })
+    : null;
+  const length_mm = present.has('length_mm')
+    ? parseIntCell(trimStr(raw, present, 'length_mm'), errors, { field: 'length_mm', min: 0, allowNull: true })
+    : null;
+  const width_mm = present.has('width_mm')
+    ? parseIntCell(trimStr(raw, present, 'width_mm'), errors, { field: 'width_mm', min: 0, allowNull: true })
+    : null;
+  const height_mm = present.has('height_mm')
+    ? parseIntCell(trimStr(raw, present, 'height_mm'), errors, { field: 'height_mm', min: 0, allowNull: true })
+    : null;
+
+  const gst_rate = present.has('gst_rate')
+    ? parseDecimal(trimStr(raw, present, 'gst_rate'), errors, { field: 'gst_rate', min: 0, max: 100, allowNull: true })
+    : null;
+
   return {
     row_index: idx + 2,
     sku, name: name ?? '', type,
@@ -205,6 +286,21 @@ function parseRow(raw: Record<string, unknown>, idx: number, _present: Set<strin
     unit:      type === 'service' ? null : unit,
     status, tags,
     description: trim(raw['description']),
+    gtin, mpn, condition, availability,
+    sale_price_cents, sale_starts_at, sale_ends_at,
+    weight_grams, length_mm, width_mm, height_mm,
+    color: trimStr(raw, present, 'color'),
+    size: trimStr(raw, present, 'size'),
+    material: trimStr(raw, present, 'material'),
+    gender: trimStr(raw, present, 'gender'),
+    age_group: trimStr(raw, present, 'age_group'),
+    manufacturer: trimStr(raw, present, 'manufacturer'),
+    country_of_origin: trimStr(raw, present, 'country_of_origin'),
+    hsn_code: trimStr(raw, present, 'hsn_code'),
+    gst_rate,
+    google_category: trimStr(raw, present, 'google_category'),
+    meta_category: trimStr(raw, present, 'meta_category'),
+    product_url: trimStr(raw, present, 'product_url'),
     errors,
   };
 }

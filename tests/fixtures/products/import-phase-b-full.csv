@@ -1,0 +1,4 @@
+sku,name,type,category,brand,price,currency,stock_qty,unit,status,tags,description,gtin,mpn,condition,availability,sale_price,sale_starts_at,sale_ends_at,weight_grams,length_mm,width_mm,height_mm,color,size,material,gender,age_group,manufacturer,country_of_origin,hsn_code,gst_rate,google_category,meta_category,product_url
+WH-1,Wireless Headphones,physical,Electronics,SoundLab,129.00,USD,24,each,active,wireless;audio,Premium over-ear,1234567890123,SL-WH-1,new,in_stock,99.00,2026-07-01T00:00:00Z,2026-07-31T23:59:59Z,250,200,180,80,Black,One Size,Plastic,Unisex,Adult,SoundLab Inc,India,851830,18,Electronics > Audio > Headphones,Electronics & Accessories,https://example.com/wh-1
+,Repair Service,service,Services,,80.00,USD,,,active,onsite,1-hour minimum,,,refurbished,in_stock,,,,,,,,,,,,,,,,,,
+USB-1,USB-C Hub,physical,Electronics,HubCo,45.00,USD,5,each,draft,,,,,used,out_of_stock,,,,150,90,60,20,Silver,,Aluminum,,,HubCo Ltd,China,851770,18,,,

@@ -133,3 +133,85 @@ describe('parseCsvBytes header normalization', () => {
     expect(r.rows[0]!.price_cents).toBe(1250);
   });
 });
+
+describe('parseRow Phase B fields', () => {
+  function rowFromCsv(csv: string) {
+    const r = parseCsvBytes(Buffer.from(csv));
+    return r.rows[0]!;
+  }
+
+  it('reads gtin/mpn/color/size as trimmed strings', () => {
+    const csv = `sku,name,type,price,gtin,mpn,color,size\nW,Widget,physical,1,  9876  ,M-1,Red,Medium`;
+    const r = rowFromCsv(csv);
+    expect(r.gtin).toBe('9876');
+    expect(r.mpn).toBe('M-1');
+    expect(r.color).toBe('Red');
+    expect(r.size).toBe('Medium');
+  });
+
+  it('reads condition + availability via normalized enum', () => {
+    const csv = `sku,name,type,price,condition,availability\nW,Widget,physical,1,Refurbished,Out-of-Stock`;
+    const r = rowFromCsv(csv);
+    expect(r.condition).toBe('refurbished');
+    expect(r.availability).toBe('out_of_stock');
+    expect(r.errors).toEqual([]);
+  });
+
+  it('errors on invalid condition', () => {
+    const csv = `sku,name,type,price,condition\nW,Widget,physical,1,broken`;
+    const r = rowFromCsv(csv);
+    expect(r.errors.some((e) => e.field === 'condition')).toBe(true);
+  });
+
+  it('reads sale_price as cents', () => {
+    const csv = `sku,name,type,price,sale_price\nW,Widget,physical,1,9.50`;
+    const r = rowFromCsv(csv);
+    expect(r.sale_price_cents).toBe(950);
+  });
+
+  it('sale_price empty cell is null (not 0)', () => {
+    const csv = `sku,name,type,price,sale_price\nW,Widget,physical,1,`;
+    const r = rowFromCsv(csv);
+    expect(r.sale_price_cents).toBeNull();
+    expect(r.errors).toEqual([]);
+  });
+
+  it('reads dimensions as integers', () => {
+    const csv = `sku,name,type,price,weight_grams,length_mm,width_mm,height_mm\nW,Widget,physical,1,250,200,180,80`;
+    const r = rowFromCsv(csv);
+    expect(r.weight_grams).toBe(250);
+    expect(r.length_mm).toBe(200);
+    expect(r.width_mm).toBe(180);
+    expect(r.height_mm).toBe(80);
+  });
+
+  it('reads gst_rate as decimal', () => {
+    const csv = `sku,name,type,price,gst_rate\nW,Widget,physical,1,18.5`;
+    const r = rowFromCsv(csv);
+    expect(r.gst_rate).toBe(18.5);
+  });
+
+  it('reads sale dates as ISO strings', () => {
+    const csv = `sku,name,type,price,sale_starts_at,sale_ends_at\nW,Widget,physical,1,2026-07-01,2026-07-31T23:59:59Z`;
+    const r = rowFromCsv(csv);
+    expect(r.sale_starts_at).toBe('2026-07-01T00:00:00.000Z');
+    expect(r.sale_ends_at).toBe('2026-07-31T23:59:59.000Z');
+  });
+
+  it('parses the full Phase B fixture without errors', () => {
+    const bytes = readFileSync(join(__dirname, '../fixtures/products/import-phase-b-full.csv'));
+    const r = parseCsvBytes(bytes);
+    expect(r.rows).toHaveLength(3);
+    expect(r.meta.error).toBe(0);
+    expect(r.rows[0]!.gtin).toBe('1234567890123');
+    expect(r.rows[0]!.gst_rate).toBe(18);
+    expect(r.rows[0]!.country_of_origin).toBe('India');
+  });
+
+  it('absent Phase B header → field is null and not in present_columns', () => {
+    const csv = `sku,name,type,price\nW,Widget,physical,1`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.present_columns.has('gtin')).toBe(false);
+    expect(r.rows[0]!.gtin).toBeNull();
+  });
+});
