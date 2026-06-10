@@ -214,6 +214,14 @@ describe('parseRow Phase B fields', () => {
     expect(r.present_columns.has('gtin')).toBe(false);
     expect(r.rows[0]!.gtin).toBeNull();
   });
+
+  it('invalid sale_price → row error AND sale_price_cents stays null (not 0)', () => {
+    const csv = `sku,name,type,price,sale_price\nW,Widget,physical,1,not-a-number`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    const row = r.rows[0]!;
+    expect(row.sale_price_cents).toBeNull();
+    expect(row.errors.some((e) => e.field === 'sale_price')).toBe(true);
+  });
 });
 
 describe('parseRow cross-field validation', () => {

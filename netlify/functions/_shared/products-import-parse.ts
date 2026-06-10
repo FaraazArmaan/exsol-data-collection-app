@@ -255,9 +255,10 @@ function parseRow(raw: Record<string, unknown>, idx: number, present: Set<string
     : null;
 
   const salePriceCell = trimStr(raw, present, 'sale_price');
-  const sale_price_cents = present.has('sale_price')
-    ? (salePriceCell == null ? null : Math.round((parseDecimal(salePriceCell, errors, { field: 'sale_price', min: 0, allowNull: true }) ?? 0) * 100))
+  const salePriceDecimal = present.has('sale_price')
+    ? parseDecimal(salePriceCell, errors, { field: 'sale_price', min: 0, allowNull: true })
     : null;
+  const sale_price_cents = salePriceDecimal == null ? null : Math.round(salePriceDecimal * 100);
 
   const sale_starts_at = present.has('sale_starts_at')
     ? parseTimestamp(typeof raw['sale_starts_at'] === 'number' ? raw['sale_starts_at'] as number : trimStr(raw, present, 'sale_starts_at'), errors, { field: 'sale_starts_at' })
