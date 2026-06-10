@@ -34,6 +34,7 @@ export interface ParsedImportRow {
 export interface ParsedImport {
   rows: ParsedImportRow[];
   meta: { total: number; valid: number; error: number };
+  present_columns: Set<string>;
 }
 
 function trim(v: unknown): string | null {
@@ -162,7 +163,7 @@ export function parseEnum<T extends string>(
   return null;
 }
 
-function parseRow(raw: Record<string, unknown>, idx: number): ParsedImportRow {
+function parseRow(raw: Record<string, unknown>, idx: number, _present: Set<string>): ParsedImportRow {
   const errors: FieldError[] = [];
   const sku  = trim(raw['sku']);
   const name = trim(raw['name']);
@@ -212,7 +213,20 @@ export function parseCsvBytes(bytes: Uint8Array | Buffer): ParsedImport {
   const wb = XLSX.read(bytes, { type: 'buffer' });
   const sheet = wb.Sheets[wb.SheetNames[0]!]!;
   const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
-  const rows = raw.map((r, i) => parseRow(r, i));
+
+  // Normalize every row's keys to trimmed-lowercase. Compute present_columns
+  // from the first row's normalized keys (XLSX uses the header row for keys).
+  const normalized = raw.map((row) => {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) out[k.trim().toLowerCase()] = v;
+    return out;
+  });
+
+  const present_columns = new Set<string>(
+    normalized[0] ? Object.keys(normalized[0]) : [],
+  );
+
+  const rows = normalized.map((r, i) => parseRow(r, i, present_columns));
   const valid = rows.filter((r) => r.errors.length === 0).length;
-  return { rows, meta: { total: rows.length, valid, error: rows.length - valid } };
+  return { rows, meta: { total: rows.length, valid, error: rows.length - valid }, present_columns };
 }

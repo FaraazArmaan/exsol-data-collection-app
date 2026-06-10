@@ -114,3 +114,22 @@ describe('parseEnum', () => {
     expect(parseEnum(null, COND, errs, { field: 'condition', allowNull: true })).toBeNull();
   });
 });
+
+describe('parseCsvBytes header normalization', () => {
+  it('exposes present_columns for the CSV header row (lowercased + trimmed)', () => {
+    const csv = `SKU, name , type, gtin\nW-1,Widget,physical,1234`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.present_columns.has('sku')).toBe(true);
+    expect(r.present_columns.has('name')).toBe(true);
+    expect(r.present_columns.has('gtin')).toBe(true);
+    // Existing columns absent from header should NOT be in the set
+    expect(r.present_columns.has('brand')).toBe(false);
+  });
+
+  it('matches headers case-insensitively when reading row values', () => {
+    const csv = `SKU,Name,Type,Price\nW-1,Widget,physical,12.50`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.rows[0]!.name).toBe('Widget');
+    expect(r.rows[0]!.price_cents).toBe(1250);
+  });
+});
