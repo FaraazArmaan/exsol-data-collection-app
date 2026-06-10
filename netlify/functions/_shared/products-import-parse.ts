@@ -143,6 +143,13 @@ export function parseTimestamp(
 ): string | null {
   if (s == null || (typeof s === 'string' && s.trim() === '')) return null;
 
+  // XLSX-serial numeric branch.
+  // Known limitation: XLSX library serializes Date cells in the writer's local
+  // timezone. Fixtures must be authored under TZ=UTC for consistent reads.
+  // End-user XLSX files created in non-UTC timezones may show date drift on
+  // or near midnight UTC. Future hardening could detect Date-typed cells via
+  // cellDates:true on read + an instanceof Date branch here.
+  //
   // Excel-serial date (XLSX emits these as numbers when cellDates is false).
   // Use Math.floor to strip any timezone-offset fractional that XLSX adds when
   // parsing bare YYYY-MM-DD strings from CSV in local time — ensures midnight UTC.

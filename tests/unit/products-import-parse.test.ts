@@ -223,3 +223,13 @@ describe('parseRow cross-field validation', () => {
     expect(r.rows[0]!.errors.some((e) => e.field === 'sale_ends_at' && /before sale_starts_at/.test(e.message))).toBe(true);
   });
 });
+
+describe('XLSX date serial', () => {
+  it('parses Excel date cells to ISO timestamps', () => {
+    const bytes = readFileSync(join(__dirname, '../fixtures/products/import-phase-b-dates.xlsx'));
+    const r = parseCsvBytes(bytes);
+    expect(r.rows[0]!.sale_starts_at).toMatch(/^2026-08-01T/);
+    expect(r.rows[0]!.sale_ends_at).toMatch(/^2026-08-31T/);
+    expect(r.rows[0]!.errors.filter((e) => e.field.startsWith('sale_'))).toEqual([]);
+  });
+});
