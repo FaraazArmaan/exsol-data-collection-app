@@ -11,7 +11,7 @@ const HEADERS = [
   'Other Image URL 1', 'Other Image URL 2', 'Other Image URL 3', 'Other Image URL 4',
   'Other Image URL 5', 'Other Image URL 6', 'Other Image URL 7', 'Other Image URL 8',
   'HSN Code', 'GST Rate', 'Manufacturer Name',
-  'Country of Origin (Duplicate?)', 'Manufacturer Address',
+  'Manufacturer Address',
 ] as const;
 
 export function format(ctx: ExporterContext): ExportResult {
@@ -41,7 +41,6 @@ export function format(ctx: ExporterContext): ExportResult {
       row.hsn_code ?? '',
       row.gst_rate != null ? String(row.gst_rate) : '',
       row.manufacturer ?? '',
-      country,
       '',
     ]);
   }
