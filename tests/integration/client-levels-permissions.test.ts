@@ -98,7 +98,7 @@ describe('client-levels-permissions', () => {
     expect(body.platform_rows.map((r) => r.surface).sort()).toEqual(['files', 'settings', 'structure', 'users']);
   });
 
-  it('GET after enabling saloon-booking returns booking + payments rows', async () => {
+  it('GET after enabling saloon-booking returns booking + payments + products rows', async () => {
     await adminClientProductsHandler(
       new Request(`http://localhost/api/admin-client-products?client=${clientId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
@@ -111,7 +111,13 @@ describe('client-levels-permissions', () => {
     );
     const body = await r.json() as { module_rows: Array<{ module_key: string; bucket: string }> };
     const keys = body.module_rows.map((r) => `${r.module_key}.${r.bucket}`).sort();
-    expect(keys).toEqual(['booking.customers', 'booking.employees', 'payments.customers', 'payments.products']);
+    expect(keys).toEqual([
+      'booking.customers',
+      'booking.employees',
+      'payments.customers',
+      'payments.products',
+      'products.products',
+    ]);
   });
 
   it('PUT replaces the matrix (full replace, not merge)', async () => {
