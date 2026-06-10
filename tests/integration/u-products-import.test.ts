@@ -147,4 +147,57 @@ describe('u-products-import', () => {
     const body = await r.json() as { warnings: Array<{ row: number; message: string }> };
     expect(body.warnings.some((w) => /sale price.*no sale window/i.test(w.message))).toBe(true);
   });
+
+  test('legacy 12-column CSV does NOT wipe Phase B columns on existing products', async () => {
+    // Seed an existing product with all Phase B columns populated via SQL directly.
+    const seededSku = `BC-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (
+        client_id, type, name, sku, price_cents,
+        gtin, mpn, condition, availability,
+        sale_price_cents, weight_grams, color, gst_rate,
+        country_of_origin, hsn_code
+      ) VALUES (
+        ${clientId}::uuid, 'physical', 'Seeded', ${seededSku}, 1000,
+        'GTIN-X', 'MPN-X', 'refurbished', 'preorder',
+        900, 250, 'Red', 18.0, 'India', 'HSN-X'
+      )
+    `;
+
+    // Re-import via legacy 12-column CSV (no Phase B headers) using the same SKU.
+    const csv = [
+      'sku,name,type,category,brand,price,currency,stock_qty,unit,status,tags,description',
+      `${seededSku},Updated Name,physical,Electronics,,15.00,USD,3,each,active,,Updated description`,
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+
+    // Verify: name + description updated, every Phase B column preserved.
+    const rows = await sql`
+      SELECT name, description, gtin, mpn, condition, availability,
+             sale_price_cents, weight_grams, color, gst_rate,
+             country_of_origin, hsn_code
+      FROM public.products WHERE sku = ${seededSku} AND client_id = ${clientId}::uuid
+    ` as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.name).toBe('Updated Name');
+    expect(row.description).toBe('Updated description');
+    expect(row.gtin).toBe('GTIN-X');
+    expect(row.mpn).toBe('MPN-X');
+    expect(row.condition).toBe('refurbished');
+    expect(row.availability).toBe('preorder');
+    expect(row.sale_price_cents).toBe(900);
+    expect(row.weight_grams).toBe(250);
+    expect(row.color).toBe('Red');
+    expect(String(row.gst_rate)).toBe('18.00');
+    expect(row.country_of_origin).toBe('India');
+    expect(row.hsn_code).toBe('HSN-X');
+  });
 });
