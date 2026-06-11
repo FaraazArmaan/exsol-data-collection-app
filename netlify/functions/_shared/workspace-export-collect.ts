@@ -2,11 +2,20 @@
 //
 // One function: collectWorkspaceSnapshot(sql, clientId, actor) → WorkspaceSnapshot.
 //
-// SECURITY INVARIANT: The credentials SELECT list does NOT include
-// password_hash, temp_password_plain, or password_reset_requested_at.
-// These fields are never read into JS memory inside this function. This
-// is the single source of truth for the redaction rule; format branches
-// CANNOT accidentally leak them because they don't exist on the object.
+// SECURITY INVARIANT (defense-in-depth):
+// Credential redactions are enforced at TWO layers — both must be kept in sync
+// if a new sensitive column is added to user_node_credentials:
+//
+//   1. PRIMARY: the credentials SELECT list explicitly enumerates safe columns;
+//      password_hash, temp_password_plain, and password_reset_requested_at are
+//      omitted, so they never enter the result set against real Postgres.
+//   2. BACKSTOP: a JS-level strip applied after the query — see the
+//      CREDENTIAL_REDACTED_FIELDS Set below. This guards against test mocks
+//      that don't honor SELECT lists, future driver changes, and stray
+//      `SELECT *` regressions.
+//
+// Format branches CANNOT leak the three forbidden fields because the snapshot
+// object simply does not have them.
 
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import type { ExportActor, WorkspaceSnapshot } from './workspace-export-types';
