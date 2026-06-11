@@ -11,6 +11,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission, resolveClientIdOrRespond } from './_shared/permissions';
 import { logAudit } from './_shared/audit';
 import { parseCreateProduct } from './_shared/products-validate';
+import { computeSalePrice } from './_shared/products-discount';
 
 const CreateBody = z.object({
   type: z.enum(['physical', 'service']),
@@ -30,6 +31,7 @@ const CreateBody = z.object({
   mpn: z.string().max(80).nullable().optional(),
   condition: z.enum(['new', 'refurbished', 'used']).optional(),
   availability: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']).optional(),
+  discount_percent: z.number().nullable().optional(),
   sale_price_cents: z.number().int().min(0).nullable().optional(),
   sale_starts_at: z.string().datetime().nullable().optional(),
   sale_ends_at: z.string().datetime().nullable().optional(),
@@ -122,7 +124,7 @@ async function handleList(req: Request): Promise<Response> {
             p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
             p.created_at, p.updated_at,
             p.gtin, p.mpn, p.condition, p.availability,
-            p.sale_price_cents, p.sale_starts_at, p.sale_ends_at,
+            p.sale_price_cents, p.discount_percent, p.sale_starts_at, p.sale_ends_at,
             p.weight_grams, p.length_mm, p.width_mm, p.height_mm,
             p.color, p.size, p.material, p.gender, p.age_group,
             p.manufacturer, p.country_of_origin, p.hsn_code, p.gst_rate,
@@ -194,13 +196,17 @@ async function handleCreate(req: Request): Promise<Response> {
     if (dup.length) return jsonError(409, 'sku_in_use');
   }
 
+  const effectiveSalePriceCents = v.discount_percent != null
+    ? computeSalePrice(v.price_cents, v.discount_percent)
+    : (v.sale_price_cents ?? null);
+
   try {
     const rows = (await sql`
       INSERT INTO public.products (
         client_id, type, name, description, category_id, brand, tags,
         price_cents, sku, stock_qty, unit, status, created_by_user_node,
         gtin, mpn, condition, availability,
-        sale_price_cents, sale_starts_at, sale_ends_at,
+        sale_price_cents, discount_percent, sale_starts_at, sale_ends_at,
         weight_grams, length_mm, width_mm, height_mm,
         color, size, material, gender, age_group,
         manufacturer, country_of_origin, hsn_code, gst_rate,
@@ -213,7 +219,7 @@ async function handleCreate(req: Request): Promise<Response> {
         ${v.status ?? 'draft'}, ${userNodeId}::uuid,
         ${v.gtin ?? null}, ${v.mpn ?? null},
         ${v.condition ?? 'new'}, ${v.availability ?? 'in_stock'},
-        ${v.sale_price_cents ?? null}, ${v.sale_starts_at ?? null}::timestamptz, ${v.sale_ends_at ?? null}::timestamptz,
+        ${effectiveSalePriceCents}, ${v.discount_percent ?? null}, ${v.sale_starts_at ?? null}::timestamptz, ${v.sale_ends_at ?? null}::timestamptz,
         ${v.weight_grams ?? null}, ${v.length_mm ?? null}, ${v.width_mm ?? null}, ${v.height_mm ?? null},
         ${v.color ?? null}, ${v.size ?? null}, ${v.material ?? null}, ${v.gender ?? null}, ${v.age_group ?? null},
         ${v.manufacturer ?? null}, ${v.country_of_origin ?? null}, ${v.hsn_code ?? null}, ${v.gst_rate ?? null},
@@ -223,7 +229,7 @@ async function handleCreate(req: Request): Promise<Response> {
       RETURNING id, type, name, description, category_id, brand, tags, price_cents, currency,
                 sku, stock_qty, unit, status, hero_image_key, created_at, updated_at,
                 gtin, mpn, condition, availability,
-                sale_price_cents, sale_starts_at, sale_ends_at,
+                sale_price_cents, discount_percent, sale_starts_at, sale_ends_at,
                 weight_grams, length_mm, width_mm, height_mm,
                 color, size, material, gender, age_group,
                 manufacturer, country_of_origin, hsn_code, gst_rate,

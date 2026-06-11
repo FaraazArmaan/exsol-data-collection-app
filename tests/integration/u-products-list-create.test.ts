@@ -257,6 +257,44 @@ describe('u-products list + create', () => {
     expect(row!.hero_image_key).toBeNull();
   });
 
+  test('POST with discount_percent computes sale_price_cents', async () => {
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({
+        type: 'physical', name: 'Discounted', price_cents: 10000,
+        discount_percent: 20,
+      }),
+    }), CTX);
+    expect(r.status).toBe(201);
+    const body = await r.json() as { discount_percent: string | number | null; sale_price_cents: number | null };
+    expect(Number(body.discount_percent)).toBe(20);
+    expect(body.sale_price_cents).toBe(8000);
+  });
+
+  test('POST with discount_percent + sale_price_cents silently overrides sale_price', async () => {
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({
+        type: 'physical', name: 'Discounted-Override', price_cents: 10000,
+        discount_percent: 20, sale_price_cents: 9999,
+      }),
+    }), CTX);
+    expect(r.status).toBe(201);
+    const body = await r.json() as { sale_price_cents: number | null };
+    expect(body.sale_price_cents).toBe(8000); // computed wins
+  });
+
+  test('POST rejects discount_percent = 100', async () => {
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({
+        type: 'physical', name: 'Bad', price_cents: 10000, discount_percent: 100,
+      }),
+    }), CTX);
+    // parseCreateProduct rejects discount_percent >= 100 → 422 invalid_input
+    expect(r.status).toBe(422);
+  });
+
   test('CREATE+GET round-trip persists Phase B fields', async () => {
     const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
       method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
