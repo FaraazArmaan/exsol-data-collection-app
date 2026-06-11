@@ -17,6 +17,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission, resolveClientIdOrRespond } from './_shared/permissions';
 import { logAudit } from './_shared/audit';
 import { validateTypeFields } from './_shared/products-validate';
+import { computeSalePrice } from './_shared/products-discount';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -44,6 +45,7 @@ const PatchBody = z.object({
   mpn: z.string().max(80).nullable().optional(),
   condition: z.enum(['new', 'refurbished', 'used']).optional(),
   availability: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']).optional(),
+  discount_percent: z.number().nullable().optional(),
   sale_price_cents: z.number().int().min(0).nullable().optional(),
   sale_starts_at: z.string().datetime().nullable().optional(),
   sale_ends_at: z.string().datetime().nullable().optional(),
@@ -124,13 +126,22 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
   const v = parsed.data;
 
+  if (v.discount_percent != null && (v.discount_percent <= 0 || v.discount_percent >= 100)) {
+    return jsonError(400, 'discount_percent_invalid', 'must be > 0 and < 100');
+  }
+
   const sql = db();
   const cur = (await sql`
-    SELECT type, status, category_id FROM public.products
+    SELECT type, status, category_id, price_cents, discount_percent FROM public.products
     WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND deleted_at IS NULL
     LIMIT 1
-  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null }>;
+  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null; price_cents: number; discount_percent: string | null }>;
   if (cur.length === 0) return jsonError(404, 'not_found');
+
+  const oldPrice = cur[0]!.price_cents as number;
+  const oldDiscount = cur[0]!.discount_percent == null
+    ? null
+    : Number(cur[0]!.discount_percent);
 
   const effectiveType = v.type ?? cur[0]!.type;
   const tErrs = validateTypeFields({ type: effectiveType, sku: v.sku, stock_qty: v.stock_qty, unit: v.unit });
@@ -172,7 +183,33 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   if (v.mpn               !== undefined) setField('mpn',               v.mpn);
   if (v.condition         !== undefined) setField('condition',         v.condition);
   if (v.availability      !== undefined) setField('availability',      v.availability);
-  if (v.sale_price_cents  !== undefined) setField('sale_price_cents',  v.sale_price_cents);
+  // Compute post-patch discount + price.
+  const postDiscount = v.discount_percent !== undefined ? v.discount_percent : oldDiscount;
+  const postPrice    = v.price_cents      !== undefined ? v.price_cents      : oldPrice;
+
+  // Rule #5: sale_price_cents alone (no discount_percent key in payload) on a row
+  // whose post-patch state still has a discount → reject.
+  if (
+    v.sale_price_cents !== undefined &&
+    v.discount_percent === undefined &&
+    postDiscount != null
+  ) {
+    return jsonError(400, 'sale_price_locked_by_discount', 'clear discount_percent before editing sale_price_cents');
+  }
+
+  // SET discount_percent if present in the patch.
+  if (v.discount_percent !== undefined) setField('discount_percent', v.discount_percent);
+
+  // SET sale_price_cents per the rules:
+  //   - postDiscount != null → always set the computed value
+  //   - postDiscount == null and v.sale_price_cents !== undefined → honor freeform value
+  //   - postDiscount == null and v.sale_price_cents === undefined → no change
+  if (postDiscount != null) {
+    const computed = computeSalePrice(postPrice, postDiscount);
+    setField('sale_price_cents', computed);
+  } else if (v.sale_price_cents !== undefined) {
+    setField('sale_price_cents', v.sale_price_cents);
+  }
   if (v.sale_starts_at    !== undefined) setField('sale_starts_at',    v.sale_starts_at,   'timestamptz');
   if (v.sale_ends_at      !== undefined) setField('sale_ends_at',      v.sale_ends_at,     'timestamptz');
   if (v.weight_grams      !== undefined) setField('weight_grams',      v.weight_grams);
@@ -209,7 +246,7 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
        RETURNING id, type, name, description, category_id, brand, tags, price_cents, currency,
                  sku, stock_qty, unit, status, hero_image_key, created_at, updated_at,
                  gtin, mpn, condition, availability,
-                 sale_price_cents, sale_starts_at, sale_ends_at,
+                 discount_percent, sale_price_cents, sale_starts_at, sale_ends_at,
                  weight_grams, length_mm, width_mm, height_mm,
                  color, size, material, gender, age_group,
                  manufacturer, country_of_origin, hsn_code, gst_rate,
@@ -221,7 +258,13 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
     await logAudit(sql, {
       session, op: 'products.updated',
       clientId, targetType: 'product', targetId: id,
-      detail: v as Record<string, unknown>,
+      detail: {
+        ...(v as Record<string, unknown>),
+        ...(v.discount_percent !== undefined && v.discount_percent !== oldDiscount ? {
+          discount_percent_changed_from: oldDiscount,
+          discount_percent_changed_to: v.discount_percent,
+        } : {}),
+      },
     });
     if (v.status && v.status !== cur[0]!.status) {
       await logAudit(sql, {

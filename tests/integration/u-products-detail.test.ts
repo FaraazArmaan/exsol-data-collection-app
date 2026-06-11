@@ -168,4 +168,88 @@ describe('u-products-detail', () => {
     const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, { method: 'GET' }), CTX);
     expect(r.status).toBe(401);
   });
+
+  async function seedDiscountTestProduct(opts: { discount_percent?: number | null; sale_price_cents?: number | null }): Promise<string> {
+    const sku = `DCT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const ins = await sql`
+      INSERT INTO public.products (
+        client_id, type, name, sku, price_cents,
+        discount_percent, sale_price_cents
+      ) VALUES (
+        ${clientId}::uuid, 'physical', 'DC Seed', ${sku}, 10000,
+        ${opts.discount_percent ?? null}, ${opts.sale_price_cents ?? null}
+      ) RETURNING id
+    ` as Array<{ id: string }>;
+    return ins[0]!.id;
+  }
+
+  test('PATCH discount_percent computes sale_price_cents', async () => {
+    const id = await seedDiscountTestProduct({});
+    const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ discount_percent: 20 }),
+    }), CTX);
+    expect(r.status).toBe(200);
+    const rows = await sql`SELECT discount_percent::float8 AS dp, sale_price_cents FROM public.products WHERE id = ${id}::uuid` as Array<{ dp: number; sale_price_cents: number }>;
+    expect(rows[0]!.dp).toBe(20);
+    expect(rows[0]!.sale_price_cents).toBe(8000);
+  });
+
+  test('PATCH price_cents recomputes sale_price_cents when discount_percent is set', async () => {
+    const id = await seedDiscountTestProduct({ discount_percent: 20, sale_price_cents: 8000 });
+    await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ price_cents: 11000 }),
+    }), CTX);
+    const rows = await sql`SELECT discount_percent::float8 AS dp, sale_price_cents FROM public.products WHERE id = ${id}::uuid` as Array<{ dp: number; sale_price_cents: number }>;
+    expect(rows[0]!.dp).toBe(20);
+    expect(rows[0]!.sale_price_cents).toBe(8800);
+  });
+
+  test('PATCH discount_percent=null clears discount; sale_price unchanged', async () => {
+    const id = await seedDiscountTestProduct({ discount_percent: 20, sale_price_cents: 8000 });
+    await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ discount_percent: null }),
+    }), CTX);
+    const rows = await sql`SELECT discount_percent, sale_price_cents FROM public.products WHERE id = ${id}::uuid` as Array<{ discount_percent: string | null; sale_price_cents: number | null }>;
+    expect(rows[0]!.discount_percent).toBeNull();
+    expect(rows[0]!.sale_price_cents).toBe(8000);
+  });
+
+  test('PATCH sale_price_cents alone on a discounted row → 400 sale_price_locked_by_discount', async () => {
+    const id = await seedDiscountTestProduct({ discount_percent: 20, sale_price_cents: 8000 });
+    const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ sale_price_cents: 7500 }),
+    }), CTX);
+    expect(r.status).toBe(400);
+    const body = await r.json() as { error: { code: string } };
+    expect(body.error.code).toBe('sale_price_locked_by_discount');
+  });
+
+  test('PATCH {discount_percent: null, sale_price_cents: 7500} clears discount and honors freeform', async () => {
+    const id = await seedDiscountTestProduct({ discount_percent: 20, sale_price_cents: 8000 });
+    await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ discount_percent: null, sale_price_cents: 7500 }),
+    }), CTX);
+    const rows = await sql`SELECT discount_percent, sale_price_cents FROM public.products WHERE id = ${id}::uuid` as Array<{ discount_percent: string | null; sale_price_cents: number }>;
+    expect(rows[0]!.discount_percent).toBeNull();
+    expect(rows[0]!.sale_price_cents).toBe(7500);
+  });
+
+  test('PATCH discount audit detail records from/to', async () => {
+    const id = await seedDiscountTestProduct({});
+    await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ discount_percent: 20 }),
+    }), CTX);
+    const audits = await sql`
+      SELECT detail FROM public.audit_log
+      WHERE client_id = ${clientId}::uuid AND op = 'products.updated'
+      ORDER BY occurred_at DESC LIMIT 1
+    ` as Array<{ detail: Record<string, unknown> }>;
+    expect(audits[0]!.detail.discount_percent_changed_to).toBe(20);
+  });
 });
