@@ -132,16 +132,17 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 
   const sql = db();
   const cur = (await sql`
-    SELECT type, status, category_id, price_cents, discount_percent FROM public.products
+    SELECT type, status, category_id, price_cents, discount_percent, sale_price_cents FROM public.products
     WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND deleted_at IS NULL
     LIMIT 1
-  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null; price_cents: number; discount_percent: string | null }>;
+  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null; price_cents: number; discount_percent: string | null; sale_price_cents: number | null }>;
   if (cur.length === 0) return jsonError(404, 'not_found');
 
   const oldPrice = cur[0]!.price_cents as number;
   const oldDiscount = cur[0]!.discount_percent == null
     ? null
     : Number(cur[0]!.discount_percent);
+  const oldSalePriceCents = cur[0]!.sale_price_cents as number | null;
 
   const effectiveType = v.type ?? cur[0]!.type;
   const tErrs = validateTypeFields({ type: effectiveType, sku: v.sku, stock_qty: v.stock_qty, unit: v.unit });
@@ -204,11 +205,13 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   //   - postDiscount != null → always set the computed value
   //   - postDiscount == null and v.sale_price_cents !== undefined → honor freeform value
   //   - postDiscount == null and v.sale_price_cents === undefined → no change
+  let newSalePriceCents: number | null | undefined = undefined; // undefined → unchanged
   if (postDiscount != null) {
-    const computed = computeSalePrice(postPrice, postDiscount);
-    setField('sale_price_cents', computed);
+    newSalePriceCents = computeSalePrice(postPrice, postDiscount);
+    setField('sale_price_cents', newSalePriceCents);
   } else if (v.sale_price_cents !== undefined) {
-    setField('sale_price_cents', v.sale_price_cents);
+    newSalePriceCents = v.sale_price_cents;
+    setField('sale_price_cents', newSalePriceCents);
   }
   if (v.sale_starts_at    !== undefined) setField('sale_starts_at',    v.sale_starts_at,   'timestamptz');
   if (v.sale_ends_at      !== undefined) setField('sale_ends_at',      v.sale_ends_at,     'timestamptz');
@@ -263,6 +266,10 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
         ...(v.discount_percent !== undefined && v.discount_percent !== oldDiscount ? {
           discount_percent_changed_from: oldDiscount,
           discount_percent_changed_to: v.discount_percent,
+        } : {}),
+        ...(newSalePriceCents !== undefined && newSalePriceCents !== oldSalePriceCents ? {
+          sale_price_cents_changed_from: oldSalePriceCents,
+          sale_price_cents_changed_to: newSalePriceCents,
         } : {}),
       },
     });

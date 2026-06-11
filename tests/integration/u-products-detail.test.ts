@@ -269,4 +269,27 @@ describe('u-products-detail', () => {
     expect(Number(body.discount_percent)).toBe(25);
     expect(body.sale_price_cents).toBe(7500);
   });
+
+  test('PATCH price_cents on discounted row records sale_price_cents change in audit', async () => {
+    const sku = `AUDIT-SP-${Date.now()}`;
+    const ins = await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, discount_percent, sale_price_cents)
+      VALUES (${clientId}::uuid, 'physical', 'Audit Seed', ${sku}, 10000, 20.0, 8000)
+      RETURNING id
+    ` as Array<{ id: string }>;
+    const id = ins[0]!.id;
+
+    await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ price_cents: 11000 }),
+    }), CTX);
+
+    const audits = await sql`
+      SELECT detail FROM public.audit_log
+      WHERE client_id = ${clientId}::uuid AND op = 'products.updated'
+      ORDER BY occurred_at DESC LIMIT 1
+    ` as Array<{ detail: Record<string, unknown> }>;
+    expect(audits[0]!.detail.sale_price_cents_changed_from).toBe(8000);
+    expect(audits[0]!.detail.sale_price_cents_changed_to).toBe(8800);
+  });
 });
