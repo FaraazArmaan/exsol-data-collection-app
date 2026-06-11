@@ -152,3 +152,81 @@ describe('toJsonResponse', () => {
     expect(parsed.client.slug).toBe('acme');
   });
 });
+
+import { toZipResponse, rowsToCsv } from '../../netlify/functions/_shared/workspace-export-format';
+import JSZipForTest from 'jszip';
+
+describe('rowsToCsv', () => {
+  test('empty rows → empty string', () => {
+    expect(rowsToCsv([])).toBe('');
+  });
+
+  test('basic rows with header row', () => {
+    const out = rowsToCsv([{ a: 1, b: 'x' }, { a: 2, b: 'y' }]);
+    expect(out.split('\n')[0]).toBe('a,b');
+    expect(out.split('\n')[1]).toBe('1,x');
+  });
+
+  test('embedded commas and quotes get RFC-4180 escaped', () => {
+    const out = rowsToCsv([{ s: 'a,b' }, { s: 'he said "hi"' }]);
+    const lines = out.split('\n');
+    expect(lines[1]).toBe('"a,b"');
+    expect(lines[2]).toBe('"he said ""hi"""');
+  });
+
+  test('jsonb / object values become JSON-encoded strings', () => {
+    const out = rowsToCsv([{ id: 'x', fields: { a: 1 } }]);
+    expect(out).toContain('"{""a"":1}"');
+  });
+
+  test('null values become empty cells', () => {
+    const out = rowsToCsv([{ a: null, b: 'x' }]);
+    expect(out.split('\n')[1]).toBe(',x');
+  });
+});
+
+describe('toZipResponse', () => {
+  test('returns 200 application/zip with attachment filename', async () => {
+    const res = await toZipResponse(SNAPSHOT_FIXTURE, 'acme');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/application\/zip/);
+    expect(res.headers.get('content-disposition')).toMatch(/filename="workspace-acme-\d{8}T\d{6}Z\.zip"/);
+  });
+
+  test('archive contains the expected file list', async () => {
+    const res = await toZipResponse(SNAPSHOT_FIXTURE, 'acme');
+    const buf = Buffer.from(await res.arrayBuffer());
+    const z = await JSZipForTest.loadAsync(buf);
+    const names = Object.keys(z.files).sort();
+    expect(names).toEqual([
+      'README.txt',
+      '_manifest.json',
+      'client.csv',
+      'client_cardinality_rules.csv',
+      'client_levels.csv',
+      'client_roles.csv',
+      'enabled_products.csv',
+      'files/file_allowed_nodes.csv',
+      'files/file_allowed_roles.csv',
+      'files/file_allowed_users.csv',
+      'files/file_categories.csv',
+      'files/files.csv',
+      'products/product_categories.csv',
+      'products/product_images.csv',
+      'products/products.csv',
+      'user_node_credentials.csv',
+      'user_nodes.csv',
+    ]);
+  });
+
+  test('_manifest.json contains schema_version and table_counts', async () => {
+    const res = await toZipResponse(SNAPSHOT_FIXTURE, 'acme');
+    const buf = Buffer.from(await res.arrayBuffer());
+    const z = await JSZipForTest.loadAsync(buf);
+    const manifest = JSON.parse(await z.file('_manifest.json')!.async('string'));
+    expect(manifest.schema_version).toBe(1);
+    expect(manifest.client_id).toBe('c-1');
+    expect(manifest.slug).toBe('acme');
+    expect(manifest.table_counts.user_nodes).toBe(0);
+  });
+});

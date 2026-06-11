@@ -41,9 +41,92 @@ export function toJsonResponse(snap: WorkspaceSnapshot, slug: string): Response 
   });
 }
 
-// --- ZIP formatter (implemented in Task 4) ---
-export async function toZipResponse(_snap: WorkspaceSnapshot, _slug: string): Promise<Response> {
-  throw new Error('toZipResponse: not implemented yet');
+// --- ZIP formatter ---
+export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Promise<Response> {
+  const z = new JSZip();
+
+  const manifest = {
+    schema_version: snap.schema_version,
+    exported_at: snap.exported_at,
+    exported_by: snap.exported_by,
+    client_id: (snap.client as { id?: string }).id ?? null,
+    slug,
+    table_counts: countTables(snap),
+  };
+  z.file('_manifest.json', JSON.stringify(manifest, null, 2));
+
+  z.file('README.txt', [
+    `ExSol Workspace Data Export`,
+    `Workspace slug: ${slug}`,
+    `Exported at:    ${snap.exported_at}`,
+    `Exported by:    ${snap.exported_by.email} (${snap.exported_by.kind})`,
+    `Schema version: ${snap.schema_version}`,
+    ``,
+    `Files in this archive (CSV, RFC 4180):`,
+    `  client.csv                       — single row from public.clients`,
+    `  enabled_products.csv             — one column: product_key`,
+    `  client_levels.csv                — level definitions`,
+    `  client_roles.csv                 — role definitions`,
+    `  client_cardinality_rules.csv     — how many of each role at each level`,
+    `  user_nodes.csv                   — the org tree (parent_id preserved)`,
+    `  user_node_credentials.csv        — workspace logins`,
+    `  files/files.csv                  — file metadata`,
+    `  files/file_categories.csv`,
+    `  files/file_allowed_nodes.csv`,
+    `  files/file_allowed_roles.csv`,
+    `  files/file_allowed_users.csv`,
+    `  products/products.csv`,
+    `  products/product_categories.csv`,
+    `  products/product_images.csv      — metadata only; no binaries`,
+    ``,
+    `REDACTIONS (always absent from this export):`,
+    `  - password_hash`,
+    `  - temp_password_plain`,
+    `  - password_reset_requested_at`,
+    ``,
+    `File and image binaries are NOT included; only their metadata + storage`,
+    `keys. The audit log (public.audit_log) is NOT included.`,
+  ].join('\n'));
+
+  // Top-level CSVs
+  z.file('client.csv', rowsToCsv([snap.client]));
+  z.file('enabled_products.csv', rowsToCsv(snap.enabled_products.map((k) => ({ product_key: k }))));
+  z.file('client_levels.csv', rowsToCsv(snap.levels));
+  z.file('client_roles.csv', rowsToCsv(snap.roles));
+  z.file('client_cardinality_rules.csv', rowsToCsv(snap.cardinality_rules));
+  z.file('user_nodes.csv', rowsToCsv(snap.user_nodes));
+  z.file('user_node_credentials.csv', rowsToCsv(snap.credentials));
+
+  // files/ — createFolders:false suppresses implicit directory entries in the archive
+  z.file('files/files.csv', rowsToCsv(snap.files.files), { createFolders: false });
+  z.file('files/file_categories.csv', rowsToCsv(snap.files.categories), { createFolders: false });
+  z.file('files/file_allowed_nodes.csv', rowsToCsv(snap.files.allowed_nodes), { createFolders: false });
+  z.file('files/file_allowed_roles.csv', rowsToCsv(snap.files.allowed_roles), { createFolders: false });
+  z.file('files/file_allowed_users.csv', rowsToCsv(snap.files.allowed_users), { createFolders: false });
+
+  // products/ — same
+  z.file('products/products.csv', rowsToCsv(snap.products.products), { createFolders: false });
+  z.file('products/product_categories.csv', rowsToCsv(snap.products.categories), { createFolders: false });
+  z.file('products/product_images.csv', rowsToCsv(snap.products.images), { createFolders: false });
+
+  const buf = await z.generateAsync({
+    type: 'arraybuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+  if (buf.byteLength > MAX_BYTES) {
+    throw new ExportTooLargeError(buf.byteLength, MAX_BYTES);
+  }
+
+  const filename = buildFilename(slug, 'zip');
+  return new Response(buf, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }
 
 /**
