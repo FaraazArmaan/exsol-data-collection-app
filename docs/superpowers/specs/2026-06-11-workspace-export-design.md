@@ -10,7 +10,7 @@
 
 ## 1. Goal
 
-Let an L1 Owner (or any user granted the new `_platform.workspace.export` permission) download a single-file snapshot of their workspace — users, structure, files metadata, products metadata — in either JSON or ZIP-of-CSVs form. The export is intended for offline backup, ad-hoc audit, and external analysis. It is **not** an import format in v1; round-tripping is a future capability.
+Let an L1 Owner (or any user granted the new `_platform.workspace.view` permission) download a single-file snapshot of their workspace — users, structure, files metadata, products metadata — in either JSON or ZIP-of-CSVs form. The export is intended for offline backup, ad-hoc audit, and external analysis. It is **not** an import format in v1; round-tripping is a future capability.
 
 ## 2. Scope
 
@@ -20,7 +20,7 @@ Let an L1 Owner (or any user granted the new `_platform.workspace.export` permis
 - New shared helpers:
   - `netlify/functions/_shared/workspace-export-collect.ts` — runs per-table queries, returns a typed `WorkspaceSnapshot`, enforces redactions.
   - `netlify/functions/_shared/workspace-export-format.ts` — two formatters: `toJsonResponse(snapshot)` and `toZipResponse(snapshot)`.
-- New permission key `_platform.workspace.export` registered in `src/modules/registry/types.ts` constants. L1 Owner auto-gets it via the existing `defaultPermissionsForLevel(1, ...)` bypass. Admin can grant to L2+ via `/access-levels`.
+- New permission key `_platform.workspace.view` registered by extending `PLATFORM_SURFACES` in `src/modules/registry/types.ts` with `'workspace'`. The four standard verbs (view, create, edit, delete) are unchanged; only `_platform.workspace.view` is wired as the export gate (the other three surface/verb combinations on `workspace` exist for type-system completeness but are unused in v1). L1 Owner bypasses the matrix entirely (see `requirePermission` at `_shared/permissions.ts`); admin can grant `_platform.workspace.view` to L2+ via `/access-levels`.
 - New audit op `workspace.exported` with label registered in `src/modules/ams/components/audit/op-labels.ts`.
 - New FE card `src/modules/ams/components/settings/WorkspaceExportCard.tsx` (placement: existing AMS workspace settings area; exact mount file confirmed during implementation).
 - Small helper `src/lib/content-disposition.ts` (parse `filename=` from response header) — only added if a comparable helper does not already exist in the codebase.
@@ -28,7 +28,7 @@ Let an L1 Owner (or any user granted the new `_platform.workspace.export` permis
 
 **Out of scope**
 
-- Audit log (`schema_ops_log`) inclusion. Can grow unbounded; future v2 with date-range filter.
+- Audit log (`audit_log`) inclusion. Can grow unbounded; future v2 with date-range filter.
 - File binaries and product image binaries. Only metadata + storage keys are included.
 - Workspace re-import / round-trip. v1 is export-only.
 - Filters (`?since=…`, exclude-module flags). v1 is whole-workspace.
@@ -56,7 +56,7 @@ Let an L1 Owner (or any user granted the new `_platform.workspace.export` permis
 ```
 GET /api/workspace-export?format=json|zip
   │
-  ├─ authenticateForPermission('_platform.workspace.export')
+  ├─ authenticateForPermission('_platform.workspace.view')
   ├─ resolveClientIdOrRespond(session, req)
   │
   ▼
@@ -72,7 +72,7 @@ collectWorkspaceSnapshot(sql, clientId): WorkspaceSnapshot
    stream JSON          wrapInZip(...)  (existing helper from _shared/exporters/zip.ts)
          │                 │
          ▼                 ▼
-   ──── writeAuditOp('workspace.exported', { format, byte_count, table_counts }) ────
+   ──── logAudit(sql, { session, op: 'workspace.exported', clientId, detail: { format, byte_count, table_counts } }) ────
                             │
                             ▼
               200 with Content-Disposition
@@ -161,7 +161,7 @@ CSV stringifier rules:
 
 ### 5.4 Foreign keys
 
-All FK columns (`parent_id`, `role_id`, `level_number`, `category_id`, `file_id`, `product_id`, `created_by_admin`) preserved as their original UUIDs / integers. The export does **not** rewrite or namespace IDs. Rows from `admins` and `schema_ops_log` are NOT included; `created_by_admin` UUIDs are opaque references.
+All FK columns (`parent_id`, `role_id`, `level_number`, `category_id`, `file_id`, `product_id`, `created_by_admin`) preserved as their original UUIDs / integers. The export does **not** rewrite or namespace IDs. Rows from `admins` and `audit_log` are NOT included; `created_by_admin` UUIDs are opaque references.
 
 ## 6. Endpoint contract
 
@@ -185,7 +185,7 @@ No body, no other filters.
 | 200 (zip)  | `application/zip` bytes      | `Content-Disposition: attachment; filename="workspace-<slug>-<iso>.zip"` |
 | 400 | `{ error: 'invalid_format' }` | Unknown `format`. |
 | 401 | `{ error: 'unauthorized' }` | No session. |
-| 403 | `{ error: 'forbidden' }` | Session has no `_platform.workspace.export` (and no L1 bypass). |
+| 403 | `{ error: 'forbidden' }` | Session has no `_platform.workspace.view` (and no L1 bypass). |
 | 405 | `{ error: 'method_not_allowed' }` | Non-GET. |
 | 413 | `{ error: 'export_too_large', size_bytes, limit_bytes }` | Snapshot exceeds the 4 MB cap. |
 | 500 | (generic) | DB or formatter failure. |
@@ -194,35 +194,39 @@ Filename ISO format: `YYYYMMDDTHHMMSSZ` (filesystem-safe; no colons or hyphens i
 
 ### 6.3 Audit row
 
-Written to `schema_ops_log` immediately before the response stream:
+Written via the existing `logAudit(sql, args)` helper (`_shared/audit.ts`) to `public.audit_log` immediately before the response stream. The call shape:
 
-```
-op:        'workspace.exported'
-client_id: <resolved client_id>
-actor:     { kind: 'admin' | 'user_node', id, email }
-meta: {
-  format: 'json' | 'zip',
-  byte_count: <number>,
-  table_counts: {
-    user_nodes: N,
-    credentials: N,
-    levels: N,
-    roles: N,
-    cardinality_rules: N,
-    files: N,
-    file_categories: N,
-    products: N,
-    product_categories: N,
-    product_images: N
-  }
-}
+```ts
+await logAudit(sql, {
+  session,
+  op: 'workspace.exported',
+  clientId,
+  targetType: 'workspace',
+  targetId: clientId,
+  detail: {
+    format: 'json' | 'zip',
+    byte_count: <number>,
+    table_counts: {
+      user_nodes: N,
+      credentials: N,
+      levels: N,
+      roles: N,
+      cardinality_rules: N,
+      files: N,
+      file_categories: N,
+      products: N,
+      product_categories: N,
+      product_images: N,
+    },
+  },
+});
 ```
 
-Op label registered in `src/modules/ams/components/audit/op-labels.ts`.
+`logAudit` derives `actor_admin` / `actor_user_node` from `session.kind`; INSERT failures are caught and stderr-logged (do not roll back the export). Op label registered in `src/modules/ams/components/audit/op-labels.ts`.
 
 ### 6.4 Permission key registration
 
-- Add `'workspace.export'` to the platform-surfaces constants in `src/modules/registry/types.ts`. Verify the exact constant name (e.g. `PLATFORM_SURFACES`) during implementation; the key enumerates automatically into the permission matrix.
+- Add `'workspace'` to the `PLATFORM_SURFACES` constant in `src/modules/registry/types.ts`. The four standard verbs (view, create, edit, delete) apply automatically by virtue of the `_platform.${PlatformSurface}.${Verb}` template type. The matrix UI enumerates the new key into a "Workspace" row.
 - Server side: `_shared/permission-keys.ts` already enumerates from the constants. No code change there.
 - `defaultPermissionsForLevel(1, ...)` returns all platform keys, so L1 Owner gets it on workspace create with no migration backfill needed for existing L1 owners (the matrix is computed live).
 - `/access-levels` matrix UI renders the new row automatically.
@@ -250,7 +254,7 @@ Op label registered in `src/modules/ams/components/audit/op-labels.ts`.
 - **Permission boundary matrix** — L1 Owner without explicit key → 200 (bypass); L2 with key granted → 200; L2 without key → 403; platform admin → 200.
 - **JSON 200** — Content-Type, Content-Disposition filename matches pattern, body parses, redacted fields absent.
 - **ZIP 200** — Content-Type `application/zip`, body is a valid ZIP (read with `adm-zip` or repo equivalent), file list matches.
-- **Audit row written** — exactly one new `schema_ops_log` row with `op='workspace.exported'`, correct `client_id`, correct actor kind, `meta.format` matches, `meta.byte_count > 0`, `meta.table_counts` populated.
+- **Audit row written** — exactly one new `audit_log` row with `op='workspace.exported'`, correct `client_id`, correct actor kind (`actor_admin` vs `actor_user_node`), `detail.format` matches, `detail.byte_count > 0`, `detail.table_counts` populated.
 - **Cross-tenant safety (highest-value test)** — seed two clients; export as client A's L1 Owner; assert client B's `user_nodes` IDs do not appear anywhere in the response body.
 - **413 over-cap** — mock the snapshot or cap to force overflow; assert 413 with `{ size_bytes, limit_bytes }`.
 
@@ -258,7 +262,7 @@ Op label registered in `src/modules/ams/components/audit/op-labels.ts`.
 
 ~4 tests, lightweight.
 
-- Renders when `permissions['_platform.workspace.export']` is true; returns null when false.
+- Renders when `permissions['_platform.workspace.view']` is true; returns null when false.
 - L1 bypass: `level_number === 1` shows the card without the explicit key.
 - Click "Download JSON" → calls `fetch('/api/workspace-export?format=json')` exactly once.
 - "Last exported" line reads from the mocked audit fetch and shows relative time + email; hides when no audit rows exist.
@@ -294,7 +298,7 @@ Op label registered in `src/modules/ams/components/audit/op-labels.ts`.
 - `tests/unit/WorkspaceExportCard.test.tsx`
 
 **Modified files**
-- `src/modules/registry/types.ts` — add `'workspace.export'` to platform surfaces constant.
+- `src/modules/registry/types.ts` — add `'workspace'` to the `PLATFORM_SURFACES` tuple.
 - `src/modules/ams/components/audit/op-labels.ts` — register `workspace.exported` label.
 - The AMS settings page file (exact path verified during implementation) — mount `<WorkspaceExportCard />`.
 - `src/lib/components.css` — add `.ams-export-card` namespaced styles.
