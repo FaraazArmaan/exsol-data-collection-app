@@ -114,3 +114,41 @@ describe('collectWorkspaceSnapshot — redactions', () => {
     expect(text).not.toMatch(/temp-secret/);
   });
 });
+
+import { toJsonResponse, isoFilenameStamp } from '../../netlify/functions/_shared/workspace-export-format';
+
+const SNAPSHOT_FIXTURE = {
+  schema_version: 1 as const,
+  exported_at: '2026-06-11T10:00:00.000Z',
+  exported_by: { kind: 'admin' as const, id: 'a-1', email: 'a@x' },
+  client: { id: 'c-1', slug: 'acme', name: 'Acme' },
+  enabled_products: ['products'],
+  levels: [], roles: [], cardinality_rules: [], user_nodes: [], credentials: [],
+  files: { files: [], categories: [], allowed_nodes: [], allowed_roles: [], allowed_users: [] },
+  products: { products: [], categories: [], images: [] },
+};
+
+describe('isoFilenameStamp', () => {
+  test('formats Date as YYYYMMDDTHHMMSSZ', () => {
+    expect(isoFilenameStamp(new Date('2026-06-11T10:23:45.678Z'))).toBe('20260611T102345Z');
+  });
+});
+
+describe('toJsonResponse', () => {
+  test('returns 200 with application/json and the right filename', async () => {
+    const res = toJsonResponse(SNAPSHOT_FIXTURE, 'acme');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/application\/json/);
+    const cd = res.headers.get('content-disposition') ?? '';
+    expect(cd).toMatch(/attachment/);
+    expect(cd).toMatch(/filename="workspace-acme-\d{8}T\d{6}Z\.json"/);
+  });
+
+  test('body parses back to a snapshot with schema_version 1', async () => {
+    const res = toJsonResponse(SNAPSHOT_FIXTURE, 'acme');
+    const text = await res.text();
+    const parsed = JSON.parse(text);
+    expect(parsed.schema_version).toBe(1);
+    expect(parsed.client.slug).toBe('acme');
+  });
+});
