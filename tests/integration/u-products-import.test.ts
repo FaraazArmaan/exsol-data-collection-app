@@ -318,4 +318,61 @@ describe('u-products-import', () => {
     const rows = await sql`SELECT id FROM public.products WHERE sku = 'D-1' AND client_id = ${clientId}::uuid` as Array<{ id: string }>;
     expect(rows).toHaveLength(0);
   });
+
+  test('discount_percent column computes sale_price_cents on import', async () => {
+    const csv = [
+      'sku,name,type,price,discount_percent',
+      'D1,Widget,physical,100.00,20',
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const rows = await sql`SELECT discount_percent::float8 AS dp, sale_price_cents FROM public.products WHERE sku = 'D1' AND client_id = ${clientId}::uuid` as Array<{ dp: number; sale_price_cents: number }>;
+    expect(rows[0]!.dp).toBe(20);
+    expect(rows[0]!.sale_price_cents).toBe(8000);
+  });
+
+  test('discount_percent + conflicting sale_price emits override warning', async () => {
+    const csv = [
+      'sku,name,type,price,sale_price,discount_percent',
+      'D2,Widget,physical,100.00,90.00,20',
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    const r = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?dry_run=1&client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(r.status).toBe(200);
+    const body = await r.json() as { warnings: Array<{ row: number; message: string }> };
+    expect(body.warnings.some((w) => /sale_price overridden by discount_percent/i.test(w.message))).toBe(true);
+  });
+
+  test('legacy CSV (no discount_percent header) preserves existing discount row', async () => {
+    const seededSku = `DC-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, discount_percent, sale_price_cents)
+      VALUES (${clientId}::uuid, 'physical', 'Seed', ${seededSku}, 10000, 20.0, 8000)
+    `;
+    const csv = [
+      'sku,name,type,category,brand,price,currency,stock_qty,unit,status,tags,description',
+      `${seededSku},Updated,physical,Electronics,,150.00,USD,3,each,active,,Updated description`,
+    ].join('\n');
+    const ab = new ArrayBuffer(csv.length);
+    new Uint8Array(ab).set(new TextEncoder().encode(csv));
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'p.csv');
+    await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    const rows = await sql`SELECT discount_percent::float8 AS dp, sale_price_cents FROM public.products WHERE sku = ${seededSku} AND client_id = ${clientId}::uuid` as Array<{ dp: number; sale_price_cents: number }>;
+    expect(rows[0]!.dp).toBe(20);
+    expect(rows[0]!.sale_price_cents).toBe(8000);
+  });
 });

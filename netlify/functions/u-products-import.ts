@@ -17,6 +17,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission, resolveClientIdOrRespond } from './_shared/permissions';
 import { logAudit } from './_shared/audit';
 import { parseCsvBytes, PHASE_B_HEADERS, type ParsedImportRow } from './_shared/products-import-parse';
+import { computeSalePrice } from './_shared/products-discount';
 
 interface ValidEntry {
   row: number;
@@ -102,9 +103,17 @@ export default async (req: Request, _ctx: Context) => {
       }
     }
 
-    // Phase B: warn if sale_price set without a sale window.
-    if (r.sale_price_cents != null && r.sale_starts_at == null) {
+    // Phase B: warn if sale_price or discount_percent set without a sale window.
+    if ((r.sale_price_cents != null || r.discount_percent != null) && r.sale_starts_at == null) {
       warnings.push({ row: r.row_index, message: 'sale price set but no sale window — will apply immediately' });
+    }
+
+    // Phase B: warn if discount_percent overrides an explicit sale_price.
+    if (r.discount_percent != null && r.sale_price_cents != null) {
+      const computed = computeSalePrice(r.price_cents, r.discount_percent);
+      if (r.sale_price_cents !== computed) {
+        warnings.push({ row: r.row_index, message: 'sale_price overridden by discount_percent' });
+      }
     }
 
     if (r.errors.length > 0) continue;
@@ -163,13 +172,17 @@ export default async (req: Request, _ctx: Context) => {
   for (const v of valid) {
     const r = v._row;
     const category_id = r.category_name ? catByName.get(r.category_name.toLowerCase()) ?? null : null;
+    let effectiveSalePriceCents: number | null = r.sale_price_cents;
+    if (r.discount_percent != null) {
+      effectiveSalePriceCents = computeSalePrice(r.price_cents, r.discount_percent);
+    }
     if (v.action === 'create') {
       const ins = (await sql`
         INSERT INTO public.products (
           client_id, type, name, description, category_id, brand, tags,
           price_cents, sku, stock_qty, unit, status, created_by_user_node,
           gtin, mpn, condition, availability,
-          sale_price_cents, sale_starts_at, sale_ends_at,
+          discount_percent, sale_price_cents, sale_starts_at, sale_ends_at,
           weight_grams, length_mm, width_mm, height_mm,
           color, size, material, gender, age_group,
           manufacturer, country_of_origin, hsn_code, gst_rate,
@@ -180,7 +193,7 @@ export default async (req: Request, _ctx: Context) => {
           ${r.sku}, ${r.stock_qty}, ${r.unit}, ${r.status}, ${userNodeId}::uuid,
           ${r.gtin}, ${r.mpn},
           ${r.condition ?? 'new'}, ${r.availability ?? 'in_stock'},
-          ${r.sale_price_cents}, ${r.sale_starts_at}::timestamptz, ${r.sale_ends_at}::timestamptz,
+          ${r.discount_percent}, ${effectiveSalePriceCents}, ${r.sale_starts_at}::timestamptz, ${r.sale_ends_at}::timestamptz,
           ${r.weight_grams}, ${r.length_mm}, ${r.width_mm}, ${r.height_mm},
           ${r.color}, ${r.size}, ${r.material}, ${r.gender}, ${r.age_group},
           ${r.manufacturer}, ${r.country_of_origin}, ${r.hsn_code}, ${r.gst_rate},
@@ -206,7 +219,12 @@ export default async (req: Request, _ctx: Context) => {
           mpn               = CASE WHEN ${present.has('mpn')}::boolean               THEN ${r.mpn}               ELSE mpn               END,
           condition         = CASE WHEN ${present.has('condition')}::boolean         THEN COALESCE(${r.condition}, 'new')         ELSE condition         END,
           availability      = CASE WHEN ${present.has('availability')}::boolean      THEN COALESCE(${r.availability}, 'in_stock') ELSE availability      END,
-          sale_price_cents  = CASE WHEN ${present.has('sale_price')}::boolean        THEN ${r.sale_price_cents}  ELSE sale_price_cents  END,
+          discount_percent  = CASE WHEN ${present.has('discount_percent')}::boolean   THEN ${r.discount_percent}  ELSE discount_percent  END,
+          sale_price_cents  = CASE
+            WHEN ${present.has('discount_percent')}::boolean AND ${r.discount_percent != null}::boolean THEN ${effectiveSalePriceCents}
+            WHEN ${present.has('sale_price')}::boolean THEN ${r.sale_price_cents}
+            ELSE sale_price_cents
+          END,
           sale_starts_at    = CASE WHEN ${present.has('sale_starts_at')}::boolean    THEN ${r.sale_starts_at}::timestamptz ELSE sale_starts_at    END,
           sale_ends_at      = CASE WHEN ${present.has('sale_ends_at')}::boolean      THEN ${r.sale_ends_at}::timestamptz   ELSE sale_ends_at      END,
           weight_grams      = CASE WHEN ${present.has('weight_grams')}::boolean      THEN ${r.weight_grams}      ELSE weight_grams      END,
