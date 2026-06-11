@@ -11,7 +11,7 @@ export const PHASE_B_HEADERS = [
   'weight_grams', 'length_mm', 'width_mm', 'height_mm',
   'color', 'size', 'material', 'gender', 'age_group',
   'manufacturer', 'country_of_origin', 'hsn_code', 'gst_rate',
-  'google_category', 'meta_category', 'product_url',
+  'google_category', 'meta_category', 'product_url', 'discount_percent',
 ] as const;
 export type PhaseBHeader = typeof PHASE_B_HEADERS[number];
 
@@ -51,6 +51,7 @@ export interface ParsedImportRow {
   country_of_origin: string | null;
   hsn_code: string | null;
   gst_rate: number | null;
+  discount_percent: number | null;
   google_category: string | null;
   meta_category: string | null;
   product_url: string | null;
@@ -284,6 +285,10 @@ function parseRow(raw: Record<string, unknown>, idx: number, present: Set<string
     ? parseDecimal(trimStr(raw, present, 'gst_rate'), errors, { field: 'gst_rate', min: 0, max: 100, allowNull: true })
     : null;
 
+  const discount_percent = present.has('discount_percent')
+    ? parseDecimal(trimStr(raw, present, 'discount_percent'), errors, { field: 'discount_percent', min: 0.01, max: 99.99, allowNull: true })
+    : null;
+
   // Cross-field validation: sale window date order
   if (sale_starts_at && sale_ends_at && new Date(sale_starts_at).getTime() > new Date(sale_ends_at).getTime()) {
     errors.push({ field: 'sale_ends_at', message: 'must not be before sale_starts_at' });
@@ -312,6 +317,7 @@ function parseRow(raw: Record<string, unknown>, idx: number, present: Set<string
     country_of_origin: trimStr(raw, present, 'country_of_origin'),
     hsn_code: trimStr(raw, present, 'hsn_code'),
     gst_rate,
+    discount_percent,
     google_category: trimStr(raw, present, 'google_category'),
     meta_category: trimStr(raw, present, 'meta_category'),
     product_url: trimStr(raw, present, 'product_url'),

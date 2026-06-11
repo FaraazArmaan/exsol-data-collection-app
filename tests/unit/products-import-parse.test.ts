@@ -198,6 +198,28 @@ describe('parseRow Phase B fields', () => {
     expect(r.sale_ends_at).toBe('2026-07-31T23:59:59.000Z');
   });
 
+  it('reads discount_percent as decimal in (0, 100)', () => {
+    const csv = `sku,name,type,price,discount_percent\nW,Widget,physical,10.00,15.5`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.rows[0]!.discount_percent).toBe(15.5);
+    expect(r.rows[0]!.errors).toEqual([]);
+  });
+
+  it('errors on discount_percent <= 0 or >= 100', () => {
+    for (const bad of ['0', '100', '-5']) {
+      const csv = `sku,name,type,price,discount_percent\nW,Widget,physical,10.00,${bad}`;
+      const r = parseCsvBytes(Buffer.from(csv));
+      expect(r.rows[0]!.errors.some((e) => e.field === 'discount_percent')).toBe(true);
+    }
+  });
+
+  it('absent discount_percent header → field is null, no error', () => {
+    const csv = `sku,name,type,price\nW,Widget,physical,10.00`;
+    const r = parseCsvBytes(Buffer.from(csv));
+    expect(r.rows[0]!.discount_percent).toBeNull();
+    expect(r.rows[0]!.errors).toEqual([]);
+  });
+
   it('parses the full Phase B fixture without errors', () => {
     const bytes = readFileSync(join(__dirname, '../fixtures/products/import-phase-b-full.csv'));
     const r = parseCsvBytes(bytes);
