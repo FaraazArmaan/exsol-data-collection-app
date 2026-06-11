@@ -49,6 +49,7 @@ export default function ProductEditPage() {
       mpn: p.mpn,
       condition: p.condition,
       availability: p.availability,
+      discount_percent: p.discount_percent,
       sale_price_cents: p.sale_price_cents,
       sale_starts_at: p.sale_starts_at,
       sale_ends_at: p.sale_ends_at,

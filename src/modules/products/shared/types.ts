@@ -48,6 +48,7 @@ export interface Product {
   manufacturer: string | null;
   country_of_origin: string | null;
   hsn_code: string | null;
+  discount_percent: number | null;
   gst_rate: number | null;
   google_category: string | null;
   meta_category: string | null;

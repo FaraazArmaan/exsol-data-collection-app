@@ -1,6 +1,8 @@
 import type { Condition, Availability } from '../../shared/types';
+import { computeSalePrice } from '../../shared/discount';
 
 type Patch = Partial<{
+  discount_percent: number | null;
   gtin: string | null;
   mpn: string | null;
   condition: Condition;
@@ -12,6 +14,8 @@ type Patch = Partial<{
 }>;
 
 export function ProductCommerceSection(props: {
+  price_cents: number;
+  discount_percent: number | null;
   gtin: string | null;
   mpn: string | null;
   condition: Condition;
@@ -23,12 +27,11 @@ export function ProductCommerceSection(props: {
   onChange: (patch: Patch) => void;
 }) {
   const {
+    price_cents, discount_percent,
     gtin, mpn, condition, availability,
     sale_price_cents, sale_starts_at, sale_ends_at, weight_grams,
     onChange,
   } = props;
-
-  const salePriceUsd = sale_price_cents == null ? '' : (sale_price_cents / 100).toFixed(2);
 
   // datetime-local expects YYYY-MM-DDTHH:mm. ISO is YYYY-MM-DDTHH:mm:ss.sssZ.
   // Slicing keeps the date/hour/minute portion. Phase B accepts local-TZ ambiguity.
@@ -90,22 +93,61 @@ export function ProductCommerceSection(props: {
           </select>
         </div>
 
-        <div>
-          <label htmlFor="pm-sale-price">Sale price (USD)</label>
+        <div className="pm-field">
+          <label htmlFor="pm-discount-pct">Discount %</label>
+          <input
+            id="pm-discount-pct"
+            type="number"
+            step="0.01"
+            min="0.01"
+            max="99.99"
+            value={discount_percent ?? ''}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === '') {
+                onChange({ discount_percent: null });
+                return;
+              }
+              const n = Number(raw);
+              if (!Number.isFinite(n)) return;
+              onChange({ discount_percent: n });
+            }}
+          />
+          {discount_percent != null && (
+            <button
+              type="button"
+              className="pm-link-button"
+              onClick={() => onChange({ discount_percent: null })}
+            >
+              Clear discount
+            </button>
+          )}
+        </div>
+
+        <div className="pm-field">
+          <label htmlFor="pm-sale-price">
+            Sale price (USD){discount_percent != null && <span className="pm-muted"> (auto-calculated)</span>}
+          </label>
           <input
             id="pm-sale-price"
             type="number"
             step="0.01"
-            min="0"
-            value={salePriceUsd}
+            disabled={discount_percent != null}
+            title={discount_percent != null ? 'Auto-calculated from MRP × (1 − discount %)' : undefined}
+            value={
+              discount_percent != null
+                ? ((computeSalePrice(price_cents, discount_percent) ?? 0) / 100).toFixed(2)
+                : (sale_price_cents == null ? '' : (sale_price_cents / 100).toFixed(2))
+            }
             onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === '') {
+              if (discount_percent != null) return; // belt+suspenders; input is disabled anyway
+              const v = e.target.value;
+              if (v === '') {
                 onChange({ sale_price_cents: null });
                 return;
               }
-              const dollars = parseFloat(raw);
-              const cents = Math.max(0, Math.round((Number.isFinite(dollars) ? dollars : 0) * 100));
+              const cents = Math.round(Number(v) * 100);
+              if (!Number.isFinite(cents) || cents < 0) return;
               onChange({ sale_price_cents: cents });
             }}
           />

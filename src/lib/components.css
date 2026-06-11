@@ -501,3 +501,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .pm-export-menu li > button:hover {
   background: var(--pm-highlight, rgba(255, 255, 255, 0.08));
 }
+
+/* Inline link-style button (e.g. "Clear discount" in Commerce section) */
+.pm-link-button {
+  background: none;
+  border: 0;
+  color: var(--pm-link, #0366d6);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85em;
+  text-decoration: underline;
+}
+.pm-link-button:hover { text-decoration: none; }

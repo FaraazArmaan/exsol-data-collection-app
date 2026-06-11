@@ -33,6 +33,7 @@ export const emptyDraft = (): ProductDraft => ({
   mpn: null,
   condition: 'new',
   availability: 'in_stock',
+  discount_percent: null,
   sale_price_cents: null,
   sale_starts_at: null,
   sale_ends_at: null,
@@ -118,6 +119,8 @@ export function ProductForm(props: {
       </div>
 
       <ProductCommerceSection
+        price_cents={props.draft.price_cents}
+        discount_percent={props.draft.discount_percent}
         gtin={props.draft.gtin}
         mpn={props.draft.mpn}
         condition={props.draft.condition}
