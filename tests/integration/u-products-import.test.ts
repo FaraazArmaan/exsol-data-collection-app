@@ -1,8 +1,26 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Context } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+// Stub Netlify Blobs so uProductsExportHandler can be imported without Netlify
+// runtime context. The round-trip test seeds products with no images, so the
+// store's get() is never actually called — but getStore() itself would throw.
+const blobStore = new Map<string, ArrayBuffer>();
+vi.mock('../../netlify/functions/_shared/products-storage', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../netlify/functions/_shared/products-storage')>();
+  return {
+    ...original,
+    productImagesStore: () => ({
+      set:         async (key: string, data: ArrayBuffer) => { blobStore.set(key, data); },
+      get:         async (key: string) => blobStore.get(key) ?? null,
+      delete:      async (key: string) => { blobStore.delete(key); },
+      getMetadata: async (key: string) => blobStore.has(key) ? { etag: 'mock', metadata: {} } : null,
+    }),
+  };
+});
+
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
 import clientsHandler from '../../netlify/functions/clients';
@@ -11,6 +29,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
 import uProductsImportHandler from '../../netlify/functions/u-products-import';
+import uProductsExportHandler from '../../netlify/functions/u-products-export';
 
 const CTX = {} as Context;
 const ADMIN_EMAIL = 'pm-import-admin@example.com';
@@ -69,6 +88,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  blobStore.clear();
   adminCookie = await adminLogin();
   const cr = await clientsHandler(new Request('http://localhost/api/clients', {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
@@ -374,5 +394,60 @@ describe('u-products-import', () => {
     const rows = await sql`SELECT discount_percent::float8 AS dp, sale_price_cents FROM public.products WHERE sku = ${seededSku} AND client_id = ${clientId}::uuid` as Array<{ dp: number; sale_price_cents: number }>;
     expect(rows[0]!.dp).toBe(20);
     expect(rows[0]!.sale_price_cents).toBe(8000);
+  });
+
+  test('round-trip: export CSV → import same bytes → discount+sale_price unchanged + no override warning', async () => {
+    const seedSku = `RT-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, discount_percent, sale_price_cents)
+      VALUES (${clientId}::uuid, 'physical', 'Round Trip', ${seedSku}, 10000, 15.0, 8500)
+    `;
+
+    // Step 1: Export
+    const exportRes = await uProductsExportHandler(new Request(`http://localhost/api/u-products-export?format=csv&client=${clientId}`, {
+      method: 'GET', headers: { cookie: buCookie },
+    }), CTX);
+    expect(exportRes.status).toBe(200);
+    const zipBuf = Buffer.from(await exportRes.arrayBuffer());
+    const JSZip = (await import('jszip')).default;
+    const zip = await JSZip.loadAsync(zipBuf);
+    const csvBytes = await zip.file('products.csv')!.async('nodebuffer');
+
+    // Sanity: confirm the export CSV contains our seeded row's SKU + 15 discount.
+    const csvText = csvBytes.toString('utf8');
+    expect(csvText).toContain(seedSku);
+    const headerLine = csvText.split('\n')[0]!;
+    const discIdx = headerLine.split(',').indexOf('discount_percent');
+    expect(discIdx).toBeGreaterThan(-1);
+    const seededRow = csvText.split('\n').find((line) => line.includes(seedSku))!;
+    expect(Number(seededRow.split(',')[discIdx])).toBe(15);
+
+    // Step 2: Import the export bytes.
+    const ab = new ArrayBuffer(csvBytes.byteLength);
+    new Uint8Array(ab).set(csvBytes);
+    const fd = new FormData();
+    fd.append('file', new Blob([ab], { type: 'text/csv' }), 'roundtrip.csv');
+    const importRes = await uProductsImportHandler(new Request(`http://localhost/api/u-products-import?client=${clientId}`, {
+      method: 'POST', headers: { cookie: buCookie }, body: fd,
+    }), CTX);
+    expect(importRes.status).toBe(200);
+    const body = await importRes.json() as {
+      summary: { to_create: number; to_update: number; errors: number };
+      warnings: Array<{ row: number; message: string }>;
+    };
+    // The seeded row should be detected as an update by SKU, not a create.
+    expect(body.summary.to_update).toBeGreaterThanOrEqual(1);
+    expect(body.summary.errors).toBe(0);
+    // No override warning because the CSV's sale_price agrees with the computed value.
+    expect(body.warnings.some((w) => /overridden by discount_percent/i.test(w.message))).toBe(false);
+
+    // Step 3: Re-read from DB and assert unchanged.
+    const rows = await sql`
+      SELECT discount_percent::float8 AS dp, sale_price_cents, price_cents
+      FROM public.products WHERE sku = ${seedSku} AND client_id = ${clientId}::uuid
+    ` as Array<{ dp: number; sale_price_cents: number; price_cents: number }>;
+    expect(rows[0]!.dp).toBe(15);
+    expect(rows[0]!.sale_price_cents).toBe(8500);
+    expect(rows[0]!.price_cents).toBe(10000);
   });
 });
