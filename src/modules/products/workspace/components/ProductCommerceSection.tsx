@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import type { Condition, Availability } from '../../shared/types';
 import { computeSalePrice } from '../../shared/discount';
 
@@ -32,6 +33,15 @@ export function ProductCommerceSection(props: {
     sale_price_cents, sale_starts_at, sale_ends_at, weight_grams,
     onChange,
   } = props;
+
+  const [discountInput, setDiscountInput] = useState<string>(discount_percent == null ? '' : String(discount_percent));
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
+  // Sync local state when parent resets the value (e.g. Clear button or product load).
+  useEffect(() => {
+    setDiscountInput(discount_percent == null ? '' : String(discount_percent));
+    setDiscountError(null);
+  }, [discount_percent]);
 
   // datetime-local expects YYYY-MM-DDTHH:mm. ISO is YYYY-MM-DDTHH:mm:ss.sssZ.
   // Slicing keeps the date/hour/minute portion. Phase B accepts local-TZ ambiguity.
@@ -101,23 +111,54 @@ export function ProductCommerceSection(props: {
             step="0.01"
             min="0.01"
             max="99.99"
-            value={discount_percent ?? ''}
+            value={discountInput}
+            aria-invalid={discountError != null}
             onChange={(e) => {
               const raw = e.target.value;
+              setDiscountInput(raw);
+              setDiscountError(null);
+              // Commit valid values live so the sale-price preview updates.
               if (raw === '') {
                 onChange({ discount_percent: null });
                 return;
               }
               const n = Number(raw);
-              if (!Number.isFinite(n)) return;
-              onChange({ discount_percent: n });
+              if (Number.isFinite(n) && n > 0 && n < 100) {
+                onChange({ discount_percent: n });
+              }
+              // Invalid: keep local input, don't propagate. Error shows on blur.
+            }}
+            onBlur={() => {
+              const raw = discountInput.trim();
+              if (raw === '') {
+                setDiscountError(null);
+                // Already committed null in onChange path; nothing to do.
+                return;
+              }
+              const n = Number(raw);
+              if (!Number.isFinite(n)) {
+                setDiscountError('Must be a number');
+                return;
+              }
+              if (n <= 0 || n >= 100) {
+                setDiscountError('Must be > 0 and < 100');
+                return;
+              }
+              setDiscountError(null);
             }}
           />
+          {discountError && (
+            <div className="pm-field-error" role="alert">{discountError}</div>
+          )}
           {discount_percent != null && (
             <button
               type="button"
               className="pm-link-button"
-              onClick={() => onChange({ discount_percent: null })}
+              onClick={() => {
+                setDiscountInput('');
+                setDiscountError(null);
+                onChange({ discount_percent: null });
+              }}
             >
               Clear discount
             </button>
