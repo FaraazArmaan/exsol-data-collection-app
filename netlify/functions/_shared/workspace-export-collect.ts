@@ -22,6 +22,17 @@ import type { ExportActor, WorkspaceSnapshot } from './workspace-export-types';
 
 type SQL = NeonQueryFunction<false, false>;
 
+// CREDENTIAL_REDACTED_FIELDS — module-level authoritative Set of column names
+// that must never appear in the exported snapshot. Used as a defense-in-depth
+// backstop after the SELECT list already omits them (see security invariant in
+// the file header). Declared here so external callers (e.g. format writers)
+// can reference it without re-entering the collector function.
+const CREDENTIAL_REDACTED_FIELDS = new Set([
+  'password_hash',
+  'temp_password_plain',
+  'password_reset_requested_at',
+]);
+
 export async function collectWorkspaceSnapshot(
   sql: SQL,
   clientId: string,
@@ -73,11 +84,6 @@ export async function collectWorkspaceSnapshot(
   // (and any later additions to user_node_credentials).
   // Defense-in-depth: even if the DB driver or a test mock returns extra keys,
   // we explicitly strip the three redacted fields before they enter the snapshot.
-  const CREDENTIAL_REDACTED_FIELDS = new Set([
-    'password_hash',
-    'temp_password_plain',
-    'password_reset_requested_at',
-  ]);
   const rawCredentials = (await sql`
     SELECT id, client_id, user_node_id, email, must_change_password,
            last_login_at, created_at, updated_at, created_by_admin

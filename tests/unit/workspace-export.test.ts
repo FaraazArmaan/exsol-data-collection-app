@@ -22,13 +22,14 @@ import type { ExportActor } from '../../netlify/functions/_shared/workspace-expo
 function mockSqlWithFixtures(fixtures: Record<string, unknown[]>) {
   return ((strings: TemplateStringsArray) => {
     const joined = strings.join(' ').toLowerCase();
-    for (const [k, rows] of Object.entries(fixtures)) {
-      if (joined.includes(`from public.${k}`) || joined.includes(`from ${k}`)) {
-        return Promise.resolve(rows);
-      }
-    }
+    // Match the FIRST `FROM public.<table>` clause, not any occurrence.
+    // Subqueries inside the WHERE clause would otherwise false-positive on
+    // the parent table (e.g. file_categories matching public.files).
+    const m = joined.match(/from\s+public\.([a-z_]+)/);
+    const primary = m?.[1];
+    if (primary && fixtures[primary]) return Promise.resolve(fixtures[primary]);
     return Promise.resolve([]);
-  }) as never;
+  }) as unknown as Parameters<typeof collectWorkspaceSnapshot>[0];
 }
 
 const ACTOR: ExportActor = { kind: 'admin', id: 'admin-1', email: 'admin@x' };

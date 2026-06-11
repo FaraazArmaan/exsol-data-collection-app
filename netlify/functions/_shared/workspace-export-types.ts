@@ -40,6 +40,9 @@ export interface TableCounts {
   cardinality_rules: number;
   files: number;
   file_categories: number;
+  file_allowed_nodes: number;
+  file_allowed_roles: number;
+  file_allowed_users: number;
   products: number;
   product_categories: number;
   product_images: number;
@@ -54,6 +57,9 @@ export function countTables(snap: WorkspaceSnapshot): TableCounts {
     cardinality_rules: snap.cardinality_rules.length,
     files: snap.files.files.length,
     file_categories: snap.files.categories.length,
+    file_allowed_nodes: snap.files.allowed_nodes.length,
+    file_allowed_roles: snap.files.allowed_roles.length,
+    file_allowed_users: snap.files.allowed_users.length,
     products: snap.products.products.length,
     product_categories: snap.products.categories.length,
     product_images: snap.products.images.length,
