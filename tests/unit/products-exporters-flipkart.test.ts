@@ -23,6 +23,7 @@ function mkRow(overrides: Partial<ExportProductRow> = {}): ExportProductRow {
     mpn: null,
     condition: 'new',
     availability: 'in_stock',
+    discount_percent: null,
     sale_price_cents: null,
     sale_starts_at: null,
     sale_ends_at: null,

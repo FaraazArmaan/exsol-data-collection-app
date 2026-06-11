@@ -231,6 +231,31 @@ describe('u-products-export', () => {
     expect(tsv.trim().split('\n')).toHaveLength(3);
   });
 
+  test('CSV export includes discount_percent column', async () => {
+    const sku = `EXP-${Date.now()}`;
+    await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, discount_percent, sale_price_cents)
+      VALUES (${clientId}::uuid, 'physical', 'DC-Export', ${sku}, 10000, 15.0, 8500)
+    `;
+    const r = await uProductsExportHandler(new Request(`http://localhost/api/u-products-export?format=csv&client=${clientId}`, {
+      method: 'GET', headers: { cookie: buCookie },
+    }), CTX);
+    expect(r.status).toBe(200);
+    const buf = Buffer.from(await r.arrayBuffer());
+    const z = await JSZip.loadAsync(buf);
+    const csvText = await z.file('products.csv')!.async('string');
+    const headerLine = csvText.split('\n')[0]!;
+    expect(headerLine).toContain('discount_percent');
+    const headers = headerLine.split(',');
+    const discIdx = headers.indexOf('discount_percent');
+    expect(discIdx).toBeGreaterThan(-1);
+    const dataLines = csvText.split('\n').slice(1).filter(Boolean);
+    const ourRow = dataLines.find((line) => line.includes(sku));
+    expect(ourRow).toBeDefined();
+    const cells = ourRow!.split(',');
+    expect(cells[discIdx]).toBe('15');
+  });
+
   test('Flipkart format → products.xlsx inside ZIP', async () => {
     const withImg = await makeProduct('Fk-A', { sku: 'FK-A' });
     await makeProduct('Fk-B', { sku: 'FK-B' });

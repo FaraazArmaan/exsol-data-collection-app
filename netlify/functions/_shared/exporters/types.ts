@@ -19,6 +19,7 @@ export interface ExportProductRow {
   mpn: string | null;
   condition: 'new' | 'refurbished' | 'used';
   availability: 'in_stock' | 'out_of_stock' | 'preorder' | 'discontinued';
+  discount_percent: number | null;
   sale_price_cents: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;

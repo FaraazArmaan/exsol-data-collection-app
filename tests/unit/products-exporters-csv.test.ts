@@ -22,6 +22,7 @@ function mkRow(overrides: Partial<ExportProductRow> = {}): ExportProductRow {
     mpn: null,
     condition: 'new',
     availability: 'in_stock',
+    discount_percent: null,
     sale_price_cents: null,
     sale_starts_at: null,
     sale_ends_at: null,
@@ -60,13 +61,13 @@ describe('csv exporter', () => {
     expect(typeof r.body).toBe('string');
   });
 
-  it('emits the canonical 39-column header', () => {
+  it('emits the canonical 41-column header', () => {
     const r = format(ctx([]));
     const header = (r.body as string).split('\n')[0]!;
     expect(header).toBe(
-      'id,type,name,description,category,brand,tags,price,currency,sku,stock_qty,unit,status,gtin,mpn,condition,availability,sale_price,sale_starts_at,sale_ends_at,weight_grams,length_mm,width_mm,height_mm,color,size,material,gender,age_group,manufacturer,country_of_origin,hsn_code,gst_rate,google_category,meta_category,product_url,image_main,images_additional,created_at,updated_at',
+      'id,type,name,description,category,brand,tags,price,currency,sku,stock_qty,unit,status,gtin,mpn,condition,availability,sale_price,discount_percent,sale_starts_at,sale_ends_at,weight_grams,length_mm,width_mm,height_mm,color,size,material,gender,age_group,manufacturer,country_of_origin,hsn_code,gst_rate,google_category,meta_category,product_url,image_main,images_additional,created_at,updated_at',
     );
-    expect(header.split(',').length).toBe(40);
+    expect(header.split(',').length).toBe(41);
   });
 
   it('maps row fields correctly', () => {
@@ -101,5 +102,17 @@ describe('csv exporter', () => {
     const r = format(ctx([row]));
     const dataLine = (r.body as string).split('\n')[1]!;
     expect(dataLine).toContain('"Hello, World"');
+  });
+
+  it('emits discount_percent value in the correct column', () => {
+    const row = mkRow({ discount_percent: 15, sale_price_cents: 8500 });
+    const r = format(ctx([row]));
+    const headerLine = (r.body as string).split('\n')[0]!;
+    const dataLine = (r.body as string).split('\n')[1]!;
+    const headers = headerLine.split(',');
+    const discIdx = headers.indexOf('discount_percent');
+    expect(discIdx).toBeGreaterThan(-1);
+    const cells = dataLine.split(',');
+    expect(cells[discIdx]).toBe('15');
   });
 });
