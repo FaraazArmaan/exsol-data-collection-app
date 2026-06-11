@@ -26,8 +26,9 @@ function buildFilename(slug: string, ext: 'json' | 'zip'): string {
 
 export function toJsonResponse(snap: WorkspaceSnapshot, slug: string): Response {
   const body = JSON.stringify(snap, null, 2);
-  if (body.length > MAX_BYTES) {
-    throw new ExportTooLargeError(body.length, MAX_BYTES);
+  const byteLength = Buffer.byteLength(body, 'utf8');
+  if (byteLength > MAX_BYTES) {
+    throw new ExportTooLargeError(byteLength, MAX_BYTES);
   }
   const filename = buildFilename(slug, 'json');
   return new Response(body, {
@@ -45,10 +46,19 @@ export async function toZipResponse(_snap: WorkspaceSnapshot, _slug: string): Pr
   throw new Error('toZipResponse: not implemented yet');
 }
 
-// Re-export for callers
-export { csvEscape };
-
-// Internal helper exported only for testing the per-table CSV builder in Task 4.
+/**
+ * CSV-stringify an array of plain objects (RFC 4180-ish).
+ *
+ * - Header row is the union of all keys across all rows (sparse rows get
+ *   empty cells for missing keys). This is intentional — DB result rows
+ *   always share a schema in practice, but tests may pass mixed-shape
+ *   fixtures.
+ * - Object/array values are JSON-encoded then csv-escaped (used for jsonb
+ *   columns like user_nodes.fields).
+ * - null / undefined → empty cell.
+ *
+ * Returns '' for an empty input array.
+ */
 export function rowsToCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
   const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
@@ -64,5 +74,4 @@ export function rowsToCsv(rows: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-// re-export for the endpoint
-export { countTables, JSZip };
+
