@@ -252,4 +252,21 @@ describe('u-products-detail', () => {
     ` as Array<{ detail: Record<string, unknown> }>;
     expect(audits[0]!.detail.discount_percent_changed_to).toBe(20);
   });
+
+  test('GET returns discount_percent in the response', async () => {
+    const sku = `GET-DC-${Date.now()}`;
+    const ins = await sql`
+      INSERT INTO public.products (client_id, type, name, sku, price_cents, discount_percent, sale_price_cents)
+      VALUES (${clientId}::uuid, 'physical', 'Get Discount', ${sku}, 10000, 25.0, 7500)
+      RETURNING id
+    ` as Array<{ id: string }>;
+    const id = ins[0]!.id;
+    const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products-detail/${id}?client=${clientId}`, {
+      method: 'GET', headers: { cookie: buCookie },
+    }), CTX);
+    expect(r.status).toBe(200);
+    const body = await r.json() as { discount_percent: string | number | null; sale_price_cents: number | null };
+    expect(Number(body.discount_percent)).toBe(25);
+    expect(body.sale_price_cents).toBe(7500);
+  });
 });

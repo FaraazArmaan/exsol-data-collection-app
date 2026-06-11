@@ -91,7 +91,7 @@ async function handleGet(req: Request, id: string): Promise<Response> {
            p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
            p.created_at, p.updated_at,
            p.gtin, p.mpn, p.condition, p.availability,
-           p.sale_price_cents, p.sale_starts_at, p.sale_ends_at,
+           p.discount_percent, p.sale_price_cents, p.sale_starts_at, p.sale_ends_at,
            p.weight_grams, p.length_mm, p.width_mm, p.height_mm,
            p.color, p.size, p.material, p.gender, p.age_group,
            p.manufacturer, p.country_of_origin, p.hsn_code, p.gst_rate,
