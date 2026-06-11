@@ -29,6 +29,7 @@ export const OP_LABELS: Record<string, string> = {
   'admin.created': 'Added admin',
   'admin.updated': 'Edited admin',
   'admin.deleted': 'Removed admin',
+  'workspace.exported': 'Exported workspace data',
 };
 
 export function actionLabel(op: string): string {
