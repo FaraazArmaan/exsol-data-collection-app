@@ -26,6 +26,7 @@ export interface CreateProductInput {
   sale_price_cents?: number | null;
   sale_starts_at?: string | null;     // ISO timestamp
   sale_ends_at?: string | null;
+  discount_percent?: number | null;
   weight_grams?: number | null;
   length_mm?: number | null;
   width_mm?: number | null;
@@ -102,6 +103,13 @@ export function parseCreateProduct(input: unknown): ParseResult<CreateProductInp
   }
   if (v.gst_rate != null && (typeof v.gst_rate !== 'number' || v.gst_rate < 0 || v.gst_rate > 100))
     errors.push({ field: 'gst_rate', message: 'number 0-100 or null' });
+  if (v.discount_percent != null && (
+    typeof v.discount_percent !== 'number' ||
+    v.discount_percent <= 0 ||
+    v.discount_percent >= 100
+  )) {
+    errors.push({ field: 'discount_percent', message: 'must be > 0 and < 100 or null' });
+  }
   if (v.platform_extras != null && (typeof v.platform_extras !== 'object' || Array.isArray(v.platform_extras)))
     errors.push({ field: 'platform_extras', message: 'must be object or null' });
   if (errors.length === 0 && isType(v.type)) {
@@ -123,7 +131,7 @@ export function parsePatchProduct(input: unknown): ParseResult<PatchProductInput
     'price_cents','sku','stock_qty','unit','status','hero_image_key',
     // Phase B
     'gtin','mpn','condition','availability',
-    'sale_price_cents','sale_starts_at','sale_ends_at',
+    'sale_price_cents','sale_starts_at','sale_ends_at','discount_percent',
     'weight_grams','length_mm','width_mm','height_mm',
     'color','size','material','gender','age_group',
     'manufacturer','country_of_origin','hsn_code','gst_rate',
