@@ -308,36 +308,68 @@ async function seedBucketUserForClientA(opts: { levelNumber: number; permKey?: s
     ON CONFLICT (client_id, level_number) DO UPDATE SET permissions = ${JSON.stringify(perms)}::jsonb
   `;
 
-  // For L2+ we need a parent L1 node.
+  // For L2+ we need a parent at level_number - 1. Build the chain L1 → L2 → ... → target.
   let parentId: string | null = null;
   if (opts.levelNumber > 1) {
-    const pRows = (await sql`
-      SELECT id FROM public.user_nodes
-      WHERE client_id = ${clientAId}::uuid AND level_number = 1 LIMIT 1
+    // Ensure L1 exists.
+    const l1RoleRows = (await sql`
+      INSERT INTO public.client_roles (client_id, key, label, color)
+      VALUES (${clientAId}, 'owner', 'Owner', '#3b82f6')
+      ON CONFLICT (client_id, key) DO UPDATE SET label = 'Owner'
+      RETURNING id
     `) as { id: string }[];
-    parentId = pRows[0]?.id ?? null;
+    await sql`
+      INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+      VALUES (${clientAId}, 1, 'Primary', '{}'::jsonb)
+      ON CONFLICT (client_id, level_number) DO NOTHING
+    `;
+    const l1Email = `seed-l1@we-test.example`;
+    await sql`
+      INSERT INTO public.user_nodes
+        (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+      VALUES (${clientAId}, NULL, 1, ${l1RoleRows[0]!.id}, 'L1 Owner Seed', ${l1Email}, ${adminId})
+      ON CONFLICT (client_id, (lower(email::text))) WHERE email IS NOT NULL
+        DO UPDATE SET display_name = 'L1 Owner Seed'
+    `;
+    const l1NodeRows = (await sql`
+      SELECT id FROM public.user_nodes
+      WHERE client_id = ${clientAId}::uuid AND lower(email::text) = lower(${l1Email})
+      LIMIT 1
+    `) as { id: string }[];
+    let currentParentId = l1NodeRows[0]!.id;
 
-    if (!parentId) {
-      // Seed a minimal L1 role + level + node to satisfy the FK.
-      const l1RoleRows = (await sql`
+    // Build intermediate levels if needed (L2, L3, ..., levelNumber - 1).
+    for (let lvl = 2; lvl < opts.levelNumber; lvl++) {
+      const intRoleKey = `role-l${lvl}`;
+      const intRoleRows = (await sql`
         INSERT INTO public.client_roles (client_id, key, label, color)
-        VALUES (${clientAId}, 'owner', 'Owner', '#3b82f6')
-        ON CONFLICT (client_id, key) DO UPDATE SET label = 'Owner'
+        VALUES (${clientAId}, ${intRoleKey}, ${'Role L' + lvl}, '#94a3b8')
+        ON CONFLICT (client_id, key) DO UPDATE SET label = ${'Role L' + lvl}
         RETURNING id
       `) as { id: string }[];
       await sql`
         INSERT INTO public.client_levels (client_id, level_number, label, permissions)
-        VALUES (${clientAId}, 1, 'Primary', '{}'::jsonb)
+        VALUES (${clientAId}, ${lvl}, ${'Level ' + lvl}, '{}'::jsonb)
         ON CONFLICT (client_id, level_number) DO NOTHING
       `;
-      const l1NodeRows = (await sql`
+      const intEmail = `seed-l${lvl}@we-test.example`;
+      await sql`
         INSERT INTO public.user_nodes
-          (client_id, parent_id, level_number, role_id, display_name, created_by_admin)
-        VALUES (${clientAId}, NULL, 1, ${l1RoleRows[0]!.id}, 'L1 Owner Seed', ${adminId})
-        RETURNING id
+          (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+        VALUES (${clientAId}, ${currentParentId}, ${lvl}, ${intRoleRows[0]!.id},
+                ${'L' + lvl + ' Intermediate Seed'}, ${intEmail}, ${adminId})
+        ON CONFLICT (client_id, (lower(email::text))) WHERE email IS NOT NULL
+          DO UPDATE SET display_name = ${'L' + lvl + ' Intermediate Seed'}
+      `;
+      const intNodeRows = (await sql`
+        SELECT id FROM public.user_nodes
+        WHERE client_id = ${clientAId}::uuid AND lower(email::text) = lower(${intEmail})
+        LIMIT 1
       `) as { id: string }[];
-      parentId = l1NodeRows[0]!.id;
+      currentParentId = intNodeRows[0]!.id;
     }
+
+    parentId = currentParentId;
   }
 
   // Use level_number in email to avoid collision between L1 and L2 tests
@@ -398,6 +430,8 @@ async function loginBucketUser(email: string, password: string, slug: string): P
 }
 
 describe('workspace-export — bucket-user permission boundary', () => {
+  // Bucket-users are JWT-scoped; no ?client= needed. resolveClientId derives it from the token.
+
   test('L1 Owner without explicit perm → 200 (matrix bypass)', async () => {
     const u = await seedBucketUserForClientA({ levelNumber: 1 });
     const cookie = await loginBucketUser(u.email, u.password, 'we-test-acme');
@@ -419,8 +453,13 @@ describe('workspace-export — bucket-user permission boundary', () => {
   });
 
   test('L2 with _platform.workspace.view granted → 200', async () => {
+    // Use level_number 3 (not 2) so this test doesn't share a row in
+    // client_levels with the L2-no-perm test above. Both share clientA;
+    // the ON CONFLICT (client_id, level_number) DO UPDATE on the level's
+    // permissions would otherwise leak state between tests if they ever
+    // ran concurrently.
     const u = await seedBucketUserForClientA({
-      levelNumber: 2,
+      levelNumber: 3,
       permKey: '_platform.workspace.view',
     });
     const cookie = await loginBucketUser(u.email, u.password, 'we-test-acme');
