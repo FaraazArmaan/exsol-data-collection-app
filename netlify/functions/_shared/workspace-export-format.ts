@@ -10,6 +10,11 @@ import { countTables } from './workspace-export-types';
 import { csvEscape } from './exporters/format-helpers';
 import { ExportTooLargeError } from './exporters/types';
 
+// 4 MB cap applies to each response's WIRE bytes (post-serialization,
+// post-compression for ZIP). This is the actual Netlify Functions
+// response-size limit. ZIP can therefore carry more raw data than JSON
+// for the same cap — that's an intentional consequence of compression,
+// not an asymmetry to fix.
 export const MAX_BYTES = 4 * 1024 * 1024;
 
 export function isoFilenameStamp(d: Date): string {
@@ -49,7 +54,7 @@ export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Prom
     schema_version: snap.schema_version,
     exported_at: snap.exported_at,
     exported_by: snap.exported_by,
-    client_id: (snap.client as { id?: string }).id ?? null,
+    client_id: typeof snap.client.id === 'string' ? snap.client.id : null,
     slug,
     table_counts: countTables(snap),
   };
@@ -62,7 +67,7 @@ export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Prom
     `Exported by:    ${snap.exported_by.email} (${snap.exported_by.kind})`,
     `Schema version: ${snap.schema_version}`,
     ``,
-    `Files in this archive (CSV, RFC 4180):`,
+    `Files in this archive (CSV with RFC 4180-style quoting, LF line endings):`,
     `  client.csv                       — single row from public.clients`,
     `  enabled_products.csv             — one column: product_key`,
     `  client_levels.csv                — level definitions`,
@@ -71,12 +76,12 @@ export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Prom
     `  user_nodes.csv                   — the org tree (parent_id preserved)`,
     `  user_node_credentials.csv        — workspace logins`,
     `  files/files.csv                  — file metadata`,
-    `  files/file_categories.csv`,
-    `  files/file_allowed_nodes.csv`,
-    `  files/file_allowed_roles.csv`,
-    `  files/file_allowed_users.csv`,
-    `  products/products.csv`,
-    `  products/product_categories.csv`,
+    `  files/file_categories.csv        — file ↔ category links`,
+    `  files/file_allowed_nodes.csv     — explicit per-user audience grants`,
+    `  files/file_allowed_roles.csv     — per-role audience grants`,
+    `  files/file_allowed_users.csv     — per-user audience grants`,
+    `  products/products.csv            — product rows`,
+    `  products/product_categories.csv  — category definitions`,
     `  products/product_images.csv      — metadata only; no binaries`,
     ``,
     `REDACTIONS (always absent from this export):`,

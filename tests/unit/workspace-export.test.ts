@@ -154,6 +154,7 @@ describe('toJsonResponse', () => {
 });
 
 import { toZipResponse, rowsToCsv } from '../../netlify/functions/_shared/workspace-export-format';
+import { ExportTooLargeError } from '../../netlify/functions/_shared/exporters/types';
 import JSZipForTest from 'jszip';
 
 describe('rowsToCsv', () => {
@@ -229,4 +230,19 @@ describe('toZipResponse', () => {
     expect(manifest.slug).toBe('acme');
     expect(manifest.table_counts.user_nodes).toBe(0);
   });
+});
+
+describe('toZipResponse — 413 path', () => {
+  test('throws ExportTooLargeError when archive exceeds MAX_BYTES', async () => {
+    // Build a snapshot whose ZIP byte count we can force over the cap via
+    // a single user_nodes row containing a huge string. After DEFLATE this
+    // typically still compresses; to be reliable, fill it with random-ish
+    // content the compressor can't crunch.
+    const bigJunk = Array.from({ length: 8_000_000 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
+    const fatSnapshot = {
+      ...SNAPSHOT_FIXTURE,
+      user_nodes: [{ id: 'n-1', display_name: 'x', payload: bigJunk }],
+    };
+    await expect(toZipResponse(fatSnapshot, 'acme')).rejects.toBeInstanceOf(ExportTooLargeError);
+  }, 20_000);
 });
