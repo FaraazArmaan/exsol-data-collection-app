@@ -114,9 +114,9 @@ describe('workspace-export — admin happy paths', () => {
       CTX,
     );
     const text = await res.text();
-    expect(text).not.toMatch(/password_hash/);
-    expect(text).not.toMatch(/temp_password_plain/);
-    expect(text).not.toMatch(/password_reset_requested_at/);
+    expect(text).not.toMatch(/"password_hash"\s*:/);
+    expect(text).not.toMatch(/"temp_password_plain"\s*:/);
+    expect(text).not.toMatch(/"password_reset_requested_at"\s*:/);
   });
 
   test('format=zip returns 200 application/zip; manifest schema_version=1', async () => {

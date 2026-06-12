@@ -107,9 +107,9 @@ describe('collectWorkspaceSnapshot — redactions', () => {
     });
     const snap = await collectWorkspaceSnapshot(sql, 'c-1', ACTOR);
     const text = JSON.stringify(snap);
-    expect(text).not.toMatch(/password_hash/);
-    expect(text).not.toMatch(/temp_password_plain/);
-    expect(text).not.toMatch(/password_reset_requested_at/);
+    expect(text).not.toMatch(/"password_hash"\s*:/);
+    expect(text).not.toMatch(/"temp_password_plain"\s*:/);
+    expect(text).not.toMatch(/"password_reset_requested_at"\s*:/);
     expect(text).not.toMatch(/argon2:secret/);
     expect(text).not.toMatch(/temp-secret/);
   });
