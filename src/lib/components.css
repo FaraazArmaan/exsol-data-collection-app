@@ -519,3 +519,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   font-size: 0.8em;
   margin-top: 4px;
 }
+
+/* ── Workspace export card ──────────────────────────────────────────── */
+.ams-export-card {
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-top: 24px;
+  background: var(--color-surface, #fff);
+}
+.ams-export-card h3 { margin: 0 0 8px 0; font-size: 16px; }
+.ams-export-card p { margin: 0 0 12px 0; color: var(--color-text-muted, #666); }
+.ams-export-card-actions { display: flex; gap: 8px; }
+.ams-export-card-error { color: var(--color-danger, #c33); margin-top: 8px; }

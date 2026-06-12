@@ -17,6 +17,10 @@ interface State {
 
 const Ctx = createContext<State | null>(null);
 
+// Exported for unit tests that need to inject a fake auth value without
+// going through the provider's effect chain.
+export const UserAuthCtxForTesting = Ctx;
+
 export function UserAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPortalUser | null>(null);
   const [client, setClient] = useState<UserPortalClient | null>(null);
