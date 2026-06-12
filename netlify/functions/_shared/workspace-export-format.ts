@@ -30,6 +30,8 @@ function getMaxBytes(): number {
 /** @deprecated Use DEFAULT_MAX_BYTES or getMaxBytes() instead. Kept for unit-test back-compat. */
 export const MAX_BYTES = DEFAULT_MAX_BYTES;
 
+// Mirrored client-side in src/modules/ams/components/settings/WorkspaceExportCard.tsx.
+// Keep the two implementations in sync.
 export function isoFilenameStamp(d: Date): string {
   // YYYYMMDDTHHMMSSZ — filesystem-safe (no colons or hyphens in the time).
   const iso = d.toISOString();          // 2026-06-11T10:23:45.678Z

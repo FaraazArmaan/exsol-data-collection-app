@@ -9,16 +9,23 @@ function canExport(
   return permissions['_platform.workspace.view'] === true;
 }
 
+// Mirrors isoFilenameStamp in netlify/functions/_shared/workspace-export-format.ts.
+// If you change the format here, change it there too — the server uses the same
+// stamp for the Content-Disposition filename.
 function isoFilenameStamp(d: Date): string {
   const iso = d.toISOString();
   return `${iso.slice(0, 10).replace(/-/g, '')}T${iso.slice(11, 19).replace(/:/g, '')}Z`;
 }
 
 export default function WorkspaceExportCard() {
-  const { permissions, user, client } = useUserAuth();
+  const { permissions, user, client, loading } = useUserAuth();
   const [busy, setBusy] = useState<'json' | 'zip' | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // Hide while user/permissions haven't loaded — prevents a card-flash on mount
+  // where canExport passes briefly (level_number is null) before the real
+  // level_number hydrates and removes the card.
+  if (loading) return null;
   if (!canExport(permissions, (user as { level_number?: number | null }).level_number)) {
     return null;
   }
@@ -31,7 +38,7 @@ export default function WorkspaceExportCard() {
         credentials: 'include',
       });
       if (!res.ok) {
-        if (res.status === 413) setErr('Workspace is too large to export in one file. Contact support.');
+        if (res.status === 413) setErr('Workspace is too large to export in one file. Try removing old data or contact the ExSol team.');
         else setErr(`Export failed (${res.status}).`);
         return;
       }
@@ -63,6 +70,7 @@ export default function WorkspaceExportCard() {
           type="button"
           className="btn btn-primary"
           disabled={busy !== null}
+          aria-busy={busy !== null}
           onClick={() => download('json')}
         >
           {busy === 'json' ? 'Preparing…' : 'Download JSON'}
@@ -71,12 +79,13 @@ export default function WorkspaceExportCard() {
           type="button"
           className="btn"
           disabled={busy !== null}
+          aria-busy={busy !== null}
           onClick={() => download('zip')}
         >
           {busy === 'zip' ? 'Preparing…' : 'Download ZIP'}
         </button>
       </div>
-      {err && <p className="ams-export-card-error">{err}</p>}
+      {err && <p className="ams-export-card-error" role="alert">{err}</p>}
     </section>
   );
 }
