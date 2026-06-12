@@ -156,7 +156,7 @@ describe('platform surfaces', () => {
     expect(PLATFORM_SURFACES).toContain('files');
   });
 
-  it('exposes 4 surfaces total (users, structure, settings, files)', () => {
-    expect(PLATFORM_SURFACES).toEqual(['users', 'structure', 'settings', 'files']);
+  it('exposes 5 surfaces total (users, structure, settings, files, workspace)', () => {
+    expect(PLATFORM_SURFACES).toEqual(['users', 'structure', 'settings', 'files', 'workspace']);
   });
 });

@@ -30,6 +30,7 @@ import { LoginManageModal } from '../../shared/team-modals/LoginManageModal';
 import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';
 import { BulkActionBar } from '../../shared/team-modals/BulkActionBar';
 import { ownerApi, ownerCopy } from '../team/team-modal-api';
+import WorkspaceExportCard from '../../ams/components/settings/WorkspaceExportCard';
 
 export default function UserManageTeam() {
   const { slug } = useParams<{ slug: string }>();
@@ -333,6 +334,8 @@ export default function UserManageTeam() {
             onChanged={async () => { setSelectMode(false); setSelectedIds(new Set()); await refreshNodes(); }}
           />
         )}
+
+        <WorkspaceExportCard />
       </section>
     </DndContext>
   );

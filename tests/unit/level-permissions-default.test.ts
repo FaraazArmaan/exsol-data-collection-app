@@ -8,9 +8,9 @@ import { defaultPermissionsForLevel } from '../../netlify/functions/_shared/leve
 describe('defaultPermissionsForLevel', () => {
   test('L1 with no enabled products returns ONLY platform keys, all true', () => {
     const result = defaultPermissionsForLevel(1, []);
-    // 4 platform surfaces × 4 verbs = 16 keys
+    // 5 platform surfaces × 4 verbs = 20 keys
     const keys = Object.keys(result);
-    expect(keys.length).toBe(16);
+    expect(keys.length).toBe(20);
     for (const k of keys) {
       expect(k.startsWith('_platform.')).toBe(true);
       expect(result[k]).toBe(true);
