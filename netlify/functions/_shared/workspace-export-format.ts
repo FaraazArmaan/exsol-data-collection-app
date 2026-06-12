@@ -15,7 +15,20 @@ import { ExportTooLargeError } from './exporters/types';
 // response-size limit. ZIP can therefore carry more raw data than JSON
 // for the same cap — that's an intentional consequence of compression,
 // not an asymmetry to fix.
-export const MAX_BYTES = 4 * 1024 * 1024;
+//
+// Emergency override: set WORKSPACE_EXPORT_MAX_BYTES in the environment
+// (e.g. for testing or to temporarily raise/lower the cap without a deploy).
+// The default value is kept as a named export for tests that need to read it.
+export const DEFAULT_MAX_BYTES = 4 * 1024 * 1024;
+
+/** Returns the effective byte cap, re-reading the env var each call so tests can override it. */
+function getMaxBytes(): number {
+  const override = Number(process.env.WORKSPACE_EXPORT_MAX_BYTES);
+  return override > 0 ? override : DEFAULT_MAX_BYTES;
+}
+
+/** @deprecated Use DEFAULT_MAX_BYTES or getMaxBytes() instead. Kept for unit-test back-compat. */
+export const MAX_BYTES = DEFAULT_MAX_BYTES;
 
 export function isoFilenameStamp(d: Date): string {
   // YYYYMMDDTHHMMSSZ — filesystem-safe (no colons or hyphens in the time).
@@ -32,8 +45,9 @@ function buildFilename(slug: string, ext: 'json' | 'zip'): string {
 export function toJsonResponse(snap: WorkspaceSnapshot, slug: string): Response {
   const body = JSON.stringify(snap, null, 2);
   const byteLength = Buffer.byteLength(body, 'utf8');
-  if (byteLength > MAX_BYTES) {
-    throw new ExportTooLargeError(byteLength, MAX_BYTES);
+  const cap = getMaxBytes();
+  if (byteLength > cap) {
+    throw new ExportTooLargeError(byteLength, cap);
   }
   const filename = buildFilename(slug, 'json');
   return new Response(body, {
@@ -120,8 +134,9 @@ export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Prom
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   });
-  if (buf.byteLength > MAX_BYTES) {
-    throw new ExportTooLargeError(buf.byteLength, MAX_BYTES);
+  const cap = getMaxBytes();
+  if (buf.byteLength > cap) {
+    throw new ExportTooLargeError(buf.byteLength, cap);
   }
 
   const filename = buildFilename(slug, 'zip');

@@ -143,3 +143,131 @@ describe('workspace-export — admin happy paths', () => {
     expect(body.error?.code).toBe('missing_client');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 7 additions: cross-tenant safety, audit row, 413 path
+// ---------------------------------------------------------------------------
+
+// We seed a second client B with a uniquely-named user_node so the
+// cross-tenant test has a needle to look for.
+let clientBId: string;
+let clientBNeedleNodeId: string;
+
+beforeAll(async () => {
+  const clientRows = (await sql`
+    INSERT INTO public.clients (slug, name, created_by)
+    VALUES ('we-test-bravo', 'WE Test Bravo', ${adminId})
+    ON CONFLICT (slug) DO UPDATE SET name = 'WE Test Bravo'
+    RETURNING id
+  `) as { id: string }[];
+  clientBId = clientRows[0]!.id;
+
+  // Seed one role + L1 for clientB so the user_node FK is satisfied.
+  // client_roles uses `label` (not `name`) and requires `color` (NOT NULL).
+  // There is no `created_by_admin` column on client_roles or client_levels.
+  const roleRows = (await sql`
+    INSERT INTO public.client_roles (client_id, key, label, color)
+    VALUES (${clientBId}, 'owner', 'Owner', '#3b82f6')
+    ON CONFLICT (client_id, key) DO UPDATE SET label = 'Owner'
+    RETURNING id
+  `) as { id: string }[];
+  const roleBId = roleRows[0]!.id;
+
+  // client_levels uses `label` (nullable); no `created_by_admin` column.
+  await sql`
+    INSERT INTO public.client_levels (client_id, level_number, label)
+    VALUES (${clientBId}, 1, 'Primary')
+    ON CONFLICT (client_id, level_number) DO NOTHING
+  `;
+
+  // user_nodes does have `created_by_admin` (uuid NOT NULL REFERENCES admins).
+  const nodeRows = (await sql`
+    INSERT INTO public.user_nodes (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    VALUES (${clientBId}, NULL, 1, ${roleBId}, 'CLIENT_B_NEEDLE_HUMAN', 'needle@b.test', ${adminId})
+    RETURNING id
+  `) as { id: string }[];
+  clientBNeedleNodeId = nodeRows[0]!.id;
+});
+
+afterAll(async () => {
+  await sql`DELETE FROM public.user_nodes WHERE client_id = ${clientBId}::uuid`;
+  await sql`DELETE FROM public.client_levels WHERE client_id = ${clientBId}::uuid`;
+  await sql`DELETE FROM public.client_roles WHERE client_id = ${clientBId}::uuid`;
+  await sql`DELETE FROM public.clients WHERE id = ${clientBId}::uuid`;
+});
+
+describe('workspace-export — cross-tenant safety (highest-value test)', () => {
+  test('exporting client A does NOT include client B rows', async () => {
+    const res = await workspaceExportHandler(
+      buildReq(`?format=json&client=${clientAId}`, { cookie: adminCookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).not.toContain('CLIENT_B_NEEDLE_HUMAN');
+    expect(text).not.toContain(clientBNeedleNodeId);
+    expect(text).not.toContain('needle@b.test');
+  });
+});
+
+describe('workspace-export — audit row', () => {
+  test('exactly one workspace.exported row written per successful export', async () => {
+    // Pre-clear any stale rows (afterEach cleans up too, but belt-and-suspenders).
+    await sql`DELETE FROM public.audit_log WHERE op = 'workspace.exported' AND client_id = ${clientAId}::uuid`;
+
+    const res = await workspaceExportHandler(
+      buildReq(`?format=json&client=${clientAId}`, { cookie: adminCookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+
+    const rows = (await sql`
+      SELECT actor_admin, actor_user_node, target_type, target_id, detail
+      FROM public.audit_log
+      WHERE op = 'workspace.exported' AND client_id = ${clientAId}::uuid
+      ORDER BY occurred_at DESC LIMIT 5
+    `) as Array<{
+      actor_admin: string | null;
+      actor_user_node: string | null;
+      target_type: string;
+      target_id: string;
+      detail: Record<string, unknown>;
+    }>;
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.actor_admin).toBe(adminId);
+    expect(rows[0]!.actor_user_node).toBeNull();
+    expect(rows[0]!.target_type).toBe('workspace');
+    expect(rows[0]!.target_id).toBe(clientAId);
+    const d = rows[0]!.detail as { format: string; table_counts: Record<string, number> };
+    expect(d.format).toBe('json');
+    expect(typeof d.table_counts.user_nodes).toBe('number');
+  });
+});
+
+describe('workspace-export — 413 path (env-var override)', () => {
+  test('ExportTooLargeError mapped to 413 with size_bytes + limit_bytes', async () => {
+    // Set MAX_BYTES cap to 1 byte so any real response exceeds it.
+    // workspace-export-format.ts reads process.env.WORKSPACE_EXPORT_MAX_BYTES
+    // and uses that value when present.
+    const original = process.env.WORKSPACE_EXPORT_MAX_BYTES;
+    process.env.WORKSPACE_EXPORT_MAX_BYTES = '1';
+    try {
+      const res = await workspaceExportHandler(
+        buildReq(`?format=json&client=${clientAId}`, { cookie: adminCookie }),
+        CTX,
+      );
+      expect(res.status).toBe(413);
+      const body = await res.json() as { error?: { code?: string; details?: { size_bytes?: number; limit_bytes?: number } } };
+      expect(body.error?.code).toBe('export_too_large');
+      expect(typeof body.error?.details?.size_bytes).toBe('number');
+      expect((body.error?.details?.size_bytes ?? 0) > 1).toBe(true);
+      expect(body.error?.details?.limit_bytes).toBe(1);
+    } finally {
+      if (original === undefined) {
+        delete process.env.WORKSPACE_EXPORT_MAX_BYTES;
+      } else {
+        process.env.WORKSPACE_EXPORT_MAX_BYTES = original;
+      }
+    }
+  });
+});

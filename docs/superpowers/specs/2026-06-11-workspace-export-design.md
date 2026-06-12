@@ -310,6 +310,7 @@ await logAudit(sql, {
 
 ## 10. Operational notes
 
-- No env vars. No external dependencies. No new npm packages (`adm-zip` already in the repo per the products export).
+- **`WORKSPACE_EXPORT_MAX_BYTES`** — optional env var override for the 4 MB wire-byte cap. Useful for emergencies (temporarily raising the cap for a large export without a code deploy) and for testing (set to `'1'` to force a 413 from any real snapshot). When absent or `'0'`, the default 4 194 304-byte cap applies. The value is re-read on each call, so changing it in the environment takes effect immediately without a restart.
+- No other env vars. No external dependencies. No new npm packages (`adm-zip` already in the repo per the products export).
 - Net deploy risk: low. Single new endpoint, no schema change, no existing endpoint behavior change.
 - Rollback: delete the endpoint file, remove the permission key. No data to clean up beyond the audit rows (which are valid history).
