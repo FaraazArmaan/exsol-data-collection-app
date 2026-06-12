@@ -57,4 +57,6 @@ export interface ProductManifest {
   key: string;
   label: string;
   modules: ReadonlyArray<{ module: ModuleKey; side: ProductModuleSide }>;
+  requires?: ReadonlyArray<string>;
+  permissions?: ReadonlyArray<{ key: PermissionKey; label: string }>;
 }

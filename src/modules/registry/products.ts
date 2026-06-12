@@ -7,10 +7,12 @@ import type { ProductManifest, ModuleManifest, DataBucket } from './types';
 import { getModule } from './modules';
 import { saloonBookingProduct } from './products-list/saloon-booking';
 import { productsProduct } from './products-list/products';
+import { posProduct } from './products-list/pos';
 
 export const productRegistry = {
   'saloon-booking': saloonBookingProduct,
   'products': productsProduct,
+  'pos': posProduct,
 } as const satisfies Record<string, ProductManifest>;
 
 export function allProducts(): ProductManifest[] {
