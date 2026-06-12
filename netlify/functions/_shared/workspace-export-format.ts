@@ -41,6 +41,7 @@ export function toJsonResponse(snap: WorkspaceSnapshot, slug: string): Response 
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(byteLength),
       'Cache-Control': 'no-store',
     },
   });
@@ -129,6 +130,7 @@ export async function toZipResponse(snap: WorkspaceSnapshot, slug: string): Prom
     headers: {
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(buf.byteLength),
       'Cache-Control': 'no-store',
     },
   });

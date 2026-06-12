@@ -38,7 +38,10 @@ async function actorFor(session: AnySession, sql: ReturnType<typeof db>): Promis
   return {
     kind: 'user_node',
     id: session.user_node_id,
-    email: rows[0]?.email ?? '',
+    // Defensive fallback: a deleted credential row leaves the JWT still
+    // valid for a short window. Logging the user_node_id (with a marker)
+    // is more honest in audit history than a silent empty string.
+    email: rows[0]?.email ?? `<user_node:${session.user_node_id}>`,
   };
 }
 
