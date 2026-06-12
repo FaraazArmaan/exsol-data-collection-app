@@ -70,7 +70,7 @@ export async function collectWorkspaceSnapshot(
   const cardinality_rules = (await sql`
     SELECT * FROM public.client_cardinality_rules
     WHERE client_id = ${clientId}::uuid
-    ORDER BY level_number ASC, role_id ASC
+    ORDER BY parent_role_id NULLS FIRST, child_role_id ASC
   `) as Record<string, unknown>[];
 
   const user_nodes = (await sql`

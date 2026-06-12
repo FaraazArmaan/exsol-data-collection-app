@@ -56,6 +56,8 @@ function buildReq(qs: string, opts: { cookie?: string; method?: string } = {}) {
   });
 }
 
+import JSZipForTest from 'jszip';
+
 describe('workspace-export — gates', () => {
   test('POST → 405', async () => {
     const res = await workspaceExportHandler(
@@ -89,5 +91,55 @@ describe('workspace-export — gates', () => {
       CTX,
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe('workspace-export — admin happy paths', () => {
+  test('format=json returns 200 with workspace-<slug>-<iso>.json filename', async () => {
+    const res = await workspaceExportHandler(
+      buildReq(`?format=json&client=${clientAId}`, { cookie: adminCookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/application\/json/);
+    expect(res.headers.get('content-disposition')).toMatch(/filename="workspace-we-test-acme-\d{8}T\d{6}Z\.json"/);
+    const body = await res.json();
+    expect(body.schema_version).toBe(1);
+    expect(body.client.id).toBe(clientAId);
+  });
+
+  test('format=json body never contains password_hash / temp_password_plain / password_reset_requested_at', async () => {
+    const res = await workspaceExportHandler(
+      buildReq(`?format=json&client=${clientAId}`, { cookie: adminCookie }),
+      CTX,
+    );
+    const text = await res.text();
+    expect(text).not.toMatch(/password_hash/);
+    expect(text).not.toMatch(/temp_password_plain/);
+    expect(text).not.toMatch(/password_reset_requested_at/);
+  });
+
+  test('format=zip returns 200 application/zip; manifest schema_version=1', async () => {
+    const res = await workspaceExportHandler(
+      buildReq(`?format=zip&client=${clientAId}`, { cookie: adminCookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/application\/zip/);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const z = await JSZipForTest.loadAsync(buf);
+    const manifest = JSON.parse(await z.file('_manifest.json')!.async('string'));
+    expect(manifest.schema_version).toBe(1);
+    expect(manifest.client_id).toBe(clientAId);
+  });
+
+  test('admin without ?client= → 400 missing_client', async () => {
+    const res = await workspaceExportHandler(
+      buildReq(`?format=json`, { cookie: adminCookie }),
+      CTX,
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error?.code).toBe('missing_client');
   });
 });
