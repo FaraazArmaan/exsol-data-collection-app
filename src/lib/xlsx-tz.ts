@@ -50,7 +50,12 @@ function formatYmd(y: number, m: number, d: number): string {
  *     offset SheetJS adds when parsing bare YYYY-MM-DD strings from CSV.
  *   - YYYY-MM-DD strings: passed through unchanged. No Date construction.
  *   - Full ISO strings: the UTC date portion (toISOString().slice(0,10))
- *     is returned.
+ *     is returned. CAUTION: a caller passing a local timestamp with a
+ *     timezone offset near the day boundary will see the date shift.
+ *     For example, '2026-06-12T22:00:00-08:00' (PST 10pm Jun 12 = UTC
+ *     6am Jun 13) returns '2026-06-13', not '2026-06-12'. Callers that
+ *     want wall-clock semantics should strip the time portion BEFORE
+ *     calling this helper.
  */
 export function readDateOnlyCell(v: unknown): XlsxDateOnlyResult {
   // Empty / blank

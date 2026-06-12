@@ -50,7 +50,12 @@ describe('readDateOnlyCell — Excel serial number', () => {
     expect(readDateOnlyCell(serial)).toEqual({ yyyymmdd: expected });
   });
 
-  test('serial with fractional IST offset (Math.floor strips it)', () => {
+  test('serial with fractional IST offset returns the same date as the floored integer', () => {
+    // Note: XLSX.SSF.parse_date_code already floors its input internally, so
+    // this test passes whether or not our helper pre-floors. The Math.floor
+    // call in the helper is defensive against future SSF behavior changes
+    // and against any caller passing a fractional serial they computed
+    // themselves. The test pins the observable behavior, not the mechanism.
     const integer = 45820;
     const withOffset = integer + 5.5 / 24;
     const parts = XLSX.SSF.parse_date_code(integer);
@@ -60,6 +65,18 @@ describe('readDateOnlyCell — Excel serial number', () => {
 
   test('out-of-range serial → invalid_serial', () => {
     expect(readDateOnlyCell(-1)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
+  });
+
+  test('NaN → invalid_serial', () => {
+    expect(readDateOnlyCell(NaN)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
+  });
+
+  test('Infinity → invalid_serial', () => {
+    expect(readDateOnlyCell(Infinity)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
+  });
+
+  test('-Infinity → invalid_serial', () => {
+    expect(readDateOnlyCell(-Infinity)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
   });
 });
 
