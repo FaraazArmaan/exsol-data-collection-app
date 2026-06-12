@@ -15,6 +15,7 @@ coverage/
 # Local agent / scratch state
 .claude/
 .remember/
+.superpowers/
 
 # Netlify CLI auto-generated
 deno.lock
