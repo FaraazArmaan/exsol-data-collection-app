@@ -71,6 +71,9 @@ export function readDateOnlyCell(v: unknown): XlsxDateOnlyResult {
   // Excel serial number
   if (typeof v === 'number') {
     if (!Number.isFinite(v)) return { yyyymmdd: null, error: 'invalid_serial' };
+    // Excel serial 0 = the fictional 1900-01-00 (day-zero artifact); negative
+    // serials are also not real dates. Reject both before calling SSF.
+    if (Math.floor(v) <= 0) return { yyyymmdd: null, error: 'invalid_serial' };
     const parts = XLSX.SSF.parse_date_code(Math.floor(v));
     if (!parts) return { yyyymmdd: null, error: 'invalid_serial' };
     return { yyyymmdd: formatYmd(parts.y, parts.m, parts.d) };

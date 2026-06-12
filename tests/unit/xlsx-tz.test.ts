@@ -67,6 +67,10 @@ describe('readDateOnlyCell — Excel serial number', () => {
     expect(readDateOnlyCell(-1)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
   });
 
+  test('0 → invalid_serial (Excel day-zero artifact)', () => {
+    expect(readDateOnlyCell(0)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
+  });
+
   test('NaN → invalid_serial', () => {
     expect(readDateOnlyCell(NaN)).toEqual({ yyyymmdd: null, error: 'invalid_serial' });
   });
