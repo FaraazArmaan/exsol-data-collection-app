@@ -21,9 +21,26 @@ export type PlatformSurface = (typeof PLATFORM_SURFACES)[number];
 
 export type ModuleKey = string; // narrowed by the registry's keyof
 
+// POS uses an action-namespaced key shape because its operations
+// (markPaid, fulfill, refund, …) are not CRUD verbs over data_buckets.
+// Other modules still use `<module>.<bucket>.<verb>`; POS adds a third
+// pattern to the union.
+export const POS_ACTIONS = [
+  'menu.view',
+  'sale.create',
+  'sale.markPaid',
+  'sale.fulfill',
+  'sale.cancel',
+  'sale.refund',
+  'history.view',
+  'history.viewAll',
+] as const;
+export type PosAction = (typeof POS_ACTIONS)[number];
+
 export type PermissionKey =
   | `${ModuleKey}.${DataBucket}.${Verb}`
-  | `_platform.${PlatformSurface}.${Verb}`;
+  | `_platform.${PlatformSurface}.${Verb}`
+  | `pos.${PosAction}`;
 
 export interface ModuleManifest {
   key: ModuleKey;
