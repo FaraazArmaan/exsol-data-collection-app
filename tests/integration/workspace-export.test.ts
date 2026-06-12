@@ -2,6 +2,7 @@ import type { Context } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import loginHandler from '../../netlify/functions/auth-login';
+import uLoginHandler from '../../netlify/functions/u-login';
 import workspaceExportHandler from '../../netlify/functions/workspace-export';
 
 const ADMIN_EMAIL = 'workspace-export-test@example.com';
@@ -269,5 +270,164 @@ describe('workspace-export — 413 path (env-var override)', () => {
         process.env.WORKSPACE_EXPORT_MAX_BYTES = original;
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 8: Bucket-user permission boundary
+// ---------------------------------------------------------------------------
+//
+// Schema notes (carried from Tasks 5-7):
+//   client_roles  — columns: id, client_id, key, label, color (NOT NULL), fields, sort_order
+//                   NO `name`, NO `created_by_admin`
+//   client_levels — columns: id, client_id, level_number, label, permissions (jsonb, default '{}')
+//                   NO `created_by_admin`, NO `name`
+//   user_nodes    — created_by_admin is nullable (migration 023); pass adminId
+//   bu_session    — cookie name used by u-login / mintBucketUserSession
+
+async function seedBucketUserForClientA(opts: { levelNumber: number; permKey?: string }): Promise<{
+  nodeId: string;
+  email: string;
+  password: string;
+}> {
+  // Seed role — label (not name), color required, NO created_by_admin.
+  const roleKey = `role-l${opts.levelNumber}`;
+  const roleRows = (await sql`
+    INSERT INTO public.client_roles (client_id, key, label, color)
+    VALUES (${clientAId}, ${roleKey}, ${'Role L' + opts.levelNumber}, '#64748b')
+    ON CONFLICT (client_id, key) DO UPDATE SET label = ${'Role L' + opts.levelNumber}
+    RETURNING id
+  `) as { id: string }[];
+  const roleId = roleRows[0]!.id;
+
+  // Seed level — label nullable, permissions jsonb, NO created_by_admin.
+  const perms: Record<string, true> = opts.permKey ? { [opts.permKey]: true } : {};
+  await sql`
+    INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+    VALUES (${clientAId}, ${opts.levelNumber}, ${'Level ' + opts.levelNumber}, ${JSON.stringify(perms)}::jsonb)
+    ON CONFLICT (client_id, level_number) DO UPDATE SET permissions = ${JSON.stringify(perms)}::jsonb
+  `;
+
+  // For L2+ we need a parent L1 node.
+  let parentId: string | null = null;
+  if (opts.levelNumber > 1) {
+    const pRows = (await sql`
+      SELECT id FROM public.user_nodes
+      WHERE client_id = ${clientAId}::uuid AND level_number = 1 LIMIT 1
+    `) as { id: string }[];
+    parentId = pRows[0]?.id ?? null;
+
+    if (!parentId) {
+      // Seed a minimal L1 role + level + node to satisfy the FK.
+      const l1RoleRows = (await sql`
+        INSERT INTO public.client_roles (client_id, key, label, color)
+        VALUES (${clientAId}, 'owner', 'Owner', '#3b82f6')
+        ON CONFLICT (client_id, key) DO UPDATE SET label = 'Owner'
+        RETURNING id
+      `) as { id: string }[];
+      await sql`
+        INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+        VALUES (${clientAId}, 1, 'Primary', '{}'::jsonb)
+        ON CONFLICT (client_id, level_number) DO NOTHING
+      `;
+      const l1NodeRows = (await sql`
+        INSERT INTO public.user_nodes
+          (client_id, parent_id, level_number, role_id, display_name, created_by_admin)
+        VALUES (${clientAId}, NULL, 1, ${l1RoleRows[0]!.id}, 'L1 Owner Seed', ${adminId})
+        RETURNING id
+      `) as { id: string }[];
+      parentId = l1NodeRows[0]!.id;
+    }
+  }
+
+  // Use level_number in email to avoid collision between L1 and L2 tests
+  // when both run in the same suite run.
+  const email = `bu-l${opts.levelNumber}-${opts.permKey ? 'perm' : 'noperm'}@we-test.example`;
+
+  // The unique index on user_nodes.email is a partial index:
+  //   UNIQUE (client_id, lower(email::text)) WHERE email IS NOT NULL
+  // PostgreSQL requires ON CONFLICT to name the exact index columns + WHERE
+  // clause. We use DO NOTHING + a follow-up SELECT to stay idempotent.
+  await sql`
+    INSERT INTO public.user_nodes
+      (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    VALUES (${clientAId}, ${parentId}, ${opts.levelNumber}, ${roleId},
+            ${'BU L' + opts.levelNumber + (opts.permKey ? ' (perm)' : '')},
+            ${email}, ${adminId})
+    ON CONFLICT (client_id, (lower(email::text))) WHERE email IS NOT NULL
+      DO UPDATE SET display_name = ${'BU L' + opts.levelNumber + (opts.permKey ? ' (perm)' : '')}
+  `;
+  const nodeRows = (await sql`
+    SELECT id FROM public.user_nodes
+    WHERE client_id = ${clientAId}::uuid AND lower(email::text) = lower(${email})
+    LIMIT 1
+  `) as { id: string }[];
+  const nodeId = nodeRows[0]!.id;
+
+  const password = `bu-pw-L${opts.levelNumber}${opts.permKey ? '-p' : ''}`;
+  const hash = await hashPassword(password);
+  await sql`
+    INSERT INTO public.user_node_credentials
+      (client_id, user_node_id, email, password_hash, must_change_password, created_by_admin)
+    VALUES (${clientAId}, ${nodeId}, ${email}, ${hash}, false, ${adminId})
+    ON CONFLICT (user_node_id)
+      DO UPDATE SET password_hash = ${hash}, must_change_password = false, email = ${email}
+  `;
+
+  return { nodeId, email, password };
+}
+
+async function loginBucketUser(email: string, password: string, slug: string): Promise<string> {
+  // Clear rate-limit rows so repeated test runs don't lock the account.
+  await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+
+  const r = await uLoginHandler(
+    new Request(`http://localhost/api/u-login?client=${slug}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }),
+    CTX,
+  );
+  if (r.status !== 200) {
+    throw new Error(`bucket-user login failed (${r.status}): ${await r.text()}`);
+  }
+  // Cookie header format: "bu_session=<token>; HttpOnly; ..."
+  // split(';')[0] gives "bu_session=<token>" which browsers / our readNamedCookie accept.
+  return r.headers.get('set-cookie')!.split(';')[0]!;
+}
+
+describe('workspace-export — bucket-user permission boundary', () => {
+  test('L1 Owner without explicit perm → 200 (matrix bypass)', async () => {
+    const u = await seedBucketUserForClientA({ levelNumber: 1 });
+    const cookie = await loginBucketUser(u.email, u.password, 'we-test-acme');
+    const res = await workspaceExportHandler(
+      buildReq('?format=json', { cookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  test('L2 without perm → 403', async () => {
+    const u = await seedBucketUserForClientA({ levelNumber: 2 });
+    const cookie = await loginBucketUser(u.email, u.password, 'we-test-acme');
+    const res = await workspaceExportHandler(
+      buildReq('?format=json', { cookie }),
+      CTX,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  test('L2 with _platform.workspace.view granted → 200', async () => {
+    const u = await seedBucketUserForClientA({
+      levelNumber: 2,
+      permKey: '_platform.workspace.view',
+    });
+    const cookie = await loginBucketUser(u.email, u.password, 'we-test-acme');
+    const res = await workspaceExportHandler(
+      buildReq('?format=json', { cookie }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
   });
 });
