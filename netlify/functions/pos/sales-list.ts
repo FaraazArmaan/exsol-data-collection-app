@@ -6,8 +6,9 @@
 //     (covert lockdown — no 403, just a silently scoped result set).
 //   - Filters: status CSV, channel CSV, cashier UUID, from/to dates (default
 //     today, today), q search (digits → phone or order_no; text → name).
-//   - Summary computes over the returned (limited) row set, matching the
-//     "what you see is what you get" semantics POS dashboards expect.
+//   - Summary computes over the FULL filter set (not just the limited page),
+//     so dashboard cards reflect total revenue/pending/pickup counts that
+//     match the filter, independent of pagination.
 //
 // Implementation note: the neon HTTP driver's tagged template can't reliably
 // bind `NULL::text[]` for the optional CSV filters across versions ("could
@@ -90,15 +91,38 @@ export default async function handler(req: Request): Promise<Response> {
     LIMIT ${q.limit}
   `) as any[];
 
+  // Summary aggregate — runs over the SAME WHERE clause as `rows`, minus
+  // ORDER BY/LIMIT, so dashboard totals reflect the full filter set rather
+  // than the current page. Keep predicate parity with the rows query above.
+  const aggRows = (await sql`
+    SELECT
+      COUNT(*)::int AS count,
+      COALESCE(SUM(s.total_cents) FILTER (WHERE s.status IN ('paid','fulfilled')), 0)::bigint AS revenue_cents,
+      COUNT(*) FILTER (WHERE s.status = 'pending_payment')::int AS pending_count,
+      COUNT(*) FILTER (WHERE s.status = 'paid' AND s.channel = 'pickup')::int AS pickup_queue_count
+    FROM public.sales s
+    WHERE s.bucket_id = ${a.ctx.clientId}::uuid
+      AND (${effectiveCashier === null}::boolean
+           OR s.created_by_user_node = ${effectiveCashier ?? a.ctx.userNodeId}::uuid)
+      AND (cardinality(${statusArr}::text[]) = 0
+           OR s.status::text = ANY(${statusArr}::text[]))
+      AND (cardinality(${channelArr}::text[]) = 0
+           OR s.channel::text = ANY(${channelArr}::text[]))
+      AND s.created_at >= ${q.from}::date
+      AND s.created_at <  (${q.to}::date + interval '1 day')
+      AND (
+        ${hasQ}::boolean = false
+        OR (${allDigits}::boolean AND s.customer_phone ILIKE ${phoneQ})
+        OR (${allDigits}::boolean AND s.order_no = ${orderNoQ}::bigint)
+        OR (${!allDigits && hasQ}::boolean AND s.customer_name ILIKE ${nameQ})
+      )
+  `) as any[];
+  const agg = aggRows[0] ?? {};
   const summary = {
-    count: rows.length,
-    revenueCents: rows
-      .filter((r) => r.status === 'paid' || r.status === 'fulfilled')
-      .reduce((acc, r) => acc + Number(r.total_cents), 0),
-    pendingCount: rows.filter((r) => r.status === 'pending_payment').length,
-    pickupQueueCount: rows.filter(
-      (r) => r.channel === 'pickup' && r.status === 'paid',
-    ).length,
+    count: Number(agg.count ?? 0),
+    revenueCents: Number(agg.revenue_cents ?? 0),
+    pendingCount: Number(agg.pending_count ?? 0),
+    pickupQueueCount: Number(agg.pickup_queue_count ?? 0),
   };
 
   return jsonOk({

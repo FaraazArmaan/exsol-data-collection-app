@@ -79,6 +79,14 @@ describe('GET /api/pos/sales', () => {
     expect(body.sales.length).toBe(2);
   });
 
+  it('summary.count reflects full filter set, not just the page', async () => {
+    const res = await handler(makeBucketUserRequest(ctx, 'GET', '/api/pos/sales?limit=1'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sales.length).toBe(1);
+    expect(body.summary.count).toBeGreaterThanOrEqual(3);
+  });
+
   it('without viewAll, server forces cashier = current user', async () => {
     await grantPerms(ctx.clientId, 1, ['pos.history.view']);
     const fakeOtherUser = '00000000-0000-0000-0000-000000000999';
