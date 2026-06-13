@@ -162,6 +162,48 @@ export async function grantPerms(
   `;
 }
 
+// Seeds a second L1 user_node + credential in an existing Client and mints
+// a bucket-user session for them. Useful for cross-user (same-client) tests
+// — e.g. leak-prevention: another user should get 404 (not 403) on a sale
+// they didn't create when they lack pos.history.viewAll.
+//
+// Caveat: the returned ctx shares clientId + adminId with the original, but
+// has its own userNodeId and cookie. perms hang off `client_levels` (per
+// level_number), so granting/dropping perms via grantPerms affects BOTH
+// users at L1 — callers should manage perms accordingly.
+export async function seedSecondUserInClient(
+  base: PosTestCtx,
+): Promise<PosTestCtx> {
+  // Re-use the existing L1 Owner role for the client (every seed creates one).
+  const roleRows = (await sql`
+    SELECT id FROM public.client_roles
+    WHERE client_id = ${base.clientId} AND key = 'owner'
+    LIMIT 1
+  `) as Array<{ id: string }>;
+  const roleId = roleRows[0]!.id;
+
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const email = `pos-test-second-${suffix}@exsol.test`;
+
+  const nodeRows = (await sql`
+    INSERT INTO public.user_nodes
+      (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    VALUES (${base.clientId}, NULL, 1, ${roleId}, 'POS Test Second', ${email}, ${base.adminId})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const userNodeId = nodeRows[0]!.id;
+
+  const hash = await hashPassword('pos-test-second-pw');
+  await sql`
+    INSERT INTO public.user_node_credentials
+      (client_id, user_node_id, email, password_hash, must_change_password, created_by_admin)
+    VALUES (${base.clientId}, ${userNodeId}, ${email}, ${hash}, false, ${base.adminId})
+  `;
+
+  const token = await mintBucketUserSession({ sub: userNodeId, email, client_id: base.clientId });
+  return { clientId: base.clientId, userNodeId, adminId: base.adminId, cookie: `bu_session=${token}` };
+}
+
 export function makeBucketUserRequest(
   ctx: PosTestCtx,
   method: string,
