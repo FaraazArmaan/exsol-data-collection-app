@@ -33,7 +33,10 @@ import { requirePos } from './_authz';
 import { SaleCreateBody } from './_validators';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
-export const config = { path: '/api/pos/sales' };
+// `method` disambiguates from sales-list.ts which declares the same path with GET.
+// Netlify Functions v2 routes by (path, method); without explicit method here,
+// requests would collide. See sibling-chat note + Netlify Functions docs.
+export const config = { path: '/api/pos/sales', method: 'POST' };
 
 const IDEM_PREFIX = 'idem:';
 const MAX_ATTEMPTS = 5; // retry on unique-constraint race (order_no)

@@ -25,7 +25,10 @@ import { db } from '../_shared/db';
 import { requirePos } from './_authz';
 import { SalesListQuery } from './_validators';
 
-export const config = { path: '/api/pos/sales' };
+// `method` disambiguates from sale-create.ts which declares the same path with POST.
+// Netlify Functions v2 routes by (path, method); without explicit method here,
+// requests would collide. See sibling-chat note + Netlify Functions docs.
+export const config = { path: '/api/pos/sales', method: 'GET' };
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
