@@ -17,17 +17,24 @@ export function Sidebar() {
 
   const showProducts = user && canViewProducts(permissions, user.level_number);
 
+  const showPos = !!user && (
+    permissions['pos.menu.view'] === true || permissions['pos.history.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || items.length > 0) && (
+        {(showProducts || showPos || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
               <NavLink to={`/c/${slug}/products`}>Product Manager</NavLink>
+            )}
+            {showPos && (
+              <NavLink to={`/c/${slug}/pos/menu`}>POS</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

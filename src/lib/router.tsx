@@ -27,6 +27,7 @@ import { WorkspaceProductsScopeProvider } from '../modules/products/shared/scope
 import AdminProductsListPage from '../modules/products/admin/AdminProductsListPage';
 import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
 import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
+import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
 
 function ShellLayout() {
   return (
@@ -77,6 +78,11 @@ export const router = createBrowserRouter([
                   { path: 'products/categories', element: <ProductCategoriesPage /> },
                 ],
               },
+              { path: 'pos', element: <Navigate to="menu" replace /> },
+              { path: 'pos/menu', element: <PosMenuMount /> },
+              { path: 'pos/cart', element: <PosCartMount /> },
+              { path: 'pos/sales', element: <PosSalesMount /> },
+              { path: 'pos/sales/:id', element: <PosSalesMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
