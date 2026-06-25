@@ -20,10 +20,10 @@
 // wrapped via CASE/COALESCE patterns that don't require explicit casts on
 // NULL arrays. This pattern has worked in sale-create's neighbours.
 
-import { jsonOk, jsonError } from '../_shared/http';
-import { db } from '../_shared/db';
-import { requirePos } from './_authz';
-import { SalesListQuery } from './_validators';
+import { jsonOk, jsonError } from './_shared/http';
+import { db } from './_shared/db';
+import { requirePos } from './_pos-authz';
+import { SalesListQuery } from './_pos-validators';
 
 // `method` disambiguates from sale-create.ts which declares the same path with POST.
 // Netlify Functions v2 routes by (path, method); without explicit method here,

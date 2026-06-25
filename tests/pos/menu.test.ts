@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import handler from '../../netlify/functions/pos/menu';
+import handler from '../../netlify/functions/pos-menu';
 import {
   seedClientWithProductsEnabled,
   seedProducts,

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import menuHandler   from '../../netlify/functions/pos/menu';
-import createHandler from '../../netlify/functions/pos/sale-create';
-import detailHandler from '../../netlify/functions/pos/sale-detail';
-import stateHandler  from '../../netlify/functions/pos/sale-state';
+import menuHandler   from '../../netlify/functions/pos-menu';
+import createHandler from '../../netlify/functions/pos-sale-create';
+import detailHandler from '../../netlify/functions/pos-sale-detail';
+import stateHandler  from '../../netlify/functions/pos-sale-state';
 import {
   seedClientWithProductsEnabled, seedProducts, grantPerms, makeBucketUserRequest,
 } from './_helpers';

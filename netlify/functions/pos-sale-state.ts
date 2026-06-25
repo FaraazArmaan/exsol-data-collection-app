@@ -24,12 +24,12 @@
 //     writes it via DB default — we don't pass it explicitly.
 //   - op convention: `pos.sale.<action>` (matches `pos.sale.created` from create).
 
-import { jsonOk, jsonError } from '../_shared/http';
-import { db } from '../_shared/db';
-import { logAudit } from '../_shared/audit';
-import { requirePos } from './_authz';
-import { SaleStateBody } from './_validators';
-import { applyTransition, FSM_ERROR, type SaleStatus, type SaleChannel } from './_fsm';
+import { jsonOk, jsonError } from './_shared/http';
+import { db } from './_shared/db';
+import { logAudit } from './_shared/audit';
+import { requirePos } from './_pos-authz';
+import { SaleStateBody } from './_pos-validators';
+import { applyTransition, FSM_ERROR, type SaleStatus, type SaleChannel } from './_pos-fsm';
 
 export const config = { path: '/api/pos/sales/:id/state' };
 

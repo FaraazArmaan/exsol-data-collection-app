@@ -10,9 +10,9 @@
 //
 // Returns either an authorized context or a Response ready to ship.
 
-import { jsonError } from '../_shared/http';
-import { requireBucketUser, UnauthorizedError } from '../_shared/permissions';
-import { db } from '../_shared/db';
+import { jsonError } from './_shared/http';
+import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
+import { db } from './_shared/db';
 
 export interface PosAuthCtx {
   userNodeId: string;

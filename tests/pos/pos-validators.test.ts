@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SaleCreateBody, SaleStateBody, SalesListQuery } from '../_validators';
+import { SaleCreateBody, SaleStateBody, SalesListQuery } from '../../netlify/functions/_pos-validators';
 
 describe('SaleCreateBody', () => {
   const valid = {

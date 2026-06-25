@@ -26,11 +26,11 @@
 //   - The `payment_ref` double-duty is a v1 shortcut; a dedicated
 //     `idempotency_key` column would be cleaner. Recorded for v2.
 
-import { jsonOk, jsonError } from '../_shared/http';
-import { db } from '../_shared/db';
-import { logAudit } from '../_shared/audit';
-import { requirePos } from './_authz';
-import { SaleCreateBody } from './_validators';
+import { jsonOk, jsonError } from './_shared/http';
+import { db } from './_shared/db';
+import { logAudit } from './_shared/audit';
+import { requirePos } from './_pos-authz';
+import { SaleCreateBody } from './_pos-validators';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 // `method` disambiguates from sales-list.ts which declares the same path with GET.

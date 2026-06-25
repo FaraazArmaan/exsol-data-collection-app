@@ -19,9 +19,9 @@
 // would throw 22P02 on `${id}::uuid` cast); we collapse to 404 to keep the
 // "doesn't exist" surface consistent.
 
-import { jsonOk, jsonError } from '../_shared/http';
-import { db } from '../_shared/db';
-import { requirePos } from './_authz';
+import { jsonOk, jsonError } from './_shared/http';
+import { db } from './_shared/db';
+import { requirePos } from './_pos-authz';
 
 export const config = { path: '/api/pos/sales/:id' };
 

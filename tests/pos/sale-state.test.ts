@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import handler from '../../netlify/functions/pos/sale-state';
-import createHandler from '../../netlify/functions/pos/sale-create';
+import handler from '../../netlify/functions/pos-sale-state';
+import createHandler from '../../netlify/functions/pos-sale-create';
 import {
   seedClientWithProductsEnabled,
   seedProducts,

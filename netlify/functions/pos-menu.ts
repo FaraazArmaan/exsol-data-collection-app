@@ -10,9 +10,9 @@
 //   • Client must have both `products` and `pos` enabled (412 otherwise)
 //   • caller's level must hold `pos.menu.view` (403 otherwise)
 
-import { jsonOk } from '../_shared/http';
-import { db } from '../_shared/db';
-import { requirePos } from './_authz';
+import { jsonOk } from './_shared/http';
+import { db } from './_shared/db';
+import { requirePos } from './_pos-authz';
 
 export const config = { path: '/api/pos/menu' };
 

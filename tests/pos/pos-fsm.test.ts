@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyTransition, FSM_ERROR, type SaleStatus } from '../_fsm';
+import { applyTransition, FSM_ERROR, type SaleStatus } from '../../netlify/functions/_pos-fsm';
 
 const perms = (...keys: string[]) => new Set(keys);
 
