@@ -5,6 +5,7 @@ import {
   seedProducts,
   grantPerms,
   makeBucketUserRequest,
+  seedSubordinateUser,
 } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
@@ -122,12 +123,11 @@ describe('POST /api/pos/sales', () => {
     expect(new Set(nos).size).toBe(nos.length); // all distinct
   });
 
-  it('returns 403 without pos.sale.create', async () => {
-    await grantPerms(ctx.clientId, 1, []);
+  it('returns 403 without pos.sale.create (non-Owner)', async () => {
+    const sub = await seedSubordinateUser(ctx, 2, []);
     const res = await handler(
-      makeBucketUserRequest(ctx, 'POST', '/api/pos/sales', validBody()),
+      makeBucketUserRequest(sub, 'POST', '/api/pos/sales', validBody()),
     );
     expect(res.status).toBe(403);
-    await grantPerms(ctx.clientId, 1, ['pos.sale.create']); // restore
   });
 });

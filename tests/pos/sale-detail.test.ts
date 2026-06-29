@@ -6,7 +6,7 @@ import {
   seedProducts,
   grantPerms,
   makeBucketUserRequest,
-  seedSecondUserInClient,
+  seedSubordinateUser,
 } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
@@ -58,21 +58,13 @@ describe('GET /api/pos/sales/:id', () => {
   });
 
   it('returns 404 for other user without viewAll (leak prevention)', async () => {
-    // Second user in SAME client, granted pos.history.view but NOT viewAll.
-    // They never created our sale (ctx.userNodeId did), so they must get 404,
-    // not 403 — hiding even the existence of the sale.
-    const other = await seedSecondUserInClient(ctx);
-    // grantPerms targets level_number, which both users share, so this scopes
-    // the L1 permission set to view-without-viewAll.
-    await grantPerms(ctx.clientId, 1, ['pos.history.view']);
+    // A non-Owner (L2) in the SAME client, granted pos.history.view but NOT
+    // viewAll. They never created our sale (the L1 ctx did), so they must get
+    // 404, not 403 — hiding even the existence of the sale. (An Owner would
+    // see it via the L1 all-on bypass, which is why this uses a subordinate.)
+    const other = await seedSubordinateUser(ctx, 2, ['pos.history.view']);
     const res = await handler(makeBucketUserRequest(other, 'GET', `/api/pos/sales/${saleId}`));
     expect(res.status).toBe(404);
-    // Restore so the rest of the suite (and later tests) still works.
-    await grantPerms(ctx.clientId, 1, [
-      'pos.sale.create',
-      'pos.history.view',
-      'pos.history.viewAll',
-    ]);
   });
 
   it('returns lines in position order', async () => {
@@ -82,15 +74,10 @@ describe('GET /api/pos/sales/:id', () => {
     expect(positions).toEqual([...positions].sort((a: number, b: number) => a - b));
   });
 
-  it('returns 403 without pos.history.view', async () => {
-    await grantPerms(ctx.clientId, 1, []);
-    const res = await handler(makeBucketUserRequest(ctx, 'GET', `/api/pos/sales/${saleId}`));
+  it('returns 403 without pos.history.view (non-Owner)', async () => {
+    const sub = await seedSubordinateUser(ctx, 2, []);
+    const res = await handler(makeBucketUserRequest(sub, 'GET', `/api/pos/sales/${saleId}`));
     expect(res.status).toBe(403);
-    await grantPerms(ctx.clientId, 1, [
-      'pos.sale.create',
-      'pos.history.view',
-      'pos.history.viewAll',
-    ]);
   });
 
   it('returns 404 for unknown sale id', async () => {

@@ -9,7 +9,7 @@ import {
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { requireBucketUser, UnauthorizedError, getLevelMatrix } from './_shared/permissions';
-import { derivePermissionRows } from '../../src/modules/registry/products';
+import { enabledModulesForProducts } from '../../src/modules/registry/products';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');
@@ -57,14 +57,11 @@ export default async (req: Request, _ctx: Context) => {
   `) as { product_key: string }[];
   const enabledProductKeys = enabledProductRows.map((r) => r.product_key);
 
-  // Reduce derivePermissionRows() down to a unique list of Modules.
-  const moduleMap = new Map<string, { key: string; label: string }>();
-  for (const pr of derivePermissionRows(enabledProductKeys)) {
-    if (!moduleMap.has(pr.module.key)) {
-      moduleMap.set(pr.module.key, { key: pr.module.key, label: pr.module.label });
-    }
-  }
-  const enabledModules = Array.from(moduleMap.values());
+  // Modules brought in by the Client's enabled products. Uses
+  // enabledModulesForProducts (walks product.modules) rather than
+  // derivePermissionRows (walks data_buckets) so action-namespace modules like
+  // POS — which declare no data_buckets — still appear.
+  const enabledModules = enabledModulesForProducts(enabledProductKeys);
 
   const headers: Record<string, string> = {};
   if (shouldRefreshBucketUser(actor.claims)) {

@@ -6,6 +6,7 @@ import {
   seedProducts,
   grantPerms,
   makeBucketUserRequest,
+  seedSubordinateUser,
 } from './_helpers';
 
 async function freshSale(
@@ -99,23 +100,20 @@ describe('POST /api/pos/sales/:id/state', () => {
   });
 
   it('error precedence: missing perm wins over illegal state (403, not 409)', async () => {
-    await grantPerms(ctx.clientId, 1, [
-      'pos.sale.create',
-      'pos.sale.markPaid',
-      'pos.history.view',
-    ]);
+    // Owner creates + marks paid (instore auto-fulfills) — L1 is all-on.
     const sid = await freshSale(ctx, productId, 'instore');
-    // First mark paid — now in fulfilled state (instore auto).
     await handler(
       makeBucketUserRequest(ctx, 'POST', `/api/pos/sales/${sid}/state`, {
         action: 'markPaid',
         paymentMethod: 'cash',
       }),
     );
-    // Drop perm + try markPaid again on already-fulfilled sale → both perm and state would fail; perm wins.
-    await grantPerms(ctx.clientId, 1, ['pos.history.view']);
+    // A subordinate with pos.history.view (enough to reach the handler) but
+    // WITHOUT pos.sale.markPaid tries markPaid on the already-fulfilled sale.
+    // Both the perm check and the state check would fail; the perm error wins.
+    const sub = await seedSubordinateUser(ctx, 2, ['pos.history.view']);
     const res = await handler(
-      makeBucketUserRequest(ctx, 'POST', `/api/pos/sales/${sid}/state`, {
+      makeBucketUserRequest(sub, 'POST', `/api/pos/sales/${sid}/state`, {
         action: 'markPaid',
         paymentMethod: 'cash',
       }),

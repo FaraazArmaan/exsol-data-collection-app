@@ -6,6 +6,7 @@ import {
   seedProducts,
   grantPerms,
   makeBucketUserRequest,
+  seedSubordinateUser,
 } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
@@ -104,14 +105,9 @@ describe('GET /api/pos/sales', () => {
     ]);
   });
 
-  it('returns 403 without pos.history.view', async () => {
-    await grantPerms(ctx.clientId, 1, []);
-    const res = await handler(makeBucketUserRequest(ctx, 'GET', '/api/pos/sales'));
+  it('returns 403 without pos.history.view (non-Owner)', async () => {
+    const sub = await seedSubordinateUser(ctx, 2, []);
+    const res = await handler(makeBucketUserRequest(sub, 'GET', '/api/pos/sales'));
     expect(res.status).toBe(403);
-    await grantPerms(ctx.clientId, 1, [
-      'pos.sale.create',
-      'pos.history.view',
-      'pos.history.viewAll',
-    ]);
   });
 });

@@ -204,6 +204,58 @@ export async function seedSecondUserInClient(
   return { clientId: base.clientId, userNodeId, adminId: base.adminId, cookie: `bu_session=${token}` };
 }
 
+// Seeds a subordinate (L2+) user_node under the base client, with its own
+// client_levels row at `levelNumber` carrying exactly `keys` (default none).
+// Unlike seedSecondUserInClient (which makes another L1), this lets tests
+// exercise the non-Owner path where the matrix is actually consulted.
+export async function seedSubordinateUser(
+  base: PosTestCtx,
+  levelNumber: number,
+  keys: readonly string[] = [],
+): Promise<PosTestCtx> {
+  const permsJson = JSON.stringify(Object.fromEntries(keys.map((k) => [k, true])));
+  const existing = (await sql`
+    SELECT 1 FROM public.client_levels
+    WHERE client_id = ${base.clientId} AND level_number = ${levelNumber} LIMIT 1
+  `) as unknown[];
+  if (existing.length === 0) {
+    await sql`
+      INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+      VALUES (${base.clientId}, ${levelNumber}, ${`L${levelNumber}`}, ${permsJson}::jsonb)
+    `;
+  } else {
+    await sql`
+      UPDATE public.client_levels SET permissions = ${permsJson}::jsonb
+      WHERE client_id = ${base.clientId} AND level_number = ${levelNumber}
+    `;
+  }
+
+  const roleRows = (await sql`
+    SELECT id FROM public.client_roles WHERE client_id = ${base.clientId} LIMIT 1
+  `) as Array<{ id: string }>;
+  const roleId = roleRows[0]!.id;
+
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const email = `pos-test-sub-${suffix}@exsol.test`;
+  const nodeRows = (await sql`
+    INSERT INTO public.user_nodes
+      (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    VALUES (${base.clientId}, ${base.userNodeId}, ${levelNumber}, ${roleId}, 'POS Test Sub', ${email}, ${base.adminId})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const userNodeId = nodeRows[0]!.id;
+
+  const hash = await hashPassword('pos-test-sub-pw');
+  await sql`
+    INSERT INTO public.user_node_credentials
+      (client_id, user_node_id, email, password_hash, must_change_password, created_by_admin)
+    VALUES (${base.clientId}, ${userNodeId}, ${email}, ${hash}, false, ${base.adminId})
+  `;
+
+  const token = await mintBucketUserSession({ sub: userNodeId, email, client_id: base.clientId });
+  return { clientId: base.clientId, userNodeId, adminId: base.adminId, cookie: `bu_session=${token}` };
+}
+
 export function makeBucketUserRequest(
   ctx: PosTestCtx,
   method: string,

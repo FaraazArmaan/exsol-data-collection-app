@@ -6,19 +6,25 @@ import { canViewProducts } from '../../products/shared/permissions';
 export function Sidebar() {
   const { slug } = useParams<{ slug: string }>();
   const items = useNavItems();
-  const { user, permissions } = useUserAuth();
+  const { user, permissions, enabledModules } = useUserAuth();
   if (!slug) return null;
 
+  const isOwner = !!user && (user.level_number == null || user.level_number === 1);
+
   const canManageTeam = user && (
-    user.level_number == null ||
-    user.level_number === 1 ||
+    isOwner ||
     permissions['_platform.users.view'] === true
   );
 
   const showProducts = user && canViewProducts(permissions, user.level_number);
 
-  const showPos = !!user && (
-    permissions['pos.menu.view'] === true || permissions['pos.history.view'] === true
+  // POS appears only when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds a POS view permission.
+  const posEnabled = enabledModules.some((m) => m.key === 'pos');
+  const showPos = posEnabled && (
+    isOwner ||
+    permissions['pos.menu.view'] === true ||
+    permissions['pos.history.view'] === true
   );
 
   return (

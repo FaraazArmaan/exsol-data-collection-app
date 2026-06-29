@@ -6,6 +6,7 @@ import {
   disableProductsForClient,
   grantPerms,
   makeBucketUserRequest,
+  seedSubordinateUser,
 } from './_helpers';
 
 describe('GET /api/pos/menu', () => {
@@ -36,11 +37,13 @@ describe('GET /api/pos/menu', () => {
     expect(body.error.code).toBe('products_module_required');
   });
 
-  it('returns 403 without pos.menu.view permission', async () => {
+  it('returns 403 without pos.menu.view permission (non-Owner)', async () => {
+    // L1 Owners are all-on (bypass); the genuine "lacks permission" actor is a
+    // subordinate level with an empty matrix.
     const ctx = await seedClientWithProductsEnabled();
-    await grantPerms(ctx.clientId, 1, []); // explicit empty perms — no L1 bypass.
+    const sub = await seedSubordinateUser(ctx, 2, []);
 
-    const res = await handler(makeBucketUserRequest(ctx, 'GET', '/api/pos/menu'));
+    const res = await handler(makeBucketUserRequest(sub, 'GET', '/api/pos/menu'));
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: { code: string; details?: { required: string } } };
     expect(body.error.code).toBe('missing_permission');

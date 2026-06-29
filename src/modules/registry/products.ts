@@ -30,6 +30,30 @@ export interface PermissionRow {
 
 /**
  * Given the set of Product keys a Client has enabled, return the deduplicated
+ * list of Modules they bring in, as `{ key, label }`. Unlike
+ * derivePermissionRows (which enumerates data_buckets and therefore drops
+ * action-namespace modules like POS that declare `data_buckets: []`), this
+ * walks `product.modules` directly — so every enabled Module is represented.
+ * Used by /api/u-me's enabled_modules.
+ */
+export function enabledModulesForProducts(
+  enabledProductKeys: readonly string[],
+): { key: string; label: string }[] {
+  const map = new Map<string, { key: string; label: string }>();
+  for (const pKey of enabledProductKeys) {
+    const product = getProduct(pKey);
+    if (!product) continue;
+    for (const ref of product.modules) {
+      const module = getModule(ref.module);
+      if (!module) continue;
+      if (!map.has(module.key)) map.set(module.key, { key: module.key, label: module.label });
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Given the set of Product keys a Client has enabled, return the deduplicated
  * list of (Module, DataBucket) rows the Primary should see in the Access
  * Level Dashboard. Order is stable: products in registration order, then
  * modules in product-declaration order, then buckets in manifest-declaration
