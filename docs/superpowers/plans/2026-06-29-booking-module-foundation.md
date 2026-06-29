@@ -17,6 +17,7 @@
 - **Tenant scoping:** every booking table carries `bucket_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE`.
 - **No-overbook predicate includes `blocked`:** the gist constraint covers `status IN ('pending','confirmed','blocked')` (blocked staff-time must occupy the slot).
 - **TDD always:** write the failing test, run it red, implement minimally, run it green, commit. Each task ends green. **Every task that touches `.ts` runs `npm run typecheck` before its commit** (runtime test runs do not validate types — durable rule).
+- **Strict TS:** the project enables `noUncheckedIndexedAccess`, so `array[i]`, regex-group, and `string.split()` results are `T | undefined`. Use `!` (when a prior guard proves presence) or `?? fallback`. The lib code below is already strict-clean — verified by running `npm run typecheck` (exits 0).
 - **This is the Booking worktree** (`feat/booking-module-iso`). Commit locally; **never push or merge** (the parallel chat owns `main`).
 
 ---
@@ -306,7 +307,7 @@ function partsInZone(instant: Date, timeZone: string) {
   return {
     y: Number(map.year), m: Number(map.month), d: Number(map.day),
     hh: hour, mm: Number(map.minute), ss: Number(map.second),
-    weekday: map.weekday.toLowerCase().slice(0, 3),
+    weekday: (map.weekday ?? '').toLowerCase().slice(0, 3), // strict: noUncheckedIndexedAccess
   };
 }
 
@@ -321,8 +322,8 @@ function zoneOffsetMs(instant: Date, timeZone: string): number {
 export function zonedToUtc(localWall: string, timeZone: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(localWall);
   if (!m) throw new Error(`bad wall-clock: ${localWall}`);
-  const [, Y, Mo, D, H, Mi, S] = m;
-  const naiveUtc = Date.UTC(+Y, +Mo - 1, +D, +H, +Mi, S ? +S : 0);
+  // strict: regex groups type as string|undefined under noUncheckedIndexedAccess
+  const naiveUtc = Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, m[6] ? +m[6] : 0);
   // First guess: treat the wall-clock as if it were UTC, then subtract the zone offset.
   const guess = new Date(naiveUtc);
   const off1 = zoneOffsetMs(guess, timeZone);
@@ -606,7 +607,7 @@ export function pickLeastBusy(
   if (candidates.length === 0) return null;
   return [...candidates].sort(
     (x, y) => x.bookingsToday - y.bookingsToday || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0),
-  )[0].id;
+  )[0]!.id;
 }
 ```
 
@@ -727,11 +728,11 @@ const ORDER: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 function weekdayOf(dateYmd: string): Weekday {
   // Noon UTC avoids any date rollover; weekday of a calendar date is zone-stable enough here.
   const d = new Date(`${dateYmd}T12:00:00.000Z`);
-  return ORDER[d.getUTCDay()];
+  return ORDER[d.getUTCDay()]!;
 }
 function hhmmToMin(s: string): number {
   const [h, m] = s.split(':').map(Number);
-  return h * 60 + m;
+  return (h ?? 0) * 60 + (m ?? 0);
 }
 function overlaps(a: Interval, b: Interval): boolean {
   return a.start < b.end && b.start < a.end;
