@@ -36,6 +36,14 @@ export function Sidebar() {
     permissions['booking.employees.view'] === true
   );
 
+  // Storefront settings is an Owner-level workspace config (same gate as the
+  // StorefrontSettings page). Lives in the Workspace group.
+  const canEditSettings = !!user && (
+    user.level_number == null ||
+    user.level_number === 1 ||
+    permissions['_platform.settings.edit'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
@@ -62,10 +70,11 @@ export function Sidebar() {
           </>
         )}
 
-        {canManageTeam && (
+        {(canManageTeam || canEditSettings) && (
           <>
             <div className="nav-group-header">Workspace</div>
-            <NavLink to={`/c/${slug}/team`}>Team</NavLink>
+            {canManageTeam && <NavLink to={`/c/${slug}/team`}>Team</NavLink>}
+            {canEditSettings && <NavLink to={`/c/${slug}/pos/settings`}>Storefront</NavLink>}
           </>
         )}
 
