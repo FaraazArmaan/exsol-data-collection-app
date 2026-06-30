@@ -45,8 +45,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Leak prevention — without viewAll, a caller can only see their own sales.
   // Respond 404 (not 403) so the existence of the row isn't disclosed.
+  // Storefront sales are exempt: no cashier "owns" a guest order, so any
+  // pos.history.view holder may read it (spec §5.5).
   if (
     !a.ctx.perms.has('pos.history.viewAll') &&
+    sale.source !== 'storefront' &&
     sale.created_by_user_node !== a.ctx.userNodeId
   ) {
     return jsonError(404, 'not_found');

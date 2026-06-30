@@ -70,9 +70,12 @@ describe('GET /api/public/menu/:slug', () => {
   });
 
   it('404 when pos product is not enabled', async () => {
-    const { slug } = await seedStorefrontClient({ enablePos: false });
+    // products-without-pos violates migration 042's global invariant, so this
+    // row is cleaned up after the assertion to avoid polluting that test.
+    const { clientId, slug } = await seedStorefrontClient({ enablePos: false });
     const res = await handler(pubReq(slug));
     expect(res.status).toBe(404);
+    await sql`DELETE FROM public.clients WHERE id = ${clientId}`;
   });
 
   it('429 when the per-IP limit is exceeded (limiter wired into the handler)', async () => {

@@ -72,7 +72,7 @@ export default async function handler(req: Request): Promise<Response> {
            s.customer_name, s.customer_phone, s.customer_email,
            s.subtotal_cents, s.total_cents,
            s.created_at, s.paid_at, s.fulfilled_at, s.cancelled_at, s.refunded_at,
-           s.created_by_user_node,
+           s.created_by_user_node, s.source,
            (SELECT COUNT(*) FROM public.sale_lines WHERE sale_id = s.id) AS line_count
     FROM public.sales s
     WHERE s.bucket_id = ${a.ctx.clientId}::uuid
