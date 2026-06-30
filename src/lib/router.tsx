@@ -33,6 +33,8 @@ import AdminProductsListPage from '../modules/products/admin/AdminProductsListPa
 import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
 import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
 import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
+import BookingStorefront from '../modules/booking/public/BookingStorefront';
+import ManageBooking from '../modules/booking/public/ManageBooking';
 
 function ShellLayout() {
   return (
@@ -63,6 +65,9 @@ export const router = createBrowserRouter([
     element: <UserPortalLayout />,
     children: [
       { path: 'login', element: <UserLogin /> },
+      // Anonymous booking storefront — sibling of login, OUTSIDE the auth gate.
+      { path: 'book', element: <BookingStorefront /> },
+      { path: 'book/manage/:token', element: <ManageBooking /> },
       {
         element: <RequireBucketUser />,
         children: [

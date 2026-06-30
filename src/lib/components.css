@@ -532,3 +532,33 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ams-export-card p { margin: 0 0 12px 0; color: var(--color-text-muted, #666); }
 .ams-export-card-actions { display: flex; gap: 8px; }
 .ams-export-card-error { color: var(--color-danger, #c33); margin-top: 8px; }
+
+/* ───────────────────────── Booking module ───────────────────────── */
+.booking-storefront { display: flex; flex-direction: column; gap: 16px; }
+.booking-service-card {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+  text-align: left; cursor: pointer; border: 1px solid var(--border-default);
+}
+.booking-service-card:hover { border-color: var(--accent); }
+.booking-service-name { font-weight: 600; color: var(--text-primary); }
+.booking-service-price { font-weight: 600; }
+.booking-chip {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; font-size: 0.78rem;
+  border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--text-secondary);
+}
+.booking-slot-picker, .booking-checkout, .booking-confirmation, .booking-manage {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.booking-resource-toggle { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.booking-slot-pill { text-align: center; }
+.booking-summary { display: flex; flex-direction: column; gap: 6px; }
+.booking-summary-price { font-weight: 600; }
+.booking-consent { flex-direction: row !important; align-items: center; gap: 8px; }
+.booking-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.booking-confirm-badge {
+  width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 1.6rem; color: var(--text-on-accent);
+}
+.booking-confirm-badge.ok { background: var(--success); }
+.booking-confirm-badge.pending { background: var(--accent); }
