@@ -14,6 +14,7 @@ import thumbHandler from '../../netlify/functions/files-thumbnail';
 // after a successful set(), allowing the POST /api/files commit to confirm
 // the blob exists.
 const blobStore = new Map<string, { data: ArrayBuffer }>();
+const thumbStore = new Map<string, ArrayBuffer>();
 vi.mock('../../netlify/functions/_shared/files-storage', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../netlify/functions/_shared/files-storage')>();
   return {
@@ -24,8 +25,19 @@ vi.mock('../../netlify/functions/_shared/files-storage', async (importOriginal) 
       get: async (key: string) => blobStore.has(key) ? blobStore.get(key)!.data : null,
       delete: async (key: string) => { blobStore.delete(key); },
     }),
+    thumbnailsStore: () => ({
+      set: async (key: string, data: ArrayBuffer) => { thumbStore.set(key, data); },
+      get: async (key: string) => thumbStore.has(key) ? thumbStore.get(key)! : null,
+      delete: async (key: string) => { thumbStore.delete(key); },
+    }),
   };
 });
+
+// 1x1 transparent PNG — decodable by sharp, avoids a sharp dependency in the test.
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 const CTX = {} as Context;
 const EMAIL = 'files-dl-thumb-test@example.com';
@@ -116,5 +128,33 @@ describe('GET /api/files-thumbnail/:id', () => {
       }), CTX);
     // Phase A: no thumb generated yet for non-image; 404 or 415 expected.
     expect([404, 415]).toContain(res.status);
+  });
+
+  test('lazy-generates a webp thumbnail on first GET for an image', async () => {
+    const blobKey = `admin/${crypto.randomUUID()}`;
+    blobStore.set(blobKey, { data: TINY_PNG.buffer.slice(TINY_PNG.byteOffset, TINY_PNG.byteOffset + TINY_PNG.byteLength) });
+    const f = (await sql`
+      INSERT INTO public.files (client_id, type, storage_kind, blob_key, title, mime, byte_size, tier, uploaded_by_admin)
+      VALUES (NULL, 'image', 'blob', ${blobKey}, 'thumb-test', 'image/png', ${TINY_PNG.byteLength}, 'public', ${adminId}::uuid)
+      RETURNING id
+    `) as { id: string }[];
+    const id = f[0]!.id;
+
+    const res = await thumbHandler(
+      new Request(`http://localhost/api/files-thumbnail/${id}`, { method: 'GET', headers: { cookie } }),
+      CTX,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/webp');
+    const after = (await sql`SELECT thumbnail_key FROM public.files WHERE id = ${id}::uuid`) as { thumbnail_key: string | null }[];
+    expect(after[0]!.thumbnail_key).not.toBeNull();
+
+    // Second GET serves the stored thumbnail (no regeneration error).
+    const res2 = await thumbHandler(
+      new Request(`http://localhost/api/files-thumbnail/${id}`, { method: 'GET', headers: { cookie } }),
+      CTX,
+    );
+    expect(res2.status).toBe(200);
+    expect(res2.headers.get('content-type')).toBe('image/webp');
   });
 });
