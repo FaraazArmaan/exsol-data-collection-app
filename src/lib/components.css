@@ -587,3 +587,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-cal-card { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; cursor: pointer; }
 .booking-cal-time { font-weight: 600; font-size: 0.9rem; }
 .booking-cal-empty { padding: 8px 0; }
+
+.booking-manage-link { display: flex; flex-direction: column; gap: 6px; }
+.booking-link-row { display: flex; gap: 8px; align-items: center; }
+.booking-link-row input { flex: 1; font-family: var(--font-mono); font-size: 0.82rem; }
