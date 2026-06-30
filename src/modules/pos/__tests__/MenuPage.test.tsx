@@ -56,4 +56,20 @@ describe('MenuPage', () => {
     await screen.findByText('Cappuccino');
     expect(screen.getByText(/tap items to start an order/i)).toBeInTheDocument();
   });
+
+  it('side cart can decrease quantity and remove an item (no more stacking-only)', async () => {
+    renderPage();
+    await screen.findByLabelText('Add Cappuccino');
+    fireEvent.click(screen.getByLabelText('Add Cappuccino'));
+    fireEvent.click(screen.getByLabelText('Add Cappuccino')); // qty 2 → ₹440
+    await waitFor(() => expect(screen.getByTestId('side-cart-total')).toHaveTextContent('₹440'));
+
+    fireEvent.click(screen.getByLabelText('Decrease')); // qty 1 → ₹220
+    await waitFor(() => expect(screen.getByTestId('side-cart-total')).toHaveTextContent('₹220'));
+
+    fireEvent.click(screen.getByLabelText('Remove')); // gone → empty state
+    await waitFor(() =>
+      expect(screen.getByText(/tap items to start an order/i)).toBeInTheDocument()
+    );
+  });
 });

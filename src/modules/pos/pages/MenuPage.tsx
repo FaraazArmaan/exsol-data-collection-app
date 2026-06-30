@@ -21,6 +21,8 @@ export default function MenuPage(props: MenuPageProps) {
   const lines = useStore((s) => s.lines);
   const subtotal = useStore((s) => s.subtotalCents());
   const addLine = useStore((s) => s.addLine);
+  const setQty = useStore((s) => s.setQty);
+  const removeLine = useStore((s) => s.removeLine);
 
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [query, setQuery] = useState('');
@@ -78,6 +80,8 @@ export default function MenuPage(props: MenuPageProps) {
         lines={lines}
         subtotal={subtotal}
         checkoutHref={`/c/${props.slug}/pos/cart`}
+        onQty={setQty}
+        onRemove={removeLine}
       />
     </div>
   );
