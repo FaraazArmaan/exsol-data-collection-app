@@ -16,8 +16,8 @@ Phase 1 (Foundation) is **code-complete**; only the DB apply is blocked.
 - `b11e14e` — pure engine `src/modules/booking/lib/{tz,dedupe,fsm,availability,autoassign}.ts` + `__tests__/`: **24 unit tests green, typecheck clean**. (Executing it caught a real `noUncheckedIndexedAccess` defect, fixed in code + plan.)
 - `57bd770` — migrations `db/migrations/043_booking_core.sql` + `044_bookings.sql`, plus `tests/booking/{_helpers.ts,gist-overlap.test.ts}`: typecheck clean, **UNAPPLIED / unrun**.
 
-## The one blocker
-`043`/`044` may collide with the **POS-v2 chat** (also claimed `043+`) on the **shared dev DB** (`ep-bold-wildflower-…`, single `schema_migrations`). Before applying: confirm the free number range, renumber if needed, then from the worktree run `npm run migrate` → `npx vitest run tests/booking/gist-overlap.test.ts` (the no-overbook proof) → Phase 1 Task 10 green sweep. Do **not** `npm run migrate` until coordinated.
+## Blocker — RESOLVED (2026-06-30)
+Numbering coordinated: POS-v2 is zero-migration → **Booking owns 043–045, now APPLIED to dev**. Phase 1 is fully green: **29 tests** (24 pure + 5 gist integration), typecheck clean. The gist no-overbook proof passes against the real schema. (Splitter gotcha hit + fixed — memory `feedback_migrate_splitter_inline_comment`.) Prod still needs `npm run migrate` against the prod URL before promoting dependent code.
 
 ## Architecture facts that aren't obvious from code yet
 - No-overbook = `EXCLUDE USING gist (resource_id WITH =, time_range WITH &&) WHERE status IN ('pending','confirmed','blocked')`. A bare `INSERT` is atomic → concurrent bookings give one 201 + one 409 (`23P01`). No `slots` table; availability is computed on-read.

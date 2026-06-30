@@ -1,6 +1,6 @@
 # Booking Module — Phase 2: API (Vendor Config + Public Booking) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax. **Integration tests require migrations 043–045 applied to the DB in `DATABASE_URL` — blocked on migration-number coordination with the POS-v2 chat (memory `project_booking_migration_number_coordination`). Unit-testable tasks (3, 4) run now; DB-backed tasks wait.**
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax. **Migrations 043–045 are APPLIED to the dev DB (2026-06-30) — all integration/concurrency tasks here can run as soon as their functions exist. Task 1 (migration 045) is already done and applied; start at Task 2.**
 
 **Goal:** Ship the booking module's HTTP layer — vendor configuration/catalog CRUD (build-order C) and the public guest-booking flow to pay-at-venue confirmation (build-order D) — proven by integration tests plus a concurrency test demonstrating the no-overbook guarantee end-to-end.
 
@@ -861,4 +861,4 @@ describe('no-overbook under concurrency', () => {
 1. **Netlify v2 array `config.method`** — if unsupported, split multi-verb files per `feedback_netlify_config_path_method`.
 2. **Customers-bucket role seeding** (Task 8) — verify onboarding gives each client a `bucket_family='customers'` role; otherwise handle `no_customer_role`.
 3. **Neon nested `sql` fragments** (Task 10) — if the driver rejects them, branch into two full queries.
-4. **Migrations 043–045 application** — still gated on POS-v2 numbering coordination; all integration/concurrency tests are red until applied.
+4. **Migrations 043–045** — APPLIED to dev (2026-06-30); numbering resolved (Booking owns 043–045). For prod, run `npm run migrate` against the prod URL before promoting code that depends on them (`feedback_migration_before_deploy`).
