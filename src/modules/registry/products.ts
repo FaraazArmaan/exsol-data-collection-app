@@ -28,6 +28,49 @@ export interface PermissionRow {
   bucket: DataBucket;
 }
 
+export interface ActionPermissionGroup {
+  product_key: string;
+  label: string;
+  actions: { key: string; label: string }[];
+}
+
+/**
+ * Action-namespace permission groups for the enabled Products — one group per
+ * Product that declares a `permissions` list (e.g. POS's `pos.<action>` keys).
+ * The Access Level Dashboard renders these as per-action toggles, separate
+ * from the `<module>.<bucket>.<verb>` grid. Product-agnostic.
+ */
+export function actionPermissionGroups(
+  enabledProductKeys: readonly string[],
+): ActionPermissionGroup[] {
+  const out: ActionPermissionGroup[] = [];
+  for (const pKey of enabledProductKeys) {
+    const product = getProduct(pKey);
+    if (!product?.permissions || product.permissions.length === 0) continue;
+    out.push({
+      product_key: product.key,
+      label: product.label,
+      actions: product.permissions.map((p) => ({ key: p.key, label: p.label })),
+    });
+  }
+  return out;
+}
+
+/**
+ * Flat set of valid action-namespace permission keys for the enabled Products.
+ * Used by isValidPermissionKey to accept action keys, which don't follow the
+ * `<module>.<bucket>.<verb>` shape.
+ */
+export function actionPermissionKeys(enabledProductKeys: readonly string[]): Set<string> {
+  const set = new Set<string>();
+  for (const pKey of enabledProductKeys) {
+    const product = getProduct(pKey);
+    if (!product?.permissions) continue;
+    for (const p of product.permissions) set.add(p.key);
+  }
+  return set;
+}
+
 /**
  * Given the set of Product keys a Client has enabled, return the deduplicated
  * list of Modules they bring in, as `{ key, label }`. Unlike

@@ -23,7 +23,7 @@ import { logAudit } from './_shared/audit';
 import {
   VERBS, PLATFORM_SURFACES, type Verb, type PlatformSurface,
 } from '../../src/modules/registry/types';
-import { derivePermissionRows } from '../../src/modules/registry/products';
+import { derivePermissionRows, actionPermissionGroups } from '../../src/modules/registry/products';
 
 const PutBody = z.object({
   permissions: z.record(z.literal(true)),
@@ -74,6 +74,7 @@ export default async (req: Request, _ctx: Context) => {
       permissions: level.permissions,
       module_rows: moduleRows,
       platform_rows: platformRows,
+      action_groups: actionPermissionGroups(enabledKeys),
     });
   }
 

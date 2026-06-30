@@ -9,7 +9,7 @@ import {
   VERBS, PLATFORM_SURFACES, type Verb, type DataBucket, type PlatformSurface,
 } from '../../../src/modules/registry/types';
 import { getModule } from '../../../src/modules/registry/modules';
-import { getProduct } from '../../../src/modules/registry/products';
+import { getProduct, actionPermissionKeys } from '../../../src/modules/registry/products';
 
 export type ParsedPermissionKey =
   | { scope: 'module'; module: string; bucket: DataBucket; verb: Verb }
@@ -36,6 +36,11 @@ export function splitPermissionKey(key: string): ParsedPermissionKey | null {
  * in the module's manifest.
  */
 export function isValidPermissionKey(key: string, enabledProductKeys: readonly string[]): boolean {
+  // Action-namespace keys (e.g. `pos.<action>`) don't follow the
+  // <module>.<bucket>.<verb> shape — validate them against the enabled
+  // Products' declared permission lists before the structural parse below.
+  if (actionPermissionKeys(enabledProductKeys).has(key)) return true;
+
   const parsed = splitPermissionKey(key);
   if (!parsed) return false;
   if (parsed.scope === 'platform') return true; // surface + verb already vetted by split

@@ -177,6 +177,68 @@ describe('client-levels-permissions', () => {
     expect(r.status).toBe(400);
   });
 
+  it('GET after enabling pos returns a POS action group with all 8 actions', async () => {
+    await adminClientProductsHandler(
+      new Request(`http://localhost/api/admin-client-products?client=${clientId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ keys: ['products', 'pos'] }),
+      }), CTX,
+    );
+    const r = await clientLevelsPermissionsHandler(
+      new Request(`http://localhost/api/client-levels-permissions?id=${l2Id}`, { headers: { cookie } }),
+      CTX,
+    );
+    const body = await r.json() as {
+      action_groups: Array<{ product_key: string; label: string; actions: Array<{ key: string; label: string }> }>;
+    };
+    const pos = body.action_groups.find((g) => g.product_key === 'pos');
+    expect(pos).toBeTruthy();
+    expect(pos!.actions.length).toBe(8);
+    expect(pos!.actions.map((a) => a.key)).toContain('pos.sale.markPaid');
+  });
+
+  it('PUT accepts a granular pos.* grant for an L2 when pos is enabled', async () => {
+    await adminClientProductsHandler(
+      new Request(`http://localhost/api/admin-client-products?client=${clientId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ keys: ['products', 'pos'] }),
+      }), CTX,
+    );
+    const put = await clientLevelsPermissionsHandler(
+      new Request(`http://localhost/api/client-levels-permissions?id=${l2Id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ permissions: { 'pos.menu.view': true, 'pos.sale.markPaid': true } }),
+      }), CTX,
+    );
+    expect(put.status).toBe(200);
+    const r = await clientLevelsPermissionsHandler(
+      new Request(`http://localhost/api/client-levels-permissions?id=${l2Id}`, { headers: { cookie } }),
+      CTX,
+    );
+    const body = await r.json() as { permissions: Record<string, true> };
+    expect(body.permissions).toEqual({ 'pos.menu.view': true, 'pos.sale.markPaid': true });
+  });
+
+  it('PUT rejects a pos.* key when pos is NOT enabled', async () => {
+    // Only products enabled — pos.* keys must be rejected.
+    await adminClientProductsHandler(
+      new Request(`http://localhost/api/admin-client-products?client=${clientId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ keys: ['products'] }),
+      }), CTX,
+    );
+    const r = await clientLevelsPermissionsHandler(
+      new Request(`http://localhost/api/client-levels-permissions?id=${l2Id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ permissions: { 'pos.menu.view': true } }),
+      }), CTX,
+    );
+    expect(r.status).toBe(400);
+    const body = await r.json() as { error: { code: string; details: { key: string } } };
+    expect(body.error.code).toBe('invalid_permission_key');
+    expect(body.error.details.key).toBe('pos.menu.view');
+  });
+
   it('PUT on L1 (Primary) returns 409 — Primary is implicit all-on', async () => {
     const lr = (await sql`SELECT id FROM public.client_levels WHERE client_id = ${clientId} AND level_number = 1`) as { id: string }[];
     const r = await clientLevelsPermissionsHandler(

@@ -5,7 +5,7 @@
 // fixed Platform surfaces. All four verb columns share fixed widths so
 // the grid stays aligned. Save replaces the entire JSONB matrix.
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   putLevelPermissions,
   type LevelPermissionsResponse, type ModuleRow, type PlatformRow,
@@ -146,6 +146,25 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
                 );
               })}
             </tr>
+          ))}
+
+          {(data.action_groups ?? []).map((group) => (
+            <Fragment key={group.product_key}>
+              <tr className="perm-section-row"><td colSpan={5}>{group.label}</td></tr>
+              {group.actions.map((a) => (
+                <tr key={a.key} className="perm-row">
+                  <td className="perm-resource">{a.label}</td>
+                  <td className="perm-cell" colSpan={4} style={{ textAlign: 'left' }}>
+                    <PermissionToggle
+                      checked={isOn(a.key)}
+                      onChange={() => toggle(a.key)}
+                      disabled={saving}
+                      ariaLabel={a.label}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>

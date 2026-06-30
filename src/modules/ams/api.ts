@@ -273,12 +273,21 @@ export interface ModuleRow {
 
 export interface PlatformRow { surface: string; verbs: string[] }
 
+// Action-namespace permissions (e.g. POS's pos.<action> keys) — a flat list of
+// toggles per Product, rendered separately from the bucket×verb grid.
+export interface ActionGroupRow {
+  product_key: string;
+  label: string;
+  actions: { key: string; label: string }[];
+}
+
 export interface LevelPermissionsResponse {
   level_id: string;
   level_number: number;
   permissions: Record<string, true>;
   module_rows: ModuleRow[];
   platform_rows: PlatformRow[];
+  action_groups: ActionGroupRow[];
 }
 
 export const getLevelPermissions = (levelId: string) =>
