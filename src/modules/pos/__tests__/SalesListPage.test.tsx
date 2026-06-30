@@ -86,4 +86,25 @@ describe('SalesListPage', () => {
     renderPage('/c/acme/pos/sales/s1');
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
+
+  it('shows a Storefront badge only on source=storefront rows', async () => {
+    const mixed = {
+      sales: [
+        { id: 'sf', order_no: 3, status: 'pending_payment', channel: 'pickup', source: 'storefront',
+          customer_name: 'Guest', customer_phone: '900', total_cents: 100, created_at: '2026-06-30T10:00:00Z', line_count: 1, created_by_user_node: null },
+        { id: 'st', order_no: 2, status: 'fulfilled', channel: 'instore', source: 'pos',
+          customer_name: 'Walk In', customer_phone: '901', total_cents: 200, created_at: '2026-06-30T09:00:00Z', line_count: 1, created_by_user_node: 'u1' },
+      ],
+      nextCursor: null,
+      summary: { count: 2, revenueCents: 200, pendingCount: 1, pickupQueueCount: 1 },
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(mixed), { status: 200 })));
+
+    renderPage();
+    const storefrontRow = (await screen.findByText('S-00003')).closest('tr')!;
+    const staffRow = screen.getByText('S-00002').closest('tr')!;
+    expect(storefrontRow).toHaveTextContent('Storefront');
+    expect(staffRow).not.toHaveTextContent('Storefront');
+  });
 });

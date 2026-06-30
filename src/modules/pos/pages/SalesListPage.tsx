@@ -60,7 +60,12 @@ export default function SalesListPage(props: SalesListPageProps) {
         <tbody>
           {data.sales.map((s: any) => (
             <tr key={s.id} onClick={() => nav(`/c/${props.slug}/pos/sales/${s.id}`)} style={{ cursor: 'pointer' }}>
-              <td>{formatOrderNo(s.order_no)}</td>
+              <td>
+                {formatOrderNo(s.order_no)}
+                {s.source === 'storefront' && (
+                  <span className="pos-pill pill-gray" style={{ marginLeft: 8 }}>Storefront</span>
+                )}
+              </td>
               <td>{new Date(s.created_at).toLocaleTimeString()}</td>
               <td>{s.customer_name} · {s.customer_phone}</td>
               <td>{s.line_count}</td>
