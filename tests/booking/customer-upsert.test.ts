@@ -26,9 +26,25 @@ describe('upsertCustomer', () => {
     expect(a.wasCreated).toBe(true);
   });
 
-  it('throws no_customer_role when the tenant has no customers-bucket role', async () => {
+  it('auto-creates a customers-bucket role when the tenant has none', async () => {
     const fresh = await seedClientWithBooking(); // no seedCustomerRole
-    await expect(upsertCustomer(sql, fresh.clientId, { name: 'X', phone: '92222 22222' }))
-      .rejects.toThrow('no_customer_role');
+    const r = await upsertCustomer(sql, fresh.clientId, { name: 'X', phone: '92222 22222' });
+    expect(r.wasCreated).toBe(true);
+    const role = (await sql`
+      SELECT cr.bucket_family FROM public.user_nodes un
+      JOIN public.client_roles cr ON cr.id = un.role_id WHERE un.id = ${r.userNodeId}::uuid
+    `) as Array<{ bucket_family: string }>;
+    expect(role[0]!.bucket_family).toBe('customers');
+  });
+
+  it('reuses the lazily-created role on the next new guest (no duplicate role)', async () => {
+    const fresh = await seedClientWithBooking();
+    await upsertCustomer(sql, fresh.clientId, { name: 'A', phone: '93000 00001' });
+    await upsertCustomer(sql, fresh.clientId, { name: 'B', phone: '93000 00002' });
+    const roles = (await sql`
+      SELECT count(*)::int AS n FROM public.client_roles
+      WHERE client_id = ${fresh.clientId}::uuid AND bucket_family = 'customers'
+    `) as Array<{ n: number }>;
+    expect(roles[0]!.n).toBe(1);
   });
 });
