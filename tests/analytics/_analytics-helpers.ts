@@ -1,0 +1,50 @@
+// Deterministic analytics test seeding. Inserts paid sales (and one sale_line
+// each) directly via the DB so series/KPI assertions are exact and fast, rather
+// than driving the POS create→markPaid flow. Each call seeds a fresh client
+// (its own bucket) so order_no/unique constraints never collide across re-runs
+// on the shared dev DB.
+
+import { db } from '../../netlify/functions/_shared/db';
+import { seedClientWithProductsEnabled, seedProducts, grantPerms, type PosTestCtx } from '../pos/_helpers';
+
+interface SeedPaidSalesArgs {
+  when: string[];          // ISO timestamps (one per sale), e.g. '2026-03-02T10:00:00Z'
+  channel?: string[];      // 'instore' | 'online' | 'pickup' per sale; defaults all 'instore'
+  priceCents?: number;     // per-sale total; default 1000
+}
+
+export async function seedPaidSales(args: SeedPaidSalesArgs): Promise<PosTestCtx> {
+  const sql = db();
+  const price = args.priceCents ?? 1000;
+  const ctx = await seedClientWithProductsEnabled();
+  await grantPerms(ctx.clientId, 1, ['analytics.business.view']);
+
+  const suffix = Math.random().toString(36).slice(2, 7);
+  const [productId] = await seedProducts(ctx.clientId, [
+    { name: `AN-${suffix}`, sale_price_cents: price, pos_visible: true, status: 'active' },
+  ]);
+
+  for (let i = 0; i < args.when.length; i++) {
+    const channel = args.channel?.[i] ?? 'instore';
+    const createdAt = args.when[i]!;
+    const saleRows = (await sql`
+      INSERT INTO public.sales
+        (bucket_id, order_no, status, channel, customer_name, customer_phone,
+         subtotal_cents, discount_cents, tax_cents, total_cents,
+         created_by_user_node, source, created_at, paid_at)
+      VALUES
+        (${ctx.clientId}::uuid, ${i + 1}, 'paid', ${channel}, 'Seed', ${`9${i}`},
+         ${price}, 0, 0, ${price},
+         ${ctx.userNodeId}::uuid, 'pos', ${createdAt}::timestamptz, ${createdAt}::timestamptz)
+      RETURNING id
+    `) as Array<{ id: string }>;
+    const saleId = saleRows[0]!.id;
+    await sql`
+      INSERT INTO public.sale_lines
+        (sale_id, product_id, product_name_snap, unit_price_cents, qty, line_total_cents, position)
+      VALUES
+        (${saleId}::uuid, ${productId}::uuid, ${`AN-${suffix}`}, ${price}, 1, ${price}, 1)
+    `;
+  }
+  return ctx;
+}
