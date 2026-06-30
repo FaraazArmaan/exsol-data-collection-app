@@ -153,3 +153,40 @@ export function publicRequest(slug: string, method: string, suffix: string, body
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
+
+// Seed a fresh L2 subordinate user_node under the existing L1 Owner + mint a
+// new bucket-user session. Returns a ctx whose cookie carries the L2 sub so
+// strict matrix-perm tests fire the perm check. (L1 is all-on via the
+// requireBooking bypass; mutating the L1 to L2 in-place would violate the
+// user_nodes_parent_level_consistency constraint, so we add a child instead.)
+//
+// Mutates the original ctx by ensuring a client_levels row exists at L2 with
+// empty perms; callers can subsequently grantBookingPerms(clientId, 2, [...]).
+export async function demoteToL2(ctx: BookingTestCtx): Promise<BookingTestCtx> {
+  // Ensure an L2 row exists in the client_levels matrix.
+  await sql`
+    INSERT INTO public.client_levels (client_id, level_number, label, permissions)
+    VALUES (${ctx.clientId}::uuid, 2, 'L2', '{}'::jsonb)
+    ON CONFLICT DO NOTHING
+  `;
+  // Borrow the existing owner role for the subordinate.
+  const role = (await sql`
+    SELECT id FROM public.client_roles WHERE client_id = ${ctx.clientId} LIMIT 1
+  `) as Array<{ id: string }>;
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const email = `book-l2-${suffix}@exsol.test`;
+  const node = (await sql`
+    INSERT INTO public.user_nodes (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    VALUES (${ctx.clientId}, ${ctx.ownerNodeId}, 2, ${role[0]!.id}, 'L2 Sub', ${email}, ${ctx.adminId})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const subNodeId = node[0]!.id;
+  const hash = await hashPassword('book-l2-pw');
+  await sql`
+    INSERT INTO public.user_node_credentials
+      (client_id, user_node_id, email, password_hash, must_change_password, created_by_admin)
+    VALUES (${ctx.clientId}, ${subNodeId}, ${email}, ${hash}, false, ${ctx.adminId})
+  `;
+  const token = await mintBucketUserSession({ sub: subNodeId, email, client_id: ctx.clientId });
+  return { ...ctx, ownerNodeId: subNodeId, cookie: `bu_session=${token}` };
+}

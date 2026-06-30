@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import manual from '../../netlify/functions/booking-manual-create';
-import { seedClientWithBooking, enableBooking, grantBookingPerms, seedResource, seedCustomerRole, makeService, bookingRequest } from './_helpers';
+import { seedClientWithBooking, enableBooking, grantBookingPerms, seedResource, seedCustomerRole, makeService, bookingRequest, demoteToL2 } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithBooking>>;
 let resId: string, svc: string;
@@ -42,11 +42,15 @@ describe('POST /api/booking/manual-create', () => {
     expect((await dup.json()).error.code).toBe('slot_taken');
   });
 
-  it('403 without booking.customers.create', async () => {
-    await grantBookingPerms(ctx.clientId, 1, ['booking.customers.view']);
-    const r = await manual(bookingRequest(ctx, 'POST', '/api/booking/manual-create',
-      { service_id: svc, resource_id: resId, start: '2031-03-06T09:00:00Z', customer: { name: 'X', phone: '9' } }));
+  it('403 when L2 lacks booking.customers.create (view-only grant)', async () => {
+    const owner = await seedClientWithBooking();
+    await enableBooking(owner.clientId);
+    const sub = await demoteToL2(owner);
+    await grantBookingPerms(sub.clientId, 2, ['booking.customers.view']); // view-only, no create
+    const subRes = await seedResource(sub.clientId);
+    const subSvc = await makeService(sub.clientId);
+    const r = await manual(bookingRequest(sub, 'POST', '/api/booking/manual-create',
+      { service_id: subSvc, resource_id: subRes, start: '2031-03-06T09:00:00Z', customer: { name: 'X', phone: '9' } }));
     expect(r.status).toBe(403);
-    await grantBookingPerms(ctx.clientId, 1, ['booking.customers.create']);
   });
 });

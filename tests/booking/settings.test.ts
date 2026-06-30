@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import handler from '../../netlify/functions/booking-settings';
-import { seedClientWithBooking, enableBooking, grantBookingPerms, bookingRequest } from './_helpers';
+import { seedClientWithBooking, enableBooking, grantBookingPerms, bookingRequest, demoteToL2 } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithBooking>>;
 beforeAll(async () => {
@@ -28,9 +28,12 @@ describe('GET/PUT /api/booking/settings', () => {
     expect(body.weekly_schedule.mon[0].close).toBe('17:00');
   });
 
-  it('PUT without edit perm → 403', async () => {
-    await grantBookingPerms(ctx.clientId, 1, ['booking.employees.view']); // drop edit
-    const r = await handler(bookingRequest(ctx, 'PUT', '/api/booking/settings', {
+  it('PUT without edit perm → 403 (L2 with view-only grant)', async () => {
+    const owner = await seedClientWithBooking();
+    await enableBooking(owner.clientId);
+    const sub = await demoteToL2(owner);
+    await grantBookingPerms(sub.clientId, 2, ['booking.employees.view']); // view only, no edit
+    const r = await handler(bookingRequest(sub, 'PUT', '/api/booking/settings', {
       slot_interval_min: 15, weekly_schedule: {}, date_overrides: [],
     }));
     expect(r.status).toBe(403);

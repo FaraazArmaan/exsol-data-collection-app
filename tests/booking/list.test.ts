@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import list from '../../netlify/functions/booking-list';
-import { sqlClient, seedClientWithBooking, enableBooking, grantBookingPerms, seedResource, makeService, bookingRequest } from './_helpers';
+import { sqlClient, seedClientWithBooking, enableBooking, grantBookingPerms, seedResource, makeService, bookingRequest, demoteToL2 } from './_helpers';
 
 const sql = sqlClient();
 let ctx: Awaited<ReturnType<typeof seedClientWithBooking>>;
@@ -36,10 +36,12 @@ describe('GET /api/booking/list', () => {
     expect(bookings[0].status).toBe('blocked');
   });
 
-  it('403 without booking.customers.view', async () => {
-    await grantBookingPerms(ctx.clientId, 1, ['booking.employees.view']);
-    const r = await list(bookingRequest(ctx, 'GET', '/api/booking/list'));
+  it('403 when L2 user lacks booking.customers.view', async () => {
+    const owner = await seedClientWithBooking();
+    await enableBooking(owner.clientId);
+    const sub = await demoteToL2(owner);
+    await grantBookingPerms(sub.clientId, 2, ['booking.employees.view']); // not customers.view
+    const r = await list(bookingRequest(sub, 'GET', '/api/booking/list'));
     expect(r.status).toBe(403);
-    await grantBookingPerms(ctx.clientId, 1, ['booking.customers.view']); // restore
   });
 });
