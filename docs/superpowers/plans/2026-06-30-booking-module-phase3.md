@@ -9,7 +9,8 @@
 - **Razorpay:** webhook signature = HMAC-SHA256(`order_id|payment_id`, KEY_SECRET) — verifiable offline (testable). The order-create call needs `RAZORPAY_KEY_ID/SECRET` + network → guarded; unit-test the signature + the pending→confirmed flip, not the live API. Env vars added to all Netlify contexts (deploy-checklist).
 - **Cron:** Netlify scheduled function via in-file `export const config = { schedule: '*/5 * * * *' }` (scheduled functions are greenfield here — verify the schedule syntax on first deploy).
 
-## Phase 3a — backend (execute now, TDD)
+## Phase 3a — backend ✅ COMPLETE (2026-06-30)
+All tasks below implemented TDD-green. **Full booking suite: 24 files, 86 tests pass; typecheck clean.** Razorpay order-create (live API) + netlify.toml schedule registration are the only deploy-time-verified pieces; everything else proven against the real DB.
 - [ ] **E1 `booking-list.ts`** GET `/api/booking/list?from=&to=&status=&resource_id=` — vendor calendar/list; `booking.customers.view`; bucket-scoped, date+status+resource filters. Mirror `pos-sales-list`.
 - [ ] **E2 `booking-detail.ts`** GET/PATCH `/api/booking/detail/:id` — GET one (404 cross-tenant); PATCH `{action}` runs `applyTransition` (map `missing_perm`→403, `illegal_transition`→409, `too_late_to_cancel`/`too_early`→409) then updates `status`/`cancelled_at`/`cancellation_reason`. `booking.customers.view`/`edit`.
 - [ ] **E3 `booking-manual-create.ts`** POST `/api/booking/manual-create` — vendor create; `booking.customers.create`; reuses `upsertCustomer`; bypasses lead-time + cutoff; supports `status:'blocked'` (no customer/service) for staff time; `23P01`→409. Off-grid start allowed (gist still guards).

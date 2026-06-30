@@ -31,19 +31,21 @@ describe('magic-link manage', () => {
   });
 
   it('future booking is cancellable; cancel → cancelled', async () => {
-    await mkBooking('[2031-05-01T09:00:00Z,2031-05-01T10:00:00Z)', 'tok-future');
-    const get = await manage(req('tok-future', 'GET'));
+    const tok = `tok-${crypto.randomUUID()}`;
+    await mkBooking('[2031-05-01T09:00:00Z,2031-05-01T10:00:00Z)', tok);
+    const get = await manage(req(tok, 'GET'));
     expect((await get.json()).cancellable).toBe(true);
-    const cancel = await manage(req('tok-future', 'POST', { action: 'cancel' }));
+    const cancel = await manage(req(tok, 'POST', { action: 'cancel' }));
     expect(cancel.status).toBe(200);
     expect((await cancel.json()).status).toBe('cancelled');
   });
 
   it('past-cutoff booking → not cancellable; cancel → 409 too_late_to_cancel', async () => {
-    await mkBooking('[2020-05-01T09:00:00Z,2020-05-01T10:00:00Z)', 'tok-late');
-    const get = await manage(req('tok-late', 'GET'));
+    const tok = `tok-${crypto.randomUUID()}`;
+    await mkBooking('[2020-05-01T09:00:00Z,2020-05-01T10:00:00Z)', tok);
+    const get = await manage(req(tok, 'GET'));
     expect((await get.json()).cancellable).toBe(false);
-    const cancel = await manage(req('tok-late', 'POST', { action: 'cancel' }));
+    const cancel = await manage(req(tok, 'POST', { action: 'cancel' }));
     expect(cancel.status).toBe(409);
     expect((await cancel.json()).error.code).toBe('too_late_to_cancel');
   });

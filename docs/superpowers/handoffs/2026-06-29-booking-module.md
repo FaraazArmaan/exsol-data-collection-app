@@ -37,7 +37,13 @@ Numbering coordinated: POS-v2 is zero-migration → **Booking owns 043–045, no
 ## Phase 2: EXECUTED & COMPLETE (2026-06-30)
 All 13 tasks implemented TDD-style and green: **66 booking tests (17 files), typecheck clean**. Functions live under `netlify/functions/booking-*.ts` + `_booking-{authz,validators,customer-upsert}.ts`; test helpers extended in `tests/booking/_helpers.ts`. The no-overbook guarantee is proven at the HTTP layer (concurrency test: 10 parallel → 1×201/9×409). Open items all resolved (see Phase 2 plan banner). **Product dependency surfaced:** guest bookings need a tenant `client_roles` row with `bucket_family='customers'` — the upsert throws `no_customer_role` otherwise; Phase 3 should auto-seed one when booking is enabled.
 
-## Next focus
+## Phase 3a (backend): EXECUTED & COMPLETE (2026-06-30)
+Vendor ops (`booking-list`, `booking-detail` w/ FSM transitions, `booking-manual-create` incl. blocked staff-time), `booking-public-manage` (magic-link cancel), `booking-pending-cleanup` (scheduled, 15-min timeout), `_booking-razorpay` + `booking-razorpay-webhook` (HMAC verify + pending→confirmed), and a round-trip smoke. **Full suite: 24 files, 86 tests green; typecheck clean.** Deferred to deploy: live Razorpay order-create (public-create still returns a `payment_intent` stub), netlify.toml schedule registration, and `RAZORPAY_*` env vars across contexts.
+
+## Next focus: Phase 3b — React UI (NOT started)
+Public storefront pages (ServicePicker→SlotPicker→Checkout+Razorpay Checkout JS→Confirmation, ManageBooking) under `src/modules/booking/public/`; vendor pages (day-view CalendarPage, BookingsList, Services, Resources, Settings, manual/blocked drawers) under `src/modules/booking/vendor/`; `BookingRouteMounts.tsx` (mirror `PosRouteMounts`), `src/lib/router.tsx` entries, sidebar nav (`useNavItems` `MODULES_WITH_DEDICATED_NAV`). Needs an FE-pattern exploration pass first + browser/`run`-skill verification (not just unit tests). See plan `docs/superpowers/plans/2026-06-30-booking-module-phase3.md` §3b.
+
+## (was) Next focus
 Either (a) clear the migration-numbering blocker → apply 043–045 → run Phase 1 gist proof + Phase 2 integration/concurrency tests, or (b) execute Phase 2 task-by-task (validators/authz unit-testable now; DB-backed tasks wait on (a)). Then **Phase 3** = payments (Razorpay + webhook), magic-link manage, vendor calendar/list/detail/manual-create, pending-cleanup cron, sidebar nav, all React UI (E–J). Mirror POS: `netlify/functions/pos-*.ts`, `_pos-authz.ts`, `tests/pos/_helpers.ts`, `src/modules/pos/`, `src/lib/router.tsx`, `useNavItems.ts` (`MODULES_WITH_DEDICATED_NAV`).
 
 ## Durable rules in play (memory slugs)
