@@ -35,6 +35,9 @@ import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCa
 import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
+import {
+  BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
+} from '../modules/booking/BookingRouteMounts';
 
 function ShellLayout() {
   return (
@@ -100,6 +103,11 @@ export const router = createBrowserRouter([
               { path: 'pos/sales', element: <PosSalesMount /> },
               { path: 'pos/sales/:id', element: <PosSalesMount /> },
               { path: 'pos/settings', element: <StorefrontSettings /> },
+              { path: 'booking', element: <BookingCalendarMount /> },
+              { path: 'booking/list', element: <BookingListMount /> },
+              { path: 'booking/services', element: <BookingServicesMount /> },
+              { path: 'booking/resources', element: <BookingResourcesMount /> },
+              { path: 'booking/settings', element: <BookingSettingsMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

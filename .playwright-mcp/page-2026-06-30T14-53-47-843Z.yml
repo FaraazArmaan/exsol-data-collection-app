@@ -1,0 +1,68 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - navigation "Primary" [ref=e5]:
+      - link "Dashboard" [ref=e6] [cursor=pointer]:
+        - /url: /c/papa-s-saloon
+      - link "File Manager" [ref=e7] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/file-manager
+      - generic [ref=e8]: Modules
+      - link "Product Manager" [ref=e9] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/products
+      - link "POS" [ref=e10] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/pos/menu
+      - link "Booking & Calendar" [ref=e11] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/m/booking
+      - link "Payments" [ref=e12] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/m/payments
+      - generic [ref=e13]: Workspace
+      - link "Team" [ref=e14] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/team
+      - link "Account" [ref=e15] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/account
+  - generic [ref=e16]:
+    - banner [ref=e17]:
+      - generic [ref=e18]: Papa's Saloon
+      - button "Faraaz" [ref=e20] [cursor=pointer]:
+        - text: Faraaz
+        - generic [ref=e21]: ▾
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - heading "Sale History" [level=1] [ref=e25]
+          - link "+ New Sale" [ref=e26] [cursor=pointer]:
+            - /url: /c/papa-s-saloon/pos/menu
+        - generic [ref=e27]:
+          - generic [ref=e28]: "Sales: 2"
+          - generic [ref=e29]: "Revenue: ₹21"
+          - generic [ref=e30]: "Pending: 0"
+          - generic [ref=e31]: "Pickup queue: 1"
+        - table [ref=e32]:
+          - rowgroup [ref=e33]:
+            - 'row "Order # Time Customer Items Channel Status Total" [ref=e34]':
+              - 'columnheader "Order #" [ref=e35]'
+              - columnheader "Time" [ref=e36]
+              - columnheader "Customer" [ref=e37]
+              - columnheader "Items" [ref=e38]
+              - columnheader "Channel" [ref=e39]
+              - columnheader "Status" [ref=e40]
+              - columnheader "Total" [ref=e41]
+          - rowgroup [ref=e42]:
+            - row "S-00003 20:18:18 Storefront Smoke Guest · +919876500000 1 pickup Paid ₹10" [ref=e43] [cursor=pointer]:
+              - cell "S-00003" [ref=e44]
+              - cell "20:18:18" [ref=e45]
+              - cell "Storefront Smoke Guest · +919876500000" [ref=e46]
+              - cell "1" [ref=e47]
+              - cell "pickup" [ref=e48]
+              - cell "Paid" [ref=e49]:
+                - generic [ref=e50]: Paid
+              - cell "₹10" [ref=e51]
+            - row "S-00002 19:46:14 Prod Smoke Customer · +919876543210 2 instore Fulfilled ₹11" [ref=e52] [cursor=pointer]:
+              - cell "S-00002" [ref=e53]
+              - cell "19:46:14" [ref=e54]
+              - cell "Prod Smoke Customer · +919876543210" [ref=e55]
+              - cell "2" [ref=e56]
+              - cell "instore" [ref=e57]
+              - cell "Fulfilled" [ref=e58]:
+                - generic [ref=e59]: Fulfilled
+              - cell "₹11" [ref=e60]
+        - dialog [ref=e61]: Loading…

@@ -42,6 +42,50 @@ export interface ManageView {
   customer_name: string; price_cents: number; cancellable: boolean;
 }
 
+// ---------- Vendor (authed) types ----------
+export interface BookingSettings {
+  slot_interval_min: number; lead_time_min: number; cancel_cutoff_min: number;
+  weekly_schedule: Record<string, Array<{ open: string; close: string }>>;
+  date_overrides: Array<{ date: string; closed?: boolean }>;
+}
+export interface VendorService {
+  id: string; name: string; duration_min: number; price_cents: number;
+  payment_mode: PaymentMode; deposit_cents: number | null; buffer_min: number;
+  active: boolean; eligible_resource_ids: string[];
+}
+export interface VendorResource { id: string; name: string; weekly_schedule: Record<string, unknown>; active: boolean; }
+export interface TimeOff { id: string; resource_id: string; starts_at: string; ends_at: string; reason: string | null; }
+export interface VendorBooking {
+  id: string; service_id: string | null; resource_id: string; user_node_id: string | null;
+  start_at: string; end_at: string; status: string;
+  customer_name: string | null; customer_phone: string | null; customer_email: string | null; price_cents: number;
+}
+export type BookingAction = 'cancel' | 'complete' | 'noShow' | 'unblock';
+
+// ---------- Vendor (authed) ----------
+export const bookingApi = {
+  getSettings: () => call<BookingSettings>('/api/booking/settings'),
+  putSettings: (body: BookingSettings) => call<BookingSettings>('/api/booking/settings', { ...json(body), method: 'PUT' }),
+
+  listServices: () => call<{ services: VendorService[] }>('/api/booking/services'),
+  createService: (body: Partial<VendorService>) => call<VendorService>('/api/booking/services', json(body)),
+  patchService: (id: string, body: Partial<VendorService>) => call<VendorService>(`/api/booking/service-detail/${id}`, { ...json(body), method: 'PATCH' }),
+  deleteService: (id: string) => call<{ id: string }>(`/api/booking/service-detail/${id}`, { method: 'DELETE' }),
+
+  listResources: () => call<{ resources: VendorResource[] }>('/api/booking/resources'),
+  createResource: (body: Partial<VendorResource>) => call<VendorResource>('/api/booking/resources', json(body)),
+  patchResource: (id: string, body: Partial<VendorResource>) => call<VendorResource>(`/api/booking/resource-detail/${id}`, { ...json(body), method: 'PATCH' }),
+  deleteResource: (id: string) => call<{ id: string }>(`/api/booking/resource-detail/${id}`, { method: 'DELETE' }),
+  listTimeOff: (resourceId: string) => call<{ time_off: TimeOff[] }>(`/api/booking/resource-time-off?resource_id=${resourceId}`),
+  addTimeOff: (body: { resource_id: string; starts_at: string; ends_at: string; reason?: string }) => call<TimeOff>('/api/booking/resource-time-off', json(body)),
+  deleteTimeOff: (id: string) => call<{ id: string }>(`/api/booking/resource-time-off?id=${id}`, { method: 'DELETE' }),
+
+  list: (query: string) => call<{ bookings: VendorBooking[] }>(`/api/booking/list${query ? '?' + query : ''}`),
+  get: (id: string) => call<VendorBooking>(`/api/booking/detail/${id}`),
+  transition: (id: string, action: BookingAction, reason?: string) => call<any>(`/api/booking/detail/${id}`, { ...json({ action, reason }), method: 'PATCH' }),
+  manualCreate: (body: any) => call<{ id: string; status: string }>('/api/booking/manual-create', json(body)),
+};
+
 // ---------- Public (anonymous) ----------
 export const bookingPublicApi = {
   services: (slug: string) => call<{ services: PublicService[] }>(`/api/booking-public/${slug}/services`),

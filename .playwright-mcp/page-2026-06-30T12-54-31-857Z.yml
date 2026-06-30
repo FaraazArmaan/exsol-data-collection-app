@@ -1,0 +1,49 @@
+- generic [ref=e39]:
+  - complementary [ref=e40]:
+    - navigation "Primary" [ref=e41]:
+      - link "Dashboard" [ref=e42] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8
+      - link "File Manager" [ref=e43] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8/file-manager
+      - generic [ref=e44]: Modules
+      - link "Product Manager" [ref=e45] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8/products
+      - link "POS" [ref=e46] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8/pos/menu
+      - generic [ref=e47]: Workspace
+      - link "Team" [ref=e48] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8/team
+      - link "Account" [ref=e49] [cursor=pointer]:
+        - /url: /c/pos-test-5p9q5rc8/account
+  - generic [ref=e50]:
+    - banner [ref=e51]:
+      - generic [ref=e52]: POS Test
+      - button "POS Test Owner" [ref=e54] [cursor=pointer]:
+        - text: POS Test Owner
+        - generic [ref=e55]: ▾
+    - main [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - heading "Welcome back, POS Test Owner" [level=1] [ref=e59]
+          - paragraph [ref=e60]: POS Test · Owner
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - generic [ref=e63]: Role
+            - generic [ref=e64]: Owner
+          - generic [ref=e65]:
+            - generic [ref=e66]: Modules available
+            - generic [ref=e67]: "0"
+          - generic [ref=e68]:
+            - generic [ref=e69]: Workspace
+            - generic [ref=e70]: POS Test
+        - generic [ref=e71]:
+          - heading "Quick actions" [level=2] [ref=e72]
+          - generic [ref=e73]:
+            - link "Manage team Add, edit, and remove users in your workspace." [ref=e74] [cursor=pointer]:
+              - /url: /c/pos-test-5p9q5rc8/team
+              - generic [ref=e75]: Manage team
+              - generic [ref=e76]: Add, edit, and remove users in your workspace.
+            - generic "Coming soon" [ref=e77]:
+              - generic [ref=e78]: Settings
+              - generic [ref=e79]: Configure workspace preferences and integrations.
+              - generic [ref=e80]: Coming soon

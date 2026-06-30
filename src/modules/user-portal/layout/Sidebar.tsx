@@ -27,13 +27,17 @@ export function Sidebar() {
     permissions['pos.history.view'] === true
   );
 
+  const showBooking = !!user && (
+    permissions['booking.customers.view'] === true || permissions['booking.employees.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || items.length > 0) && (
+        {(showProducts || showPos || showBooking || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -41,6 +45,9 @@ export function Sidebar() {
             )}
             {showPos && (
               <NavLink to={`/c/${slug}/pos/menu`}>POS</NavLink>
+            )}
+            {showBooking && (
+              <NavLink to={`/c/${slug}/booking`}>Booking</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

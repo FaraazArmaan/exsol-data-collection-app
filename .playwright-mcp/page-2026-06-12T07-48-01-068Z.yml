@@ -1,0 +1,141 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - navigation "Primary" [ref=e6]:
+      - link "Dashboard" [ref=e7] [cursor=pointer]:
+        - /url: /c/papa-s-saloon
+      - link "File Manager" [ref=e8] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/file-manager
+      - generic [ref=e9]: Modules
+      - link "Product Manager" [ref=e10] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/products
+      - link "Booking & Calendar" [ref=e11] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/m/booking
+      - link "Payments" [ref=e12] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/m/payments
+      - generic [ref=e13]: Workspace
+      - link "Team" [ref=e14] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/team
+      - link "Account" [ref=e15] [cursor=pointer]:
+        - /url: /c/papa-s-saloon/account
+  - generic [ref=e16]:
+    - banner [ref=e17]:
+      - generic [ref=e18]: Papa's Saloon
+      - button "Faraaz" [ref=e20] [cursor=pointer]:
+        - text: Faraaz
+        - generic [ref=e21]: ▾
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - heading "Product Manager" [level=1] [ref=e26]
+            - paragraph [ref=e27]: Catalog of products & services for this workspace.
+          - link "Manage categories →" [ref=e28] [cursor=pointer]:
+            - /url: /c/papa-s-saloon/products/categories
+        - tablist "Product status" [ref=e29]:
+          - button "All 3" [pressed] [ref=e30] [cursor=pointer]:
+            - text: All
+            - generic [ref=e31]: "3"
+          - button "Active 3" [ref=e32] [cursor=pointer]:
+            - text: Active
+            - generic [ref=e33]: "3"
+          - button "Draft 0" [ref=e34] [cursor=pointer]:
+            - text: Draft
+            - generic [ref=e35]: "0"
+          - button "Archived 0" [ref=e36] [cursor=pointer]:
+            - text: Archived
+            - generic [ref=e37]: "0"
+        - generic [ref=e38]:
+          - combobox "Type" [ref=e39]:
+            - option "Type — any" [selected]
+            - option "Physical"
+            - option "Service"
+          - combobox "Category" [ref=e40]:
+            - option "Category — any" [selected]
+          - textbox "Brand" [ref=e41]
+          - textbox "Search products" [ref=e42]:
+            - /placeholder: 🔍  Search name, SKU, brand…
+          - generic [ref=e43]:
+            - group [ref=e44]:
+              - generic "↓ Export ▾" [ref=e45] [cursor=pointer]
+            - button "↑ Import" [ref=e46] [cursor=pointer]
+            - button "+ Add Product" [ref=e47] [cursor=pointer]
+        - table [ref=e48]:
+          - rowgroup [ref=e61]:
+            - 'row "Select all visible # Image Name SKU Category Brand Price Stock Status Created" [ref=e62]':
+              - columnheader "Select all visible" [ref=e63]:
+                - checkbox "Select all visible" [ref=e64]
+              - columnheader "#" [ref=e65]
+              - columnheader "Image" [ref=e66]
+              - columnheader "Name"
+              - columnheader "SKU" [ref=e67]
+              - columnheader "Category" [ref=e68]
+              - columnheader "Brand" [ref=e69]
+              - columnheader "Price" [ref=e70]
+              - columnheader "Stock" [ref=e71]
+              - columnheader "Status" [ref=e72]
+              - columnheader "Created" [ref=e73]
+              - columnheader [ref=e74]
+          - rowgroup [ref=e75]:
+            - row "Select Egg 2 1 Egg 2 — — — $10.00 0 active 2026-06-09 Edit Egg 2 Archive Egg 2" [ref=e76]:
+              - cell "Select Egg 2" [ref=e77]:
+                - checkbox "Select Egg 2" [ref=e78]
+              - cell "1" [ref=e79]
+              - cell [ref=e80]
+              - cell "Egg 2":
+                - link "Egg 2" [ref=e81] [cursor=pointer]:
+                  - /url: /c/papa-s-saloon/products/19767802-f5a9-4233-8f89-e5267274e043/edit
+              - cell "—" [ref=e82]
+              - cell "—" [ref=e83]
+              - cell "—" [ref=e84]
+              - cell "$10.00" [ref=e85]
+              - cell "0" [ref=e86]
+              - cell "active" [ref=e87]:
+                - generic [ref=e88]: active
+              - cell "2026-06-09" [ref=e89]
+              - cell "Edit Egg 2 Archive Egg 2" [ref=e90]:
+                - button "Edit Egg 2" [ref=e91] [cursor=pointer]: ✎
+                - button "Archive Egg 2" [ref=e92] [cursor=pointer]: 🗑
+            - row "Select Egg 2 Egg — — — $1.00 0 active 2026-06-09 Edit Egg Archive Egg" [ref=e93]:
+              - cell "Select Egg" [ref=e94]:
+                - checkbox "Select Egg" [ref=e95]
+              - cell "2" [ref=e96]
+              - cell [ref=e97]
+              - cell "Egg":
+                - link "Egg" [ref=e98] [cursor=pointer]:
+                  - /url: /c/papa-s-saloon/products/32155d34-e610-4ab7-b79d-dbd16a836f86/edit
+              - cell "—" [ref=e99]
+              - cell "—" [ref=e100]
+              - cell "—" [ref=e101]
+              - cell "$1.00" [ref=e102]
+              - cell "0" [ref=e103]
+              - cell "active" [ref=e104]:
+                - generic [ref=e105]: active
+              - cell "2026-06-09" [ref=e106]
+              - cell "Edit Egg Archive Egg" [ref=e107]:
+                - button "Edit Egg" [ref=e108] [cursor=pointer]: ✎
+                - button "Archive Egg" [ref=e109] [cursor=pointer]: 🗑
+            - row "Select Egg 3 Egg — — — $2.00 0 active 2026-06-09 Edit Egg Archive Egg" [ref=e110]:
+              - cell "Select Egg" [ref=e111]:
+                - checkbox "Select Egg" [ref=e112]
+              - cell "3" [ref=e113]
+              - cell [ref=e114]
+              - cell "Egg":
+                - link "Egg" [ref=e116] [cursor=pointer]:
+                  - /url: /c/papa-s-saloon/products/bb8f93f3-6897-43fd-b961-af0144278265/edit
+              - cell "—" [ref=e117]
+              - cell "—" [ref=e118]
+              - cell "—" [ref=e119]
+              - cell "$2.00" [ref=e120]
+              - cell "0" [ref=e121]
+              - cell "active" [ref=e122]:
+                - generic [ref=e123]: active
+              - cell "2026-06-09" [ref=e124]
+              - cell "Edit Egg Archive Egg" [ref=e125]:
+                - button "Edit Egg" [ref=e126] [cursor=pointer]: ✎
+                - button "Archive Egg" [ref=e127] [cursor=pointer]: 🗑
+        - navigation "Pagination" [ref=e128]:
+          - generic [ref=e129]: Showing 1–3 of 3
+          - generic [ref=e130]:
+            - button "‹ Prev" [disabled] [ref=e131]
+            - generic [ref=e132]: 1 / 1
+            - button "Next ›" [disabled] [ref=e133]

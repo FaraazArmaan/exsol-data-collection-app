@@ -1,0 +1,20 @@
+- generic [ref=e3]:
+  - banner [ref=e4]: Online ordering
+  - main [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - link "← Back to menu" [ref=e8] [cursor=pointer]:
+          - /url: /menu/papa-s-saloon
+        - heading "Your order" [level=1] [ref=e9]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Egg 2
+        - generic [ref=e13]:
+          - button "Decrease" [ref=e14] [cursor=pointer]: −
+          - generic [ref=e15]: "1"
+          - button "Increase" [ref=e16] [cursor=pointer]: +
+        - generic [ref=e17]: ₹10
+        - button "Remove" [ref=e18] [cursor=pointer]: ×
+      - generic [ref=e20]:
+        - text: Total
+        - strong [ref=e21]: ₹10
+      - button "Continue" [ref=e22]

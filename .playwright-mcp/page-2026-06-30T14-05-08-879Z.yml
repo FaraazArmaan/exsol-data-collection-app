@@ -1,0 +1,823 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]: ExSol
+    - generic [ref=e5]: Architecture Document
+    - link "Overview" [ref=e6] [cursor=pointer]:
+      - /url: "#overview"
+    - heading "Part 1 — High-Level" [level=4] [ref=e7]
+    - link "System Context" [ref=e8] [cursor=pointer]:
+      - /url: "#context"
+    - link "Architecture Diagram" [ref=e9] [cursor=pointer]:
+      - /url: "#hld-diagram"
+    - link "Tech Stack" [ref=e10] [cursor=pointer]:
+      - /url: "#stack"
+    - link "Multi-Tenancy" [ref=e11] [cursor=pointer]:
+      - /url: "#multitenancy"
+    - link "Module Registry" [ref=e12] [cursor=pointer]:
+      - /url: "#modules"
+    - link "Deployment Topology" [ref=e13] [cursor=pointer]:
+      - /url: "#deployment"
+    - link "Customer-Facing URLs" [ref=e14] [cursor=pointer]:
+      - /url: "#cust-surfaces"
+    - heading "Part 2 — Low-Level" [level=4] [ref=e15]
+    - link "Auth Flow" [ref=e16] [cursor=pointer]:
+      - /url: "#auth-flow"
+    - link "Permission Model" [ref=e17] [cursor=pointer]:
+      - /url: "#perms"
+    - link "Data Model" [ref=e18] [cursor=pointer]:
+      - /url: "#data-model"
+    - link "POS Sale FSM" [ref=e19] [cursor=pointer]:
+      - /url: "#fsm"
+    - link "API Patterns" [ref=e20] [cursor=pointer]:
+      - /url: "#api-patterns"
+    - link "Audit & Migrations" [ref=e21] [cursor=pointer]:
+      - /url: "#audit"
+    - link "Known Operational Traps" [ref=e22] [cursor=pointer]:
+      - /url: "#traps"
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - heading "ExSol Data Collection App" [level=1] [ref=e25]
+      - paragraph [ref=e26]: A multi-tenant SaaS workspace for small businesses to manage their team, product catalog, point-of-sale, and customer-facing modules. This document covers the High-Level and Low-Level System Design as they exist on the deployed codebase.
+      - generic [ref=e27]: "Stack: React 18 · Vite · TypeScript · Netlify Functions v2 · Neon Postgres"
+    - generic [ref=e28]:
+      - generic [ref=e29]: Overview
+      - heading "What we are building" [level=2] [ref=e30]
+      - paragraph [ref=e31]:
+        - text: ExSol is a per-workspace operational platform. Each
+        - emphasis [ref=e32]: Client
+        - text: (e.g.
+        - code [ref=e33]: papa-s-saloon
+        - text: ") gets an isolated workspace with team management, file storage, product catalog, and point-of-sale. Two surfaces serve two audiences: a cross-workspace"
+        - strong [ref=e34]: Admin
+        - text: console for operational oversight, and a per-workspace
+        - strong [ref=e35]: Owner / Staff
+        - text: portal for day-to-day work.
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - heading "Modules in production" [level=4] [ref=e38]
+          - list [ref=e39]:
+            - listitem [ref=e40]:
+              - strong [ref=e41]: File Manager
+              - text: — Phase A live
+            - listitem [ref=e42]:
+              - strong [ref=e43]: Product Manager
+              - text: — full CRUD + CSV/XLSX import/export + 6 platform exports
+            - listitem [ref=e44]:
+              - strong [ref=e45]: POS v1
+              - text: — staff-only register, FSM-gated states, kiosk register UI, L1 + L2 perm delegation
+        - generic [ref=e46]:
+          - heading "Modules in development" [level=4] [ref=e47]
+          - list [ref=e48]:
+            - listitem [ref=e49]:
+              - strong [ref=e50]: Booking & Calendar
+              - text: — spec locked, building
+            - listitem [ref=e51]:
+              - strong [ref=e52]: Payments
+              - text: — stub mounted; Razorpay seam staged in POS schema
+            - listitem [ref=e53]:
+              - strong [ref=e54]: POS v2 storefront
+              - text: — public guest checkout
+        - generic [ref=e55]:
+          - heading "Cross-cutting capabilities" [level=4] [ref=e56]
+          - list [ref=e57]:
+            - listitem [ref=e58]: JWT-based bucket-user sessions
+            - listitem [ref=e59]: Google OAuth (admin + invite)
+            - listitem [ref=e60]: Workspace data export (JSON + ZIP-of-CSVs)
+            - listitem [ref=e61]: Audit trail on every mutation
+            - listitem [ref=e62]: RBAC matrix per client level
+    - generic [ref=e63]:
+      - generic [ref=e64]: Part 1
+      - heading "High-Level System Design" [level=2] [ref=e65]
+      - paragraph [ref=e66]: "The macro picture: layers of the system, what they own, and how requests flow through them."
+    - generic [ref=e67]:
+      - heading "1.1 System Context §context" [level=3] [ref=e68]:
+        - text: 1.1 System Context
+        - generic [ref=e69]: §context
+      - paragraph [ref=e70]: ExSol sits between end-users on the open web and a managed Postgres backend, with Netlify acting as both CDN and serverless function host. There is no separate API server, no Kubernetes cluster, no message bus — the entire backend is a flat set of HTTP-triggered functions.
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - heading "Actors" [level=4] [ref=e73]
+          - list [ref=e74]:
+            - listitem [ref=e75]:
+              - strong [ref=e76]: End-users (Owners, Staff)
+              - text: — log into a workspace at
+              - code [ref=e77]: /c/<slug>
+            - listitem [ref=e78]:
+              - strong [ref=e79]: Admins
+              - text: — operational console at
+              - code [ref=e80]: /
+              - text: (root)
+            - listitem [ref=e81]:
+              - strong [ref=e82]: Public guests
+              - text: (POS v2) — checkout at
+              - code [ref=e83]: /c/<slug>/menu/:slug
+        - generic [ref=e84]:
+          - heading "External services" [level=4] [ref=e85]
+          - list [ref=e86]:
+            - listitem [ref=e87]:
+              - strong [ref=e88]: Google OAuth
+              - text: — sign-in + workspace invite
+            - listitem [ref=e89]:
+              - strong [ref=e90]: Netlify Blobs
+              - text: — image storage with thumbnail pipeline
+            - listitem [ref=e91]:
+              - strong [ref=e92]: Razorpay
+              - text: (planned) — POS payment HMAC webhook
+    - generic [ref=e93]:
+      - heading "1.2 Architecture Diagram §hld-diagram" [level=3] [ref=e94]:
+        - text: 1.2 Architecture Diagram
+        - generic [ref=e95]: §hld-diagram
+      - paragraph [ref=e96]: "Request lifecycle and component ownership across the stack:"
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - generic [ref=e99]: Client
+          - generic [ref=e100]:
+            - strong [ref=e101]: Browser SPA
+            - generic [ref=e102]: React 18 + Vite + React Router 6. JWT cookie carries session. Module-aware sidebar.
+            - generic [ref=e103]:
+              - generic [ref=e104]: React
+              - generic [ref=e105]: Vite
+              - generic [ref=e106]: Zustand (POS)
+              - generic [ref=e107]: RTL tests
+        - generic [ref=e108]: ↓ HTTPS
+        - generic [ref=e109]:
+          - generic [ref=e110]: Edge
+          - generic [ref=e111]:
+            - strong [ref=e112]: Netlify CDN + Edge
+            - generic [ref=e113]:
+              - text: Static asset cache + route resolution.
+              - code [ref=e114]: /api/*
+              - text: → functions;
+              - code [ref=e115]: /*
+              - text: → SPA fallback. Brotli compression, deploy alias promotion.
+            - generic [ref=e116]:
+              - generic [ref=e117]: CDN
+              - generic [ref=e118]: Edge functions registry
+        - generic [ref=e119]: ↓
+        - generic [ref=e120]:
+          - generic [ref=e121]: Functions
+          - generic [ref=e122]:
+            - strong [ref=e123]: Netlify Functions v2 (Node 20)
+            - generic [ref=e124]:
+              - text: ~65 stateless handlers. Each declares
+              - code [ref=e125]: config.path
+              - text: + optional
+              - code [ref=e126]: config.method
+              - text: . Shared helpers in
+              - code [ref=e127]: _shared/
+              - text: and module-scoped helpers (e.g.
+              - code [ref=e128]: _pos-*
+              - text: ).
+            - generic [ref=e129]:
+              - generic [ref=e130]: argon2 (auth)
+              - generic [ref=e131]: sharp (img resize)
+              - generic [ref=e132]: zod (validation)
+              - generic [ref=e133]: jose (JWT)
+        - generic [ref=e134]: ↓ Neon serverless driver
+        - generic [ref=e135]:
+          - generic [ref=e136]: Data
+          - generic [ref=e137]:
+            - strong [ref=e138]: Neon PostgreSQL
+            - generic [ref=e139]:
+              - text: Separate branches for dev (
+              - code [ref=e140]: bold-wildflower
+              - text: ) and prod (
+              - code [ref=e141]: dawn-bird
+              - text: ). Sequential numbered migrations applied via
+              - code [ref=e142]: npm run migrate
+              - text: . 42 migrations to date.
+            - generic [ref=e143]:
+              - generic [ref=e144]: JSONB for perms
+              - generic [ref=e145]: pg_trgm (search)
+              - generic [ref=e146]: 42 migrations
+        - generic [ref=e147]: ↕
+        - generic [ref=e148]:
+          - generic [ref=e149]: External
+          - generic [ref=e150]:
+            - strong [ref=e151]: Third-party integrations
+            - generic [ref=e152]: Google OAuth (sign-in + invite) · Netlify Blobs (image CDN) · Razorpay (planned)
+      - paragraph [ref=e153]: Architecture is intentionally flat — no API gateway, no service mesh, no queue. Functions are the unit of deployment.
+    - generic [ref=e154]:
+      - heading "1.3 Tech Stack §stack" [level=3] [ref=e155]:
+        - text: 1.3 Tech Stack
+        - generic [ref=e156]: §stack
+      - paragraph [ref=e157]: "Pinned versions and the reason each was chosen:"
+      - table [ref=e158]:
+        - rowgroup [ref=e159]:
+          - row "Layer Technology Why" [ref=e160]:
+            - columnheader "Layer" [ref=e161]
+            - columnheader "Technology" [ref=e162]
+            - columnheader "Why" [ref=e163]
+        - rowgroup [ref=e164]:
+          - row "UI runtime React 18 + React Router 6 Fast iteration, deep ecosystem, no SSR needed" [ref=e165]:
+            - cell "UI runtime" [ref=e166]
+            - cell "React 18 + React Router 6" [ref=e167]
+            - cell "Fast iteration, deep ecosystem, no SSR needed" [ref=e168]
+          - row "Build / dev Vite 5 + TypeScript 5 ~1.7s prod build, instant HMR, strict typecheck" [ref=e169]:
+            - cell "Build / dev" [ref=e170]
+            - cell "Vite 5 + TypeScript 5" [ref=e171]
+            - cell "~1.7s prod build, instant HMR, strict typecheck" [ref=e172]
+          - row "State (local) React state + Zustand (POS cart only) Component state is enough except for the cross-page POS cart" [ref=e173]:
+            - cell "State (local)" [ref=e174]
+            - cell "React state + Zustand (POS cart only)" [ref=e175]
+            - cell "Component state is enough except for the cross-page POS cart" [ref=e176]
+          - row "Edge runtime Netlify Functions v2 (Node 20) Zero-config deploy, integrated with CDN, no Lambda config" [ref=e177]:
+            - cell "Edge runtime" [ref=e178]
+            - cell "Netlify Functions v2 (Node 20)" [ref=e179]
+            - cell "Zero-config deploy, integrated with CDN, no Lambda config" [ref=e180]
+          - row "Database Neon Postgres (serverless) Branchable databases — dev/prod isolation, autoscale to zero" [ref=e181]:
+            - cell "Database" [ref=e182]
+            - cell "Neon Postgres (serverless)" [ref=e183]
+            - cell "Branchable databases — dev/prod isolation, autoscale to zero" [ref=e184]
+          - row "DB driver @neondatabase/serverless HTTP-based, no connection pool concerns in serverless" [ref=e185]:
+            - cell "DB driver" [ref=e186]
+            - cell "@neondatabase/serverless" [ref=e187]
+            - cell "HTTP-based, no connection pool concerns in serverless" [ref=e188]
+          - row "Auth (passwords) argon2 (@node-rs/argon2) OWASP-recommended; external_node_modules in netlify.toml" [ref=e189]:
+            - cell "Auth (passwords)" [ref=e190]
+            - cell "argon2 (@node-rs/argon2)" [ref=e191]
+            - cell "OWASP-recommended; external_node_modules in netlify.toml" [ref=e192]:
+              - text: OWASP-recommended;
+              - code [ref=e193]: external_node_modules
+              - text: in netlify.toml
+          - row "Auth (sessions) JWT via jose Stateless, signed with rotating JWT_SIGNING_SECRET" [ref=e194]:
+            - cell "Auth (sessions)" [ref=e195]
+            - cell "JWT via jose" [ref=e196]:
+              - text: JWT via
+              - code [ref=e197]: jose
+            - cell "Stateless, signed with rotating JWT_SIGNING_SECRET" [ref=e198]:
+              - text: Stateless, signed with rotating
+              - code [ref=e199]: JWT_SIGNING_SECRET
+          - row "Auth (OAuth) Google Sign-In (gsi/client) Admin login + invite flow with auto-defaults" [ref=e200]:
+            - cell "Auth (OAuth)" [ref=e201]
+            - cell "Google Sign-In (gsi/client)" [ref=e202]
+            - cell "Admin login + invite flow with auto-defaults" [ref=e203]
+          - row "Image processing sharp jimp lacks WebP encoder; sharp + external_node_modules" [ref=e204]:
+            - cell "Image processing" [ref=e205]
+            - cell "sharp" [ref=e206]
+            - cell "jimp lacks WebP encoder; sharp + external_node_modules" [ref=e207]
+          - row "Validation zod Type-inferred schemas, single source of truth at the boundary" [ref=e208]:
+            - cell "Validation" [ref=e209]
+            - cell "zod" [ref=e210]
+            - cell "Type-inferred schemas, single source of truth at the boundary" [ref=e211]
+          - row "Testing Vitest + React Testing Library 97 test files / 772 tests at HEAD; ~100s wall" [ref=e212]:
+            - cell "Testing" [ref=e213]
+            - cell "Vitest + React Testing Library" [ref=e214]
+            - cell "97 test files / 772 tests at HEAD; ~100s wall" [ref=e215]
+          - row "Storage Netlify Blobs + custom thumb pipeline 240px webp lazy-gen, 30d cache" [ref=e216]:
+            - cell "Storage" [ref=e217]
+            - cell "Netlify Blobs + custom thumb pipeline" [ref=e218]
+            - cell "240px webp lazy-gen, 30d cache" [ref=e219]
+    - generic [ref=e220]:
+      - heading "1.4 Multi-Tenancy §multitenancy" [level=3] [ref=e221]:
+        - text: 1.4 Multi-Tenancy
+        - generic [ref=e222]: §multitenancy
+      - paragraph [ref=e223]:
+        - text: Every meaningful table carries
+        - code [ref=e224]: client_id
+        - text: and is scoped at query time. There is
+        - emphasis [ref=e225]: "no"
+        - text: Postgres Row-Level Security — tenancy is enforced in application code via the auth helper layer.
+      - generic [ref=e226]:
+        - generic [ref=e227]:
+          - heading "Two session kinds" [level=4] [ref=e228]
+          - list [ref=e229]:
+            - listitem [ref=e230]:
+              - generic [ref=e231]: admin
+              - text: — global across all clients; identified by
+              - code [ref=e232]: admins.id
+              - text: ; cross-client by definition.
+            - listitem [ref=e233]:
+              - generic [ref=e234]: bucket_user
+              - text: — pinned to a single
+              - code [ref=e235]: client_id
+              - text: in the JWT; cannot reach other clients even with a forged URL.
+        - generic [ref=e236]:
+          - heading "Cross-client guard" [level=4] [ref=e237]
+          - paragraph [ref=e238]:
+            - code [ref=e239]: resolveClientId(session, req)
+            - text: checks the URL's
+            - code [ref=e240]: "?client=<uuid>"
+            - text: param against the session's pinned client. Bucket-user mismatch →
+            - code [ref=e241]: 403 forbidden_cross_client
+            - text: . Admins must explicitly pass a
+            - code [ref=e242]: "?client="
+            - text: ; bucket-users may not.
+    - generic [ref=e243]:
+      - heading "1.5 Module Registry §modules" [level=3] [ref=e244]:
+        - text: 1.5 Module Registry
+        - generic [ref=e245]: §modules
+      - paragraph [ref=e246]:
+        - text: Modules and Products are declared statically in
+        - code [ref=e247]: src/modules/registry/
+        - text: . Each Client enables individual
+        - emphasis [ref=e248]: Products
+        - text: via the
+        - code [ref=e249]: client_enabled_products
+        - text: table, which transitively unlocks Modules and their permission keys.
+      - code [ref=e251]: "export const productRegistry = { 'saloon-booking': saloonBookingProduct, 'products': productsProduct, 'pos': posProduct, // requires: ['products'] } as const;"
+      - paragraph [ref=e252]:
+        - text: Two permission model classes coexist (see §2.2 below). Most Modules expose
+        - code [ref=e253]: data_buckets
+        - text: + CRUD
+        - code [ref=e254]: verbs
+        - text: (the matrix model). POS introduces
+        - strong [ref=e255]: action-namespace
+        - text: permissions (
+        - code [ref=e256]: pos.menu.view
+        - text: ","
+        - code [ref=e257]: pos.sale.markPaid
+        - text: ", …) where the matrix doesn't fit."
+    - generic [ref=e258]:
+      - heading "1.6 Deployment Topology §deployment" [level=3] [ref=e259]:
+        - text: 1.6 Deployment Topology
+        - generic [ref=e260]: §deployment
+      - paragraph [ref=e261]: Git-driven, no manual deploys, no CI-runner-managed credentials beyond Netlify env vars.
+      - img "Deployment pipeline" [ref=e263]:
+        - generic [ref=e265]: Developer
+        - generic [ref=e266]: main worktree
+        - generic [ref=e267]: git push
+        - generic [ref=e269]: GitHub origin/main
+        - generic [ref=e270]: webhook trigger
+        - generic [ref=e272]: Netlify Build
+        - generic [ref=e273]: tsc + vite + esbuild
+        - generic [ref=e274]: ~30-50s
+        - generic [ref=e276]: Prod (live)
+        - generic [ref=e277]: exsoldata...netlify.app
+        - generic [ref=e279]: Neon prod branch
+        - generic [ref=e280]: dawn-bird
+        - generic [ref=e281]: npm run migrate (manual)
+        - generic [ref=e283]: pre-push step
+        - generic [ref=e285]: Post-deploy ops (sometimes needed)
+        - generic [ref=e286]: restoreSiteDeploy · cache-clear · health probe
+      - paragraph [ref=e287]:
+        - text: Migrations are out-of-band from code deploys (manual via
+        - code [ref=e288]: npm run migrate
+        - text: ); design assumes additive-first migrations safe to run before code.
+    - generic [ref=e289]:
+      - heading "1.7 Customer-Facing Surfaces & URL Routing §cust-surfaces" [level=3] [ref=e290]:
+        - text: 1.7 Customer-Facing Surfaces & URL Routing
+        - generic [ref=e291]: §cust-surfaces
+      - paragraph [ref=e292]:
+        - text: "Workspaces serve two distinct kinds of pages:"
+        - strong [ref=e293]: staff/owner pages
+        - text: (require login, gated by RBAC) and
+        - strong [ref=e294]: customer-facing pages
+        - text: "(open to anonymous users — POS storefront ordering, booking widget). The URL structure differs between these surfaces, and clients have three options for how customers reach them: on the Exsol shared domain, on a branded subdomain, or on the client's own domain."
+      - heading "Surface taxonomy" [level=4] [ref=e295]
+      - table [ref=e296]:
+        - rowgroup [ref=e297]:
+          - row "Surface Audience Path Auth Status" [ref=e298]:
+            - columnheader "Surface" [ref=e299]
+            - columnheader "Audience" [ref=e300]
+            - columnheader "Path" [ref=e301]
+            - columnheader "Auth" [ref=e302]
+            - columnheader "Status" [ref=e303]
+        - rowgroup [ref=e304]:
+          - row "Admin console Cross-workspace ops / (root) admin session live" [ref=e305]:
+            - cell "Admin console" [ref=e306]:
+              - strong [ref=e307]: Admin console
+            - cell "Cross-workspace ops" [ref=e308]
+            - cell "/ (root)" [ref=e309]:
+              - code [ref=e310]: /
+              - text: (root)
+            - cell "admin session" [ref=e311]
+            - cell "live" [ref=e312]:
+              - generic [ref=e313]: live
+          - row "Workspace portal Owners + staff /c/<slug>/... bucket-user JWT live" [ref=e314]:
+            - cell "Workspace portal" [ref=e315]:
+              - strong [ref=e316]: Workspace portal
+            - cell "Owners + staff" [ref=e317]
+            - cell "/c/<slug>/..." [ref=e318]:
+              - code [ref=e319]: /c/<slug>/...
+            - cell "bucket-user JWT" [ref=e320]
+            - cell "live" [ref=e321]:
+              - generic [ref=e322]: live
+          - row "POS storefront (v2) Public guests /menu/<slug> none + IP rate-limit + honeypot spec locked, building" [ref=e323]:
+            - cell "POS storefront (v2)" [ref=e324]:
+              - strong [ref=e325]: POS storefront
+              - text: (v2)
+            - cell "Public guests" [ref=e326]
+            - cell "/menu/<slug>" [ref=e327]:
+              - code [ref=e328]: /menu/<slug>
+            - cell "none + IP rate-limit + honeypot" [ref=e329]
+            - cell "spec locked, building" [ref=e330]:
+              - generic [ref=e331]: spec locked, building
+          - row "Booking widget Public guests /book/<slug>/<service> none + IP rate-limit spec locked, building" [ref=e332]:
+            - cell "Booking widget" [ref=e333]:
+              - strong [ref=e334]: Booking widget
+            - cell "Public guests" [ref=e335]
+            - cell "/book/<slug>/<service>" [ref=e336]:
+              - code [ref=e337]: /book/<slug>/<service>
+            - cell "none + IP rate-limit" [ref=e338]
+            - cell "spec locked, building" [ref=e339]:
+              - generic [ref=e340]: spec locked, building
+      - heading "URL hosting patterns" [level=4] [ref=e341]
+      - paragraph [ref=e342]: Customer-facing surfaces can be reached three ways. Each has a different operator setup cost vs branding outcome.
+      - img "Three URL hosting patterns" [ref=e344]:
+        - generic [ref=e345]:
+          - generic [ref=e347]: A — Path-based (default)
+          - generic [ref=e348]: exsol.app/menu/<slug>
+          - generic [ref=e349]: zero setup · shared domain
+          - generic [ref=e350]: slug from path segment
+          - generic [ref=e351]: works day 1 of signup
+        - generic [ref=e352]:
+          - generic [ref=e354]: B — Subdomain (branded)
+          - generic [ref=e355]: <slug>.exsol.app/menu
+          - generic [ref=e356]: one-time wildcard cert
+          - generic [ref=e357]: slug from Host header label
+          - generic [ref=e358]: workspace setting toggle
+        - generic [ref=e359]:
+          - generic [ref=e361]: C — Custom domain
+          - generic [ref=e362]: papas-saloon.com/menu
+          - generic [ref=e363]: client owns DNS
+          - generic [ref=e364]: slug via domain_aliases lookup
+          - generic [ref=e365]: Let's Encrypt auto-issue
+        - generic [ref=e369]: Workspace resolver
+        - generic [ref=e370]: (host, path) → client_id
+        - generic [ref=e372]: Same auth-and-perms helper chain as staff routes
+        - generic [ref=e373]: (scoped by resolved client_id; guest sessions for public surfaces)
+      - paragraph [ref=e374]: All three patterns terminate at the same workspace-resolver helper. Host header beats path; path is the fallback.
+      - heading "Request resolution rules" [level=4] [ref=e375]
+      - code [ref=e377]: "// Pseudo — netlify/functions/_shared/resolve-workspace.ts (planned for v2) export async function resolveWorkspace(req: Request): Promise<{ slug: string, clientId: string }> { const host = req.headers.get('host') ?? ''; const url = new URL(req.url); // 1. Custom domain? Look up alias list if (!host.endsWith('exsoldatacollectionapp.netlify.app') && !host.endsWith('.exsol.app')) { const [c] = await sql`SELECT id, slug FROM clients WHERE ${host} = ANY(domain_aliases) LIMIT 1`; if (c) return { slug: c.slug, clientId: c.id }; } // 2. Wildcard subdomain? Leftmost label = slug const subMatch = host.match(/^([a-z0-9-]+)\\.exsol\\.app$/); if (subMatch) return resolveBySlug(subMatch[1]); // 3. Fallback: path-based — /menu/:slug, /book/:slug/:svc, /c/:slug/... const seg = url.pathname.split('/').filter(Boolean); const pathSlug = seg[0] === 'c' || seg[0] === 'menu' || seg[0] === 'book' ? seg[1] : null; if (pathSlug) return resolveBySlug(pathSlug); throw new NotFound(); }"
+      - heading "Trade-offs" [level=4] [ref=e378]
+      - table [ref=e379]:
+        - rowgroup [ref=e380]:
+          - row "Pattern Setup cost Branding SEO When to recommend" [ref=e381]:
+            - columnheader "Pattern" [ref=e382]
+            - columnheader "Setup cost" [ref=e383]
+            - columnheader "Branding" [ref=e384]
+            - columnheader "SEO" [ref=e385]
+            - columnheader "When to recommend" [ref=e386]
+        - rowgroup [ref=e387]:
+          - row "A · Path None Low (Exsol brand visible) Low (shared domain authority) Trial, signup, first-touch" [ref=e388]:
+            - cell "A · Path" [ref=e389]:
+              - generic [ref=e390]: A · Path
+            - cell "None" [ref=e391]
+            - cell "Low (Exsol brand visible)" [ref=e392]
+            - cell "Low (shared domain authority)" [ref=e393]
+            - cell "Trial, signup, first-touch" [ref=e394]
+          - 'row "B · Subdomain One-time platform: wildcard cert + DNS Mid (workspace name visible) Mid (subdomain inherits some authority) Default for paid plans" [ref=e395]':
+            - cell "B · Subdomain" [ref=e396]:
+              - generic [ref=e397]: B · Subdomain
+            - 'cell "One-time platform: wildcard cert + DNS" [ref=e398]'
+            - cell "Mid (workspace name visible)" [ref=e399]
+            - cell "Mid (subdomain inherits some authority)" [ref=e400]
+            - cell "Default for paid plans" [ref=e401]
+          - 'row "C · Custom domain Per-client: CNAME + Netlify alias entry High (no Exsol footprint) High (client owns domain authority) Higher tier; existing brand" [ref=e402]':
+            - cell "C · Custom domain" [ref=e403]:
+              - generic [ref=e404]: C · Custom domain
+            - 'cell "Per-client: CNAME + Netlify alias entry" [ref=e405]'
+            - cell "High (no Exsol footprint)" [ref=e406]
+            - cell "High (client owns domain authority)" [ref=e407]
+            - cell "Higher tier; existing brand" [ref=e408]
+      - heading "Operator setup — Pattern C (custom domain)" [level=4] [ref=e409]
+      - paragraph [ref=e410]:
+        - text: The end-to-end flow for a client (e.g.
+        - emphasis [ref=e411]: papa's saloon
+        - text: ) to point
+        - code [ref=e412]: papas-saloon.com
+        - text: "at their Exsol workspace:"
+      - list [ref=e413]:
+        - listitem [ref=e414]:
+          - strong [ref=e415]: "Client side:"
+          - text: "add a CNAME record at their DNS provider:"
+          - code [ref=e416]: papas-saloon.com → exsoldatacollectionapp.netlify.app
+        - listitem [ref=e417]:
+          - strong [ref=e418]: "Exsol side:"
+          - text: add the domain to the Netlify site's domain aliases (one-line API call or UI click)
+        - listitem [ref=e419]:
+          - strong [ref=e420]: "Netlify:"
+          - text: auto-issues a Let's Encrypt cert (~minutes)
+        - listitem [ref=e421]:
+          - strong [ref=e422]: "Workspace:"
+          - text: add
+          - code [ref=e423]: papas-saloon.com
+          - text: to
+          - code [ref=e424]: clients.domain_aliases TEXT[]
+          - text: on the matching client row (planned schema change for v2 storefront)
+        - listitem [ref=e425]:
+          - strong [ref=e426]: "Verify:"
+          - text: hit
+          - code [ref=e427]: https://papas-saloon.com/menu
+          - text: — resolver sees the host, looks up the alias, returns workspace identity, normal request flow proceeds
+      - generic [ref=e428]:
+        - generic [ref=e429]: Why this works without code surgery
+        - text: The whole codebase already scopes every query by
+        - code [ref=e430]: client_id
+        - text: ". Adding host-based resolution is purely additive: a new helper that picks the same"
+        - code [ref=e431]: client_id
+        - text: we'd have got from the path, then passes it to the existing perms/data layer unchanged. No refactor of any handler is needed.
+      - generic [ref=e432]:
+        - generic [ref=e433]: Edge case — cross-workspace assets
+        - text: Product images stored in Netlify Blobs are addressed by
+        - code [ref=e434]: product-images/<client_id>/<product_id>/<blob_id>
+        - text: . If a workspace embeds a customer URL that points to another workspace's product (e.g. via a misconfigured affiliate link), the resolver picks the host workspace but the blob path still encodes the original workspace's client_id — so the image fetch will 404 unless explicitly cross-shared. This is the right default.
+    - generic [ref=e435]:
+      - generic [ref=e436]: Part 2
+      - heading "Low-Level System Design" [level=2] [ref=e437]
+      - paragraph [ref=e438]: How things actually work — the auth chain, table relationships, state machine, and operational patterns that hold the system together.
+    - generic [ref=e439]:
+      - heading "2.1 Auth Flow §auth-flow" [level=3] [ref=e440]:
+        - text: 2.1 Auth Flow
+        - generic [ref=e441]: §auth-flow
+      - paragraph [ref=e442]: Every protected endpoint goes through the same chain. The chain has two entry points (admin or bucket-user) and a clean L1-Owner fast-path that's identical across modules.
+      - code [ref=e444]: "// netlify/functions/_shared/permissions.ts (simplified) export async function requirePermission(req: Request, key: string): Promise<Session> { // 1. Try admin session first try { return { kind: 'admin', ...await requireAdmin(req) }; } catch (e) { if (!(e instanceof UnauthorizedError)) throw e; } // 2. Fall through to bucket-user via JWT cookie const claims = await verifyBucketUserSession(readBuCookieToken(req)); const { level_number, client_id } = await sql`SELECT ... FROM user_nodes WHERE id = ${claims.sub}`; // 3. L1 (Primary Owner) bypasses the matrix check if (level_number === 1) return { kind: 'bucket_user', level_number: 1, client_id, ... }; // 4. Otherwise, consult the per-level permission matrix const matrix = await getLevelMatrix(client_id, level_number); if (!matrix[key]) throw new ForbiddenError(key); return { kind: 'bucket_user', level_number, client_id, ... }; }"
+      - generic [ref=e445]:
+        - generic [ref=e446]: POS-specific authz
+        - text: POS uses a parallel helper
+        - code [ref=e447]: requirePos(req, requiredKeys[])
+        - text: "that adds two extras: a 412"
+        - code [ref=e448]: products_module_required
+        - text: /
+        - code [ref=e449]: pos_module_not_enabled
+        - text: dependency gate BEFORE the perm check, and a full
+        - code [ref=e450]: perms
+        - text: set returned in the context (so the FSM action buttons can render per-action). The L1 fast-path is identical.
+    - generic [ref=e451]:
+      - heading "2.2 Permission Model §perms" [level=3] [ref=e452]:
+        - text: 2.2 Permission Model
+        - generic [ref=e453]: §perms
+      - paragraph [ref=e454]:
+        - text: Two distinct permission models coexist in one matrix table (
+        - code [ref=e455]: client_levels.permissions JSONB
+        - text: ). Choosing the right model for a feature depends on whether the operations are
+        - strong [ref=e456]: CRUD on a resource
+        - text: (bucket/verb) or
+        - strong [ref=e457]: state-machine transitions / API actions
+        - text: (action-namespace).
+      - generic [ref=e458]:
+        - generic [ref=e459]:
+          - heading "Bucket / Verb model" [level=4] [ref=e460]
+          - paragraph [ref=e461]:
+            - text: For typical CRUD modules. Permissions are
+            - code [ref=e462]: <module>.<bucket>.<verb>
+            - text: .
+          - code [ref=e464]: "\"users.users.create\": true, \"users.users.edit\": true, \"users.users.delete\": false, \"products.products.create\": true,"
+          - generic [ref=e465]:
+            - generic [ref=e466]: Used by
+            - generic [ref=e467]: Files
+            - generic [ref=e468]: Products
+            - generic [ref=e469]: Team
+        - generic [ref=e470]:
+          - heading "Action-namespace model" [level=4] [ref=e471]
+          - paragraph [ref=e472]:
+            - text: For state-machine ops where "verbs on a resource" doesn't carve cleanly. Permissions are
+            - code [ref=e473]: <module>.<action-path>
+            - text: .
+          - code [ref=e475]: "\"pos.menu.view\": true, \"pos.sale.create\": true, \"pos.sale.markPaid\": true, \"pos.sale.refund\": false, \"pos.history.viewAll\": false,"
+          - generic [ref=e476]:
+            - generic [ref=e477]: Used by
+            - generic [ref=e478]: POS
+      - generic [ref=e479]:
+        - generic [ref=e480]: L1 Owner = all-on by default
+        - text: Both models honor
+        - code [ref=e481]: level_number === 1
+        - text: as an implicit grant of every key, enforced at the helper layer (
+        - code [ref=e482]: requirePermission
+        - text: ","
+        - code [ref=e483]: requirePos
+        - text: ) and mirrored in the FE gates (Sidebar, PosRouteMounts). L2+ levels require explicit grants via the Access Level admin dashboard, which now renders both models (matrix grid for bucket/verb, per-action toggles for action-namespace).
+    - generic [ref=e484]:
+      - heading "2.3 Data Model §data-model" [level=3] [ref=e485]:
+        - text: 2.3 Data Model
+        - generic [ref=e486]: §data-model
+      - paragraph [ref=e487]:
+        - text: The schema centers on
+        - code [ref=e488]: clients
+        - text: with everything tenant-scoped from there.
+      - generic [ref=e489]: "┌────────────────────────────┐ ┌────────────────────────────┐ │ admins │ ← created_by ─────────│ clients (workspace) │ │ id PK │ │ id PK, slug UNIQUE │ │ email, password_hash │ │ name, created_at │ └────────────────────────────┘ └────────────────────────────┘ │ ┌──────────────────────┼──────────────────────────────────┐ ▼ ▼ ▼ ┌──────────────────────────┐ ┌──────────────────────┐ ┌────────────────────────────────┐ │ client_levels │ │ user_nodes (tree) │ │ client_enabled_products │ │ client_id, level_number│ │ client_id, level_# │ │ client_id, product_key │ │ permissions JSONB ←────┤ │ parent_id (self FK)│ │ ('products' | 'pos' | ...) │ │ { │ │ role_id, email │ └────────────────────────────────┘ │ \"users.users.create\": true, │ │ \"pos.menu.view\": true │ │ } │ │ │ └──────────────────────────┘ │ │ │ │ ▼ ▼ ┌──────────────────────────────┐ ┌────────────────────────────┐ │ user_node_credentials │ │ products │ │ user_node_id FK │ │ id, client_id │ │ email, password_hash │ │ name, price_cents, │ │ must_change_password │ │ sale_price_cents, │ │ google_sub (optional) │ │ pos_visible, status │ └──────────────────────────────┘ └────────────────────────────┘ │ ▼ ┌────────────────────────────┐ │ sales (POS order header) │ │ id, bucket_id (=client), │ │ order_no, status (FSM), │ │ channel, payment_ref │ └────────────────────────────┘ │ ▼ ┌────────────────────────────┐ │ sale_lines │ │ sale_id, product_id │ │ product_name_snap │ │ unit_price_cents (snap) │ └────────────────────────────┘ ┌─────────────────────────────────────────────────────────┐ │ audit_log (cross-cutting; every mutation writes a row) │ │ actor_admin OR actor_user_node, op, client_id, │ │ target_type, target_id, detail JSONB │ └─────────────────────────────────────────────────────────┘"
+      - generic [ref=e490]:
+        - generic [ref=e491]: Key design decisions
+        - list [ref=e492]:
+          - listitem [ref=e493]:
+            - text: ✓
+            - strong [ref=e494]:
+              - text: Snapshot prices in
+              - code [ref=e495]: sale_lines
+            - text: — later product edits don't rewrite history.
+          - listitem [ref=e496]:
+            - text: ✓
+            - strong [ref=e497]: Per-bucket order_no
+            - text: — sequential within a workspace, not global; allocated via MAX+1 with 5-retry on 23505.
+          - listitem [ref=e498]:
+            - text: ✓
+            - strong [ref=e499]: payment_ref dual-use
+            - text: — idempotency cache (
+            - code [ref=e500]: idem:<key>
+            - text: prefix) + future Razorpay payment_id (no prefix). Distinguishable at read time.
+          - listitem [ref=e501]:
+            - text: ✓
+            - strong [ref=e502]: user_nodes tree
+            - text: — self-referencing parent_id; subtree scoping enforced at the helper layer.
+    - generic [ref=e503]:
+      - heading "2.4 POS Sale State Machine §fsm" [level=3] [ref=e504]:
+        - text: 2.4 POS Sale State Machine
+        - generic [ref=e505]: §fsm
+      - paragraph [ref=e506]:
+        - text: Sale states are enforced server-side. Each transition checks both the FSM legality (current → target valid?) AND the caller's permission for the target action. The
+        - code [ref=e507]: instore
+        - text: channel collapses paid→fulfilled in one call (auto-fulfill, recorded as
+        - code [ref=e508]: detail.auto = true
+        - text: in audit).
+      - img "POS FSM" [ref=e510]:
+        - generic [ref=e512]: pending_payment
+        - generic [ref=e513]: initial state
+        - generic [ref=e515]: paid
+        - generic [ref=e516]: paid_at set
+        - generic [ref=e518]: fulfilled
+        - generic [ref=e519]: terminal (happy)
+        - generic [ref=e521]: cancelled
+        - generic [ref=e522]: terminal
+        - generic [ref=e524]: refunded
+        - generic [ref=e525]: terminal
+        - generic [ref=e527]: markPaid
+        - generic [ref=e528]: fulfill
+        - generic [ref=e530]: markPaid + channel=instore (auto-fulfill)
+        - generic [ref=e532]: cancel
+        - generic [ref=e534]: refund
+        - generic [ref=e535]: refund
+      - paragraph [ref=e536]:
+        - text: Each transition requires the caller to hold the corresponding
+        - code [ref=e537]: pos.sale.<action>
+        - text: permission AND the FSM source state to be valid.
+    - generic [ref=e538]:
+      - heading "2.5 API Patterns §api-patterns" [level=3] [ref=e539]:
+        - text: 2.5 API Patterns
+        - generic [ref=e540]: §api-patterns
+      - paragraph [ref=e541]: Every function file follows the same skeleton. Consistency at this layer makes the ~65 endpoints feel like one codebase.
+      - code [ref=e543]: "// netlify/functions/<name>.ts import type { Context } from '@netlify/functions'; import { jsonError, jsonOk } from './_shared/http'; import { authenticateForPermission } from './_shared/permissions'; import { logAudit } from './_shared/audit'; import { db } from './_shared/db'; export const config = { path: '/api/foo', method: 'POST' }; export default async (req: Request, _ctx: Context) => { if (req.method !== 'POST') return jsonError(405, 'method_not_allowed'); // 1. Auth + perm gate (returns Response on failure) const auth = await authenticateForPermission(req, 'foo.bar.create'); if (auth instanceof Response) return auth; // 2. Resolve tenant scope const scope = resolveClientIdOrRespond(auth, req); if (scope instanceof Response) return scope; // 3. Validate body with zod const body = FooCreateBody.safeParse(await req.json()); if (!body.success) return jsonError(400, 'invalid_body'); // 4. Do the work const sql = db(); const [row] = await sql`INSERT INTO foos (...) VALUES (...) RETURNING *`; // 5. Audit await logAudit(auth, 'foo.created', { target_id: row.id, detail: { ... } }); return jsonOk(row); };"
+      - heading "Routing rules (Netlify Functions v2)" [level=4] [ref=e544]
+      - table [ref=e545]:
+        - rowgroup [ref=e546]:
+          - row "Concern Convention" [ref=e547]:
+            - columnheader "Concern" [ref=e548]
+            - columnheader "Convention" [ref=e549]
+        - rowgroup [ref=e550]:
+          - row "File location netlify/functions/<name>.ts — flat, no subdirectories" [ref=e551]:
+            - cell "File location" [ref=e552]
+            - cell "netlify/functions/<name>.ts — flat, no subdirectories" [ref=e553]:
+              - code [ref=e554]: netlify/functions/<name>.ts
+              - text: —
+              - strong [ref=e555]: flat
+              - text: ", no subdirectories"
+          - 'row "URL routing export const config = { path: ''/api/...'', method?: ''GET''|''POST''|... }" [ref=e556]':
+            - cell "URL routing" [ref=e557]
+            - 'cell "export const config = { path: ''/api/...'', method?: ''GET''|''POST''|... }" [ref=e558]':
+              - code [ref=e559]: "export const config = { path: '/api/...', method?: 'GET'|'POST'|... }"
+          - row "Method on same path Two functions can share path if each has a distinct method" [ref=e560]:
+            - cell "Method on same path" [ref=e561]
+            - cell "Two functions can share path if each has a distinct method" [ref=e562]:
+              - text: Two functions can share
+              - code [ref=e563]: path
+              - text: if each has a distinct
+              - code [ref=e564]: method
+          - row "Helpers _shared/*.ts (cross-module) or _module-*.ts (module-scoped)" [ref=e565]:
+            - cell "Helpers" [ref=e566]
+            - cell "_shared/*.ts (cross-module) or _module-*.ts (module-scoped)" [ref=e567]:
+              - code [ref=e568]: _shared/*.ts
+              - text: (cross-module) or
+              - code [ref=e569]: _module-*.ts
+              - text: (module-scoped)
+          - row "Idempotency POST endpoints accept an idempotencyKey; stored on row, dedup on conflict" [ref=e570]:
+            - cell "Idempotency" [ref=e571]
+            - cell "POST endpoints accept an idempotencyKey; stored on row, dedup on conflict" [ref=e572]:
+              - text: POST endpoints accept an
+              - code [ref=e573]: idempotencyKey
+              - text: ; stored on row, dedup on conflict
+    - generic [ref=e574]:
+      - heading "2.6 Audit & Migrations §audit" [level=3] [ref=e575]:
+        - text: 2.6 Audit & Migrations
+        - generic [ref=e576]: §audit
+      - generic [ref=e577]:
+        - generic [ref=e578]:
+          - heading "Audit trail" [level=4] [ref=e579]
+          - paragraph [ref=e580]:
+            - text: Every mutation writes a row to
+            - code [ref=e581]: audit_log
+            - text: via
+            - code [ref=e582]: "logAudit(session, op, { target, detail })"
+            - text: ". The detail JSONB is opt-in: include enough to reconstruct intent (e.g.,"
+            - code [ref=e583]: "{ from, to, auto, reason }"
+            - text: on FSM transitions;
+            - code [ref=e584]: "{ byte_count, table_counts }"
+            - text: on exports).
+          - paragraph [ref=e585]:
+            - text: Indexed by
+            - code [ref=e586]: (client_id, occurred_at)
+            - text: for cheap timeline queries per workspace.
+        - generic [ref=e587]:
+          - heading "Migration system" [level=4] [ref=e588]
+          - paragraph [ref=e589]:
+            - text: Sequential numbered files in
+            - code [ref=e590]: db/migrations/<NNN>_<name>.sql
+            - text: . Tracked in
+            - code [ref=e591]: schema_migrations(version, applied_at)
+            - text: . Apply with
+            - code [ref=e592]: npm run migrate
+            - text: (dev) or
+            - code [ref=e593]: DATABASE_URL=$PROD_DB_URL npm run migrate
+            - text: (prod).
+          - paragraph [ref=e594]:
+            - strong [ref=e595]: "Dry-run:"
+            - code [ref=e596]: npm run migrate -- --status
+            - text: . Idempotent on re-run via the version table — applied migrations are skipped.
+      - generic [ref=e597]:
+        - generic [ref=e598]: Order of operations
+        - strong [ref=e599]: "Additive migrations:"
+        - text: apply to prod BEFORE pushing code that depends on the new column/table.
+        - strong [ref=e600]: "Destructive migrations:"
+        - text: push code FIRST (removing references), THEN apply the destructive migration. Order is inverted.
+    - generic [ref=e601]:
+      - heading "2.7 Known Operational Traps §traps" [level=3] [ref=e602]:
+        - text: 2.7 Known Operational Traps
+        - generic [ref=e603]: §traps
+      - paragraph [ref=e604]: Real-world gotchas we've collected. All of these have memory entries; this section captures the detection signal and fix for each.
+      - table [ref=e605]:
+        - rowgroup [ref=e606]:
+          - row "Trap Signal Fix" [ref=e607]:
+            - columnheader "Trap" [ref=e608]
+            - columnheader "Signal" [ref=e609]
+            - columnheader "Fix" [ref=e610]
+        - rowgroup [ref=e611]:
+          - row "New-function 404 (Edge race) New function deploys clean (visible in available_functions) but returns 404 HTML for first ~minutes netlify api restoreSiteDeploy" [ref=e612]:
+            - cell "New-function 404 (Edge race)" [ref=e613]:
+              - strong [ref=e614]: New-function 404 (Edge race)
+            - cell "New function deploys clean (visible in available_functions) but returns 404 HTML for first ~minutes" [ref=e615]:
+              - text: New function deploys clean (visible in
+              - code [ref=e616]: available_functions
+              - text: ) but returns 404 HTML for first ~minutes
+            - cell "netlify api restoreSiteDeploy" [ref=e617]:
+              - code [ref=e618]: netlify api restoreSiteDeploy
+          - row "Subdir function discovery Function NOT in available_functions; direct /.netlify/functions/<name> returns SPA HTML Move file to netlify/functions/<name>.ts (flat, not in subdir)" [ref=e619]:
+            - cell "Subdir function discovery" [ref=e620]:
+              - strong [ref=e621]: Subdir function discovery
+            - cell "Function NOT in available_functions; direct /.netlify/functions/<name> returns SPA HTML" [ref=e622]:
+              - text: Function NOT in
+              - code [ref=e623]: available_functions
+              - text: ; direct
+              - code [ref=e624]: /.netlify/functions/<name>
+              - text: returns SPA HTML
+            - cell "Move file to netlify/functions/<name>.ts (flat, not in subdir)" [ref=e625]:
+              - text: Move file to
+              - code [ref=e626]: netlify/functions/<name>.ts
+              - text: (flat, not in subdir)
+          - row "(path, method) collision Tests pass (handlers called directly) but one method 405s in prod Add config.method to both functions sharing a path" [ref=e627]:
+            - cell "(path, method) collision" [ref=e628]:
+              - strong [ref=e629]: (path, method) collision
+            - cell "Tests pass (handlers called directly) but one method 405s in prod" [ref=e630]
+            - cell "Add config.method to both functions sharing a path" [ref=e631]:
+              - text: Add
+              - code [ref=e632]: config.method
+              - text: to both functions sharing a path
+          - row "Browser HTML cache Open-tab loads old chunk hash while curl / returns new Hard reload (location.reload()). Detect via document.querySelector('script[src*=\"/assets/\"]').src" [ref=e633]:
+            - cell "Browser HTML cache" [ref=e634]:
+              - strong [ref=e635]: Browser HTML cache
+            - cell "Open-tab loads old chunk hash while curl / returns new" [ref=e636]:
+              - text: Open-tab loads old chunk hash while
+              - code [ref=e637]: curl /
+              - text: returns new
+            - cell "Hard reload (location.reload()). Detect via document.querySelector('script[src*=\"/assets/\"]').src" [ref=e638]:
+              - text: Hard reload (
+              - code [ref=e639]: location.reload()
+              - text: ). Detect via
+              - code [ref=e640]: document.querySelector('script[src*="/assets/"]').src
+          - row "Stale build cache Deploy ready, but the build emitted the SAME bundle hash as a prior deploy despite new source files. New CSS/JS chunks missing from dist/. Netlify UI \"Clear cache and deploy\". The API createSiteBuild --clear-cache=true is functionally a no-op for this trap — the UI button is what works." [ref=e641]:
+            - cell "Stale build cache" [ref=e642]:
+              - strong [ref=e643]: Stale build cache
+            - cell "Deploy ready, but the build emitted the SAME bundle hash as a prior deploy despite new source files. New CSS/JS chunks missing from dist/." [ref=e644]:
+              - text: Deploy
+              - code [ref=e645]: ready
+              - text: ", but the build emitted the SAME bundle hash as a prior deploy despite new source files. New CSS/JS chunks missing from"
+              - code [ref=e646]: dist/
+              - text: .
+            - cell "Netlify UI \"Clear cache and deploy\". The API createSiteBuild --clear-cache=true is functionally a no-op for this trap — the UI button is what works." [ref=e647]:
+              - text: Netlify UI
+              - emphasis [ref=e648]: "\"Clear cache and deploy\""
+              - text: . The API
+              - code [ref=e649]: createSiteBuild --clear-cache=true
+              - text: is functionally a no-op for this trap — the UI button is what works.
+          - 'row "Alias-not-promoted Build correctly emits a new bundle hash, but the workspace alias keeps serving HTML pointing at the prior hash. Diagnostic: local-build hash == per-deploy-URL hash ≠ alias hash. netlify api restoreSiteDeploy. Fires every push that adds a new asset / function — pattern is \"new file shape, not new content\"." [ref=e650]':
+            - cell "Alias-not-promoted" [ref=e651]:
+              - strong [ref=e652]: Alias-not-promoted
+            - 'cell "Build correctly emits a new bundle hash, but the workspace alias keeps serving HTML pointing at the prior hash. Diagnostic: local-build hash == per-deploy-URL hash ≠ alias hash." [ref=e653]'
+            - cell "netlify api restoreSiteDeploy. Fires every push that adds a new asset / function — pattern is \"new file shape, not new content\"." [ref=e654]:
+              - code [ref=e655]: netlify api restoreSiteDeploy
+              - text: . Fires every push that adds a new asset / function — pattern is "new file shape, not new content".
+          - row "Function name routing FE hits /api/foo/:id expecting foo-detail.ts Netlify routes to foo.ts (by path prefix). Use config.path or rename FE call." [ref=e656]:
+            - cell "Function name routing" [ref=e657]:
+              - strong [ref=e658]: Function name routing
+            - cell "FE hits /api/foo/:id expecting foo-detail.ts" [ref=e659]:
+              - text: FE hits
+              - code [ref=e660]: /api/foo/:id
+              - text: expecting
+              - code [ref=e661]: foo-detail.ts
+            - cell "Netlify routes to foo.ts (by path prefix). Use config.path or rename FE call." [ref=e662]:
+              - text: Netlify routes to
+              - code [ref=e663]: foo.ts
+              - text: (by path prefix). Use
+              - code [ref=e664]: config.path
+              - text: or rename FE call.
+    - generic [ref=e665]:
+      - text: ExSol Data Collection App · Architecture Document · auto-generated for in-session reference
+      - text: "main HEAD: dab6376 · 42 migrations · 772 tests · 65 functions"

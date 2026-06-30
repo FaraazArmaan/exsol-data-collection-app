@@ -1,0 +1,19 @@
+- generic [ref=e3]:
+  - banner [ref=e4]: Papa's Saloon
+  - main [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - searchbox "Filter menu…" [ref=e8]
+        - tablist [ref=e9]:
+          - tab "All" [selected] [ref=e10] [cursor=pointer]
+      - main [ref=e11]:
+        - button "Add Egg" [ref=e12] [cursor=pointer]:
+          - generic [ref=e14]: Egg
+          - generic [ref=e15]: ₹1
+        - button "Add Egg" [ref=e16] [cursor=pointer]:
+          - generic [ref=e19]: Egg
+          - generic [ref=e20]: ₹2
+        - button "Add Egg 2" [ref=e21] [cursor=pointer]:
+          - generic [ref=e23]: Egg 2
+          - generic [ref=e24]: ₹10
+      - complementary [ref=e25]: Tap items to start an order

@@ -562,3 +562,28 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .booking-confirm-badge.ok { background: var(--success); }
 .booking-confirm-badge.pending { background: var(--accent); }
+
+/* ───────────────────────── Booking vendor ───────────────────────── */
+.booking-vendor { display: flex; flex-direction: column; gap: 16px; }
+.booking-day-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.booking-day-label { width: 90px; }
+.booking-table { width: 100%; border-collapse: collapse; }
+.booking-table th, .booking-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.booking-table th { color: var(--text-muted); font-weight: 600; font-size: 0.85rem; }
+.booking-row-selected { background: var(--bg-elevated); }
+.booking-form { display: flex; flex-direction: column; gap: 10px; }
+.booking-form-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.booking-eligible { border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px; }
+.booking-list-plain { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.booking-list-plain li { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.booking-filters { display: flex; gap: 12px; flex-wrap: wrap; }
+.booking-drawer { display: flex; flex-direction: column; gap: 10px; }
+.booking-drawer-head { display: flex; justify-content: space-between; align-items: center; }
+.booking-cal-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.booking-cal-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.booking-cal-grid { display: grid; gap: 10px; overflow-x: auto; }
+.booking-cal-col { display: flex; flex-direction: column; gap: 8px; }
+.booking-cal-col-head { font-weight: 600; padding-bottom: 4px; border-bottom: 1px solid var(--border-default); }
+.booking-cal-card { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; cursor: pointer; }
+.booking-cal-time { font-weight: 600; font-size: 0.9rem; }
+.booking-cal-empty { padding: 8px 0; }

@@ -1,0 +1,67 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]: Corner Cafe
+    - main [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - searchbox "Filter menu…" [ref=e8]
+          - tablist [ref=e9]:
+            - tab "All" [selected] [ref=e10] [cursor=pointer]
+            - tab "Coffee (3)" [ref=e11] [cursor=pointer]
+            - tab "Bakery (2)" [ref=e12] [cursor=pointer]
+        - main [ref=e13]:
+          - button "Latte ₹250 1" [ref=e14] [cursor=pointer]:
+            - generic [ref=e17]: Latte
+            - generic [ref=e18]: ₹250
+            - generic [ref=e19]: "1"
+          - button "Cappuccino ₹220" [ref=e20] [cursor=pointer]:
+            - generic [ref=e23]: Cappuccino
+            - generic [ref=e24]: ₹220
+          - button "Cold Brew ₹260" [ref=e25] [cursor=pointer]:
+            - generic [ref=e28]: Cold Brew
+            - generic [ref=e29]: ₹260
+          - button "Croissant ₹120" [ref=e30] [cursor=pointer]:
+            - generic [ref=e33]: Croissant
+            - generic [ref=e34]: ₹120
+          - button "Muffin ₹140" [ref=e35] [cursor=pointer]:
+            - generic [ref=e38]: Muffin
+            - generic [ref=e39]: ₹140
+        - complementary [ref=e40]:
+          - heading "Cart (1)" [level=3] [ref=e41]
+          - list [ref=e42]:
+            - listitem [ref=e43]: Latte ×1 — ₹250
+          - generic [ref=e44]:
+            - text: Total
+            - generic [ref=e45]: ₹250
+          - generic [ref=e46]: Continue →
+  - generic [ref=e47]:
+    - banner [ref=e48]:
+      - generic [ref=e49]: Corner Cafe
+    - main [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - link "← Back to cart" [ref=e53] [cursor=pointer]:
+            - /url: "#"
+          - heading "Your details" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - text: Name *
+          - textbox "Name *" [ref=e56]: Asha
+        - generic [ref=e57]:
+          - text: Phone *
+          - textbox "Phone *" [ref=e58]: 99900 01112
+        - generic [ref=e59]:
+          - text: Email
+          - textbox "Email" [ref=e60]:
+            - /placeholder: optional
+        - radiogroup [ref=e61]:
+          - button "Pickup" [ref=e62] [cursor=pointer]
+          - button "Delivery" [ref=e63] [cursor=pointer]
+        - button "Place order" [ref=e64] [cursor=pointer]
+  - generic [ref=e65]:
+    - banner [ref=e66]:
+      - generic [ref=e67]: Online ordering
+    - main [ref=e68]:
+      - generic [ref=e69]:
+        - heading "Online ordering isn’t available here" [level=2] [ref=e70]
+        - paragraph [ref=e71]: This storefront may be closed, or the link may be incorrect.
