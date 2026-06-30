@@ -5,6 +5,9 @@
 ## Why
 - Email is greenfield (no mailer) and Razorpay is deploy-gated — both are external-service projects. `payment_mode` is per-service and `manage_token` is a self-contained capability URL, so a no-external-services v1 falls out cleanly.
 
+## Status: T1–T3 DONE (2026-06-30) · T4 env-blocked
+Build green; full booking suite **88 tests** (25 files). T1 verified live through the `netlify dev` proxy (create → a `customers`-bucket role auto-exists). T4 visual browser smoke still blocked by the cross-session playwright profile lock — data layer, ics, and live create flow proven instead.
+
 ## Tasks
 
 - [ ] **T1 — Lazy-seed the customers-bucket role (backend).** Today `upsertCustomer` throws `no_customer_role` when a tenant has no `client_roles` row with `bucket_family='customers'`, breaking guest checkout. Change it to **create a default `Customer` role on demand** (key `customer`, label `Customer`, `bucket_family='customers'`) when none exists, then attach the node. Self-healing for every existing tenant; no admin/onboarding endpoint changes (those are out of this chat's scope). Update `customer-upsert.test.ts`: the "no role" case now asserts auto-create (node gets a customers-bucket role), not a throw. Guard against a concurrent double-create (catch unique violation, re-select).

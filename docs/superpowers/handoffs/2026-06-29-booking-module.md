@@ -40,6 +40,16 @@ All 13 tasks implemented TDD-style and green: **66 booking tests (17 files), typ
 ## Phase 3a (backend): EXECUTED & COMPLETE (2026-06-30)
 Vendor ops (`booking-list`, `booking-detail` w/ FSM transitions, `booking-manual-create` incl. blocked staff-time), `booking-public-manage` (magic-link cancel), `booking-pending-cleanup` (scheduled, 15-min timeout), `_booking-razorpay` + `booking-razorpay-webhook` (HMAC verify + pending→confirmed), and a round-trip smoke. **Full suite: 24 files, 86 tests green; typecheck clean.** Deferred to deploy: live Razorpay order-create (public-create still returns a `payment_intent` stub), netlify.toml schedule registration, and `RAZORPAY_*` env vars across contexts.
 
+## Booking v1 (pay-at-venue, no external services): DONE (2026-06-30)
+Plan `docs/superpowers/plans/2026-06-30-booking-v1-pay-at-venue.md`. Makes the module fully usable with **no Razorpay and no email**:
+- **T1** `_booking-customer-upsert.ts` lazy-creates a `Customer` (`bucket_family='customers'`) role on first guest booking — guest checkout no longer needs a pre-seeded role (verified live).
+- **T2** `Confirmation.tsx` shows a copyable manage-link + an **Add to calendar (.ics)** download (`src/modules/booking/ics.ts`) — self-service replacement for email.
+- **T3** `src/modules/booking/config.ts` → `ONLINE_PAYMENTS_ENABLED=false` gates `deposit`/`full_upfront` in the vendor Services UI. **Flip to `true` in the same change that ships Razorpay.**
+- Full suite **88 tests**; build green. Only `pay_at_venue` is offerable until Razorpay ships.
+
+## ⚠️ Migration-numbering CORRECTION (supersedes the deploy prompt's "043–045 clean")
+Per memory `project_booking_migration_number_coordination` (updated): **043–045 PREFIX-COLLIDE on dev** — POS-v2 also applied 043–045, and File Manager Phase B owns 046. **Next free is 047.** At merge to main, **renumber Booking's three migrations to 047/048/049** (rename files + update the in-file NUMBERING comments) before applying to prod, and re-run `npm run migrate` against prod with the new numbers. The dev DB already has booking's tables under 043–045; prod is clean, so prod gets 047–049.
+
 ## Phase 3b — React UI: COMPLETE (2026-06-30)
 **Public storefront** (`src/modules/booking/public/*`, anonymous `/c/:slug/book` + `/book/manage/:token`) — verified end-to-end via live `netlify dev` proxy. **Vendor UI** (`src/modules/booking/vendor/*` + `BookingRouteMounts.tsx`, routes under `/c/:slug/booking*`, sidebar entry) — build-verified. Both `tsc && vite build` green. The module is **feature-complete**; only deploy-gated bits remain (live Razorpay order-create, netlify.toml cron schedule, `RAZORPAY_*` env, prod migrations) — owned by the integration chat.
 
