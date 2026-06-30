@@ -37,14 +37,21 @@ export interface CartState {
 const newKey = () => crypto.randomUUID();
 const emptyCustomer = () => ({ name: '', phone: '', email: '' });
 
-export function createCartStore(bucketId: string, userNodeId: string) {
-  const storageKey = `pos-cart:${bucketId}:${userNodeId}`;
+const GUEST_PREFIX = 'guest-';
+
+// Shared store factory. `storage` is the Web Storage backend (local vs session);
+// `defaultChannel` lets the guest storefront start on a valid public channel.
+function makeCartStore(
+  storageKey: string,
+  storage: Storage,
+  defaultChannel: CartState['channel'],
+) {
   return create<CartState>()(
     persist(
       (set, get) => ({
         lines: [],
         customer: emptyCustomer(),
-        channel: 'instore',
+        channel: defaultChannel,
         idempotencyKey: newKey(),
 
         addLine(p) {
@@ -94,7 +101,7 @@ export function createCartStore(bucketId: string, userNodeId: string) {
           set({
             lines: [],
             customer: emptyCustomer(),
-            channel: 'instore',
+            channel: defaultChannel,
             idempotencyKey: newKey(),
           });
         },
@@ -119,7 +126,23 @@ export function createCartStore(bucketId: string, userNodeId: string) {
           return { ok: true };
         },
       }),
-      { name: storageKey, storage: createJSONStorage(() => localStorage) },
+      { name: storageKey, storage: createJSONStorage(() => storage) },
     ),
   );
+}
+
+// Staff cart (localStorage, per bucket+user). A `guest-` prefixed userNodeId
+// transparently routes to the guest store, so the v1 MenuPage/CartPage props
+// stay identical — the only convention is the prefix. See spec §6.5.
+export function createCartStore(bucketId: string, userNodeId: string) {
+  if (userNodeId.startsWith(GUEST_PREFIX)) {
+    return createGuestCartStore(bucketId, userNodeId.slice(GUEST_PREFIX.length));
+  }
+  return makeCartStore(`pos-cart:${bucketId}:${userNodeId}`, localStorage, 'instore');
+}
+
+// Guest storefront cart — sessionStorage (per-tab), defaults to a public
+// channel. Keyed by (bucket-or-slug, session). See spec §6.2.
+export function createGuestCartStore(bucketId: string, sessionId: string) {
+  return makeCartStore(`pos-cart-guest:${bucketId}:${sessionId}`, sessionStorage, 'pickup');
 }

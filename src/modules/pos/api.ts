@@ -57,6 +57,36 @@ export interface TransitionInput {
 
 // ── Wrappers ────────────────────────────────────────────────────────────────
 
+// ── Public storefront (unauthenticated) ─────────────────────────────────────
+
+export interface PublicMenuResponse {
+  tenant: { name: string };
+  categories: { id: string; name: string; productCount: number }[];
+  products: { id: string; name: string; categoryId: string | null; salePriceCents: number; thumbKey: string | null }[];
+}
+
+export interface PublicSaleInput {
+  slug: string;
+  channel: 'online' | 'pickup';
+  idempotencyKey: string;
+  honeypot: string;
+  customer: { name: string; phone: string; email?: string };
+  lines: { productId: string; qty: number }[];
+}
+
+export const publicApi = {
+  getMenu: (slug: string) => call<PublicMenuResponse>(`/api/public/menu/${slug}`),
+
+  createSale: (body: PublicSaleInput) =>
+    call<any>('/api/public/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+
+  getSale: (saleUuid: string) => call<any>(`/api/public/sales/${saleUuid}`),
+};
+
 export const posApi = {
   getMenu: () => call<MenuResponse>('/api/pos/menu'),
 
