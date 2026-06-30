@@ -34,6 +34,9 @@ Numbering coordinated: POS-v2 is zero-migration → **Booking owns 043–045, no
 
 **4 open items flagged in the plan** (don't fabricate): Netlify v2 array `config.method`; customers-bucket role seeding for the upsert; neon nested `sql` fragments in availability; migrations 043–045 still UNAPPLIED (numbering coordination).
 
+## Phase 2: EXECUTED & COMPLETE (2026-06-30)
+All 13 tasks implemented TDD-style and green: **66 booking tests (17 files), typecheck clean**. Functions live under `netlify/functions/booking-*.ts` + `_booking-{authz,validators,customer-upsert}.ts`; test helpers extended in `tests/booking/_helpers.ts`. The no-overbook guarantee is proven at the HTTP layer (concurrency test: 10 parallel → 1×201/9×409). Open items all resolved (see Phase 2 plan banner). **Product dependency surfaced:** guest bookings need a tenant `client_roles` row with `bucket_family='customers'` — the upsert throws `no_customer_role` otherwise; Phase 3 should auto-seed one when booking is enabled.
+
 ## Next focus
 Either (a) clear the migration-numbering blocker → apply 043–045 → run Phase 1 gist proof + Phase 2 integration/concurrency tests, or (b) execute Phase 2 task-by-task (validators/authz unit-testable now; DB-backed tasks wait on (a)). Then **Phase 3** = payments (Razorpay + webhook), magic-link manage, vendor calendar/list/detail/manual-create, pending-cleanup cron, sidebar nav, all React UI (E–J). Mirror POS: `netlify/functions/pos-*.ts`, `_pos-authz.ts`, `tests/pos/_helpers.ts`, `src/modules/pos/`, `src/lib/router.tsx`, `useNavItems.ts` (`MODULES_WITH_DEDICATED_NAV`).
 

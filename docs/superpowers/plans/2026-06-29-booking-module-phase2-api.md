@@ -1,6 +1,6 @@
 # Booking Module — Phase 2: API (Vendor Config + Public Booking) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax. **Migrations 043–045 are APPLIED to the dev DB (2026-06-30) — all integration/concurrency tasks here can run as soon as their functions exist. Task 1 (migration 045) is already done and applied; start at Task 2.**
+> **✅ EXECUTED & COMPLETE (2026-06-30).** All tasks 1–13 implemented and green: **66 booking tests pass (17 files), typecheck clean, tree clean.** Migrations 043–045 applied to dev. All 3 open items resolved (Netlify array `config.method` valid; customers-bucket role required + `no_customer_role` path tested; availability avoids nested `sql` fragments via a boolean-guard query). Two bugs caught in execution: esbuild ASI breaks a TS `as` cast on a wrapped line (keep `) as T` one-line); `any`+busy returns `no_resource_available` (pre-check) while a named overlap returns `slot_taken` (gist 23P01). Phase 3 (UI + Razorpay + cron) is next.
 
 **Goal:** Ship the booking module's HTTP layer — vendor configuration/catalog CRUD (build-order C) and the public guest-booking flow to pay-at-venue confirmation (build-order D) — proven by integration tests plus a concurrency test demonstrating the no-overbook guarantee end-to-end.
 
