@@ -3,7 +3,7 @@
 -- bookings for the same resource+time resolve to exactly one winner (others
 -- raise 23P01). This is why we don't need multi-statement transactions.
 --
--- ⚠️ NUMBERING: tentatively 044 (depends on 043). See coordination note in 043.
+-- NUMBERING: 044 (depends on 043). 043–045 confirmed owned by Booking (POS-v2 deferred).
 
 CREATE TYPE public.booking_status AS ENUM
   ('pending','confirmed','blocked','completed','cancelled','no_show');

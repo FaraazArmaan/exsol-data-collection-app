@@ -2,11 +2,12 @@
 -- Tenant timezone + vendor configuration tables. The bookings table + gist
 -- constraint land in 044. No slots table — availability is computed on-read.
 --
--- ⚠️ NUMBERING: this file is tentatively 043. The POS-v2 chat also claimed 043+
---    on the shared dev DB. Confirm the free range before applying (npm run migrate).
---    See memory project_booking_migration_number_coordination.
+-- NUMBERING: 043–045 confirmed owned by Booking (2026-06-30). POS-v2 is zero-migration;
+--    its storefront spec's 043/044/045 are spec-only and will take the next free block
+--    after Booking when built. Safe to apply.
 
-CREATE EXTENSION IF NOT EXISTS btree_gist;  -- required for EXCLUDE on (uuid =, tstzrange &&)
+-- btree_gist: required for EXCLUDE on (resource_id uuid =, time_range tstzrange &&)
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 -- Tenant-local timezone. All grid math runs in this zone; instants stored UTC.
 ALTER TABLE public.clients
