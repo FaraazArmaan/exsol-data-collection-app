@@ -40,3 +40,17 @@ describe('Sidebar — Storefront settings link', () => {
     expect(screen.queryByRole('link', { name: 'Storefront' })).not.toBeInTheDocument();
   });
 });
+
+describe('Sidebar — POS Orders link', () => {
+  it('shows Orders (→ sale history) for a holder of pos.history.view', () => {
+    renderSidebar(authValue({ user: { id: 'u', level_number: 2 }, permissions: { 'pos.history.view': true } }));
+    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/c/cafe/pos/sales');
+    expect(screen.getByRole('link', { name: 'POS' })).toBeInTheDocument();
+  });
+
+  it('hides Orders for a user with only pos.menu.view', () => {
+    renderSidebar(authValue({ user: { id: 'u', level_number: 2 }, permissions: { 'pos.menu.view': true } }));
+    expect(screen.getByRole('link', { name: 'POS' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Orders' })).not.toBeInTheDocument();
+  });
+});

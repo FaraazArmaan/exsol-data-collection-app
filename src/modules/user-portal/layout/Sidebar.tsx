@@ -36,6 +36,14 @@ export function Sidebar() {
     permissions['booking.employees.view'] === true
   );
 
+  // Sale History needs pos.history.view (Owners always qualify) — surfaced as a
+  // sibling sidebar link so staff can reach orders, not just the menu.
+  const canViewSales = !!user && (
+    user.level_number == null ||
+    user.level_number === 1 ||
+    permissions['pos.history.view'] === true
+  );
+
   // Storefront settings is an Owner-level workspace config (same gate as the
   // StorefrontSettings page). Lives in the Workspace group.
   const canEditSettings = !!user && (
@@ -61,6 +69,9 @@ export function Sidebar() {
             )}
             {showBooking && (
               <NavLink to={`/c/${slug}/booking`}>Booking</NavLink>
+            )}
+            {showPos && canViewSales && (
+              <NavLink to={`/c/${slug}/pos/sales`}>Orders</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>
