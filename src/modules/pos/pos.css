@@ -463,9 +463,62 @@
 /* ── Inline error text (POS uses .err; .error is the global variant) ───── */
 .err { color: var(--danger); font-size: 12px; }
 
+/* ── Public storefront shell (POS v2) ──────────────────────────────────────
+ * Chromeless guest layout (no app sidebar/topbar): a slim branded header over
+ * a centered content column. The inner pages reuse the .pos-* surfaces above,
+ * so only the shell + the unavailable/settings chrome live here. */
+.storefront-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+.storefront-header {
+  flex-shrink: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.storefront-tenant {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-primary);
+}
+.storefront-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.storefront-unavailable {
+  max-width: 460px;
+  margin: 80px auto;
+  padding: 40px 32px;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.storefront-unavailable h2 { margin: 0 0 8px; font-size: 20px; }
+.storefront-unavailable p { margin: 0; color: var(--text-muted); }
+.storefront-settings .toggle { margin-top: 8px; }
+.storefront-settings code {
+  background: var(--bg-elevated);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
 /* ── Responsive: collapse to single column on narrow / tablet-portrait ─── */
 @media (max-width: 900px) {
   .pos-menu { grid-template-columns: 1fr; }
   .pos-side-cart { position: static; max-height: none; }
   .pos-cart-page__cols { grid-template-columns: 1fr; }
+  .storefront-main { padding: 16px; }
 }
