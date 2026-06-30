@@ -1,0 +1,471 @@
+/* ─── POS register UI ────────────────────────────────────────────────────────
+ *
+ * Touch-first kiosk register, themed entirely off the shared tokens in
+ * theme.css (warm-neutral dark: cream accent on dark text). No new colours,
+ * no new fonts — POS should read as the same product as the rest of the shell.
+ *
+ * Surface map: tiles/panels sit on --bg-surface, insets/steppers on
+ * --bg-elevated, hairlines via --border-subtle / --border-default. Primary
+ * actions (checkout, submit, FSM verbs) use --accent with --text-on-accent.
+ *
+ * Loaded once from src/main.tsx. Class inventory mirrors the POS component
+ * tree (pages + components/) — see the matching React files for each block.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Menu page: photo grid + sticky order rail ─────────────────────────── */
+.pos-menu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+.pos-menu > header {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pos-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+.pos-loading {
+  color: var(--text-muted);
+  padding: 48px 0;
+  text-align: center;
+  font-size: 15px;
+}
+
+/* ── Search + category tabs ────────────────────────────────────────────── */
+.pos-search {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+.pos-search::placeholder { color: var(--text-muted); }
+.pos-search:focus { outline: none; border-color: var(--accent); }
+
+.pos-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pos-tabs button {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.pos-tabs button:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.pos-tabs button[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+/* ── Product tile (photo-prominent, touch target) ──────────────────────── */
+.pos-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.pos-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+}
+.pos-tile:active { transform: translateY(0) scale(0.98); }
+.pos-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pos-tile__img {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.pos-tile__placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg-surface));
+}
+.pos-tile__name { font-weight: 600; font-size: 14px; line-height: 1.25; }
+.pos-tile__price { font-size: 13px; color: var(--text-secondary); }
+.pos-tile__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Side cart (sticky order rail on the menu) ─────────────────────────── */
+.pos-side-cart {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 120px);
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.pos-side-cart h3 { margin: 0; font-size: 15px; }
+.pos-side-cart ul {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pos-side-cart li { padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+.pos-side-cart--empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.pos-side-cart__total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+  font-size: 16px;
+  font-weight: 600;
+}
+.pos-side-cart__checkout {
+  display: block;
+  padding: 12px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+.pos-side-cart__checkout:hover { background: var(--accent-hover); color: var(--text-on-accent); }
+
+/* ── Cart / checkout page ──────────────────────────────────────────────── */
+.pos-cart-page { max-width: 1100px; }
+.pos-cart-page > header { margin-bottom: 20px; }
+.pos-cart-page > header h1 { margin: 8px 0 0; font-size: 24px; }
+.pos-cart-page__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  align-items: start;
+}
+.pos-cart-page__lines {
+  padding: 4px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.pos-cart-page__totals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 16px 0 12px;
+  color: var(--text-secondary);
+}
+.pos-cart-page__total { font-size: 18px; color: var(--text-primary); }
+.pos-cart-page__customer {
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.pos-cart-page__customer h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+.pos-cart-page__customer h2:not(:first-child) { margin-top: 20px; }
+.pos-cart-page__customer > button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.pos-cart-page__customer > button:hover:not(:disabled) { background: var(--accent-hover); }
+.pos-cart-page__customer > button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Cart line row (name · qty stepper · price · remove) ───────────────── */
+.pos-cart-line {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.pos-cart-line:last-child { border-bottom: 0; }
+.pos-cart-line__name { font-weight: 500; }
+.pos-cart-line__qty { display: inline-flex; align-items: center; gap: 8px; }
+.pos-cart-line__qty button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pos-cart-line__qty button:hover { border-color: var(--border-strong); }
+.pos-cart-line__qty span { min-width: 20px; text-align: center; }
+.pos-cart-line > button:last-child {
+  padding: 4px 8px;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.pos-cart-line > button:last-child:hover { color: var(--danger); }
+
+/* ── Customer form + channel picker ────────────────────────────────────── */
+.pos-customer-form { display: flex; flex-direction: column; }
+
+.pos-channel {
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pos-channel button {
+  padding: 8px 16px;
+  border: 0;
+  border-right: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pos-channel button:last-child { border-right: 0; }
+.pos-channel button:hover { color: var(--text-primary); }
+.pos-channel button.is-active { background: var(--accent); color: var(--text-on-accent); font-weight: 600; }
+
+/* ── Sales list ────────────────────────────────────────────────────────── */
+.pos-sales-list > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.pos-sales-list > header h1 { margin: 0; font-size: 24px; }
+.pos-sales-list > header a {
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+.pos-sales-list > header a:hover { background: var(--accent-hover); color: var(--text-on-accent); }
+
+.pos-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pos-summary > div {
+  flex: 1;
+  min-width: 150px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pos-sales-list table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.pos-sales-list thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-default);
+}
+.pos-sales-list tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.pos-sales-list tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+/* ── Sale detail drawer (right slide-in over a scrim) ──────────────────── */
+.pos-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 92vw);
+  padding: 24px;
+  overflow-y: auto;
+  z-index: 100;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-default);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45);
+  animation: pos-drawer-in 200ms ease;
+}
+.pos-drawer::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+@keyframes pos-drawer-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.pos-drawer > header { margin-bottom: 8px; }
+.pos-drawer > header button[aria-label="Close"] {
+  float: right;
+  padding: 0 4px;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pos-drawer > header button[aria-label="Close"]:hover { color: var(--text-primary); }
+.pos-drawer h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.pos-drawer h3 {
+  margin: 22px 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+.pos-drawer p { color: var(--text-secondary); font-size: 14px; }
+.pos-drawer section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+/* ── FSM action buttons ────────────────────────────────────────────────── */
+.pos-state-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.pos-state-buttons button {
+  flex: 1;
+  min-width: 130px;
+  padding: 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.pos-state-buttons button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* ── Status pill ───────────────────────────────────────────────────────── */
+.pos-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 999px;
+}
+.pos-pill.pill-amber { background: rgba(201, 168, 94, 0.18); color: #d9b877; }
+.pos-pill.pill-green { background: rgba(127, 169, 127, 0.20); color: var(--success); }
+.pos-pill.pill-gray  { background: rgba(148, 148, 148, 0.15); color: var(--text-muted); }
+.pos-pill.pill-red   { background: rgba(201, 112, 100, 0.18); color: var(--danger); }
+
+/* ── Inline error text (POS uses .err; .error is the global variant) ───── */
+.err { color: var(--danger); font-size: 12px; }
+
+/* ── Responsive: collapse to single column on narrow / tablet-portrait ─── */
+@media (max-width: 900px) {
+  .pos-menu { grid-template-columns: 1fr; }
+  .pos-side-cart { position: static; max-height: none; }
+  .pos-cart-page__cols { grid-template-columns: 1fr; }
+}
