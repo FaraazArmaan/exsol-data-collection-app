@@ -1,9 +1,9 @@
--- 044_bookings.sql — the booking row + atomic no-overbook guarantee.
+-- 048_bookings.sql — the booking row + atomic no-overbook guarantee.
 -- A single INSERT is atomic against the EXCLUDE constraint, so concurrent
 -- bookings for the same resource+time resolve to exactly one winner (others
 -- raise 23P01). This is why we don't need multi-statement transactions.
 --
--- NUMBERING: 044 (depends on 043). 043–045 confirmed owned by Booking (POS-v2 deferred).
+-- NUMBERING: renumbered 044→048 at merge time (2026-06-30). Depends on 047.
 
 CREATE TYPE public.booking_status AS ENUM
   ('pending','confirmed','blocked','completed','cancelled','no_show');

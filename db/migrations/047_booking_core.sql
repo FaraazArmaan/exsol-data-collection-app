@@ -1,10 +1,10 @@
--- 043_booking_core.sql — Booking module foundation (see specs/2026-06-29-booking-module-design.md §2).
+-- 047_booking_core.sql — Booking module foundation (see specs/2026-06-29-booking-module-design.md §2).
 -- Tenant timezone + vendor configuration tables. The bookings table + gist
--- constraint land in 044. No slots table — availability is computed on-read.
+-- constraint land in 048. No slots table — availability is computed on-read.
 --
--- NUMBERING: 043–045 confirmed owned by Booking (2026-06-30). POS-v2 is zero-migration;
---    its storefront spec's 043/044/045 are spec-only and will take the next free block
---    after Booking when built. Safe to apply.
+-- NUMBERING: renumbered 043→047 at merge time (2026-06-30). POS-v2 shipped 043–045
+--    (clients.storefront_enabled, products.storefront_visible, sales.source); File
+--    Manager Phase B reserves 046; Booking is the next free block at 047–049.
 
 -- btree_gist: required for EXCLUDE on (resource_id uuid =, time_range tstzrange &&)
 CREATE EXTENSION IF NOT EXISTS btree_gist;
