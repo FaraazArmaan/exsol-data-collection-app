@@ -159,3 +159,33 @@ describe('migration 032: file_audience tables', () => {
     expect(cols.map((c) => c.column_name)).toEqual(['file_id', 'user_node_id']);
   });
 });
+
+describe('migration 046: workspace_storage_quota', () => {
+  test('table exists with expected columns', async () => {
+    const cols = (await sql`
+      SELECT column_name, column_default, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'workspace_storage_quota'
+      ORDER BY ordinal_position
+    `) as { column_name: string; column_default: string | null; is_nullable: string }[];
+    expect(cols.map((c) => c.column_name)).toEqual([
+      'client_id', 'byte_limit', 'bytes_used_cached', 'updated_at',
+    ]);
+  });
+
+  test('byte_limit defaults to 5 GB', async () => {
+    const clients = (await sql`SELECT id FROM public.clients LIMIT 1`) as { id: string }[];
+    if (clients.length === 0) return;
+    const cid = clients[0]!.id;
+    try {
+      await sql`INSERT INTO public.workspace_storage_quota (client_id) VALUES (${cid}::uuid)
+                ON CONFLICT (client_id) DO NOTHING`;
+      const rows = (await sql`
+        SELECT byte_limit FROM public.workspace_storage_quota WHERE client_id = ${cid}::uuid
+      `) as { byte_limit: string }[];
+      expect(Number(rows[0]!.byte_limit)).toBe(5368709120);
+    } finally {
+      await sql`DELETE FROM public.workspace_storage_quota WHERE client_id = ${cid}::uuid`;
+    }
+  });
+});
