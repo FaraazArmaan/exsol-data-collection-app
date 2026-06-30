@@ -66,6 +66,19 @@ export const TimeOffCreate = z.object({
 });
 export type TimeOffCreate = z.infer<typeof TimeOffCreate>;
 
+// Vendor manual create: a normal booking (service + customer) OR a blocked staff-time
+// window (blocked:true, needs end, no service/customer). Handler enforces the mode rules.
+export const ManualCreateBody = z.object({
+  blocked: z.boolean().optional(),
+  service_id: Uuid.optional(),
+  resource_id: Uuid,
+  start: z.string(),
+  end: z.string().optional(),
+  customer: z.object({ name: NonBlank, phone: NonBlank, email: z.string().email().optional() }).optional(),
+  mark_paid: z.boolean().optional(),
+});
+export type ManualCreateBody = z.infer<typeof ManualCreateBody>;
+
 export const PublicCreateBody = z.object({
   service_id: Uuid,
   resource_id: z.union([Uuid, z.literal('any')]),
