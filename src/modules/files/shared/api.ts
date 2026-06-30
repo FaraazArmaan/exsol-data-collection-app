@@ -1,4 +1,4 @@
-import type { FileRow, ListFilters, ListResponse, UploadCommitBody } from './types';
+import type { BulkAction, BulkResult, FileRow, ListFilters, ListResponse, QuotaResponse, UploadCommitBody } from './types';
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: unknown) { super(`api ${status}`); }
@@ -63,6 +63,19 @@ export async function uploadBytes(token: string, mime: string, body: Blob): Prom
 
 export async function commitFile(body: UploadCommitBody): Promise<{ file: FileRow }> {
   return jsonFetch('/api/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getQuota(clientId: string): Promise<QuotaResponse> {
+  const sp = new URLSearchParams({ client_id: clientId });
+  return jsonFetch<QuotaResponse>(`/api/files-quota?${sp.toString()}`);
+}
+
+export async function bulkAction(body: BulkAction): Promise<BulkResult> {
+  return jsonFetch<BulkResult>('/api/files-bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

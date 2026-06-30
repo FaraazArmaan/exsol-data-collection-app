@@ -40,6 +40,22 @@ export interface ListResponse {
   next_cursor: string | null;
 }
 
+export interface QuotaResponse {
+  byte_limit: number;
+  bytes_used: number;
+}
+
+export type BulkAction =
+  | { action: 'soft_delete'; file_ids: string[] }
+  | { action: 'restore'; file_ids: string[] }
+  | { action: 'change_tier'; file_ids: string[]; tier: FileTier; allowed_role_ids?: string[]; allowed_node_ids?: string[]; allowed_user_node_ids?: string[] }
+  | { action: 'add_category'; file_ids: string[]; category: CategoryKey }
+  | { action: 'remove_category'; file_ids: string[]; category: CategoryKey };
+
+export interface BulkResult {
+  result_counts: { ok: number; skipped: number };
+}
+
 export interface UploadCommitBody {
   blob_key?: string;
   external_url?: string;

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { CategoryKey } from '../categories';
 import { CATEGORY_KEYS, CATEGORY_LABELS, MAX_CATEGORIES_PER_FILE } from '../categories';
+import { CATEGORY_COLORS } from '../category-colors';
 import type { FileTier } from '../types';
 import { reserveUploadUrl, uploadBytes, commitFile, ApiError } from '../api';
 import { TierPicker } from './TierPicker';
@@ -81,70 +83,83 @@ export function UploadModal({ clientId, isL1Owner, isAdminVault, initialFile, on
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-      <div style={{ background: '#000', border: '1px solid #222', borderRadius: 8, padding: 24, width: 560, maxHeight: '90vh', overflow: 'auto' }}>
-        <h3 style={{ marginTop: 0 }}>Upload</h3>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-          <button type="button" onClick={() => setMode('file')} style={{ fontWeight: mode === 'file' ? 700 : 400 }}>File</button>
-          <button type="button" onClick={() => setMode('url')} style={{ fontWeight: mode === 'url' ? 700 : 400 }}>URL</button>
+    <div className="fm-modal__scrim" onClick={onClose}>
+      <div className="fm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="fm-modal__head">
+          <h3>Upload file</h3>
+          <button type="button" className="fm-modal__x" onClick={onClose} aria-label="Close">×</button>
         </div>
 
-        {mode === 'file'
-          ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <input type="file" onChange={(e) => setPickedFile(e.target.files?.[0] ?? null)} />
-              {pickedFile && <span style={{ fontSize: 12, color: '#888' }}>{pickedFile.name}</span>}
-            </div>
-          )
-          : <input placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: '100%', padding: 8 }} />}
-
-        <label style={{ display: 'block', marginTop: 12 }}>
-          Title <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', padding: 6 }} />
-        </label>
-        <label style={{ display: 'block', marginTop: 8 }}>
-          Description <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', padding: 6, minHeight: 50 }} />
-        </label>
-
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Categories (up to {MAX_CATEGORIES_PER_FILE}):</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {CATEGORY_KEYS.map((c) => {
-              const on = categories.includes(c);
-              return (
-                <button
-                  key={c} type="button"
-                  onClick={() => toggleCategory(c)}
-                  style={{
-                    fontSize: 11, padding: '4px 10px', borderRadius: 12,
-                    background: on ? '#2c5f2d' : '#1a1a1a',
-                    color: on ? '#fff' : '#888',
-                    border: 'none', cursor: 'pointer',
-                  }}
-                >{CATEGORY_LABELS[c]}</button>
-              );
-            })}
+        <div className="fm-modal__body">
+          <div className="fm-seg">
+            <button type="button" className={mode === 'file' ? 'is-active' : ''} onClick={() => setMode('file')}>File</button>
+            <button type="button" className={mode === 'url' ? 'is-active' : ''} onClick={() => setMode('url')}>Link / URL</button>
           </div>
+
+          {mode === 'file'
+            ? (
+              <div className="fm-field">
+                <input type="file" className="fm-input" onChange={(e) => setPickedFile(e.target.files?.[0] ?? null)} />
+                {pickedFile && <span className="fm-modal__meta">{pickedFile.name} · {(pickedFile.size / 1024).toFixed(1)} KB</span>}
+              </div>
+            )
+            : (
+              <div className="fm-field">
+                <span className="fm-field__label">External URL</span>
+                <input className="fm-input" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
+              </div>
+            )}
+
+          <div className="fm-field">
+            <span className="fm-field__label">Title</span>
+            <input className="fm-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="fm-field">
+            <span className="fm-field__label">Description</span>
+            <textarea className="fm-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+
+          <div className="fm-field">
+            <span className="fm-field__label">Categories (up to {MAX_CATEGORIES_PER_FILE})</span>
+            <div className="fm-filters" style={{ margin: 0 }}>
+              {CATEGORY_KEYS.map((c) => {
+                const on = categories.includes(c);
+                return (
+                  <button
+                    key={c} type="button"
+                    className={`fm-chip${on ? ' is-on' : ''}`}
+                    aria-pressed={on}
+                    style={{ '--chip-color': CATEGORY_COLORS[c] } as CSSProperties}
+                    onClick={() => toggleCategory(c)}
+                  >
+                    <span className="fm-chip__dot" />
+                    {CATEGORY_LABELS[c]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="fm-field">
+            <span className="fm-field__label">Security tier</span>
+            <TierPicker
+              clientId={clientId}
+              tier={tier}
+              onTierChange={setTier}
+              allowedRoleIds={allowedRoleIds} onAllowedRoleIdsChange={setAllowedRoleIds}
+              allowedNodeIds={allowedNodeIds} onAllowedNodeIdsChange={setAllowedNodeIds}
+              allowedUserNodeIds={allowedUserNodeIds} onAllowedUserNodeIdsChange={setAllowedUserNodeIds}
+              isL1Owner={isL1Owner} isAdminVault={isAdminVault}
+            />
+          </div>
+
+          {error && <p className="fm-error">{error}</p>}
         </div>
 
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Security tier:</div>
-          <TierPicker
-            clientId={clientId}
-            tier={tier}
-            onTierChange={setTier}
-            allowedRoleIds={allowedRoleIds} onAllowedRoleIdsChange={setAllowedRoleIds}
-            allowedNodeIds={allowedNodeIds} onAllowedNodeIdsChange={setAllowedNodeIds}
-            allowedUserNodeIds={allowedUserNodeIds} onAllowedUserNodeIdsChange={setAllowedUserNodeIds}
-            isL1Owner={isL1Owner} isAdminVault={isAdminVault}
-          />
-        </div>
-
-        {error && <p style={{ color: '#c66', marginTop: 12 }}>{error}</p>}
-
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 18 }}>
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="button" onClick={submit} disabled={busy} style={{ background: '#fff', color: '#000', padding: '6px 14px' }}>
+        <div className="fm-modal__foot">
+          <span className="fm-spacer" />
+          <button type="button" className="fm-btn fm-btn--ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="fm-btn fm-btn--primary" onClick={submit} disabled={busy}>
             {busy ? 'Uploading…' : 'Upload'}
           </button>
         </div>

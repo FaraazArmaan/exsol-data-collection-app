@@ -1,7 +1,7 @@
 import type { FileRow } from '../types';
 import { TierBadge } from './TierBadge';
 
-const TYPE_ICON: Record<FileRow['type'], string> = {
+const TYPE_GLYPH: Record<FileRow['type'], string> = {
   document: '📄', image: '🖼', video: '🎬', audio: '🎵', external: '🔗',
 };
 
@@ -13,31 +13,36 @@ interface Props {
 }
 
 export function FileTile({ file, selected, onClick, onToggleSelect }: Props) {
+  const showThumb = file.type === 'image';
   return (
     <div
+      className={`fm-tile${selected ? ' is-selected' : ''}`}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      style={{
-        display: 'flex', flexDirection: 'column', gap: 6, padding: 12,
-        background: selected ? '#1a1a1a' : '#0a0a0a',
-        border: `1px solid ${selected ? '#fff' : '#222'}`,
-        borderRadius: 6, cursor: 'pointer', minHeight: 110,
-      }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 28 }}>{TYPE_ICON[file.type]}</span>
-        {onToggleSelect && (
-          <input
-            type="checkbox"
-            checked={!!selected}
-            onChange={(e) => { e.stopPropagation(); onToggleSelect(); }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
+      {onToggleSelect && (
+        <input
+          type="checkbox"
+          className="fm-tile__check"
+          checked={!!selected}
+          onChange={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Select ${file.title}`}
+        />
+      )}
+      <div className="fm-tile__thumb">
+        {showThumb
+          ? <img src={`/api/files-thumbnail/${file.id}`} alt="" loading="lazy" />
+          : <span className="fm-tile__glyph">{TYPE_GLYPH[file.type]}</span>}
       </div>
-      <div style={{ fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {file.title}
+      <div className="fm-tile__body">
+        <div className="fm-tile__title" title={file.title}>{file.title}</div>
+        <div className="fm-tile__foot">
+          <TierBadge tier={file.tier} />
+        </div>
       </div>
-      <TierBadge tier={file.tier} />
     </div>
   );
 }

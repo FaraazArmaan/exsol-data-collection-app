@@ -12,28 +12,22 @@ interface Props {
 
 const TYPES: FileType[] = ['document', 'image', 'video', 'audio', 'external'];
 const TYPE_LABEL: Record<FileType, string> = {
-  document: 'Docs', image: 'Images', video: 'Videos', audio: 'Audio', external: 'External',
+  document: 'Documents', image: 'Images', video: 'Videos', audio: 'Audio', external: 'External',
 };
 
 export function FileGrid(p: Props) {
   return (
     <div>
-      <div style={{ display: 'flex', borderBottom: '1px solid #222' }}>
+      <div className="fm-tabs" role="tablist">
         {TYPES.map((t) => (
           <button
-            key={t} type="button"
+            key={t} type="button" role="tab"
+            aria-selected={p.activeType === t}
             onClick={() => p.onTypeChange(t)}
-            style={{
-              padding: '8px 16px',
-              background: p.activeType === t ? '#1a1a1a' : 'transparent',
-              color: p.activeType === t ? '#fff' : '#888',
-              border: 'none', borderBottom: p.activeType === t ? '2px solid #fff' : 'none',
-              cursor: 'pointer',
-            }}
           >{TYPE_LABEL[t]}</button>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginTop: 14 }}>
+      <div className="fm-grid">
         {p.files.map((f) => (
           <FileTile
             key={f.id} file={f}
@@ -42,8 +36,14 @@ export function FileGrid(p: Props) {
             onToggleSelect={p.onToggleSelect ? () => p.onToggleSelect!(f.id) : undefined}
           />
         ))}
+        {p.files.length === 0 && (
+          <div className="fm-empty">
+            <span className="fm-empty__glyph">🗂</span>
+            <span>No files here yet</span>
+            <span className="fm-empty__hint">Upload a file or drag one onto this page to get started.</span>
+          </div>
+        )}
       </div>
-      {p.files.length === 0 && <p style={{ color: '#666', textAlign: 'center', marginTop: 30 }}>No files.</p>}
     </div>
   );
 }
