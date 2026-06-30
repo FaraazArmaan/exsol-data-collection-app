@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bookingApi, BookingApiError, type BookingSettings } from '../api';
+import { BookingTabs } from './BookingTabs';
 
 const DAYS: Array<[string, string]> = [
   ['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'],
@@ -8,7 +9,7 @@ const DAYS: Array<[string, string]> = [
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
-export default function SettingsPage({ perms }: Props) {
+export default function SettingsPage({ slug, perms }: Props) {
   const canEdit = perms.has('booking.employees.edit');
   const [s, setS] = useState<BookingSettings | null>(null);
   const [saved, setSaved] = useState(false);
@@ -34,6 +35,7 @@ export default function SettingsPage({ perms }: Props) {
 
   return (
     <div className="page booking-vendor">
+      <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Booking settings</h1>
 
       <div className="card">

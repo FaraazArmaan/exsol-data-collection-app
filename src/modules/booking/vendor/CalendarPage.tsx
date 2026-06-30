@@ -5,6 +5,7 @@ import { formatTime, isoDatePlus } from '../format';
 import { BookingStatusPill } from '../components/BookingStatusPill';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
 import { ManualBookingDrawer } from './ManualBookingDrawer';
+import { BookingTabs } from './BookingTabs';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
@@ -32,6 +33,7 @@ export default function CalendarPage({ slug, perms }: Props) {
 
   return (
     <div className="page booking-vendor">
+      <BookingTabs slug={slug} perms={perms} />
       <div className="booking-cal-head">
         <h1 className="page-title">Calendar</h1>
         <div className="booking-cal-controls">

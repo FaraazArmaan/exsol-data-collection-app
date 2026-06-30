@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { bookingApi, BookingApiError, type VendorResource, type TimeOff } from '../api';
+import { BookingTabs } from './BookingTabs';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
-export default function ResourcesPage({ perms }: Props) {
+export default function ResourcesPage({ slug, perms }: Props) {
   const canEdit = perms.has('booking.employees.edit');
   const [resources, setResources] = useState<VendorResource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export default function ResourcesPage({ perms }: Props) {
 
   return (
     <div className="page booking-vendor">
+      <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Resources</h1>
 
       <table className="booking-table">

@@ -2,10 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { bookingApi, BookingApiError, type VendorService, type VendorResource, type PaymentMode } from '../api';
 import { formatRupees } from '../format';
 import { ONLINE_PAYMENTS_ENABLED } from '../config';
+import { BookingTabs } from './BookingTabs';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
-export default function ServicesPage({ perms }: Props) {
+export default function ServicesPage({ slug, perms }: Props) {
   const canEdit = perms.has('booking.employees.edit');
   const [services, setServices] = useState<VendorService[] | null>(null);
   const [resources, setResources] = useState<VendorResource[]>([]);
@@ -41,6 +42,7 @@ export default function ServicesPage({ perms }: Props) {
 
   return (
     <div className="page booking-vendor">
+      <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Services</h1>
 
       <table className="booking-table">

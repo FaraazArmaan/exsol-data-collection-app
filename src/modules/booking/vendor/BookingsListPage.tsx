@@ -3,11 +3,12 @@ import { bookingApi, type VendorBooking } from '../api';
 import { formatRupees, formatTime, formatDateLong, isoDatePlus } from '../format';
 import { BookingStatusPill } from '../components/BookingStatusPill';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
+import { BookingTabs } from './BookingTabs';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 const STATUSES = ['', 'pending', 'confirmed', 'completed', 'cancelled', 'no_show', 'blocked'];
 
-export default function BookingsListPage({ perms }: Props) {
+export default function BookingsListPage({ slug, perms }: Props) {
   const [from, setFrom] = useState(isoDatePlus(0));
   const [to, setTo] = useState(isoDatePlus(30));
   const [status, setStatus] = useState('');
@@ -23,6 +24,7 @@ export default function BookingsListPage({ perms }: Props) {
 
   return (
     <div className="page booking-vendor">
+      <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Bookings</h1>
       <div className="booking-filters">
         <label>From<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
