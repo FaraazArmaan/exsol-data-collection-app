@@ -19,7 +19,11 @@ All tasks below implemented TDD-green. **Full booking suite: 24 files, 86 tests 
 - [ ] **E-pay `_booking-razorpay.ts` + `booking-razorpay-webhook.ts`** — `verifyWebhookSignature(orderId, paymentId, signature, secret)` (HMAC-SHA256, offline-testable); webhook flips the matching `pending`→`confirmed`, records `deposit_paid_cents`. Replace the create-handler `payment_intent` stub with a real order (guarded on env). Live order-create deferred to deploy.
 - [ ] **J round-trip smoke** — settings→resource→service→availability→public create→vendor confirm in list→mark completed, one walk.
 
-## Phase 3b — React UI (separate; needs FE deep-dive first)
+## Phase 3b — React UI
+### Public storefront ✅ DONE (2026-06-30)
+`src/modules/booking/api.ts` (public wrappers), `format.ts`, `public/{BookingStorefront,ServicePicker,SlotPicker,Checkout,Confirmation,ManageBooking}.tsx`; routes `/c/:slug/book` + `/c/:slug/book/manage/:token` added OUTSIDE the auth gate (siblings of `login`); booking CSS appended to `components.css`. House style (plain CSS, throwing api wrappers, native Date/Intl). **Verified: `tsc && vite build` green; full public flow smoked end-to-end through live `netlify dev` proxy (services→availability→create→manage→cancel).** pay_at_venue works fully; Razorpay Checkout step shows a "pending" placeholder (live order-create is deploy-gated). Browser visual smoke deferred (cross-session playwright profile lock + multi-worktree vite-port collision; data layer + build proven instead).
+
+### Vendor UI — NOT started (next)
 Public storefront pages (ServicePicker, SlotPicker, Checkout + Razorpay Checkout JS, Confirmation, ManageBooking) under `src/modules/booking/public/`; vendor pages (CalendarPage day-view, BookingsListPage, ServicesPage, ResourcesPage, SettingsPage, manual/blocked drawers) under `src/modules/booking/vendor/`; route mounts (`BookingRouteMounts.tsx` mirroring `PosRouteMounts`), `src/lib/router.tsx` entries, sidebar nav (`useNavItems` `MODULES_WITH_DEDICATED_NAV`). Verify with the `run`/browser skill, not just unit tests.
 
 ## Status
