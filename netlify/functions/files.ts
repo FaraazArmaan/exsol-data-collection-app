@@ -16,6 +16,7 @@ import {
   TIER_VISIBILITY_CLAUSE, visibilityValues, resolveRoleId, isL1Owner,
 } from './_shared/files-access';
 import { isCategoryKey, MAX_CATEGORIES_PER_FILE } from '../../src/modules/files/shared/categories';
+import { wouldExceed, recomputeUsage } from './_shared/files-quota';
 
 // ---------- POST: commit ----------
 
@@ -118,6 +119,13 @@ async function handlePost(req: Request): Promise<Response> {
 
   const sql = db();
 
+  // Authoritative quota block for workspace blob uploads (URL externals carry no bytes).
+  if (scope_client_id !== null && byte_size !== null) {
+    if (await wouldExceed(sql, scope_client_id, byte_size)) {
+      return jsonError(413, 'quota_exceeded');
+    }
+  }
+
   const inserted = (await sql`
     INSERT INTO public.files (
       client_id, type, storage_kind, blob_key, external_url, external_provider,
@@ -162,6 +170,10 @@ async function handlePost(req: Request): Promise<Response> {
     targetId: file_id,
     detail: { type, byte_size, tier: data.tier, categories: data.categories },
   });
+
+  if (scope_client_id !== null) {
+    await recomputeUsage(sql, scope_client_id);
+  }
 
   return jsonOk({ file: row }, { status: 201 });
 }

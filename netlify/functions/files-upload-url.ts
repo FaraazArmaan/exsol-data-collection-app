@@ -19,6 +19,8 @@ import {
 import { isAllowedMime } from './_shared/files-mime';
 import { blobKeyFor } from './_shared/files-storage';
 import { signUploadToken } from './_shared/upload-token';
+import { db } from './_shared/db';
+import { wouldExceed } from './_shared/files-quota';
 
 const Body = z.object({
   filename:  z.string().min(1).max(500),
@@ -45,6 +47,10 @@ export default async (req: Request, _ctx: Context) => {
   } else {
     const scope = resolveClientIdOrRespond(session, req);
     if (scope instanceof Response) return scope;
+    // Fail fast before the browser uploads bytes; commit re-checks authoritatively.
+    if (await wouldExceed(db(), scope.clientId, parsed.data.byte_size)) {
+      return jsonError(413, 'quota_exceeded');
+    }
     blob_key = blobKeyFor({ scope: 'workspace', clientId: scope.clientId });
   }
 
