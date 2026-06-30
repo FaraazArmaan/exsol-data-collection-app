@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { bookingApi, BookingApiError, type VendorService, type VendorResource, type PaymentMode } from '../api';
 import { formatRupees } from '../format';
+import { ONLINE_PAYMENTS_ENABLED } from '../config';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
@@ -62,9 +63,11 @@ export default function ServicesPage({ perms }: Props) {
           <label>Duration (min)<input type="number" min={5} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></label>
           <label>Price (₹)<input type="number" min={0} value={price / 100} onChange={(e) => setPrice(Math.round(Number(e.target.value) * 100))} /></label>
           <label>Payment<select value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
-            <option value="pay_at_venue">Pay at venue</option><option value="deposit">Deposit</option><option value="full_upfront">Full upfront</option>
+            <option value="pay_at_venue">Pay at venue</option>
+            {ONLINE_PAYMENTS_ENABLED ? <><option value="deposit">Deposit</option><option value="full_upfront">Full upfront</option></> : null}
           </select></label>
-          {mode === 'deposit' ? <label>Deposit (₹)<input type="number" min={0} value={deposit / 100} onChange={(e) => setDeposit(Math.round(Number(e.target.value) * 100))} /></label> : null}
+          {!ONLINE_PAYMENTS_ENABLED ? <p className="muted">Online payment (deposit / upfront) needs payment setup — coming soon.</p> : null}
+          {ONLINE_PAYMENTS_ENABLED && mode === 'deposit' ? <label>Deposit (₹)<input type="number" min={0} value={deposit / 100} onChange={(e) => setDeposit(Math.round(Number(e.target.value) * 100))} /></label> : null}
           {resources.length ? (
             <fieldset className="booking-eligible">
               <legend className="muted">Eligible resources (none = all)</legend>
