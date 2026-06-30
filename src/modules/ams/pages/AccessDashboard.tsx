@@ -11,6 +11,7 @@ import {
   type UserNode, type ClientRole, type ClientLevel,
 } from '../api';
 import { ClientProductsSection } from '../../admin/components/ClientProductsSection';
+import AdminWorkspaceExportCard from '../components/settings/AdminWorkspaceExportCard';
 import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';
 import { BulkActionBar } from '../../shared/team-modals/BulkActionBar';
 import { buildAdminApi } from '../components/team-modal-api';
@@ -339,6 +340,8 @@ function DashboardInner({ clientId }: { clientId: string }) {
         )}
 
         <ClientProductsSection clientId={clientId} />
+
+        <AdminWorkspaceExportCard clientId={clientId} slug={clientSlug} />
       </section>
     </DndContext>
   );

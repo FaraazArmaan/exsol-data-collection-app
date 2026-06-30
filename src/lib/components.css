@@ -522,16 +522,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* ── Workspace export card ──────────────────────────────────────────── */
 .ams-export-card {
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
+  border: 1px solid var(--border-default, #3a3a3a);
+  border-radius: var(--radius-md, 8px);
   padding: 16px 20px;
   margin-top: 24px;
-  background: var(--color-surface, #fff);
+  background: var(--bg-surface, #1f1f1f);
+  color: var(--text-primary, #ece8df);
 }
-.ams-export-card h3 { margin: 0 0 8px 0; font-size: 16px; }
-.ams-export-card p { margin: 0 0 12px 0; color: var(--color-text-muted, #666); }
+.ams-export-card h3 { margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary, #ece8df); }
+.ams-export-card p { margin: 0 0 12px 0; color: var(--text-secondary, #a8a39a); }
 .ams-export-card-actions { display: flex; gap: 8px; }
-.ams-export-card-error { color: var(--color-danger, #c33); margin-top: 8px; }
+.ams-export-card-error { color: var(--danger, #c97064); margin-top: 8px; }
 
 /* ───────────────────────── Booking module ───────────────────────── */
 .booking-storefront { display: flex; flex-direction: column; gap: 16px; }
