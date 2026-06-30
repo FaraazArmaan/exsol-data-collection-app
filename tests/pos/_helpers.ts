@@ -51,6 +51,38 @@ async function ensureBootstrapAdmin(): Promise<string> {
   return cachedAdminId;
 }
 
+export interface StorefrontCtx { clientId: string; slug: string; adminId: string; }
+
+// Seeds a client with products+pos enabled AND storefront_enabled = true,
+// returning the public slug (which the storefront endpoints key on). Unlike
+// seedClientWithProductsEnabled, no user_node/credential is created — public
+// endpoints are unauthenticated.
+export async function seedStorefrontClient(
+  opts: { storefrontEnabled?: boolean; enableProducts?: boolean; enablePos?: boolean } = {},
+): Promise<StorefrontCtx> {
+  const adminId = await ensureBootstrapAdmin();
+  const slug = `sf-test-${Math.random().toString(36).slice(2, 10)}`;
+  const storefrontEnabled = opts.storefrontEnabled ?? true;
+  const clientRows = (await sql`
+    INSERT INTO public.clients (slug, name, created_by, storefront_enabled)
+    VALUES (${slug}, 'Storefront Test', ${adminId}, ${storefrontEnabled})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const clientId = clientRows[0]!.id;
+
+  const keys: string[] = [];
+  if (opts.enableProducts ?? true) keys.push('products');
+  if (opts.enablePos ?? true) keys.push('pos');
+  for (const key of keys) {
+    await sql`
+      INSERT INTO public.client_enabled_products (client_id, product_key, enabled_by_admin)
+      VALUES (${clientId}, ${key}, ${adminId})
+      ON CONFLICT (client_id, product_key) DO NOTHING
+    `;
+  }
+  return { clientId, slug, adminId };
+}
+
 export async function seedClientWithProductsEnabled(): Promise<PosTestCtx> {
   const adminId = await ensureBootstrapAdmin();
 
