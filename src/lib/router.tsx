@@ -5,6 +5,7 @@ import StorefrontMenuPage from '../modules/pos/pages/StorefrontMenuPage';
 import StorefrontCartPage from '../modules/pos/pages/StorefrontCartPage';
 import StorefrontDetailsPage from '../modules/pos/pages/StorefrontDetailsPage';
 import StorefrontReceiptPage from '../modules/pos/pages/StorefrontReceiptPage';
+import StorefrontSettings from '../modules/pos/pages/StorefrontSettings';
 import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
               { path: 'pos/cart', element: <PosCartMount /> },
               { path: 'pos/sales', element: <PosSalesMount /> },
               { path: 'pos/sales/:id', element: <PosSalesMount /> },
+              { path: 'pos/settings', element: <StorefrontSettings /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
