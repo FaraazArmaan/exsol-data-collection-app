@@ -69,13 +69,13 @@ describe('GET /api/public/menu/:slug', () => {
     expect(res.status).toBe(404);
   });
 
-  it('404 when pos product is not enabled', async () => {
-    // products-without-pos violates migration 042's global invariant, so this
-    // row is cleaned up after the assertion to avoid polluting that test.
-    const { clientId, slug } = await seedStorefrontClient({ enablePos: false });
+  it('404 when the required products are not enabled', async () => {
+    // Enable neither, so resolveStorefront's products+pos guard 404s. We avoid
+    // a products-without-pos row entirely: that would transiently violate
+    // migration 042's global invariant and flake its parallel test file.
+    const { slug } = await seedStorefrontClient({ enableProducts: false, enablePos: false });
     const res = await handler(pubReq(slug));
     expect(res.status).toBe(404);
-    await sql`DELETE FROM public.clients WHERE id = ${clientId}`;
   });
 
   it('429 when the per-IP limit is exceeded (limiter wired into the handler)', async () => {
