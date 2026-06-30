@@ -63,6 +63,62 @@ export default async function handler(req: Request): Promise<Response> {
     deltaPct: prior ? pctDelta(cur[id], prior[id]) : null,
   });
 
+  // Tenant timezone for day/week/month bucketing. clients.timezone is NOT NULL
+  // DEFAULT 'Asia/Kolkata' (migration 047), so every client has a value.
+  const tzRows = (await sql`
+    SELECT timezone FROM public.clients WHERE id = ${clientId}::uuid LIMIT 1
+  `) as Array<{ timezone: string }>;
+  const tz = tzRows[0]?.timezone ?? 'UTC';
+  const gran = q.granularity; // 'day' | 'week' | 'month'
+
+  const seriesRows = (await sql`
+    SELECT to_char(date_trunc(${gran}, (created_at AT TIME ZONE ${tz})), 'YYYY-MM-DD') AS x,
+           COALESCE(SUM(total_cents) FILTER (WHERE status IN ('paid','fulfilled')), 0)::bigint AS y
+    FROM public.sales
+    WHERE bucket_id = ${clientId}::uuid
+      AND created_at >= ${q.from}::date
+      AND created_at <  (${q.to}::date + interval '1 day')
+      AND (${noNodeFilter}::boolean OR created_by_user_node = ANY(${nodes}::uuid[]))
+      AND (${isRootScope}::boolean OR source = 'pos')
+    GROUP BY 1 ORDER BY 1
+  `) as Array<{ x: string; y: string }>;
+
+  const channelRows = (await sql`
+    SELECT channel::text AS key,
+           COALESCE(SUM(total_cents) FILTER (WHERE status IN ('paid','fulfilled')), 0)::bigint AS value
+    FROM public.sales
+    WHERE bucket_id = ${clientId}::uuid
+      AND created_at >= ${q.from}::date
+      AND created_at <  (${q.to}::date + interval '1 day')
+      AND (${noNodeFilter}::boolean OR created_by_user_node = ANY(${nodes}::uuid[]))
+      AND (${isRootScope}::boolean OR source = 'pos')
+    GROUP BY 1 ORDER BY 2 DESC
+  `) as Array<{ key: string; value: string }>;
+
+  // Category breakdown joins lines → sales → products → categories. Note
+  // products keys on client_id (NOT bucket_id, which only exists on sales).
+  const categoryRows = (await sql`
+    SELECT COALESCE(pc.name, 'Uncategorised') AS key,
+           COALESCE(SUM(sl.line_total_cents), 0)::bigint AS value
+    FROM public.sale_lines sl
+    JOIN public.sales s ON s.id = sl.sale_id
+    LEFT JOIN public.products p ON p.id = sl.product_id
+    LEFT JOIN public.product_categories pc ON pc.id = p.category_id
+    WHERE s.bucket_id = ${clientId}::uuid
+      AND s.status IN ('paid','fulfilled')
+      AND s.created_at >= ${q.from}::date
+      AND s.created_at <  (${q.to}::date + interval '1 day')
+      AND (${noNodeFilter}::boolean OR s.created_by_user_node = ANY(${nodes}::uuid[]))
+      AND (${isRootScope}::boolean OR s.source = 'pos')
+    GROUP BY 1 ORDER BY 2 DESC LIMIT 10
+  `) as Array<{ key: string; value: string }>;
+
+  const toRows = (rs: Array<{ key: string; value: string }>) => {
+    const nums = rs.map((r) => ({ key: r.key, value: Number(r.value) }));
+    const total = nums.reduce((a, b) => a + b.value, 0) || 1;
+    return nums.map((r) => ({ ...r, pct: (r.value / total) * 100 }));
+  };
+
   return jsonOk({
     scope: { isRootScope, nodeCount: scopeNodes === null ? 0 : scopeNodes.length },
     kpis: [
@@ -70,8 +126,13 @@ export default async function handler(req: Request): Promise<Response> {
       mk('sales', 'Sales', 'count'),
       mk('aov', 'Avg order value', 'cents'),
     ],
-    series: [],
-    breakdowns: [],
+    series: [
+      { id: 'revenue_by_day', chart: 'line', points: seriesRows.map((r) => ({ x: r.x, y: Number(r.y) })) },
+    ],
+    breakdowns: [
+      { id: 'by_channel', label: 'By channel', rows: toRows(channelRows) },
+      { id: 'by_category', label: 'By category', rows: toRows(categoryRows) },
+    ],
     generatedAt: new Date().toISOString(),
   });
 }
