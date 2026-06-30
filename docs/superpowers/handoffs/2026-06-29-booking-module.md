@@ -25,8 +25,17 @@ Phase 1 (Foundation) is **code-complete**; only the DB apply is blocked.
 - Pure logic is **single-source** in `src/modules/booking/lib/`; Netlify functions import it via `../../src/…` (7 functions already cross that boundary). Do **not** duplicate like POS did.
 - Built-in `Intl` for tz (no date lib added). **Razorpay + scheduled cron are GREENFIELD.** The spec's "30s Blobs availability cache" was dropped (module-level Maps banned; no Blobs version-counter exists).
 
+## Phase 2 plan: WRITTEN (commit 9a9cffe)
+`docs/superpowers/plans/2026-06-29-booking-module-phase2-api.md` — full TDD code bodies, Tasks 1–13 (backend only; UI is Phase 3). Decisions baked in:
+- **Perms = bucket×verb** `booking.{customers,employees}.*` (action keys rejected by platform validator — memory `feedback_permission_keys_bucket_verb_only`). FSM/spec/plan all aligned (commit abae38d).
+- `requireBooking` gates on the booking **module** reachable from enabled products (not a product key).
+- Customer dedupe: `user_nodes` already has `phone` + unique `(client_id, lower(email))`; bucket = role's `bucket_family`. Migration 045 = just a `(client_id, phone)` index. Upsert matches email/phone among `bucket_family='customers'` nodes.
+- Public create maps `23P01`→409; concurrency test proves 1×201/9×409.
+
+**4 open items flagged in the plan** (don't fabricate): Netlify v2 array `config.method`; customers-bucket role seeding for the upsert; neon nested `sql` fragments in availability; migrations 043–045 still UNAPPLIED (numbering coordination).
+
 ## Next focus
-Author the **Phase 2 plan** (build order C+D): `requireBooking` authz (mirror `netlify/functions/_pos-authz.ts`), settings/services/resources CRUD functions, customer match-or-create upsert + the deferred `user_nodes` dedupe index, public availability + create endpoints (map `23P01`→409), pay-at-venue happy path. Then Phase 3 = payments/manage/calendar/cron/nav/tests (E–J). Mirror the POS module throughout: `netlify/functions/pos-*.ts`, `_pos-fsm.ts`, `tests/pos/_helpers.ts`, `src/modules/pos/`, `src/lib/router.tsx`, `useNavItems.ts` (`MODULES_WITH_DEDICATED_NAV`).
+Either (a) clear the migration-numbering blocker → apply 043–045 → run Phase 1 gist proof + Phase 2 integration/concurrency tests, or (b) execute Phase 2 task-by-task (validators/authz unit-testable now; DB-backed tasks wait on (a)). Then **Phase 3** = payments (Razorpay + webhook), magic-link manage, vendor calendar/list/detail/manual-create, pending-cleanup cron, sidebar nav, all React UI (E–J). Mirror POS: `netlify/functions/pos-*.ts`, `_pos-authz.ts`, `tests/pos/_helpers.ts`, `src/modules/pos/`, `src/lib/router.tsx`, `useNavItems.ts` (`MODULES_WITH_DEDICATED_NAV`).
 
 ## Durable rules in play (memory slugs)
 `feedback_no_push_without_approval`, `feedback_no_deploy_previews`, `feedback_implementer_verify_typecheck`, `feedback_netlify_subdir_function_discovery`, `feedback_netlify_config_path_method`, `feedback_migration_before_deploy`, `feedback_netlify_deploy_checklist`.
