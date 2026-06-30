@@ -10,6 +10,12 @@ export interface MenuPageProps {
   bucketId: string;
   userNodeId: string;
   slug: string; // for the Checkout link href
+  // Optional menu source — defaults to the authed staff endpoint. The public
+  // storefront injects publicApi.getMenu(slug) so the same grid/cart render
+  // without a second network call.
+  loadMenu?: () => Promise<MenuResponse>;
+  // Optional checkout target — defaults to the staff cart route.
+  checkoutHref?: string;
 }
 
 export default function MenuPage(props: MenuPageProps) {
@@ -28,10 +34,10 @@ export default function MenuPage(props: MenuPageProps) {
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<string | null>(null);
 
+  const loadMenu = props.loadMenu;
   useEffect(() => {
     let cancel = false;
-    posApi
-      .getMenu()
+    (loadMenu ? loadMenu() : posApi.getMenu())
       .then((m) => {
         if (!cancel) setMenu(m);
       })
@@ -41,7 +47,7 @@ export default function MenuPage(props: MenuPageProps) {
     return () => {
       cancel = true;
     };
-  }, []);
+  }, [loadMenu]);
 
   const filtered = useMemo(() => {
     if (!menu) return [];
@@ -79,7 +85,7 @@ export default function MenuPage(props: MenuPageProps) {
       <SideCartPanel
         lines={lines}
         subtotal={subtotal}
-        checkoutHref={`/c/${props.slug}/pos/cart`}
+        checkoutHref={props.checkoutHref ?? `/c/${props.slug}/pos/cart`}
         onQty={setQty}
         onRemove={removeLine}
       />

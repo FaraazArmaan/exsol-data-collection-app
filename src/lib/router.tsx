@@ -1,6 +1,10 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
+import StorefrontMenuPage from '../modules/pos/pages/StorefrontMenuPage';
+import StorefrontCartPage from '../modules/pos/pages/StorefrontCartPage';
+import StorefrontDetailsPage from '../modules/pos/pages/StorefrontDetailsPage';
+import StorefrontReceiptPage from '../modules/pos/pages/StorefrontReceiptPage';
 import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
@@ -47,6 +51,12 @@ function RequireAdmin() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // Public storefront — unauthenticated, mounted OUTSIDE /c/:slug (no portal
+  // shell, no auth). See POS v2 storefront design §3.3.
+  { path: '/menu/:slug', element: <StorefrontMenuPage /> },
+  { path: '/menu/:slug/cart', element: <StorefrontCartPage /> },
+  { path: '/menu/:slug/details', element: <StorefrontDetailsPage /> },
+  { path: '/menu/:slug/order/:saleUuid', element: <StorefrontReceiptPage /> },
   {
     path: '/c/:slug',
     element: <UserPortalLayout />,
