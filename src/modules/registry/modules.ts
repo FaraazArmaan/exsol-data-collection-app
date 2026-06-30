@@ -9,12 +9,14 @@ import { bookingManifest } from './manifests/booking';
 import { paymentsManifest } from './manifests/payments';
 import { productsManifest } from './manifests/products';
 import { posManifest } from './manifests/pos';
+import { analyticsManifest } from './manifests/analytics';
 
 export const moduleRegistry = {
   booking: bookingManifest,
   payments: paymentsManifest,
   products: productsManifest,
   pos: posManifest,
+  analytics: analyticsManifest,
 } as const satisfies Record<string, ModuleManifest>;
 
 export type RegisteredModuleKey = keyof typeof moduleRegistry;
