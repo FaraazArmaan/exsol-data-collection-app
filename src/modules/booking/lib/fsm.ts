@@ -2,12 +2,14 @@ export type BookingStatus =
   | 'pending' | 'confirmed' | 'blocked' | 'completed' | 'cancelled' | 'no_show';
 export type BookingAction = 'pay' | 'cancel' | 'complete' | 'noShow' | 'unblock';
 
+// Platform validates only <module>.<bucket>.<verb> keys, so booking maps its
+// actions onto the customers bucket (see spec §5 — bucket×verb permission model).
 export const PERM: Record<BookingAction, string> = {
-  pay: 'booking.create',     // payment confirmation path (public create / webhook)
-  cancel: 'booking.edit',
-  complete: 'booking.edit',
-  noShow: 'booking.edit',
-  unblock: 'booking.edit',
+  pay: 'booking.customers.create',  // payment confirmation path (public create / webhook)
+  cancel: 'booking.customers.edit',
+  complete: 'booking.customers.edit',
+  noShow: 'booking.customers.edit',
+  unblock: 'booking.customers.edit',
 };
 
 const ALLOWED_FROM: Record<BookingAction, readonly BookingStatus[]> = {

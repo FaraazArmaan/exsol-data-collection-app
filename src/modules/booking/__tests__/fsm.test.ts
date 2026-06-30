@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyTransition } from '../lib/fsm';
 
-const ALL = new Set(['booking.edit', 'booking.create']);
+const ALL = new Set(['booking.customers.edit', 'booking.customers.create']);
 const base = {
   perms: ALL, now: new Date('2026-08-15T00:00:00Z'),
   startsAt: new Date('2026-08-16T00:00:00Z'), cancelCutoffMin: 60, byVendor: false,

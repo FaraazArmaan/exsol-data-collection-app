@@ -70,15 +70,15 @@ Flat function-per-endpoint files under `netlify/functions/` (no subdirs — dura
 
 | Function file | Method · Path | Purpose | Perm |
 |---|---|---|---|
-| `booking-settings.ts` | GET/PUT `/api/booking/settings` | Tenant grid / lead-time / cutoff / weekly-schedule / overrides | `booking.settings.edit` |
-| `booking-resources.ts` | GET/POST `/api/booking/resources` | List + create resources | `booking.resources.edit` |
-| `booking-resource-detail.ts` | GET/PATCH/DELETE `/api/booking/resource-detail/:id` | Rename / schedule / deactivate | `booking.resources.edit` |
-| `booking-resource-time-off.ts` | GET/POST/DELETE `/api/booking/resource-time-off` | Add/remove time-off | `booking.resources.edit` |
-| `booking-services.ts` | GET/POST `/api/booking/services` | List + create services | `booking.services.edit` |
-| `booking-service-detail.ts` | GET/PATCH/DELETE `/api/booking/service-detail/:id` | Per-service edit | `booking.services.edit` |
-| `booking-list.ts` | GET `/api/booking/list?from=&to=&status=&resource_id=` | Vendor calendar/list view | `booking.view` |
-| `booking-detail.ts` | GET/PATCH `/api/booking/detail/:id` | Read one + state transitions (completed/no_show/vendor cancel) | `booking.edit` |
-| `booking-manual-create.ts` | POST `/api/booking/manual-create` | Vendor creates on behalf of customer; bypasses lead-time + cutoff; same match-or-create node logic | `booking.create` |
+| `booking-settings.ts` | GET/PUT `/api/booking/settings` | Tenant grid / lead-time / cutoff / weekly-schedule / overrides | `booking.employees.edit` |
+| `booking-resources.ts` | GET/POST `/api/booking/resources` | List + create resources | `booking.employees.edit` |
+| `booking-resource-detail.ts` | GET/PATCH/DELETE `/api/booking/resource-detail/:id` | Rename / schedule / deactivate | `booking.employees.edit` |
+| `booking-resource-time-off.ts` | GET/POST/DELETE `/api/booking/resource-time-off` | Add/remove time-off | `booking.employees.edit` |
+| `booking-services.ts` | GET/POST `/api/booking/services` | List + create services | `booking.employees.edit` |
+| `booking-service-detail.ts` | GET/PATCH/DELETE `/api/booking/service-detail/:id` | Per-service edit | `booking.employees.edit` |
+| `booking-list.ts` | GET `/api/booking/list?from=&to=&status=&resource_id=` | Vendor calendar/list view | `booking.customers.view` |
+| `booking-detail.ts` | GET/PATCH `/api/booking/detail/:id` | Read one + state transitions (completed/no_show/vendor cancel) | `booking.customers.edit` |
+| `booking-manual-create.ts` | POST `/api/booking/manual-create` | Vendor creates on behalf of customer; bypasses lead-time + cutoff; same match-or-create node logic | `booking.customers.create` |
 
 ### Customer / public-side (no auth for browse + create)
 
@@ -160,17 +160,24 @@ Routes `/c/:slug/booking/*`, mounted via `BookingRouteMounts.tsx` (mirrors `PosR
 
 | Route | Page | Perm |
 |---|---|---|
-| `/c/:slug/booking` | **CalendarPage** — **day-view** default; columns = resources, rows = time. Empty cell → manual-booking drawer; filled → BookingDetailDrawer. | `booking.view` |
-| `/c/:slug/booking/list` | **BookingsListPage** — filter by status/resource/date, search by phone (mirrors `SalesListPage`) | `booking.view` |
-| `/c/:slug/booking/services` | **ServicesPage** — catalog CRUD | `booking.services.edit` |
-| `/c/:slug/booking/resources` | **ResourcesPage** — resource CRUD + weekly schedule + time-off | `booking.resources.edit` |
-| `/c/:slug/booking/settings` | **SettingsPage** — interval, weekly schedule + date overrides, lead time, cutoff, timezone | `booking.settings.edit` |
+| `/c/:slug/booking` | **CalendarPage** — **day-view** default; columns = resources, rows = time. Empty cell → manual-booking drawer; filled → BookingDetailDrawer. | `booking.customers.view` |
+| `/c/:slug/booking/list` | **BookingsListPage** — filter by status/resource/date, search by phone (mirrors `SalesListPage`) | `booking.customers.view` |
+| `/c/:slug/booking/services` | **ServicesPage** — catalog CRUD | `booking.employees.edit` |
+| `/c/:slug/booking/resources` | **ResourcesPage** — resource CRUD + weekly schedule + time-off | `booking.employees.edit` |
+| `/c/:slug/booking/settings` | **SettingsPage** — interval, weekly schedule + date overrides, lead time, cutoff, timezone | `booking.employees.edit` |
 
 **Manual booking drawer** (from any empty cell): same form as customer checkout, but vendor may override start to any minute (off-grid; gist still guards), skip lead-time + cutoff, and mark as already-paid (bypass gateway). A **blocked-time** option creates `status='blocked'` with no customer.
 
-**Sidebar nav** entry in `src/modules/user-portal/nav/`, gated by `booking.view`.
+**Sidebar nav** entry in `src/modules/user-portal/nav/`, gated by `booking.customers.view`.
 
-**Permission keys** (registry-declared, surfaced in access-levels UI): `booking.view`, `booking.create`, `booking.edit`, `booking.services.edit`, `booking.resources.edit`, `booking.settings.edit`.
+**Permission keys** — booking uses the platform's **bucket×verb model** (`<module>.<bucket>.<verb>`) so keys validate via `isValidPermissionKey` and render/toggle in the access-levels UI today (the action-namespaced form like `booking.settings.edit` is rejected by the validator — same gap POS carries). Mapping:
+- `booking.customers.view` — see bookings / calendar / availability list
+- `booking.customers.create` — create bookings (vendor manual-create; public path is anonymous)
+- `booking.customers.edit` — edit / state-transition / cancel bookings
+- `booking.employees.view` — view resources
+- `booking.employees.edit` — manage services, resources, time-off, and settings
+
+The `booking` module is enabled via the `saloon-booking` product; `requireBooking` gates on the **booking module** being reachable from any enabled product (not a hardcoded product key).
 
 > Post-deploy gap from POS still open: action-namespace perms need admin-UI surfacing. Confirm these keys render in the access-levels editor.
 

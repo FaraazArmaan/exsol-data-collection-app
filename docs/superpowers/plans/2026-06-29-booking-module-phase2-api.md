@@ -13,8 +13,11 @@
 ## Global Constraints
 - Inherits all Phase-1 constraints (strict TS `noUncheckedIndexedAccess`; money = BIGINT cents; `npm run typecheck` before each commit; local commits only, no push/merge).
 - **Routing:** flat files only (`feedback_netlify_subdir_function_discovery`); same path + different verb ⇒ separate files discriminated by `config.method` (`feedback_netlify_config_path_method`); `/api/booking/foo/:id` routes to `booking-foo.ts` NOT `booking-foo-detail.ts` (`feedback_netlify_function_name_routing`) — FE must call the literal function path.
-- **Permissions:** booking uses ACTION-namespaced keys like POS (`booking.view`, `booking.create`, `booking.edit`, `booking.services.edit`, `booking.resources.edit`, `booking.settings.edit`) — NOT the `booking.<bucket>.<verb>` CRUD form. Declared via a `BOOKING_ACTIONS` const (mirror `POS_ACTIONS`).
-- **Module gate:** `requireBooking` must 412 unless `client_enabled_products` has `booking` (and `products` per the `saloon-booking` requires) — pattern from `requirePos`.
+- **Permissions: bucket×verb model** (decided 2026-06-30). The platform's `isValidPermissionKey`/`splitPermissionKey` accept ONLY `<module>.<bucket>.<verb>` (verb ∈ view/create/edit/delete) — action-namespaced keys (`booking.settings.edit`) are rejected and don't render in the access-levels UI (the gap POS shipped with). So booking maps onto its existing manifest buckets:
+  - `booking.customers.view` (see bookings/calendar) · `booking.customers.create` (create) · `booking.customers.edit` (edit/transition/cancel)
+  - `booking.employees.view` (view resources) · `booking.employees.edit` (manage services/resources/time-off/settings)
+  - The `bookingManifest` (`data_buckets: ['customers','employees']`, all verbs) **already produces these** via `derivePermissionRows` — no registry change needed for them to surface.
+- **Module gate:** `requireBooking` 412s unless the **booking module is reachable from an enabled product**. Resolve like `isValidPermissionKey` does: iterate `client_enabled_products` → `getProduct(key).modules` → require `'booking'` present (the `saloon-booking` product brings it in). Do NOT hardcode a product key (booking's product key ≠ module key, unlike POS).
 - **Error precedence:** permission (401/403) > module-enabled (412) > validation (400) > FSM/conflict (409) — same ordering as POS (`feedback_api_ui_error_precedence`).
 
 ## File Structure
@@ -38,8 +41,8 @@ netlify/functions/
   booking-public-create.ts          # POST /api/booking-public/:slug/create  (23P01 → 409)
 
 src/modules/registry/
-  types.ts                          # + BOOKING_ACTIONS, extend PermissionKey union          [explorer-dependent]
-  products-list/saloon-booking.ts   # + permissions[] from BOOKING_ACTIONS                    [explorer-dependent]
+  (NO CHANGES) bookingManifest already yields booking.{customers,employees}.{view,create,edit,delete}
+  via derivePermissionRows once the saloon-booking product is enabled.
 
 tests/booking/
   _helpers.ts                       # extend: enable booking product, grantPerms, request helper, slug
@@ -53,12 +56,12 @@ tests/booking/
 > Order: 1 → 2 → 3 → 4 → (5 ∥ 6 ∥ 7) → 8 → (9 ∥ 10) → 11 → 12 → 13. Tasks 1–4 are the shared foundation; 5–7 are independent vendor CRUD; 9–11 are the public flow; 12 is the concurrency proof; 13 is the green sweep.
 
 - [ ] **Task 1 — Migration 045: customer dedupe** *(explorer-dependent: how "customers bucket" nodes are distinguished + whether `user_nodes` needs a `phone`/`normalized_phone` column)*. Produces the partial-unique index backing the upsert in Task 8. **UNAPPLIED** (same numbering-coordination gate as 043/044).
-- [ ] **Task 2 — Registry perms.** Add `BOOKING_ACTIONS` to `types.ts`, extend `PermissionKey`, populate `saloon-booking.ts` `permissions[]` with labels. Unit-test that `derivePermissionRows`/access-levels surfaces the six booking keys. Interface produced: the canonical perm-key strings consumed by `requireBooking` and every handler.
-- [ ] **Task 3 — `_booking-authz.ts`.** `requireBooking(req, required: readonly string[]): Promise<{ok:true; ctx:{clientId; userNodeId; perms:Set<string>}} | {ok:false; res:Response}>`. Mirror `requirePos`: `requireBucketUser` → resolve perms → 412 gate on `client_enabled_products` (`booking` + `products`) → 403 on missing required. Consumed by all vendor functions.
+- [ ] **Task 2 — Registry verification (no code change).** Add a registration test (mirror `src/modules/registry/__tests__/pos-manifests.test.ts`) asserting `derivePermissionRows(['saloon-booking'])` yields `booking.customers.*` + `booking.employees.*` rows, and that `isValidPermissionKey('booking.customers.view', ['saloon-booking'])` is true. No manifest/types change — `bookingManifest` already declares the buckets/verbs. Produces nothing new for downstream tasks except confirming the canonical key strings.
+- [ ] **Task 3 — `_booking-authz.ts`.** `requireBooking(req, required: readonly string[]): Promise<{ok:true; ctx:{clientId; userNodeId; perms:Set<string>}} | {ok:false; res:Response}>`. Mirror `requirePos` BUT replace the hardcoded product-key gate: resolve enabled modules via `getProduct(key).modules` over `client_enabled_products` and 412 (`booking_module_not_enabled`) unless `'booking'` is reachable. Then 403 on any missing required key. Consumed by all vendor functions. Perm strings are `booking.customers.*` / `booking.employees.*`.
 - [ ] **Task 4 — `_booking-validators.ts`.** zod schemas (exact `.parse` + 400 error shape from POS): `SettingsPut`, `ServiceCreate`, `ServicePatch`, `ResourceCreate`, `ResourcePatch`, `TimeOffCreate`, `PublicCreateBody`. Consumed by Tasks 5–11.
-- [ ] **Task 5 — `booking-settings.ts`** GET/PUT (`config.method` split). Perm `booking.settings.edit` for PUT, `booking.view` for GET. Upserts the single `booking_settings` row; validates `weekly_schedule`/`date_overrides` JSON shape.
-- [ ] **Task 6 — `booking-services.ts` + `booking-service-detail.ts`.** CRUD over `booking_services`; enforces deposit-mode invariant (mirrors the DB CHECK) and `eligible_resource_ids` membership. Perm `booking.services.edit` (writes), `booking.view` (reads).
-- [ ] **Task 7 — `booking-resources.ts` + `booking-resource-detail.ts` + `booking-resource-time-off.ts`.** CRUD over resources + time-off windows. Perm `booking.resources.edit`.
+- [ ] **Task 5 — `booking-settings.ts`** GET/PUT (`config.method` split). Perm `booking.employees.edit` for PUT, `booking.employees.view` for GET. Upserts the single `booking_settings` row; validates `weekly_schedule`/`date_overrides` JSON shape.
+- [ ] **Task 6 — `booking-services.ts` + `booking-service-detail.ts`.** CRUD over `booking_services`; enforces deposit-mode invariant (mirrors the DB CHECK) and `eligible_resource_ids` membership. Perm `booking.employees.edit` (writes), `booking.employees.view` (reads).
+- [ ] **Task 7 — `booking-resources.ts` + `booking-resource-detail.ts` + `booking-resource-time-off.ts`.** CRUD over resources + time-off windows. Perm `booking.employees.edit` (writes), `booking.employees.view` (reads).
 - [ ] **Task 8 — `_booking-customer-upsert.ts`.** `upsertCustomer(sql, clientId, {name,phone,email}): Promise<{userNodeId; wasCreated}>`. Uses `normalizePhone`/`dedupeKey` (Phase-1 lib); `SELECT … FOR UPDATE`-style match then insert into the customers bucket with `auth_method='none'`. Consumed by Tasks 11 + Phase-3 vendor manual-create.
 - [ ] **Task 9 — `booking-public-services.ts` + `booking-public-resources.ts`.** Anonymous; slug→client_id lookup *(explorer item 9: confirm/borrow the public lookup pattern; greenfield if none)*; returns active services / active resources (names only). No JWT.
 - [ ] **Task 10 — `booking-public-availability.ts`.** Loads settings/resources/time-off/bookings for the date, subtracts `date_overrides` + time-off into `resources[].busy`, calls `computeAvailability`, then unions ("any") or filters (named) and applies `pickLeastBusy` for the "any" assignment. Returns `{start_utc,end_utc,assignable_resource_id}[]`.
