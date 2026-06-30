@@ -48,3 +48,51 @@ export async function seedPaidSales(args: SeedPaidSalesArgs): Promise<PosTestCtx
   }
   return ctx;
 }
+
+// Low-level single-sale insert for scoping tests. Attributes a sale to a
+// specific node (or null for storefront — the DB CHECK requires source
+// 'storefront' ⇒ created_by_user_node IS NULL).
+export async function insertSale(
+  clientId: string,
+  opts: {
+    nodeId: string | null;
+    source: 'pos' | 'storefront';
+    channel: string;
+    priceCents: number;
+    when: string;
+    productId: string;
+    orderNo: number;
+    status?: string;
+  },
+): Promise<string> {
+  const sql = db();
+  const status = opts.status ?? 'paid';
+  const rows = (await sql`
+    INSERT INTO public.sales
+      (bucket_id, order_no, status, channel, customer_name, customer_phone,
+       subtotal_cents, discount_cents, tax_cents, total_cents,
+       created_by_user_node, source, created_at, paid_at)
+    VALUES
+      (${clientId}::uuid, ${opts.orderNo}, ${status}, ${opts.channel}, 'Seed', ${`9${opts.orderNo}`},
+       ${opts.priceCents}, 0, 0, ${opts.priceCents},
+       ${opts.nodeId}::uuid, ${opts.source}, ${opts.when}::timestamptz, ${opts.when}::timestamptz)
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const saleId = rows[0]!.id;
+  await sql`
+    INSERT INTO public.sale_lines
+      (sale_id, product_id, product_name_snap, unit_price_cents, qty, line_total_cents, position)
+    VALUES
+      (${saleId}::uuid, ${opts.productId}::uuid, 'Seed', ${opts.priceCents}, 1, ${opts.priceCents}, 1)
+  `;
+  return saleId;
+}
+
+// Seed a single active product, returning its id (thin wrapper for clarity).
+export async function seedOneProduct(clientId: string, priceCents = 1000): Promise<string> {
+  const suffix = Math.random().toString(36).slice(2, 7);
+  const [id] = await seedProducts(clientId, [
+    { name: `AN-${suffix}`, sale_price_cents: priceCents, pos_visible: true, status: 'active' },
+  ]);
+  return id!;
+}
