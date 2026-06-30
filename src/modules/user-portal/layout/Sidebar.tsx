@@ -27,8 +27,13 @@ export function Sidebar() {
     permissions['pos.history.view'] === true
   );
 
-  const showBooking = !!user && (
-    permissions['booking.customers.view'] === true || permissions['booking.employees.view'] === true
+  // Booking appears only when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds a booking view permission. Mirrors the POS gate above.
+  const bookingEnabled = enabledModules.some((m) => m.key === 'booking');
+  const showBooking = bookingEnabled && (
+    isOwner ||
+    permissions['booking.customers.view'] === true ||
+    permissions['booking.employees.view'] === true
   );
 
   return (

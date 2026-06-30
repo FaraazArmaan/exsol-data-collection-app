@@ -7,21 +7,34 @@ import ServicesPage from './vendor/ServicesPage';
 import ResourcesPage from './vendor/ResourcesPage';
 import SettingsPage from './vendor/SettingsPage';
 
+const ALL_BOOKING_PERMS = [
+  'booking.customers.view', 'booking.customers.create', 'booking.customers.edit',
+  'booking.employees.view', 'booking.employees.edit',
+];
+
 function useAuthBits() {
-  const { user, client, permissions, loading } = useUserAuth();
+  const { user, client, permissions, enabledModules, loading } = useUserAuth();
   const { slug } = useParams<{ slug: string }>();
+  // L1 Owner (or legacy null-level) is all-on — consistent with the backend
+  // requireBooking bypass and every other gate in the codebase (see POS).
+  // We hand them the full booking.* set so internal page gates render too.
+  const isOwner = !!user && (user.level_number === 1 || user.level_number == null);
   const perms = useMemo(
-    () => new Set(Object.entries(permissions).filter(([, v]) => v).map(([k]) => k)),
-    [permissions],
+    () => (isOwner
+      ? new Set(ALL_BOOKING_PERMS)
+      : new Set(Object.entries(permissions).filter(([, v]) => v).map(([k]) => k))),
+    [permissions, isOwner],
   );
-  return { user, client, perms, slug: slug ?? '', loading };
+  const bookingEnabled = enabledModules.some((m) => m.key === 'booking');
+  return { user, client, perms, bookingEnabled, slug: slug ?? '', loading };
 }
 
 function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) => JSX.Element) {
   return function Mount() {
-    const { user, client, perms, slug, loading } = useAuthBits();
+    const { user, client, perms, bookingEnabled, slug, loading } = useAuthBits();
     if (loading) return null;
     if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
+    if (!bookingEnabled) return <Navigate to={`/c/${slug}`} replace />;
     if (!perms.has(perm)) return <Navigate to={`/c/${slug}`} replace />;
     return render(slug, perms);
   };
