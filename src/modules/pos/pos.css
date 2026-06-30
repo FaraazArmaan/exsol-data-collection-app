@@ -491,10 +491,23 @@
 .storefront-main {
   flex: 1;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 24px;
 }
+/* Checkout-flow pages are a single narrow, centered column (mobile-first) —
+ * a one-line order shouldn't stretch the full width like the menu grid does. */
+.storefront-shell .pos-cart-page,
+.storefront-shell .pos-cart-page__customer,
+.storefront-shell .pos-drawer {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.storefront-shell .pos-cart-page > header h1 { margin-top: 4px; }
+/* The continue/place-order CTA reads better as a comfortable button, not a
+ * full-bleed bar, on the wide checkout column. */
+.storefront-shell .pos-side-cart__checkout { display: inline-block; min-width: 200px; }
 .storefront-unavailable {
   max-width: 460px;
   margin: 80px auto;
