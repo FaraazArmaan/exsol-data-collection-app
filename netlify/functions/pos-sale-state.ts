@@ -96,11 +96,12 @@ export default async function handler(req: Request): Promise<Response> {
   `;
 
   // Audit primary action; instore+markPaid also writes the auto-fulfill row.
+  // logAudit only reads kind + user_node_id (no level column), so we don't
+  // carry a (previously hardcoded) level_number — it would misrepresent L2+.
   const session = {
     kind: 'bucket_user',
     user_node_id: a.ctx.userNodeId,
     client_id: a.ctx.clientId,
-    level_number: 1,
   } as any;
   await logAudit(sql, {
     session,

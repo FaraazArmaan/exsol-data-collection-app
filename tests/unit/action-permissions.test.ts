@@ -43,6 +43,13 @@ describe('actionPermissionKeys', () => {
   it('is empty when pos is not enabled', () => {
     expect(actionPermissionKeys(['products']).size).toBe(0);
   });
+
+  it('excludes pos.* when pos is enabled but its required products are not (defense-in-depth)', () => {
+    // pos.requires = ['products']; without products, pos.* must NOT be grantable.
+    expect(actionPermissionKeys(['pos']).size).toBe(0);
+    expect(actionPermissionGroups(['pos'])).toEqual([]);
+    expect(isValidPermissionKey('pos.menu.view', ['pos'])).toBe(false);
+  });
 });
 
 describe('isValidPermissionKey — action namespace', () => {

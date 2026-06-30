@@ -164,7 +164,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   await logAudit(sql, {
-    session: { kind: 'bucket_user', user_node_id: userNodeId, client_id: clientId, level_number: 1 } as any,
+    session: { kind: 'bucket_user', user_node_id: userNodeId, client_id: clientId } as any,
     op: 'pos.sale.created',
     clientId,
     targetType: 'sale',

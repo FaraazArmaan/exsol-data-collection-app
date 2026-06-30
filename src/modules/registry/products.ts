@@ -40,13 +40,25 @@ export interface ActionPermissionGroup {
  * The Access Level Dashboard renders these as per-action toggles, separate
  * from the `<module>.<bucket>.<verb>` grid. Product-agnostic.
  */
+// A product's action permissions are only grantable if its declared `requires`
+// (dependency products) are ALSO enabled — defense-in-depth so e.g. pos.* can't
+// be granted when `products` (pos's dependency) is somehow off.
+function requiresSatisfied(
+  product: { requires?: ReadonlyArray<string> },
+  enabled: ReadonlySet<string>,
+): boolean {
+  return !product.requires || product.requires.every((r) => enabled.has(r));
+}
+
 export function actionPermissionGroups(
   enabledProductKeys: readonly string[],
 ): ActionPermissionGroup[] {
+  const enabled = new Set(enabledProductKeys);
   const out: ActionPermissionGroup[] = [];
   for (const pKey of enabledProductKeys) {
     const product = getProduct(pKey);
     if (!product?.permissions || product.permissions.length === 0) continue;
+    if (!requiresSatisfied(product, enabled)) continue;
     out.push({
       product_key: product.key,
       label: product.label,
@@ -62,10 +74,12 @@ export function actionPermissionGroups(
  * `<module>.<bucket>.<verb>` shape.
  */
 export function actionPermissionKeys(enabledProductKeys: readonly string[]): Set<string> {
+  const enabled = new Set(enabledProductKeys);
   const set = new Set<string>();
   for (const pKey of enabledProductKeys) {
     const product = getProduct(pKey);
     if (!product?.permissions) continue;
+    if (!requiresSatisfied(product, enabled)) continue;
     for (const p of product.permissions) set.add(p.key);
   }
   return set;
