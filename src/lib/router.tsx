@@ -33,6 +33,7 @@ import AdminProductsListPage from '../modules/products/admin/AdminProductsListPa
 import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
 import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
 import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
+import AnalyticsRouteMount from '../modules/analytics/AnalyticsRouteMount';
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
@@ -108,6 +109,7 @@ export const router = createBrowserRouter([
               { path: 'booking/services', element: <BookingServicesMount /> },
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
+              { path: 'analytics', element: <AnalyticsRouteMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

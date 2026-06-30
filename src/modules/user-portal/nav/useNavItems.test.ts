@@ -99,6 +99,18 @@ describe('computeNavItems', () => {
     expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
   });
 
+  test('analytics is excluded from the generic rail (it has a dedicated sidebar entry)', () => {
+    const analytics: UserPortalEnabledModule = { key: 'analytics', label: 'Analytics' };
+    const items = computeNavItems({
+      slug: 'acme',
+      levelNumber: 1,
+      enabledModules: [analytics, payments],
+      permissions: {},
+    });
+    expect(items.find((i) => i.moduleKey === 'analytics')).toBeUndefined();
+    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
+  });
+
   test('platform keys (_platform.*) are ignored — they do not surface a Module', () => {
     const items = computeNavItems({
       slug: 'acme',

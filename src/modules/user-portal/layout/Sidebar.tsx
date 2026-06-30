@@ -52,13 +52,24 @@ export function Sidebar() {
     permissions['_platform.settings.edit'] === true
   );
 
+  // Analytics appears when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds any analytics view permission. Mirrors POS/Booking.
+  const analyticsEnabled = enabledModules.some((m) => m.key === 'analytics');
+  const showAnalytics = analyticsEnabled && (
+    isOwner ||
+    permissions['analytics.business.view'] === true ||
+    permissions['analytics.customers.view'] === true ||
+    permissions['analytics.employees.view'] === true ||
+    permissions['analytics.products.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showAnalytics || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -72,6 +83,9 @@ export function Sidebar() {
             )}
             {showPos && canViewSales && (
               <NavLink to={`/c/${slug}/pos/sales`}>Orders</NavLink>
+            )}
+            {showAnalytics && (
+              <NavLink to={`/c/${slug}/analytics`}>Analytics</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>
