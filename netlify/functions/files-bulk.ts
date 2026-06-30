@@ -32,14 +32,6 @@ const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('remove_category'), file_ids: FileIds, category: z.string() }),
 ]);
 
-type ParsedBody = z.infer<typeof Body>;
-
-function permFor(action: ParsedBody['action']): string {
-  return action === 'soft_delete' || action === 'restore'
-    ? '_platform.files.delete'
-    : '_platform.files.edit';
-}
-
 /** Returns the subset of file_ids that exist within the caller's writable scope. */
 async function inScopeIds(
   sql: ReturnType<typeof db>, session: AnySession, fileIds: string[],
@@ -62,6 +54,22 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
 
   const payload = await req.json().catch(() => null);
+
+  // Authenticate before validating the body so an unauthenticated caller always
+  // gets 401 (never a 400 that would reveal the body was even inspected). The
+  // permission is keyed off the requested action; an unrecognised action falls
+  // back to the edit permission purely to gate identity — full validation below
+  // still rejects it with 400 for authenticated callers.
+  const rawAction = payload && typeof payload === 'object'
+    ? (payload as { action?: unknown }).action
+    : undefined;
+  const permKey = rawAction === 'soft_delete' || rawAction === 'restore'
+    ? '_platform.files.delete'
+    : '_platform.files.edit';
+  const auth = await authenticateForPermission(req, permKey);
+  if (auth instanceof Response) return auth;
+  const session = auth;
+
   const parsed = Body.safeParse(payload);
   if (!parsed.success) {
     // Distinguish empty-list from other validation failures for the UI.
@@ -72,10 +80,6 @@ export default async (req: Request, _ctx: Context) => {
     return jsonError(400, 'bulk_action_invalid', parsed.error.flatten());
   }
   const body = parsed.data;
-
-  const auth = await authenticateForPermission(req, permFor(body.action));
-  if (auth instanceof Response) return auth;
-  const session = auth;
 
   // Bucket-user write block (external customers/employees) — admin & internal pass.
   const sql = db();
