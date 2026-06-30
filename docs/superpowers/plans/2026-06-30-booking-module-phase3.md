@@ -23,7 +23,13 @@ All tasks below implemented TDD-green. **Full booking suite: 24 files, 86 tests 
 ### Public storefront ✅ DONE (2026-06-30)
 `src/modules/booking/api.ts` (public wrappers), `format.ts`, `public/{BookingStorefront,ServicePicker,SlotPicker,Checkout,Confirmation,ManageBooking}.tsx`; routes `/c/:slug/book` + `/c/:slug/book/manage/:token` added OUTSIDE the auth gate (siblings of `login`); booking CSS appended to `components.css`. House style (plain CSS, throwing api wrappers, native Date/Intl). **Verified: `tsc && vite build` green; full public flow smoked end-to-end through live `netlify dev` proxy (services→availability→create→manage→cancel).** pay_at_venue works fully; Razorpay Checkout step shows a "pending" placeholder (live order-create is deploy-gated). Browser visual smoke deferred (cross-session playwright profile lock + multi-worktree vite-port collision; data layer + build proven instead).
 
-### Vendor UI — NOT started (next)
+### Vendor UI ✅ DONE (2026-06-30)
+`src/modules/booking/BookingRouteMounts.tsx` (perm-gated, mirrors `PosRouteMounts`); `vendor/{CalendarPage(day-view),BookingsListPage,ServicesPage,ResourcesPage,SettingsPage,BookingDetailDrawer,ManualBookingDrawer}.tsx`; `components/BookingStatusPill.tsx`; authed `bookingApi` wrappers in `api.ts`. Vendor routes added inside `RequireBucketUser`/`UserDashboardLayout`; `useNavItems` + `Sidebar` get a perm-gated **Booking** entry. **`tsc && vite build` green.** Browser smoke deferred (needs a seeded vendor login + the cross-session playwright lock is held); backend covered by 86 tests, routing covered by the public live-proxy smoke. Day-view is a per-resource time-ordered card column (functional; pixel time-grid is later polish).
+
+### Remaining: deploy-gated only
+Live Razorpay order-create (replace the `payment_intent` stub in `booking-public-create.ts` + load Razorpay Checkout JS in the storefront), `netlify.toml` schedule for `booking-pending-cleanup`, `RAZORPAY_*` env vars across contexts, prod migrations 043–045. All owned by the integration/main chat per scope.
+
+### (was) Vendor UI — NOT started
 Public storefront pages (ServicePicker, SlotPicker, Checkout + Razorpay Checkout JS, Confirmation, ManageBooking) under `src/modules/booking/public/`; vendor pages (CalendarPage day-view, BookingsListPage, ServicesPage, ResourcesPage, SettingsPage, manual/blocked drawers) under `src/modules/booking/vendor/`; route mounts (`BookingRouteMounts.tsx` mirroring `PosRouteMounts`), `src/lib/router.tsx` entries, sidebar nav (`useNavItems` `MODULES_WITH_DEDICATED_NAV`). Verify with the `run`/browser skill, not just unit tests.
 
 ## Status

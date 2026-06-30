@@ -40,7 +40,10 @@ All 13 tasks implemented TDD-style and green: **66 booking tests (17 files), typ
 ## Phase 3a (backend): EXECUTED & COMPLETE (2026-06-30)
 Vendor ops (`booking-list`, `booking-detail` w/ FSM transitions, `booking-manual-create` incl. blocked staff-time), `booking-public-manage` (magic-link cancel), `booking-pending-cleanup` (scheduled, 15-min timeout), `_booking-razorpay` + `booking-razorpay-webhook` (HMAC verify + pending→confirmed), and a round-trip smoke. **Full suite: 24 files, 86 tests green; typecheck clean.** Deferred to deploy: live Razorpay order-create (public-create still returns a `payment_intent` stub), netlify.toml schedule registration, and `RAZORPAY_*` env vars across contexts.
 
-## Next focus: Phase 3b — React UI (NOT started)
+## Phase 3b — React UI: COMPLETE (2026-06-30)
+**Public storefront** (`src/modules/booking/public/*`, anonymous `/c/:slug/book` + `/book/manage/:token`) — verified end-to-end via live `netlify dev` proxy. **Vendor UI** (`src/modules/booking/vendor/*` + `BookingRouteMounts.tsx`, routes under `/c/:slug/booking*`, sidebar entry) — build-verified. Both `tsc && vite build` green. The module is **feature-complete**; only deploy-gated bits remain (live Razorpay order-create, netlify.toml cron schedule, `RAZORPAY_*` env, prod migrations) — owned by the integration chat.
+
+## (done) Phase 3b — React UI
 Public storefront pages (ServicePicker→SlotPicker→Checkout+Razorpay Checkout JS→Confirmation, ManageBooking) under `src/modules/booking/public/`; vendor pages (day-view CalendarPage, BookingsList, Services, Resources, Settings, manual/blocked drawers) under `src/modules/booking/vendor/`; `BookingRouteMounts.tsx` (mirror `PosRouteMounts`), `src/lib/router.tsx` entries, sidebar nav (`useNavItems` `MODULES_WITH_DEDICATED_NAV`). Needs an FE-pattern exploration pass first + browser/`run`-skill verification (not just unit tests). See plan `docs/superpowers/plans/2026-06-30-booking-module-phase3.md` §3b.
 
 ## (was) Next focus
