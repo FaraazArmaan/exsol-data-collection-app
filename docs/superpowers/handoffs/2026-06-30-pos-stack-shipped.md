@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-06-30 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `b64cedd feat(booking): redesign public storefront to industry-standard layout`
+**Latest commit:** `21bf97d feat(analytics): per-domain CSV export + scorecard compare deltas`
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
-**Test count:** **1001 passing** across 161 test files · typecheck + build clean
+**Test count:** **1021 passing** across 163 test files · typecheck + build clean
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
 
 > **Convention for this file:**
@@ -34,9 +34,9 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `b64cedd` |
-| Local `main` HEAD | `b64cedd` (synced) |
-| Latest Netlify deploy | `ready` at commit `b64cedd` (after `restoreSiteDeploy` — **12th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`) |
+| `origin/main` HEAD | `21bf97d` |
+| Local `main` HEAD | `21bf97d` (synced) |
+| Latest Netlify deploy | `ready` at commit `21bf97d` (after `restoreSiteDeploy` — **16th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
 | **Modules live on prod** | **6**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, Sales domain)** + AMS/Workspace foundation |
 | New dep | `recharts ^3.9.1` (FE-bundled, NOT in external_node_modules). Bundle now >500kB (lazy-load deferred) |
 | Migrations applied to prod (`dawn-bird`) | **001–049 complete**: 001–045 (POS v1 + storefront) + 046 (file manager quota) + 047–049 (booking). No reserved gaps. |
@@ -292,6 +292,23 @@ Patterns refined (no new memory entries; just reinforced):
 - **SHA reconciliation note for the Booking sibling:** their branch tip `7e4bc5e` is on main as `b64cedd` (cherry-pick re-parents the SHA). Next handoff, all 4 of their commits will read as "already applied" via `git cherry` even though no SHAs match.
 - **Coverage-gap flag (recurring):** these 3 commits add a new drawer + a pixel time-grid with click-to-create + a full storefront relayout, all with ZERO added tests. Booking component-test coverage is lagging its feature growth (same note as the sub-nav-tabs merge).
 - **Still owed for a full prod cut** (unchanged): live Razorpay order-create + `ONLINE_PAYMENTS_ENABLED=true` flip (blocked on keys), an email provider for confirmations, confirm `booking-pending-cleanup` cron registers.
+
+### 2026-07-01 — Analytics polish + full-domain round (styled dashboard + 4 domains + lazy-load)
+- Cherry-picked `7a73964, 34d14ce → 4457065, d9817c9`. Tests 1001 → **1009**. 4 new endpoints (`analytics-bookings/customers/team/catalog`) → new-function-404 → `restoreSiteDeploy` (14th).
+- Fixed the previously-**unstyled** dashboard (added `analytics.css`), added Overview scorecard + data-driven multi-domain dashboard, **lazy-loaded** the analytics route (recharts code-split into a 418kB on-demand chunk).
+- Smoke: all 5 domain endpoints 200, `analytics.css` chunk loaded, **amber bars/lines `#c9a26a`** + themed donut palette (mauve/amber/terracotta). NOTE the wrong-element trap: `querySelector('.recharts-bar-rectangle path')` returned a black *background* rect; enumerate-all-fills showed real bars are amber.
+
+### 2026-07-01 — Booking full delta (6 new commits, backend + tests)
+- **Reflog rescue:** the 6 commits (`fc8782e, 6a64a62, 7ddb80a, 679164c, 88c83f7, aaefd1f`) were ALREADY applied in a compacted-away segment (`9366de1..ba1f8c4`). My re-attempt this turn conflicted on already-present content; `--abort` preserved the good commits. **Reflog is ground truth** when your model of HEAD disagrees with git — immune to context compaction. Do NOT resolve a confusing conflict; abort and investigate.
+- Storefront flow polish + mobile, readable calendar blocks, anti-abuse (honeypot + fail-open IP rate-limit via `booking-ratelimit` Blobs store), business name/avatar header, reschedule (vendor + customer magic-link), Day/Week calendar toggle. Tests 1009 → **1014**. alias trap (14th) → restore. `_booking-ratelimit.ts` is underscore-prefixed = silent helper, NOT a new endpoint (no 404 risk).
+- Smoke: **honeypot A/B** (`hp` filled → 400 `invalid_request`; empty → 201 created — check order is parse→honeypot→ratelimit); manage endpoint at `/api/booking-public/manage/:token` (NO `:slug`); business-name/avatar header; 7-column Week view. Cancelled the honeypot-control test booking via its manage token.
+
+### 2026-07-01 — Analytics panel-gating + polish (the dead-panel fix)
+- Cherry-picked `da66be4, 2106d2f → 21bf97d`. Tests 1014 → **1021**. Modified `analytics-overview.ts` (existing fn, no new endpoint). alias trap (16th) → `restoreSiteDeploy` — sibling's "no restore needed (no new fn)" was WRONG; alias-not-promoted is bundle-hash-driven, function-independent.
+- Fix: Bookings/Catalog panels + scorecard gated on `enabledModules` (mirrors Sidebar's `enabledModules.some(m=>m.key===…)`). I wrote the handoff prompt → routed to **Analytics chat** (analytics-owned files, not Booking).
+- **Gating verified both directions** via a reversible DB toggle on papa-s-saloon (capture-row → delete → verify → re-insert identical row → verify restored): booking ON → 5 panels incl. Bookings; booking OFF → 4 panels, Bookings gone, Catalog stays (products still on); restored → Bookings back. papa-s-saloon left in its exact prior state.
+- Compare-deltas: overview returns `delta`/`deltaPct`; `deltaPct: null` on zero baseline (correct — no misleading "+∞%").
+- **⚠️ CSV export bug (open — Analytics chat working on it):** a per-domain "Export" click DID trigger a download (`sales-…csv`, text/csv, 190B), so my smoke passed on "download fired" — but the **CSV content is not functional** (user caught it). LESSON: "a download triggered" ≠ "the file is valid"; must parse/validate exported content, not just confirm the blob downloaded.
 
 ---
 
