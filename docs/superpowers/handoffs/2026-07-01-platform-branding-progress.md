@@ -75,7 +75,7 @@ Reviewed by BOTH the POS chat (2 blockers folded in — retain a POS product-ima
 The `src/modules/branding/index.ts` barrel exports `{ BrandShell, BrandHero, useBrand, Brand, onAccent, isHexColor, isAllowlistedFont, suggestAccentFromLogo, downscaleImage, MAX_EDGE, BRAND_FONT_ALLOWLIST }`. Public endpoints live and tested: `GET /api/public/brand/:slug`, `GET /api/public/brand/:slug/image/:key`. POS + Booking chats can start their refactor per §9.4 / §9.5.
 
 ### Final whole-branch review
-Dispatched on Opus (holistic cohesion + contract-consistency + merge-readiness). Outcome recorded here once it returns.
+APPROVED FOR MERGE (Opus, read-only). No Critical/Important. Contract-consistency ✅ across all 5 layers; image URL round-trip verified inverse; font allowlist↔imports↔deps 1:1; zero POS/Booking source touched. Two Minors are the documented v1.1 follow-ups (admin-card first-paint slug='' cosmetic; useBrand no auto-refetch).
 
 ### Deferred v1.1 follow-ups (non-blocking, logged in ledger)
 - Hero drag-reorder + per-slide delete (form currently appends).
