@@ -81,8 +81,18 @@ describe('GET /api/public/brand/:slug/image/:key', () => {
     expect(res.headers.get('content-type')).toBe('image/png');
   });
 
-  test('foreign/unowned but well-formed key → 404 (leak guard)', async () => {
-    const foreign = `brand/${clientId}/logo_alt`; // valid shape, not stored/owned
+  test('same-tenant well-formed but unstored key → 404 (unowned-column guard)', async () => {
+    const unowned = `brand/${clientId}/logo_alt`; // valid shape, not stored/owned
+    expect((await pubBrandImageHandler(get(`/api/public/brand/${slug}/image/${unowned}`))).status).toBe(404);
+  });
+
+  test('cross-tenant key (foreign uuid) routed via this slug → 404 (leak guard)', async () => {
+    // A structurally-valid key whose embedded uuid is a DIFFERENT client.
+    // The ownership WHERE clause pins on THIS slug's clientId, so it must miss.
+    const foreignUuid = '99999999-9999-4999-8999-999999999999';
+    const foreign = `brand/${foreignUuid}/logo`;
+    // Even if the attacker also seeds the blob, the DB ownership check gates it.
+    blobStore.set(foreign, new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer);
     expect((await pubBrandImageHandler(get(`/api/public/brand/${slug}/image/${foreign}`))).status).toBe(404);
   });
 

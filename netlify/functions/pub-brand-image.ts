@@ -29,7 +29,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Structural guard first (no blob enumeration on malformed keys).
   if (!isAllowedBrandKey(key)) return jsonError(404, 'not_found');
-  if (!key.startsWith('brand/')) return jsonError(404, 'not_found'); // known-prefix, defense-in-depth
+  // Known-prefix routing (defense-in-depth). Currently redundant — the
+  // structural guard's regex already anchors on `^brand/` — but kept so the
+  // store-routing invariant survives if isAllowedBrandKey is ever loosened.
+  if (!key.startsWith('brand/')) return jsonError(404, 'not_found');
 
   const sql = db();
   const owner = (await sql`
