@@ -4,6 +4,7 @@ import { useUserAuth } from '../user-auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
 import { userLinkGoogle, userUnlinkGoogle } from '../api';
 import WorkspaceExportCard from '../../ams/components/settings/WorkspaceExportCard';
+import WorkspaceBrandingCard from '../../branding/WorkspaceBrandingCard';
 
 export default function UserAccount() {
   const { slug } = useParams<{ slug: string }>();
@@ -94,6 +95,7 @@ export default function UserAccount() {
       </div>
 
       <WorkspaceExportCard />
+      <WorkspaceBrandingCard />
     </div>
   );
 }

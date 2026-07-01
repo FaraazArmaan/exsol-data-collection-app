@@ -12,6 +12,7 @@ import {
 } from '../api';
 import { ClientProductsSection } from '../../admin/components/ClientProductsSection';
 import AdminWorkspaceExportCard from '../components/settings/AdminWorkspaceExportCard';
+import AdminWorkspaceBrandingCard from '../../branding/AdminWorkspaceBrandingCard';
 import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';
 import { BulkActionBar } from '../../shared/team-modals/BulkActionBar';
 import { buildAdminApi } from '../components/team-modal-api';
@@ -342,6 +343,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
         <ClientProductsSection clientId={clientId} />
 
         <AdminWorkspaceExportCard clientId={clientId} slug={clientSlug} />
+        <AdminWorkspaceBrandingCard clientId={clientId} slug={clientSlug} />
       </section>
     </DndContext>
   );
