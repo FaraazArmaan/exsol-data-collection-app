@@ -24,20 +24,24 @@ Success = one L1 Owner uploads their brand once, and every public surface (POS `
 - New public endpoints `GET /api/public/brand/:slug` and `GET /api/public/brand/:slug/image/:key`.
 - New authed endpoints `POST /api/client-settings/brand-image` and `PATCH /api/client-settings/brand`.
 - New shared FE module `src/modules/branding/`:
-  - `branding.ts` — `isHexColor`, `onAccent`, `dominantColorFromPixels`, `suggestAccentFromLogo`, curated Google Fonts allowlist.
-  - `BrandShell.tsx` — applies `data-theme` + inline `--accent`/`--accent-hover`/`--text-on-accent`/`--brand-font-heading`/`--brand-font-body` custom properties; injects favicon/apple-touch-icon and Google Fonts `<link>` tags; renders logo + hero carousel.
+  - `branding.ts` — `isHexColor`, `onAccent`, `dominantColorFromPixels`, `suggestAccentFromLogo`, the curated font allowlist + `isAllowlistedFont`.
+  - `downscale.ts` — `downscaleImage(file, kind)` client-side canvas downscaler (bounds every uploaded asset before POST).
+  - `brand-fonts.ts` — aggregator that imports the self-hosted `@fontsource*` families in the allowlist (see §6.8). Imported once at app root.
+  - `BrandShell.tsx` — applies `data-theme` + inline `--accent`/`--accent-hover`/`--text-on-accent`/`--brand-font-heading`/`--brand-font-body` custom properties; injects favicon/apple-touch-icon `<link>` tags; renders logo + hero carousel. (No runtime font `<link>` — fonts are self-hosted `@font-face`, lazy-fetched by the browser only when a family is actually referenced.)
   - `BrandHero.tsx` — hand-rolled auto-rotating carousel (5s, dots, prev/next, respects `prefers-reduced-motion`).
   - `useBrand.ts` — hook: `useBrand(slug) → { brand, loading, error }`.
   - `WorkspaceBrandingCard.tsx` — bucket-user settings card.
   - `AdminWorkspaceBrandingCard.tsx` — admin wrapper (mirrors the workspace-backup pattern).
+- New `@fontsource*` npm dependencies for the ~14 allowlisted families (self-hosted WOFF2 static assets; see §6.8).
 - CSS additions to `src/lib/components.css`:
   - Light-theme token overrides scoped to `[data-theme="light"]`.
   - `.brand-logo`, `.brand-hero`, `.brand-hero-carousel`, `.brand-card` styles.
+  - Heading/body font application via `--brand-font-heading` / `--brand-font-body`.
 - Consume contract (handback): TypeScript types + endpoint shapes documented in §9, so POS and Booking chats can refactor to it.
 
 **Out of scope**
 
-- Custom self-hosted font uploads (v1 uses a curated Google Fonts allowlist; WOFF2 upload is v2).
+- Tenant-provided custom font file uploads (v1 self-hosts a curated allowlist; letting a tenant upload their own WOFF2 is v2).
 - Per-slide carousel captions / CTA links / transition timing controls (v2 via JSONB).
 - Custom domains, per-surface theme overrides, animations, live preview panel.
 - SSR-injected OG meta tags (this spec stores the `social_key` and returns `socialUrl`; head-injection for share cards is a follow-up when SSR lands).
@@ -51,7 +55,9 @@ Success = one L1 Owner uploads their brand once, and every public surface (POS `
 | Namespace | `brand_*` on `public.clients` | ADR-0001. Brand-neutral so Booking/future modules don't feel POS-shaped. |
 | Migration approach | Fresh additive columns; POS v3 chat drops their unreleased mig 046 | POS v3 is unmerged; no prod data to rename. Cleanest. |
 | Migration number | `050` (next free after prod 049) | Verified via memory + `git log origin/main`. Coordinate with Booking chat before locking. |
-| Font strategy | Curated Google Fonts allowlist (~30 families), heading + body separately | Industry-standard (Shopify/Squarespace split). Allowlist prevents arbitrary CSS injection; Google Fonts loads via `<link>`. Custom uploads deferred to v2. |
+| Font strategy | Curated **self-hosted** allowlist (~14 families via `@fontsource*`), heading + body separately | Industry-standard split (Shopify/Squarespace). Self-hosting the allowlist keeps all font requests same-origin: no third-party CDN, GDPR-clean (no visitor-IP logging by Google), no CSP `font-src` allowlist needed, faster (no extra DNS/connection). Allowlist still prevents arbitrary CSS injection — an unknown family has no `@font-face` and falls through to the system stack. Tenant-uploaded custom fonts deferred to v2. |
+| Font loading mechanism | One global `brand-fonts.css` importing all allowlist `@fontsource*` families; browser lazy-fetches a WOFF2 only when a family is actually rendered | `@font-face` sources are lazy by spec — declaring 14 families costs nothing until one is used. Simpler than runtime `<link>` injection (no dedup/cleanup logic in `BrandShell`) and no FOUT-management code. |
+| Uploaded image sizing | **Client-side canvas downscale** before POST, per kind (favicon→64px, app_icon→512px, logo→≤400px, social→≤1200px, hero→≤1600px), output WebP | A favicon `<link>` must not point at a multi-MB image on every branded page load. Canvas downscale bounds every asset with zero new deps and reuses the existing upload pipeline. The 5 MB server cap + magic-byte sniff remain the authoritative guard (client downscale is UX/perf, bypassable by a malicious client — so the server still validates). |
 | Logo kinds | 5 stable-key kinds: `logo`, `logo_alt`, `favicon`, `app_icon`, `social` | Matches Shopify + Squarespace + PWA/OpenGraph conventions. Enough for headers, inverse backgrounds, browser tabs, iOS/Android home-screen, and social share cards. |
 | Hero storage | `text[]` array of blob keys with per-slide UUID | Ordered carousel; PATCH `heroKeys` array replaces atomically. Simpler than a child table. No per-slide metadata in v1. |
 | Blob store name | `'brand'` (single store; kind encoded in key path) | Renamed from `'storefront-branding'`. Since POS v3 is unmerged, no prod blobs exist under the old name — no data migration. |
@@ -242,59 +248,44 @@ Verbatim port of `pos/lib/branding.ts` (already tested in POS v3):
 - `isHexColor`, `toRgb`, `onAccent` (WCAG relative luminance → `'#161616' | '#ffffff'`).
 - `dominantColorFromPixels`, `suggestAccentFromLogo`.
 
-Additionally exports the **curated Google Fonts allowlist**:
+Additionally exports the **curated self-hosted font allowlist** (families vendored via `@fontsource*`; see §6.8). Each entry's `family` string is the exact CSS `font-family` name the corresponding `@fontsource` package registers, so setting `--brand-font-heading: "Inter"` resolves against the self-hosted `@font-face`.
 ```ts
 export const BRAND_FONT_ALLOWLIST: readonly {
-  family: string;
+  family: string;                                  // CSS font-family name (matches @fontsource)
   category: 'sans' | 'serif' | 'display' | 'mono';
-  weights: readonly number[];
+  pkg: string;                                      // npm package to import in brand-fonts.css
+  variable: boolean;                                // true → @fontsource-variable
 }[] = [
-  { family: 'Inter',           category: 'sans',    weights: [400, 500, 600, 700] },
-  { family: 'Roboto',          category: 'sans',    weights: [400, 500, 700] },
-  { family: 'Open Sans',       category: 'sans',    weights: [400, 600, 700] },
-  { family: 'Lato',            category: 'sans',    weights: [400, 700] },
-  { family: 'Montserrat',      category: 'sans',    weights: [400, 600, 700] },
-  { family: 'Poppins',         category: 'sans',    weights: [400, 500, 600, 700] },
-  { family: 'Nunito',          category: 'sans',    weights: [400, 600, 700] },
-  { family: 'Work Sans',       category: 'sans',    weights: [400, 500, 700] },
-  { family: 'Merriweather',    category: 'serif',   weights: [400, 700] },
-  { family: 'Playfair Display',category: 'serif',   weights: [400, 700] },
-  { family: 'Lora',            category: 'serif',   weights: [400, 700] },
-  { family: 'Source Serif Pro',category: 'serif',   weights: [400, 700] },
-  { family: 'PT Serif',        category: 'serif',   weights: [400, 700] },
-  { family: 'Crimson Pro',     category: 'serif',   weights: [400, 700] },
-  { family: 'Bebas Neue',      category: 'display', weights: [400] },
-  { family: 'Anton',           category: 'display', weights: [400] },
-  { family: 'Righteous',       category: 'display', weights: [400] },
-  { family: 'Fjalla One',      category: 'display', weights: [400] },
-  { family: 'JetBrains Mono',  category: 'mono',    weights: [400, 500, 700] },
-  { family: 'Fira Code',       category: 'mono',    weights: [400, 500, 700] },
-  { family: 'Space Mono',      category: 'mono',    weights: [400, 700] },
-  // …targeting ~30 total; exact list finalized during implementation
+  { family: 'Inter',            category: 'sans',    pkg: '@fontsource-variable/inter',            variable: true },
+  { family: 'Roboto',           category: 'sans',    pkg: '@fontsource-variable/roboto',           variable: true },
+  { family: 'Open Sans',        category: 'sans',    pkg: '@fontsource-variable/open-sans',        variable: true },
+  { family: 'Montserrat',       category: 'sans',    pkg: '@fontsource-variable/montserrat',       variable: true },
+  { family: 'Poppins',          category: 'sans',    pkg: '@fontsource/poppins',                   variable: false },
+  { family: 'Work Sans',        category: 'sans',    pkg: '@fontsource-variable/work-sans',        variable: true },
+  { family: 'Merriweather',     category: 'serif',   pkg: '@fontsource-variable/merriweather',     variable: true },
+  { family: 'Playfair Display', category: 'serif',   pkg: '@fontsource-variable/playfair-display', variable: true },
+  { family: 'Lora',             category: 'serif',   pkg: '@fontsource-variable/lora',             variable: true },
+  { family: 'PT Serif',         category: 'serif',   pkg: '@fontsource/pt-serif',                  variable: false },
+  { family: 'Bebas Neue',       category: 'display', pkg: '@fontsource/bebas-neue',                variable: false },
+  { family: 'Anton',            category: 'display', pkg: '@fontsource/anton',                     variable: false },
+  { family: 'JetBrains Mono',   category: 'mono',    pkg: '@fontsource-variable/jetbrains-mono',   variable: true },
+  { family: 'Space Mono',       category: 'mono',    pkg: '@fontsource/space-mono',                variable: false },
 ] as const;
 
 export function isAllowlistedFont(family: string | null | undefined): boolean {
   if (!family) return false;
   return BRAND_FONT_ALLOWLIST.some((f) => f.family === family);
 }
-
-export function googleFontsLinkHref(families: readonly string[]): string | null {
-  const allowed = families.filter(isAllowlistedFont);
-  if (allowed.length === 0) return null;
-  const familyParams = allowed.map((f) => {
-    const meta = BRAND_FONT_ALLOWLIST.find((x) => x.family === f)!;
-    return `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@${meta.weights.join(';')}`;
-  }).join('&');
-  return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
-}
 ```
+
+No runtime URL builder is needed — the `@font-face` declarations come from the statically-imported `brand-fonts.css` (§6.8). `isAllowlistedFont` is used by the settings UI to gate the picker and by any consumer that wants to defensively validate a stored family before applying it.
 
 ### 6.2 `src/modules/branding/BrandShell.tsx`
 
 ```tsx
 import { useEffect } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { onAccent, googleFontsLinkHref } from './branding';
+import { onAccent } from './branding';
 import type { Brand } from './types';
 
 interface Props {
@@ -315,7 +306,9 @@ export function BrandShell({ brand, fallbackName, children }: Props) {
   if (brand?.fontHeading) style['--brand-font-heading'] = `"${brand.fontHeading}", var(--font-sans)`;
   if (brand?.fontBody)    style['--brand-font-body']    = `"${brand.fontBody}", var(--font-sans)`;
 
-  // Head-injection: favicon, apple-touch-icon, Google Fonts <link>.
+  // Head-injection: favicon + apple-touch-icon only. Fonts are self-hosted
+  // @font-face (see §6.8) resolved via the --brand-font-* custom props above;
+  // no runtime font <link> needed.
   useEffect(() => {
     const created: HTMLElement[] = [];
     const upsert = (rel: string, href: string) => {
@@ -332,10 +325,8 @@ export function BrandShell({ brand, fallbackName, children }: Props) {
     };
     if (brand?.faviconUrl) upsert('icon', brand.faviconUrl);
     if (brand?.appIconUrl) upsert('apple-touch-icon', brand.appIconUrl);
-    const fontHref = googleFontsLinkHref([brand?.fontHeading, brand?.fontBody].filter(Boolean) as string[]);
-    if (fontHref) upsert('stylesheet', fontHref);
     return () => { created.forEach((el) => el.remove()); };
-  }, [brand?.faviconUrl, brand?.appIconUrl, brand?.fontHeading, brand?.fontBody]);
+  }, [brand?.faviconUrl, brand?.appIconUrl]);
 
   return (
     <div className="brand-shell" data-theme={theme} style={style}>
@@ -405,7 +396,7 @@ Sections (collapsible or stacked):
 3. **Colors** — accent color picker (hex input + swatch); "Suggest from primary logo" button runs `suggestAccentFromLogo` on the currently-uploaded primary. Theme toggle (dark / light).
 4. **Typography** — heading + body font pickers, each a `<select>` populated from `BRAND_FONT_ALLOWLIST` grouped by category. Preview text at chosen font.
 
-Save is per-section (PATCH partial). Uploads happen inline (POST returns key → next PATCH includes it). No FE state machine beyond section-level `busy` flags.
+Save is per-section (PATCH partial). Every uploaded file is passed through `downscaleImage(file, kind)` (§6.9) before the POST — so the blob written is already bounded. Uploads happen inline (POST returns key → next PATCH includes it). No FE state machine beyond section-level `busy` flags.
 
 Mounts on `/c/:slug/account` after the `<WorkspaceExportCard />`.
 
@@ -430,6 +421,83 @@ Mounts on `/clients/:clientId` (AccessDashboard) after `<AdminWorkspaceExportCar
 - **Card rules**: `.brand-card` (mirrors `.ams-export-card` conventions after the workspace-backup theme fix); `.brand-card-section`; `.brand-upload-slot` (dashed border, hover state).
 - **Font application**: `.brand-shell h1, .brand-shell h2, .brand-shell h3 { font-family: var(--brand-font-heading, inherit); }` and `.brand-shell { font-family: var(--brand-font-body, inherit); }`.
 
+### 6.8 Self-hosted fonts — `src/modules/branding/brand-fonts.ts`
+
+The ~14 allowlisted families are vendored as `@fontsource*` npm packages (self-hosted WOFF2 static assets, no third-party CDN). A single aggregator module imports them all; it is imported once at the app root (e.g. `src/main.tsx`), so every consumer surface has the `@font-face` declarations available.
+
+```ts
+// src/modules/branding/brand-fonts.ts  (imported once at app root)
+// Each import registers @font-face for one allowlisted family. WOFF2 sources
+// are lazy: the browser fetches a family's file only when something actually
+// renders in that font-family, so importing all 14 costs ~0 until used.
+import '@fontsource-variable/inter';
+import '@fontsource-variable/roboto';
+import '@fontsource-variable/open-sans';
+import '@fontsource-variable/montserrat';
+import '@fontsource/poppins/400.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
+import '@fontsource-variable/work-sans';
+import '@fontsource-variable/merriweather';
+import '@fontsource-variable/playfair-display';
+import '@fontsource-variable/lora';
+import '@fontsource/pt-serif/400.css';
+import '@fontsource/pt-serif/700.css';
+import '@fontsource/bebas-neue/400.css';
+import '@fontsource/anton/400.css';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
+```
+
+Notes:
+- Variable families (`@fontsource-variable/*`) register one WOFF2 covering all weights; non-variable families import the specific weights the allowlist declares.
+- The exact package names must be verified against npm at implementation time (a couple may only exist as non-variable). The `pkg`/`variable` fields on `BRAND_FONT_ALLOWLIST` are the source of truth; keep the import list and the allowlist in sync.
+- Bundle-size note: these are static font assets served on demand, NOT bundled into the JS. Total vendored footprint ≈ 1–1.5 MB across 14 families, and a given visitor only downloads the 0–2 families their tenant selected.
+
+### 6.9 Client-side downscale — `src/modules/branding/downscale.ts`
+
+Bounds every uploaded asset before it is POSTed, so no oversized blob (e.g. a multi-MB favicon) is ever stored or served.
+
+```ts
+export type DownscaleKind = 'logo' | 'logo_alt' | 'favicon' | 'app_icon' | 'social' | 'hero';
+
+// Longest-edge cap per kind (px). Aspect ratio preserved; no upscaling.
+const MAX_EDGE: Record<DownscaleKind, number> = {
+  favicon: 64, app_icon: 512, logo: 400, logo_alt: 400, social: 1200, hero: 1600,
+};
+
+/**
+ * Downscale `file` to the per-kind longest-edge cap and re-encode as WebP.
+ * Returns a new File (WebP, name suffixed .webp). If the image already fits
+ * and decode succeeds, still re-encodes to WebP for consistent output.
+ * On any decode/encode failure, returns the original file unchanged (the
+ * server-side 5 MB cap + magic-byte sniff remain the authoritative guard).
+ */
+export async function downscaleImage(file: File, kind: DownscaleKind): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const cap = MAX_EDGE[kind];
+    const scale = Math.min(1, cap / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/webp', 0.9));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+  } catch {
+    return file;
+  }
+}
+```
+
+`image/webp` is in `BRAND_ALLOWED_MIME`, so downscaled output passes the server's magic-byte check. Favicon/app-icon transparency is preserved (WebP supports alpha).
+
 ## 7. Testing
 
 ### 7.1 Unit tests (~15)
@@ -439,13 +507,13 @@ Ported / new:
 - `dominantColorFromPixels`: solid red image → returns a red hex; near-white/black rejected; low-saturation rejected.
 - `suggestAccentFromLogo`: (skip in CI — needs `createImageBitmap`; smoke-test in browser).
 - `isHexColor`: valid/invalid variants.
-- `isAllowlistedFont`: family in / not in the allowlist.
-- `googleFontsLinkHref`: builds correct URL for supplied families; returns null for empty or unknown-only.
+- `isAllowlistedFont`: family in / not in the allowlist; null/undefined → false.
+- `downscaleImage`: (jsdom lacks `createImageBitmap`/canvas `toBlob` — assert the graceful-fallback path returns the original file when decode is unavailable; the real downscale is browser-smoke-tested). Assert `MAX_EDGE` caps are the intended values via a small exported accessor or by importing the constant.
 - `sniffImageMime`: each of PNG/JPEG/GIF/WebP; WebP length-guard; unknown → null.
 - `isAllowedBrandKey`: 5 stable kinds + hero pattern; foreign clientId rejected; typos rejected.
 - `brandKey` / `heroKey`: format matches the regex.
 - `useBrand`: success sets `brand`; HTTP error sets `error`; slug null → idle.
-- `BrandShell`: sets `data-theme`; inline accent vars when accent set; inline font vars when family set; head-injection for favicon/apple-touch/fonts on mount; cleanup on unmount.
+- `BrandShell`: sets `data-theme`; inline accent vars when accent set; inline `--brand-font-*` vars when family set; head-injection for favicon + apple-touch-icon on mount (NOT fonts — those are self-hosted `@font-face`); cleanup on unmount.
 - `BrandHero`: single slide static; multi-slide auto-rotates; `prefers-reduced-motion` pauses; keyboard navigation.
 
 ### 7.2 Integration tests (~10)
@@ -482,7 +550,8 @@ Ported / new:
 
 - Migration 050 is additive → standard deploy order (code first is safe; migration first is also safe).
 - No new env vars.
-- No new npm dependencies (carousel + font-picker hand-rolled; Google Fonts uses public CDN).
+- **New npm dependencies:** ~14 `@fontsource*` packages (self-hosted font assets; static files, no runtime code). Verify each package name resolves on npm at implementation time. The carousel, font-picker, and image downscaler are hand-rolled (no deps). No new backend deps — `sharp` is explicitly avoided (client-side downscale handles sizing).
+- Vite serves the `@fontsource` WOFF2 files as static assets; confirm the build emits them (they should appear under `dist/assets/`). No `external_node_modules` change needed (fonts are FE assets, not function deps).
 - Post-deploy smoke:
   1. Probe the 4 new endpoints via curl (`/api/public/brand/:slug`, `/api/public/brand/:slug/image/:key`, `POST /api/client-settings/brand-image` with a real cookie, `PATCH /api/client-settings/brand`). Expect 401/404 on the public ones without a real seeded workspace; expect 405 on wrong method.
   2. Netlify new-function trap: check for 404 on the four new endpoints. If any 404s, `netlify api restoreSiteDeploy` per the memory note.
