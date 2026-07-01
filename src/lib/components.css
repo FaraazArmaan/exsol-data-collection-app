@@ -591,3 +591,71 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-manage-link { display: flex; flex-direction: column; gap: 6px; }
 .booking-link-row { display: flex; gap: 8px; align-items: center; }
 .booking-link-row input { flex: 1; font-family: var(--font-mono); font-size: 0.82rem; }
+
+/* ── Platform branding ──────────────────────────────────────────────── */
+/* Light-theme token overrides, scoped so the default dark app is untouched. */
+.brand-shell[data-theme="light"] {
+  --bg-base:        #faf8f3;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f2eee6;
+  --border-subtle:  #e7e2d8;
+  --border-default: #d8d2c6;
+  --border-strong:  #c3bcae;
+  --text-primary:   #1f1c17;
+  --text-secondary: #555047;
+  --text-muted:     #8a8478;
+}
+
+.brand-shell {
+  min-height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--brand-font-body, var(--font-sans));
+}
+.brand-shell h1, .brand-shell h2, .brand-shell h3 {
+  font-family: var(--brand-font-heading, var(--font-sans));
+}
+.brand-header { display: flex; align-items: center; justify-content: center; padding: 16px; }
+.brand-logo { max-height: 40px; object-fit: contain; }
+.brand-tenant { font-size: 18px; font-weight: 600; }
+/* Content column — load-bearing. POS's storefront layout previously got its
+   max-width/margins from .storefront-main; after the .brand-shell rename those
+   rules orphan, so .brand-main carries the column (POS consume-review
+   finding 2). POS re-scopes its narrower per-page rules under .brand-shell. */
+.brand-main { max-width: 880px; margin: 0 auto; padding: 16px; width: 100%; box-sizing: border-box; }
+
+/* Hero carousel */
+.brand-hero-carousel { position: relative; }
+.brand-hero { width: 100%; max-height: 360px; object-fit: cover; border-radius: var(--radius-md, 8px); display: block; }
+.brand-hero-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,0.4); color: #fff; border: none; border-radius: 999px;
+  width: 36px; height: 36px; font-size: 22px; cursor: pointer;
+}
+.brand-hero-prev { left: 8px; }
+.brand-hero-next { right: 8px; }
+.brand-hero-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
+.brand-hero-dot { width: 8px; height: 8px; border-radius: 999px; border: none; background: rgba(255,255,255,0.5); cursor: pointer; padding: 0; }
+.brand-hero-dot.is-active { background: #fff; }
+
+/* Branding settings card (mirrors .ams-export-card conventions) */
+.brand-card {
+  border: 1px solid var(--border-default, #3a3a3a);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px 20px;
+  margin-top: 24px;
+  background: var(--bg-surface, #1f1f1f);
+  color: var(--text-primary, #ece8df);
+}
+.brand-card h3 { margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary, #ece8df); }
+.brand-card p  { margin: 0 0 12px 0; color: var(--text-secondary, #a8a39a); }
+.brand-card-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle, #2e2e2e); }
+.brand-card-section:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+.brand-card-error { color: var(--danger, #c97064); margin-top: 8px; }
+.brand-upload-slot {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+  border: 1px dashed var(--border-default, #3a3a3a); border-radius: var(--radius-sm, 4px);
+  padding: 10px; min-width: 96px;
+}
+.brand-upload-slot img { max-width: 72px; max-height: 72px; object-fit: contain; }
+.brand-swatch { width: 28px; height: 28px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-default, #3a3a3a); display: inline-block; vertical-align: middle; }
