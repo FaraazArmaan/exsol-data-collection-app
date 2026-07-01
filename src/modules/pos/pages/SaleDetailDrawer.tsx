@@ -25,17 +25,21 @@ export function SaleDetailDrawer(props: {
   async function doAction(a: FsmAction) {
     try {
       // The POST /state response is the authoritative just-written sale row.
-      // Use it for the sale fields (status, *_at) so an eventually-consistent /
-      // lagging refetch read can't leave the UI showing the old status. The
-      // refetch only backfills lines + audit, and is best-effort.
       const updated = await posApi.transition(props.saleId, {
         action: a,
         ...(a === 'markPaid' ? { paymentMethod: 'cash' as const } : {}),
       });
-      let detail: any = sale;
-      try { detail = await posApi.getSale(props.saleId); } catch { /* keep prior lines/audit */ }
-      setSale({ ...detail, ...updated });
+      // Flip the status the instant the POST returns — don't gate the visible
+      // update behind the (cold, slow) refetch. `updated` is spread last so it
+      // always wins over the prior/stale row.
+      setSale((s: any) => ({ ...s, ...updated }));
       props.onChanged();
+      // Best-effort backfill of lines + audit; status is already correct above,
+      // and an eventually-consistent/lagging read still can't override it.
+      try {
+        const detail = await posApi.getSale(props.saleId);
+        setSale((s: any) => ({ ...detail, ...updated }));
+      } catch { /* keep the optimistic row */ }
     } catch (e) {
       if (e instanceof PosApiError) setErr(e.code);
     }
