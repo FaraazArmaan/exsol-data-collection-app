@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
 import { userLinkGoogle, userUnlinkGoogle } from '../api';
+import WorkspaceBrandingCard from '../../branding/WorkspaceBrandingCard';
 
 export default function UserAccount() {
   const { slug } = useParams<{ slug: string }>();
@@ -91,6 +92,8 @@ export default function UserAccount() {
       <div style={{ marginTop: 16 }}>
         <Link to={`/c/${slug}/change-password`} className="btn btn-secondary">Change password</Link>
       </div>
+
+      <WorkspaceBrandingCard />
     </div>
   );
 }
