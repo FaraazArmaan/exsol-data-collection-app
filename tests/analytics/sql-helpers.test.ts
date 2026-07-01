@@ -21,6 +21,12 @@ describe('compareWindow', () => {
   it('none returns null', () => {
     expect(compareWindow('2026-06-08', '2026-06-14', 'none')).toBeNull();
   });
+  it('prior_year handles a leap day by rolling into March (no invalid date)', () => {
+    // 2024-02-29 has no counterpart in 2023 → JS Date rolls to 2023-03-01.
+    expect(compareWindow('2024-02-29', '2024-02-29', 'prior_year')).toEqual({
+      from: '2023-03-01', to: '2023-03-01',
+    });
+  });
 });
 
 describe('pctDelta', () => {

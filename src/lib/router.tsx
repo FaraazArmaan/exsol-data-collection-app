@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
@@ -33,7 +34,9 @@ import AdminProductsListPage from '../modules/products/admin/AdminProductsListPa
 import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
 import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
 import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
-import AnalyticsRouteMount from '../modules/analytics/AnalyticsRouteMount';
+// Lazy-loaded so the analytics bundle (incl. recharts) is a separate chunk
+// fetched only when a user opens Analytics — keeps the main bundle lean.
+const AnalyticsRouteMount = lazy(() => import('../modules/analytics/AnalyticsRouteMount'));
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
@@ -109,7 +112,11 @@ export const router = createBrowserRouter([
               { path: 'booking/services', element: <BookingServicesMount /> },
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
-              { path: 'analytics', element: <AnalyticsRouteMount /> },
+              { path: 'analytics', element: (
+                <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
+                  <AnalyticsRouteMount />
+                </Suspense>
+              ) },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
