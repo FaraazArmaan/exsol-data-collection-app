@@ -3,6 +3,7 @@ import { bookingApi, BookingApiError, type VendorService, type VendorResource, t
 import { formatRupees } from '../format';
 import { ONLINE_PAYMENTS_ENABLED } from '../config';
 import { BookingTabs } from './BookingTabs';
+import { ServiceEditDrawer } from './ServiceEditDrawer';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
@@ -11,6 +12,7 @@ export default function ServicesPage({ slug, perms }: Props) {
   const [services, setServices] = useState<VendorService[] | null>(null);
   const [resources, setResources] = useState<VendorResource[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<VendorService | null>(null);
 
   // create-form state
   const [name, setName] = useState('');
@@ -51,7 +53,10 @@ export default function ServicesPage({ slug, perms }: Props) {
           {services.map((s) => (
             <tr key={s.id}>
               <td>{s.name}</td><td>{s.duration_min} min</td><td>{formatRupees(s.price_cents)}</td><td>{s.payment_mode.replace('_', ' ')}</td>
-              {canEdit ? <td><button className="btn btn-ghost btn-danger" onClick={() => remove(s.id)}>Deactivate</button></td> : null}
+              {canEdit ? <td className="booking-row-actions">
+                <button className="btn btn-ghost" onClick={() => setEditing(s)}>Edit</button>
+                <button className="btn btn-ghost btn-danger" onClick={() => remove(s.id)}>Deactivate</button>
+              </td> : null}
             </tr>
           ))}
           {services.length === 0 ? <tr><td colSpan={5} className="muted">No services yet.</td></tr> : null}
@@ -86,6 +91,8 @@ export default function ServicesPage({ slug, perms }: Props) {
           <button className="btn btn-primary" type="submit" disabled={saving || !name.trim()}>{saving ? 'Adding…' : 'Add service'}</button>
         </form>
       ) : null}
+
+      {editing ? <ServiceEditDrawer service={editing} resources={resources} onClose={() => setEditing(null)} onSaved={reload} /> : null}
     </div>
   );
 }

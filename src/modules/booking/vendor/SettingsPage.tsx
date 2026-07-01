@@ -15,6 +15,7 @@ export default function SettingsPage({ slug, perms }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [newDate, setNewDate] = useState('');
 
   useEffect(() => { bookingApi.getSettings().then(setS).catch(() => setError('load_error')); }, []);
   if (error === 'load_error') return <p className="error">Couldn’t load settings.</p>;
@@ -24,6 +25,19 @@ export default function SettingsPage({ slug, perms }: Props) {
     setS((prev) => prev && ({ ...prev, weekly_schedule: { ...prev.weekly_schedule, [day]: open && close ? [{ open, close }] : [] } }));
   }
   function win(day: string) { return s!.weekly_schedule[day]?.[0] ?? { open: '', close: '' }; }
+
+  function addClosedDate() {
+    if (!newDate) return;
+    setS((prev) => {
+      if (!prev) return prev;
+      if (prev.date_overrides.some((o) => o.date === newDate)) return prev; // no dupes
+      return { ...prev, date_overrides: [...prev.date_overrides, { date: newDate, closed: true }].sort((a, b) => a.date.localeCompare(b.date)) };
+    });
+    setNewDate('');
+  }
+  function removeOverride(date: string) {
+    setS((prev) => prev && ({ ...prev, date_overrides: prev.date_overrides.filter((o) => o.date !== date) }));
+  }
 
   async function save() {
     if (!s) return;
@@ -62,6 +76,26 @@ export default function SettingsPage({ slug, perms }: Props) {
             </div>
           );
         })}
+      </div>
+
+      <div className="card">
+        <h2 className="section-title">Closed dates (holidays)</h2>
+        <ul className="booking-list-plain">
+          {s.date_overrides.filter((o) => o.closed).map((o) => (
+            <li key={o.date}>
+              <span>{new Date(`${o.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              {canEdit ? <button className="btn btn-ghost" onClick={() => removeOverride(o.date)}>Remove</button> : null}
+            </li>
+          ))}
+          {s.date_overrides.filter((o) => o.closed).length === 0 ? <li className="muted">No closed dates.</li> : null}
+        </ul>
+        {canEdit ? (
+          <div className="booking-form-inline">
+            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+            <button type="button" className="btn btn-secondary" onClick={addClosedDate} disabled={!newDate}>Add closed date</button>
+          </div>
+        ) : null}
+        <p className="muted">Closed dates block all online bookings for that day. Remember to Save.</p>
       </div>
 
       {error ? <p className="error">Couldn’t save ({error}).</p> : null}
