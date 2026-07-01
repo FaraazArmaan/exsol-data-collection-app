@@ -734,3 +734,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 .booking-sf-avatar { width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--text-on-accent); font-size: 24px; font-weight: 700; }
 .booking-sf-sub { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Calendar view toggle + week view */
+.booking-viewtoggle { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-sm); overflow: hidden; }
+.booking-viewtoggle button { padding: 8px 14px; background: var(--bg-surface); border: 0; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 14px; }
+.booking-viewtoggle button.is-active { background: var(--accent); color: var(--text-on-accent); }
+.booking-week { display: grid; gap: 8px; overflow-x: auto; }
+.booking-week-col { display: flex; flex-direction: column; gap: 8px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 8px; min-height: 220px; }
+.booking-week-col.is-today { border-color: var(--accent); }
+.booking-week-colhead { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; background: none; border: 0; border-bottom: 1px solid var(--border-subtle); cursor: pointer; color: var(--text-primary); font: inherit; }
+.booking-week-colhead span { font-size: 11px; text-transform: uppercase; color: var(--text-muted); }
+.booking-week-colhead strong { font-size: 16px; }
+.booking-week-colhead:hover strong { color: var(--accent); }
+.booking-week-list { display: flex; flex-direction: column; gap: 6px; }
+.booking-week-card { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; text-align: left; padding: 6px 8px; border-radius: 6px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-left: 3px solid var(--accent); color: var(--text-primary); font: inherit; cursor: pointer; }
+.booking-week-card:hover { border-color: var(--accent); }
+.booking-week-res { font-size: 11px; color: var(--text-muted); }
+.booking-week-empty { color: var(--text-muted); text-align: center; padding: 8px 0; font-size: 12px; }
