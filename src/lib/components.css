@@ -623,3 +623,43 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .block-completed { border-left-color: var(--text-muted); opacity: 0.75; }
 .block-cancelled { border-left-color: var(--danger); opacity: 0.5; }
 .block-no_show   { border-left-color: var(--danger); }
+
+/* ═══════════ Booking public storefront — redesign ═══════════ */
+.booking-sf { min-height: 100vh; background: var(--bg-base); padding: 48px 16px 80px; }
+.booking-sf-col { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.booking-sf-header { text-align: center; }
+.booking-sf-brandline { text-transform: uppercase; letter-spacing: 1.5px; font-size: 11px; color: var(--text-muted); }
+.booking-sf-title { margin: 6px 0 0; font-size: 28px; font-weight: 700; color: var(--text-primary); }
+.booking-sf-footer { text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+.booking-sf-empty { color: var(--text-muted); text-align: center; padding: 24px 0; }
+.booking-sf-heading { margin: 0 0 14px; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.booking-sf-body { display: flex; flex-direction: column; }
+.booking-sf-notice { margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--danger); color: var(--danger); font-size: 13px; }
+
+/* Step indicator */
+.booking-sf-steps { display: flex; list-style: none; padding: 0; margin: 0; }
+.booking-sf-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; color: var(--text-muted); font-size: 12px; }
+.booking-sf-step::before { content: ''; position: absolute; top: 13px; left: -50%; width: 100%; height: 2px; background: var(--border-default); z-index: 0; }
+.booking-sf-step:first-child::before { display: none; }
+.booking-sf-step-dot { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-elevated); border: 2px solid var(--border-default); color: var(--text-muted); font-weight: 600; font-size: 13px; }
+.booking-sf-step.is-active, .booking-sf-step.is-done { color: var(--text-primary); }
+.booking-sf-step.is-active .booking-sf-step-dot { border-color: var(--accent); color: var(--accent); }
+.booking-sf-step.is-done .booking-sf-step-dot { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+.booking-sf-step.is-active::before, .booking-sf-step.is-done::before { background: var(--accent); }
+
+/* Service list cards (full-width rows) */
+.booking-service-cards { display: flex; flex-direction: column; gap: 10px; }
+.booking-service-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  text-align: left; cursor: pointer; font: inherit; color: var(--text-primary);
+  background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  padding: 16px 18px; transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.booking-service-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.28); }
+.booking-service-main { display: flex; flex-direction: column; gap: 3px; }
+.booking-service-name { font-weight: 600; font-size: 15px; }
+.booking-service-meta { color: var(--text-muted); font-size: 13px; }
+.booking-service-right { display: flex; align-items: center; gap: 10px; }
+.booking-service-price { font-weight: 700; font-size: 15px; }
+.booking-service-arrow { color: var(--text-muted); font-size: 22px; line-height: 1; transition: transform 120ms ease, color 120ms ease; }
+.booking-service-card:hover .booking-service-arrow { transform: translateX(3px); color: var(--accent); }

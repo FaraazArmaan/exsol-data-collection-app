@@ -19,23 +19,27 @@ export function ServicePicker({ slug, onPick }: Props) {
     return () => { cancel = true; };
   }, [slug]);
 
-  if (error === 'not_found') return <p className="error">This booking page doesn’t exist.</p>;
-  if (error) return <p className="error">Couldn’t load services. Please try again.</p>;
-  if (!services) return <div className="muted">Loading services…</div>;
-  if (services.length === 0) return <p className="muted">No services are available to book right now.</p>;
+  if (error === 'not_found') return <p className="booking-sf-empty">This booking page doesn’t exist.</p>;
+  if (error) return <p className="booking-sf-empty">Couldn’t load services. Please try again.</p>;
+  if (!services) return <div className="booking-sf-empty">Loading services…</div>;
+  if (services.length === 0) return <p className="booking-sf-empty">No services are available to book right now.</p>;
 
   return (
     <div className="booking-service-list">
-      <h2 className="section-title">Choose a service</h2>
-      <div className="grid">
+      <h2 className="booking-sf-heading">Choose a service</h2>
+      <div className="booking-service-cards">
         {services.map((s) => {
           const chip = paymentChip(s.payment_mode, s.deposit_cents);
           return (
-            <button key={s.id} className="card booking-service-card" onClick={() => onPick(s)}>
-              <span className="booking-service-name">{s.name}</span>
-              <span className="muted">{s.duration_min} min</span>
-              <span className="booking-service-price">{formatRupees(s.price_cents)}</span>
-              {chip ? <span className="booking-chip">{chip}</span> : null}
+            <button key={s.id} className="booking-service-card" onClick={() => onPick(s)}>
+              <span className="booking-service-main">
+                <span className="booking-service-name">{s.name}</span>
+                <span className="booking-service-meta">{s.duration_min} min{chip ? ` · ${chip}` : ''}</span>
+              </span>
+              <span className="booking-service-right">
+                <span className="booking-service-price">{formatRupees(s.price_cents)}</span>
+                <span className="booking-service-arrow" aria-hidden>›</span>
+              </span>
             </button>
           );
         })}

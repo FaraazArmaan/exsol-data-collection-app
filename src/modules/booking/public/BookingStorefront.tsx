@@ -7,6 +7,11 @@ import { Confirmation } from './Confirmation';
 import { type PublicService, type Slot, type CreateResult } from '../api';
 
 type Step = 'service' | 'slot' | 'checkout' | 'done';
+const STEPS: Array<{ key: Step; label: string }> = [
+  { key: 'service', label: 'Service' },
+  { key: 'slot', label: 'Time' },
+  { key: 'checkout', label: 'Details' },
+];
 
 // Anonymous public storefront mounted at /c/:slug/book (outside the auth gate).
 export default function BookingStorefront() {
@@ -17,35 +22,58 @@ export default function BookingStorefront() {
   const [result, setResult] = useState<CreateResult | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const activeIndex = step === 'done' ? STEPS.length : STEPS.findIndex((s) => s.key === step);
+
   function reset() {
     setService(null); setSlot(null); setResult(null); setNotice(null); setStep('service');
   }
 
   return (
-    <div className="page-narrow booking-storefront">
-      <h1 className="page-title">Book an appointment</h1>
-      {notice ? <p className="error">{notice}</p> : null}
+    <div className="booking-sf">
+      <div className="booking-sf-col">
+        <header className="booking-sf-header">
+          <span className="booking-sf-brandline">Online booking</span>
+          <h1 className="booking-sf-title">Book an appointment</h1>
+        </header>
 
-      {step === 'service' && (
-        <ServicePicker slug={slug} onPick={(s) => { setService(s); setNotice(null); setStep('slot'); }} />
-      )}
+        {step !== 'done' && (
+          <ol className="booking-sf-steps" aria-label="Progress">
+            {STEPS.map((s, i) => (
+              <li key={s.key} className={`booking-sf-step${i === activeIndex ? ' is-active' : ''}${i < activeIndex ? ' is-done' : ''}`}>
+                <span className="booking-sf-step-dot">{i < activeIndex ? '✓' : i + 1}</span>
+                <span className="booking-sf-step-label">{s.label}</span>
+              </li>
+            ))}
+          </ol>
+        )}
 
-      {step === 'slot' && service && (
-        <SlotPicker slug={slug} service={service}
-          onPick={(sl) => { setSlot(sl); setNotice(null); setStep('checkout'); }}
-          onBack={() => setStep('service')} />
-      )}
+        {notice ? <p className="booking-sf-notice">{notice}</p> : null}
 
-      {step === 'checkout' && service && slot && (
-        <Checkout slug={slug} service={service} slot={slot}
-          onDone={(r) => { setResult(r); setStep('done'); }}
-          onSlotTaken={() => { setNotice('That time was just taken — please pick another.'); setStep('slot'); }}
-          onBack={() => setStep('slot')} />
-      )}
+        <div className="booking-sf-body">
+          {step === 'service' && (
+            <ServicePicker slug={slug} onPick={(s) => { setService(s); setNotice(null); setStep('slot'); }} />
+          )}
 
-      {step === 'done' && service && slot && result && (
-        <Confirmation slug={slug} service={service} slot={slot} result={result} onBookAnother={reset} />
-      )}
+          {step === 'slot' && service && (
+            <SlotPicker slug={slug} service={service}
+              onPick={(sl) => { setSlot(sl); setNotice(null); setStep('checkout'); }}
+              onBack={() => setStep('service')} />
+          )}
+
+          {step === 'checkout' && service && slot && (
+            <Checkout slug={slug} service={service} slot={slot}
+              onDone={(r) => { setResult(r); setStep('done'); }}
+              onSlotTaken={() => { setNotice('That time was just taken — please pick another.'); setStep('slot'); }}
+              onBack={() => setStep('slot')} />
+          )}
+
+          {step === 'done' && service && slot && result && (
+            <Confirmation slug={slug} service={service} slot={slot} result={result} onBookAnother={reset} />
+          )}
+        </div>
+
+        <footer className="booking-sf-footer">Powered by ExSol</footer>
+      </div>
     </div>
   );
 }
