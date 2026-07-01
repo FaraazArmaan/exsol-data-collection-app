@@ -10,9 +10,7 @@ export default function ManageBooking() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function load() {
-    bookingPublicApi.getManage(token).then(setView).catch(() => setError('not_found'));
-  }
+  function load() { bookingPublicApi.getManage(token).then(setView).catch(() => setError('not_found')); }
   useEffect(load, [token]);
 
   async function cancel() {
@@ -22,27 +20,39 @@ export default function ManageBooking() {
     finally { setBusy(false); }
   }
 
-  if (error === 'not_found') return <div className="page-narrow"><p className="error">This booking link is invalid or expired.</p></div>;
-  if (!view) return <div className="page-narrow muted">Loading…</div>;
-
   return (
-    <div className="page-narrow booking-manage">
-      <h1 className="page-title">Your booking</h1>
-      <div className="card booking-summary">
-        <div className="muted">{formatDateLong(view.start_at)} · {formatTime(view.start_at)}–{formatTime(view.end_at)}</div>
-        <div>Status: <strong>{view.status}</strong></div>
-        <div className="muted">{view.customer_name}</div>
+    <div className="booking-sf">
+      <div className="booking-sf-col">
+        <header className="booking-sf-header">
+          <span className="booking-sf-brandline">Your appointment</span>
+          <h1 className="booking-sf-title">Manage booking</h1>
+        </header>
+
+        <div className="booking-sf-body">
+          {error === 'not_found' ? <p className="booking-sf-empty">This booking link is invalid or expired.</p>
+            : !view ? <div className="booking-sf-empty">Loading…</div>
+            : (
+              <div className="booking-sf-step-panel">
+                <div className="booking-summary-card">
+                  <div className="booking-summary-row"><span className="muted">When</span><span>{formatDateLong(view.start_at)}, {formatTime(view.start_at)}–{formatTime(view.end_at)}</span></div>
+                  <div className="booking-summary-row"><span className="muted">Name</span><span>{view.customer_name}</span></div>
+                  <div className="booking-summary-row"><span className="muted">Status</span><span className={`booking-status booking-status-${view.status}`}>{view.status.replace('_', ' ')}</span></div>
+                </div>
+
+                {error === 'cancel_failed' ? <p className="error">Couldn’t cancel — please try again.</p> : null}
+
+                {view.cancellable ? (
+                  <button className="btn btn-danger booking-sf-cta" onClick={cancel} disabled={busy}>{busy ? 'Cancelling…' : 'Cancel booking'}</button>
+                ) : view.status === 'cancelled' ? (
+                  <p className="booking-sf-empty">This booking has been cancelled.</p>
+                ) : (
+                  <p className="booking-sf-empty">This booking can no longer be cancelled online. Please contact the venue.</p>
+                )}
+              </div>
+            )}
+        </div>
+        <footer className="booking-sf-footer">Powered by ExSol</footer>
       </div>
-
-      {error === 'cancel_failed' ? <p className="error">Couldn’t cancel — please try again.</p> : null}
-
-      {view.cancellable ? (
-        <button className="btn btn-danger" onClick={cancel} disabled={busy}>{busy ? 'Cancelling…' : 'Cancel booking'}</button>
-      ) : view.status === 'cancelled' ? (
-        <p className="muted">This booking has been cancelled.</p>
-      ) : (
-        <p className="muted">This booking can no longer be cancelled online. Please contact the venue.</p>
-      )}
     </div>
   );
 }

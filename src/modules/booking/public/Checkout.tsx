@@ -21,6 +21,7 @@ export function Checkout({ slug, service, slot, onDone, onSlotTaken, onBack }: P
   const [name, setName] = useState<string>(last.name ?? '');
   const [phone, setPhone] = useState<string>(last.phone ?? '');
   const [email, setEmail] = useState<string>(last.email ?? '');
+  const [hp, setHp] = useState('');            // honeypot — must stay empty
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -30,6 +31,7 @@ export function Checkout({ slug, service, slot, onDone, onSlotTaken, onBack }: P
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (hp) return;                            // bot filled the honeypot — silently drop
     setError(null); setSubmitting(true);
     try {
       const result = await bookingPublicApi.create(slug, {
@@ -40,37 +42,39 @@ export function Checkout({ slug, service, slot, onDone, onSlotTaken, onBack }: P
       onDone(result);
     } catch (err) {
       setSubmitting(false);
-      if (err instanceof BookingApiError && err.status === 409 && err.code === 'slot_taken') { onSlotTaken(); return; }
-      if (err instanceof BookingApiError && err.code === 'no_resource_available') { onSlotTaken(); return; }
-      setError(err instanceof BookingApiError ? err.code : 'network_error');
+      if (err instanceof BookingApiError && (err.code === 'slot_taken' || err.code === 'no_resource_available')) { onSlotTaken(); return; }
+      if (err instanceof BookingApiError && err.code === 'rate_limited') { setError('Too many attempts — please wait a moment.'); return; }
+      setError('Couldn’t book — please try again.');
     }
   }
 
   return (
-    <form className="booking-checkout" onSubmit={handleSubmit}>
-      <button type="button" className="btn btn-ghost" onClick={onBack}>← Times</button>
-      <h2 className="section-title">Confirm your booking</h2>
+    <form className="booking-sf-step-panel" onSubmit={handleSubmit}>
+      <button type="button" className="booking-sf-back" onClick={onBack}>← Times</button>
+      <h2 className="booking-sf-heading">Confirm your booking</h2>
 
-      <div className="card booking-summary">
-        <div><strong>{service.name}</strong> · {service.duration_min} min</div>
-        <div className="muted">{formatDateLong(slot.start)} · {formatTime(slot.start)}–{formatTime(slot.end)}</div>
-        <div className="booking-summary-price">{formatRupees(service.price_cents)}{chip ? <span className="booking-chip">{chip}</span> : null}</div>
+      <div className="booking-summary-card">
+        <div className="booking-summary-row"><span className="muted">Service</span><span>{service.name}</span></div>
+        <div className="booking-summary-row"><span className="muted">When</span><span>{formatDateLong(slot.start)}, {formatTime(slot.start)}–{formatTime(slot.end)}</span></div>
+        <div className="booking-summary-row booking-summary-total"><span>Total</span><span>{formatRupees(service.price_cents)}{chip ? <span className="booking-chip">{chip}</span> : null}</span></div>
       </div>
 
-      <label>Name *<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
-      <label>Phone *<input value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" /></label>
-      <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" inputMode="email" /></label>
+      <label>Name *<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Your name" /></label>
+      <label>Phone *<input value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" placeholder="Mobile number" /></label>
+      <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder="For your confirmation (optional)" /></label>
+      {/* Honeypot: hidden from humans, tempting to bots. */}
+      <input className="booking-hp" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} aria-hidden />
       <label className="booking-consent">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>I agree to the booking terms.</span>
       </label>
 
       {service.payment_mode !== 'pay_at_venue' ? (
-        <p className="muted">A {chip?.toLowerCase()} is required. You’ll be taken to payment after confirming.</p>
+        <p className="muted">A {chip?.toLowerCase()} is required — you’ll pay after confirming.</p>
       ) : null}
-      {error ? <p className="error">Couldn’t book ({error}). Please try again.</p> : null}
+      {error ? <p className="error">{error}</p> : null}
 
-      <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
+      <button type="submit" className="btn btn-primary booking-sf-cta" disabled={!canSubmit}>
         {submitting ? 'Booking…' : service.payment_mode === 'pay_at_venue' ? 'Confirm booking' : 'Continue to payment'}
       </button>
     </form>
