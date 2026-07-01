@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-06-30 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `21bf97d feat(analytics): per-domain CSV export + scorecard compare deltas`
+**Latest commit:** `888f09b Merge branding module (migration 050, 4 fns, 14 @fontsource deps)`
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
-**Test count:** **1021 passing** across 163 test files · typecheck + build clean
+**Test count:** **1084 passing** across 176 test files · typecheck + build clean
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
 
 > **Convention for this file:**
@@ -34,9 +34,10 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `21bf97d` |
-| Local `main` HEAD | `21bf97d` (synced) |
-| Latest Netlify deploy | `ready` at commit `21bf97d` (after `restoreSiteDeploy` — **16th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
+| `origin/main` HEAD | `888f09b` |
+| Local `main` HEAD | `888f09b` (synced) |
+| Latest Netlify deploy | `ready` at commit `888f09b` (after `restoreSiteDeploy` — **17th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
+| Migrations applied to prod (`dawn-bird`) | **001–050** (050 = `brand_columns`, 10 additive `brand_*` cols on `clients`, applied 2026-07-01 before code push) |
 | **Modules live on prod** | **6**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, Sales domain)** + AMS/Workspace foundation |
 | New dep | `recharts ^3.9.1` (FE-bundled, NOT in external_node_modules). Bundle now >500kB (lazy-load deferred) |
 | Migrations applied to prod (`dawn-bird`) | **001–049 complete**: 001–045 (POS v1 + storefront) + 046 (file manager quota) + 047–049 (booking). No reserved gaps. |
@@ -309,6 +310,15 @@ Patterns refined (no new memory entries; just reinforced):
 - **Gating verified both directions** via a reversible DB toggle on papa-s-saloon (capture-row → delete → verify → re-insert identical row → verify restored): booking ON → 5 panels incl. Bookings; booking OFF → 4 panels, Bookings gone, Catalog stays (products still on); restored → Bookings back. papa-s-saloon left in its exact prior state.
 - Compare-deltas: overview returns `delta`/`deltaPct`; `deltaPct: null` on zero baseline (correct — no misleading "+∞%").
 - **⚠️ CSV export bug (open — Analytics chat working on it):** a per-domain "Export" click DID trigger a download (`sales-…csv`, text/csv, 190B), so my smoke passed on "download fired" — but the **CSV content is not functional** (user caught it). LESSON: "a download triggered" ≠ "the file is valid"; must parse/validate exported content, not just confirm the blob downloaded.
+
+### 2026-07-01 — Platform Branding domain merged to prod (migration 050 + 4 fns + 14 fonts)
+- **`--no-ff` merge** `feat/platform-branding-iso → 888f09b` (26 commits off a stale `3763323`). Chose merge over cherry-pick because the branch had **npm dependency churn** — cherry-picking 26 commits would conflict on `package-lock.json` repeatedly; a single 3-way merge auto-resolved package.json/lock cleanly (branding's `@fontsource*` keys vs main's `recharts` are disjoint). **Heuristic: dependency-churn branch off a stale base → merge-once, not cherry-pick-many.**
+- **3 conflicts, all additive "two siblings added a card to the same anchor"** — `components.css` (union both blocks), `AccessDashboard.tsx` + `UserAccount.tsx` (kept BOTH my workspace-export card AND the branding card). Verified live: `/account` shows "Workspace backup" AND "Branding". Union-both is the correct resolution for additive-at-same-anchor; picking a side would silently drop a team's card.
+- **Migration 050** (`brand_columns`, 10 additive `brand_*` cols) applied to prod (`dawn-bird` verified) **before** the code push — additive-before-code is the safe order (columns sit unused until code reads them; inverse of destructive). Tests 1021 → **1084** (+63). 14 fonts (5 `@fontsource` + 9 `@fontsource-variable`), WOFF2 subsets emitted, `external_node_modules` unchanged.
+- **4 new functions**, all registered after `restoreSiteDeploy` (17th): `pub-brand` (GET `/api/public/brand/:slug` → 200 JSON), `pub-brand-image` (GET `/api/public/brand/:slug/image/*`), `client-settings/brand` (PATCH, `.strict()` camelCase schema — `fontHeading` not `font_heading`), `client-settings/brand-image` (POST multipart). NOTE the authed paths use `/client-settings/brand` (slash), not `-brand` (hyphen).
+- **Persistence verified end-to-end:** PATCH theme=light/accent=#c9a26a/fontHeading=Poppins → reflected in the brand read; reverted → **DB pristine** (dark/nulls). ⚠️ `pub-brand` is **cached `max-age=86400`** — read-after-write on the public endpoint serves stale for up to 24h; verify writes against the DB or an authed read, not the cached public endpoint. Consume-contract note for Branding chat: if instant brand updates are needed, add a cache-bust on save.
+- **Handback READY for POS (§9.4) + Booking (§9.5) chats** (BrandShell/BrandHero/useBrand barrel at `src/modules/branding`): both must wrap public pages in BrandShell, drop their own `.page-narrow`/checkout-narrowing in favor of `.brand-main`, and read slug appropriately. v1.1 follow-ups (hero drag-reorder, useBrand auto-refetch, SSR OG-meta) are non-blocking.
+- Probe false-alarms this round (all my test errors, zero real bugs): hyphen-vs-slash path (404), no-logo `not_found` JSON vs unregistered HTML 404, snake_case vs `.strict()` camelCase (400). **Read the contract before concluding "broken."**
 
 ---
 
