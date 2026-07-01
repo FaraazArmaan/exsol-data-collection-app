@@ -58,4 +58,11 @@ describe('POST public create', () => {
     expect(j.status).toBe('pending');
     expect(j.payment_intent.amount_cents).toBe('10000');
   });
+
+  it('honeypot: a filled hp field is rejected as a bot → 400', async () => {
+    const r = await create(publicRequest(slug, 'POST', '/create',
+      { ...body(payService, '2026-08-17T12:00:00.000Z', 7), hp: 'http://spam.example' }));
+    expect(r.status).toBe(400);
+    expect((await r.json()).error.code).toBe('invalid_request');
+  });
 });

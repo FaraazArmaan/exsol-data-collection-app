@@ -84,5 +84,6 @@ export const PublicCreateBody = z.object({
   resource_id: z.union([Uuid, z.literal('any')]),
   start: z.string(), // ISO UTC instant
   customer: z.object({ name: NonBlank, phone: NonBlank, email: z.string().email().optional() }),
+  hp: z.string().optional(),   // honeypot — real users never fill this; non-empty ⇒ bot
 });
 export type PublicCreateBody = z.infer<typeof PublicCreateBody>;

@@ -31,12 +31,12 @@ export function Checkout({ slug, service, slot, onDone, onSlotTaken, onBack }: P
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (hp) return;                            // bot filled the honeypot — silently drop
     setError(null); setSubmitting(true);
     try {
       const result = await bookingPublicApi.create(slug, {
         service_id: service.id, resource_id: slot.resource_id, start: slot.start,
         customer: { name: name.trim(), phone: phone.trim(), email: email.trim() || undefined },
+        hp,                                      // honeypot — server rejects if non-empty
       });
       localStorage.setItem(LS_KEY, JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() }));
       onDone(result);

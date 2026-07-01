@@ -92,7 +92,7 @@ export const bookingPublicApi = {
   resources: (slug: string) => call<{ resources: PublicResource[] }>(`/api/booking-public/${slug}/resources`),
   availability: (slug: string, serviceId: string, date: string, resourceId = 'any') =>
     call<{ slots: Slot[] }>(`/api/booking-public/${slug}/availability?service_id=${serviceId}&date=${date}&resource_id=${resourceId}`),
-  create: (slug: string, body: { service_id: string; resource_id: string; start: string; customer: { name: string; phone: string; email?: string } }) =>
+  create: (slug: string, body: { service_id: string; resource_id: string; start: string; customer: { name: string; phone: string; email?: string }; hp?: string }) =>
     call<CreateResult>(`/api/booking-public/${slug}/create`, json(body)),
   getManage: (token: string) => call<ManageView>(`/api/booking-public/manage/${token}`),
   cancelManage: (token: string) => call<{ id: string; status: string }>(`/api/booking-public/manage/${token}`, json({ action: 'cancel' })),

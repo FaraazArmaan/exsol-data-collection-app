@@ -4,6 +4,8 @@
 // deposit/full_upfront return a payment_intent stub (Razorpay wired in Phase 3).
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
+import { extractIp } from './_shared/rate-limit';
+import { allowBookingCreate } from './_booking-ratelimit';
 import { PublicCreateBody } from './_booking-validators';
 import { upsertCustomer } from './_booking-customer-upsert';
 import { pickLeastBusy } from '../../src/modules/booking/lib/autoassign';
@@ -21,6 +23,10 @@ export default async function handler(req: Request): Promise<Response> {
   let body: PublicCreateBody;
   try { body = PublicCreateBody.parse(await req.json()); }
   catch (e: any) { return jsonError(400, 'invalid_body', { issues: e?.issues }); }
+
+  // Anti-abuse: honeypot (real users never fill `hp`) + best-effort IP rate-limit.
+  if (body.hp && body.hp.trim() !== '') return jsonError(400, 'invalid_request');
+  if (!(await allowBookingCreate(extractIp(req)))) return jsonError(429, 'rate_limited');
 
   const sql = db();
   const c = (await sql`SELECT id FROM public.clients WHERE slug = ${slugFrom(req)} LIMIT 1`) as Array<{ id: string }>;
