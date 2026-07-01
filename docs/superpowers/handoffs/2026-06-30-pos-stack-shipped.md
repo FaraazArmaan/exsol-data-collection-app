@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-06-30 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `e7735b0 test(analytics): guard storefront-at-root, cross-subtree isolation + additivity, export scoping`
+**Latest commit:** `b64cedd feat(booking): redesign public storefront to industry-standard layout`
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
 **Test count:** **1001 passing** across 161 test files · typecheck + build clean
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
@@ -34,9 +34,9 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `e7735b0` |
-| Local `main` HEAD | `e7735b0` (synced) |
-| Latest Netlify deploy | `ready` at commit `e7735b0` (after `restoreSiteDeploy` — **10th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`) |
+| `origin/main` HEAD | `b64cedd` |
+| Local `main` HEAD | `b64cedd` (synced) |
+| Latest Netlify deploy | `ready` at commit `b64cedd` (after `restoreSiteDeploy` — **12th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`) |
 | **Modules live on prod** | **6**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, Sales domain)** + AMS/Workspace foundation |
 | New dep | `recharts ^3.9.1` (FE-bundled, NOT in external_node_modules). Bundle now >500kB (lazy-load deferred) |
 | Migrations applied to prod (`dawn-bird`) | **001–049 complete**: 001–045 (POS v1 + storefront) + 046 (file manager quota) + 047–049 (booking). No reserved gaps. |
@@ -279,6 +279,18 @@ Patterns refined (no new memory entries; just reinforced):
 - Dashboard smoke green: `enabled_modules` includes `analytics`, sidebar Analytics link present, `/c/papa-s-saloon/analytics` renders KPI tiles (Revenue ₹7 / Sales 7 / AOV ₹1 — aggregating the real POS sales) + **136 recharts elements** (trend/bar/donut) + Sales panel, no errors. `analytics-sales` API returns `{scope, kpis, series, breakdowns, generatedAt}`.
 - **Sibling got ALL prior-lesson traps right inline** (unlike POS/Booking which needed retro-fits): both Module + Product manifest (`feedback_module_needs_product_manifest`), bucket×verb perms (`feedback_permission_keys_bucket_verb_only`), `MODULES_WITH_DEDICATED_NAV` entry, L1-bypass in authz + FE gates. Evidence the memory entries + arch docs are being consumed cross-chat.
 - **Deferred (all non-blocking, per sibling):** recharts bundle >500kB (lazy-load the route later); currency hardcoded INR; date presets compute in UTC not tenant-tz (IST post-18:30 → tomorrow, cosmetic); `analytics-overview` built+tested but not surfaced (Sales panel only); follow-on domains (Bookings/Customers/Team/Catalog) each add an endpoint + manifest + panel reusing `resolveAnalyticsAccess` + `_analytics-sql`.
+
+### 2026-07-01 — POS + architecture docs committed & pushed (docs-only)
+- Cherry-picked 2 POS docs commits `fae9fff` (v2.5 Razorpay online-payment design spec) + `998ad75` (POS chat's own living trail refresh) → landed `f626dac`, `998ad75`. These touch `2026-06-30-pos-session-handoff.md` + a new spec — DIFFERENT files from THIS handoff, no collision.
+- Committed 2 previously-dangling docs: THIS handoff trail (`2a8e62a`) + the architecture docs (`4e8dda3`: `architecture.html` suite-framing edits AND `architecture-expansive.html` which was **untracked, ~1400 lines, never in git** — would have been lost on a clean). Pushed all `e7735b0..4e8dda3`; restoreSiteDeploy (11th).
+- **v2.5 migration coordination:** main's highest is **049**, true next-free is **050**. The v2.5 spec's provisional **051** assumes branding takes 050 (branding branch claims 050, NOT yet merged). Confirm at v2.5 build time — same `project_booking_migration_number_coordination` pattern. v2.5 is design-only until Razorpay keys.
+
+### 2026-07-01 — Booking FE polish delta (4 commits → 3 applied; storefront redesign + time-grid + vendor config)
+- Sibling handed 4 commits `1d8b8cb 52366de c27f633 7e4bc5e`; **`git cherry` confirmed `1d8b8cb` already on main** (as `1670dd6`, applied in an earlier handoff THIS session — the sibling flagged the possible dup themselves). Applied only the 3 new: `52366de → 18dd0c4`, `c27f633 → 0e237db`, `7e4bc5e → b64cedd`. (SHAs change under cherry-pick — sibling's `7e4bc5e` == main's `b64cedd`.)
+- 8 FE files, no backend/migration/test. Tests held 1001/1001. Pushed `4e8dda3..b64cedd`; alias-not-promoted (12th) → restoreSiteDeploy.
+- **All 4 features smoke-verified on prod:** (1) storefront redesign — `.booking-sf-steps` stepper (Service→Time→Details), centered 520px column (left gap 496 = right gap 496); (2) `booking-grid` pixel time-grid — 09:00–18:00 hour gutter, resource cols, 11 status-colored positioned blocks incl. `block-confirmed` at 10:00; (3) ServiceEditDrawer (Name/Duration/Price/Buffer/stylist assign); (4) Resources per-resource weekly hours (14 time inputs, blank=inherit) + Settings "Closed dates (holidays)" section.
+- **Coverage gap flagged (recurring):** booking FE is growing fast with zero component tests — ServiceEditDrawer, time-grid click-to-create, storefront relayout all untested. Same note as the sub-nav-tabs merge.
+- **Still owed for full booking prod cut** (unchanged): live Razorpay order-create + `ONLINE_PAYMENTS_ENABLED=true` flip (blocked on keys); email provider for confirmations; confirm `booking-pending-cleanup` cron registers. Branding consume-review (§9.5) → branding chat.
 
 ---
 
