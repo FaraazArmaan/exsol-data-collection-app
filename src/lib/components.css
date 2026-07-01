@@ -600,3 +600,26 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-tabs a.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
 .booking-row-actions { display: flex; gap: 8px; }
+
+/* Booking day-view time grid */
+.booking-grid { display: grid; align-items: start; overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.booking-grid-corner { border-bottom: 1px solid var(--border-default); border-right: 1px solid var(--border-subtle); }
+.booking-grid-colhead { font-weight: 600; padding: 8px; text-align: center; border-bottom: 1px solid var(--border-default); border-left: 1px solid var(--border-subtle); }
+.booking-grid-gutter { position: relative; border-right: 1px solid var(--border-subtle); }
+.booking-grid-hourlabel { position: absolute; right: 6px; font-size: 11px; color: var(--text-muted); transform: translateY(-7px); }
+.booking-grid-col { position: relative; border-left: 1px solid var(--border-subtle); cursor: pointer; }
+.booking-grid-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border-subtle); pointer-events: none; }
+.booking-grid-block {
+  position: absolute; left: 3px; right: 3px; overflow: hidden; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 1px; padding: 2px 6px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated); border: 1px solid var(--border-default); border-left: 3px solid var(--accent);
+  color: var(--text-primary); font: inherit; line-height: 1.15;
+}
+.booking-grid-block-time { font-size: 11px; font-weight: 600; }
+.booking-grid-block-name { font-size: 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.block-confirmed { border-left-color: var(--success); }
+.block-pending   { border-left-color: var(--accent); }
+.block-blocked   { border-left-color: var(--text-muted); background: var(--bg-surface); }
+.block-completed { border-left-color: var(--text-muted); opacity: 0.75; }
+.block-cancelled { border-left-color: var(--danger); opacity: 0.5; }
+.block-no_show   { border-left-color: var(--danger); }
