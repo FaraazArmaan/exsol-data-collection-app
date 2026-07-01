@@ -683,9 +683,9 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
         <strong>Neon PostgreSQL</strong>
         <div class="layer-sub">
           Separate branches for dev (<code>bold-wildflower</code>) and prod (<code>dawn-bird</code>).
-          Sequential numbered migrations applied via <code>npm run migrate</code>. 42 migrations to date.
+          Sequential numbered migrations applied via <code>npm run migrate</code>. 49 migrations to date.
         </div>
-        <div class="pill-list"><span class="tag">JSONB for perms</span><span class="tag">pg_trgm (search)</span><span class="tag">42 migrations</span></div>
+        <div class="pill-list"><span class="tag">JSONB for perms</span><span class="tag">pg_trgm (search)</span><span class="tag">49 migrations</span></div>
       </div>
     </div>
 
@@ -721,7 +721,8 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
       <tr><td>Auth (OAuth)</td><td class="cell-mono">Google Sign-In (gsi/client)</td><td>Admin login + invite flow with auto-defaults</td></tr>
       <tr><td>Image processing</td><td class="cell-mono">sharp</td><td>jimp lacks WebP encoder; sharp + external_node_modules</td></tr>
       <tr><td>Validation</td><td class="cell-mono">zod</td><td>Type-inferred schemas, single source of truth at the boundary</td></tr>
-      <tr><td>Testing</td><td class="cell-mono">Vitest + React Testing Library</td><td>97 test files / 772 tests at HEAD; ~100s wall</td></tr>
+      <tr><td>Testing</td><td class="cell-mono">Vitest + React Testing Library</td><td>161 test files / 1001 tests at HEAD; ~100s wall</td></tr>
+      <tr><td>Charts (Analytics)</td><td class="cell-mono">recharts ^3.9.1</td><td>FE-bundled (NOT external_node_modules); trend/bar/donut on the Analytics dashboard</td></tr>
       <tr><td>Storage</td><td class="cell-mono">Netlify Blobs + custom thumb pipeline</td><td>240px webp lazy-gen, 30d cache</td></tr>
     </tbody>
   </table>
@@ -1568,7 +1569,7 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
 
 <footer>
   ExSol Data Collection App · Architecture Document · auto-generated for in-session reference<br>
-  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: 3763323 · 49 migrations · 948 tests · ~91 functions · 5 modules live (POS v1/v2, Booking, File Manager, ERP-partial)</span>
+  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: b64cedd · 49 migrations · 1001 tests · ~94 functions · 6 modules live (POS v1/v2, Booking, File Manager, Product Manager, Analytics)</span>
 </footer>
 
 </main>

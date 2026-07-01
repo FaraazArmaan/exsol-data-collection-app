@@ -316,12 +316,13 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <div class="details">
         Used by Owners and staff of every workspace to manage their entire business: catalog, inventory,
         orders, customers, finance, HR, marketing, and 7 more modules. Lives at <code>/c/&lt;slug&gt;/...</code>
-        in the browser. Today: 5 modules live (POS, Booking, File Manager, Product Manager, Workspace/AMS);
-        8 more modules planned. This is also where every other product gets configured — toggling a storefront,
-        adding products to the catalog, setting business hours, granting staff permissions.
+        in the browser. Today: 6 modules live (POS, Booking, File Manager, Product Manager, Workspace/AMS,
+        and Analytics — the first read-only cross-module surface); more modules planned. This is also where
+        every other product gets configured — toggling a storefront, adding products to the catalog,
+        setting business hours, granting staff permissions.
       </div>
       <div class="pill-row">
-        <span class="tag tag-green">live (5 / 13 modules + 3 ops modules)</span>
+        <span class="tag tag-green">live (6 modules + 3 ops modules)</span>
       </div>
     </div>
   </div>
@@ -473,15 +474,16 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   </div>
 
   <div class="callout">
-    <div class="label">Three non-ERP modules also live in the Internal App</div>
+    <div class="label">Four non-ERP modules also live in the Internal App</div>
     <p>
-      Not every Module in the Internal App is an ERP module. Three of today's live modules are operational
-      rather than business-function:
+      Not every Module in the Internal App is an ERP module. Four of today's live modules are operational
+      or cross-cutting rather than a single business-function:
     </p>
     <ul class="clean">
       <li><strong>POS</strong> — the cashier register UI, technically a surface of Order Management (#5).</li>
       <li><strong>Booking</strong> — the calendar + customer widget; will eventually fold into Workforce + CRM.</li>
       <li><strong>File Manager</strong> — a document vault with storage quotas; supports every other module by holding their files.</li>
+      <li><strong>Analytics</strong> — the first <em>read-only, cross-module</em> surface. It owns no data; it aggregates from the others (sales, bookings, products) into KPIs and charts, subtree-scoped so a manager sees only their branch's numbers. As more ERP modules land, Analytics grows a panel per domain rather than a new module each time.</li>
     </ul>
     <p>They share the same auth, tenant, and permission infrastructure as the 13 ERP modules.</p>
   </div>
@@ -1386,7 +1388,7 @@ fulfilled → refunded         (action: refund)
 
 <footer>
   ExSol Suite · Architecture (Expansive) · companion to <a href="./architecture.html" class="foot-link">architecture.html</a><br>
-  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: 3763323 · 49 migrations · 948 tests · ~91 functions · 5 modules live · 7 products planned</span>
+  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: b64cedd · 49 migrations · 1001 tests · ~94 functions · 6 modules live · 7 products planned</span>
 </footer>
 
 </main>
