@@ -818,3 +818,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .brand-upload-slot img { max-width: 72px; max-height: 72px; object-fit: contain; }
 .brand-swatch { width: 28px; height: 28px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-default, #3a3a3a); display: inline-block; vertical-align: middle; }
+
+/* Week grid day-headers (button variant of the grid colhead) */
+.booking-week-head { display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer; border: 0; border-bottom: 1px solid var(--border-default); border-left: 1px solid var(--border-subtle); }
+.booking-week-head span { font-size: 11px; text-transform: uppercase; color: var(--text-muted); }
+.booking-week-head strong { font-size: 16px; }
+.booking-week-head.is-today strong { color: var(--accent); }
+.booking-week-head:hover strong { color: var(--accent); }
