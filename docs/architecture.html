@@ -364,6 +364,8 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
   <div class="brand">ExSol</div>
   <div class="brand-sub">Architecture Document</div>
 
+  <a href="#suite">The Suite (7 products)</a>
+  <a href="#erp-modules">13 ERP Modules</a>
   <a href="#overview">Overview</a>
 
   <h4>Part 1 — High-Level</h4>
@@ -389,24 +391,178 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
 <main>
 
 <header class="page">
-  <h1>ExSol Data Collection App</h1>
+  <h1>ExSol Suite</h1>
   <p class="lede">
-    A multi-tenant SaaS workspace for small businesses to manage their team, product catalog, point-of-sale,
-    and customer-facing modules. This document covers the High-Level and Low-Level System Design as they exist
-    on the deployed codebase.
+    A unified multi-tenant SaaS platform that produces <strong>seven distinct customer-facing products</strong>
+    from a single codebase and shared data model: an internal ERP, a data-collection onboarding app, a booking
+    system, an ecommerce storefront, an in-store POS, a catalog showcase site, and per-brand portfolio sites.
+    This document covers the High-Level and Low-Level System Design as they exist on the deployed codebase.
   </p>
-  <div class="meta">Stack: React 18 · Vite · TypeScript · Netlify Functions v2 · Neon Postgres</div>
+  <div class="meta">Stack: React 18 · Vite · TypeScript · Netlify Functions v2 · Neon Postgres · One repo, seven outputs</div>
+  <p style="margin-top: 16px; font-size: 13px; color: var(--ink-3);">
+    <strong>For a more accessible, in-depth walkthrough</strong> (suitable for non-developer readers and longer
+    onboarding), see <a href="./architecture-expansive.html" style="color: var(--accent);">architecture (expansive)</a>.
+  </p>
 </header>
+
+<!-- ═══════════════════════════════════════════════ SUITE ═══════════════════════════════════════════════ -->
+<section class="part" id="suite">
+  <div class="part-label">The Suite</div>
+  <h2>Seven products, one codebase</h2>
+  <p>
+    The whole platform is a single Git repo. From that one tree, the build produces multiple shippable
+    products that share authentication, data, code, and operational tooling. The architectural payoff is
+    that a fix to (say) the product catalog improves the ecommerce storefront, the POS, the catalog site,
+    AND the data-collection onboarding flow simultaneously — because they all read from the same module.
+  </p>
+
+  <table>
+    <thead><tr><th>Product</th><th>Who uses it</th><th>URL pattern</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Internal App (ERP)</strong></td>
+        <td>Owners + staff of every workspace</td>
+        <td><code>/c/&lt;slug&gt;/...</code></td>
+        <td><span class="tag tag-green">live (partial)</span></td>
+      </tr>
+      <tr>
+        <td><strong>Data Collection App</strong></td>
+        <td>New clients during onboarding (Product Manager isolated)</td>
+        <td><code>/onboard/&lt;token&gt;/products</code> <em>(planned)</em></td>
+        <td><span class="tag tag-amber">planned</span></td>
+      </tr>
+      <tr>
+        <td><strong>Booking System</strong></td>
+        <td>Client (staff/owner view) + Customer (anonymous booking)</td>
+        <td><code>/c/&lt;slug&gt;/booking</code> + <code>/c/&lt;slug&gt;/book</code></td>
+        <td><span class="tag tag-green">live</span></td>
+      </tr>
+      <tr>
+        <td><strong>Ecommerce Storefront</strong></td>
+        <td>Public guests, online ordering</td>
+        <td><code>/menu/&lt;slug&gt;</code></td>
+        <td><span class="tag tag-green">live</span></td>
+      </tr>
+      <tr>
+        <td><strong>In-Store POS</strong></td>
+        <td>Cashiers / staff</td>
+        <td><code>/c/&lt;slug&gt;/pos/menu</code></td>
+        <td><span class="tag tag-green">live</span></td>
+      </tr>
+      <tr>
+        <td><strong>Catalog Website</strong></td>
+        <td>Browsers, no purchase</td>
+        <td><code>/catalog/&lt;slug&gt;</code> <em>(planned)</em></td>
+        <td><span class="tag tag-amber">planned</span></td>
+      </tr>
+      <tr>
+        <td><strong>Brand Portfolio Site</strong></td>
+        <td>One-off, per-brand</td>
+        <td>Custom domain (one client one site)</td>
+        <td><span class="tag tag-amber">planned</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="label">The relationship between Internal App and the customer-facing products</div>
+    The Internal App is where data lives — it is the source of truth for products, customers, bookings,
+    sales, files, hours, perms. The other six products are <em>views</em> into that data:
+    the Ecommerce Storefront is the customer view of the Product Manager's catalog;
+    the Catalog site is a no-purchase view of the same; the Booking System is two views
+    (one for the staff calendar, one for the customer widget). Internally, a single
+    <code>products</code> table feeds the storefront, POS, catalog, and the Ecommerce ERP module.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ 13 ERP MODULES ═══════════════════════════════════════════════ -->
+<section class="part" id="erp-modules">
+  <div class="part-label">The Internal App</div>
+  <h2>13 ERP Modules</h2>
+  <p>
+    The Internal App is structured around 13 ERP modules — the same set as a traditional enterprise resource
+    planning system. Each module owns its own data, its own permission keys, its own UI route, and its own backend
+    helpers. They are interconnected (the Ecommerce module reads from Order Management, which reads from Inventory,
+    which reads from Procurement, etc.) but they are independently deployable: a workspace can have any subset
+    enabled via the <code>client_enabled_products</code> table.
+  </p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4>1. Finance</h4>
+      <p style="font-size: 13px;">Books, P&amp;L, AR/AP, payment ledgers. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>2. Procurement</h4>
+      <p style="font-size: 13px;">Purchase orders, supplier catalog, RFQs. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>3. Manufacturing</h4>
+      <p style="font-size: 13px;">BOMs, work orders, production runs. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>4. Inventory Management</h4>
+      <p style="font-size: 13px;">Stock levels, multi-warehouse, transfers, reorder points. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>5. Order Management</h4>
+      <p style="font-size: 13px;">Order intake (in-store, online, phone), fulfillment, returns. Today: the POS <code>sales</code> table is the partial implementation. <span class="tag tag-green">live (partial)</span></p>
+    </div>
+    <div class="card">
+      <h4>6. Warehouse Management</h4>
+      <p style="font-size: 13px;">Pick lists, putaway, bin/lot tracking. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>7. Supply Chain Management</h4>
+      <p style="font-size: 13px;">Cross-module flow: procurement → manufacturing → inventory → orders. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>8. Customer Relationship Management (CRM)</h4>
+      <p style="font-size: 13px;">Contacts, leads, opportunities, communication history. The <code>user_nodes</code> table is the seed; bookings already auto-create customer nodes. <span class="tag tag-green">partial</span></p>
+    </div>
+    <div class="card">
+      <h4>9. Project Service Resource Management</h4>
+      <p style="font-size: 13px;">Project tracking, billable hours, resource allocation. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>10. Workforce Management</h4>
+      <p style="font-size: 13px;">Shifts, timesheets, attendance. Bookings has the named-resource primitive that this builds on. <span class="tag tag-amber">planned</span></p>
+    </div>
+    <div class="card">
+      <h4>11. Human Resources Management</h4>
+      <p style="font-size: 13px;">Roles, levels, payroll, leave. The access-levels matrix + roles tables are the foundation. <span class="tag tag-green">partial</span></p>
+    </div>
+    <div class="card">
+      <h4>12. Ecommerce</h4>
+      <p style="font-size: 13px;">The internal half of the customer storefront — product visibility flags, channel routing, payment-on-pickup configuration. Powers <code>/menu/&lt;slug&gt;</code>. <span class="tag tag-green">live</span></p>
+    </div>
+    <div class="card">
+      <h4>13. Marketing Automation</h4>
+      <p style="font-size: 13px;">Email/SMS campaigns, drip flows, audience segmentation. <span class="tag tag-amber">planned</span></p>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <div class="label">Non-ERP modules that live in the Internal App</div>
+    Three modules exist in the Internal App but aren't part of the 13-ERP set because they're operational
+    rather than business-function: <strong>POS</strong> (the cashier register UI for Order Management);
+    <strong>Booking</strong> (calendar + customer widget); and <strong>File Manager</strong> (document vault
+    with quotas + bulk ops). They share the same auth + tenant infra as the ERP modules.
+  </div>
+</section>
 
 <!-- ═══════════════════════════════════════════════ OVERVIEW ═══════════════════════════════════════════════ -->
 <section class="part" id="overview">
   <div class="part-label">Overview</div>
-  <h2>What we are building</h2>
+  <h2>What we are building, restated</h2>
   <p>
     ExSol is a per-workspace operational platform. Each <em>Client</em> (e.g. <code>papa-s-saloon</code>)
-    gets an isolated workspace with team management, file storage, product catalog, and point-of-sale.
-    Two surfaces serve two audiences: a cross-workspace <strong>Admin</strong> console for operational oversight,
-    and a per-workspace <strong>Owner / Staff</strong> portal for day-to-day work.
+    gets an isolated workspace inside the Internal App with team management, file storage, product catalog,
+    point-of-sale, and booking. The Internal App is the operator surface; the six customer-facing products
+    are configurable views into the same data. Two main authentication audiences inside the Internal App:
+    a cross-workspace <strong>Admin</strong> console for operational oversight, and a per-workspace
+    <strong>Owner / Staff</strong> portal for day-to-day work. Customer-facing products bypass auth entirely
+    via opt-in tenant flags.
   </p>
   <div class="grid-3">
     <div class="card">
@@ -1412,7 +1568,7 @@ footer { padding: 48px 0 24px; color: var(--ink-3); font-size: 12px; text-align:
 
 <footer>
   ExSol Data Collection App · Architecture Document · auto-generated for in-session reference<br>
-  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: ab18c53 · 42 migrations · 772 tests · 65 functions</span>
+  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: 3763323 · 49 migrations · 948 tests · ~91 functions · 5 modules live (POS v1/v2, Booking, File Manager, ERP-partial)</span>
 </footer>
 
 </main>

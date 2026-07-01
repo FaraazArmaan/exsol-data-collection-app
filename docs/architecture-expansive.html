@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ExSol Suite — Architecture (Expansive)</title>
+<style>
+:root {
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --surface-2: #f4f4f3;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --ink: #1c1917;
+  --ink-2: #44403c;
+  --ink-3: #78716c;
+  --accent: #4338ca;
+  --accent-soft: #eef2ff;
+  --green: #15803d;
+  --green-soft: #dcfce7;
+  --amber: #b45309;
+  --amber-soft: #fef3c7;
+  --rose: #be123c;
+  --rose-soft: #ffe4e6;
+  --teal: #0f766e;
+  --teal-soft: #ccfbf1;
+  --code-bg: #f5f5f4;
+  --code-ink: #292524;
+  --shadow-sm: 0 1px 2px rgba(28,25,23,0.04), 0 1px 1px rgba(28,25,23,0.06);
+  --shadow-md: 0 4px 12px rgba(28,25,23,0.06), 0 2px 4px rgba(28,25,23,0.04);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+  --r-md: 8px;
+  --r-lg: 12px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  max-width: 1320px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+nav.toc {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 32px 28px;
+  background: var(--surface);
+  font-size: 13px;
+}
+nav.toc .brand { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 4px; }
+nav.toc .brand-sub { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 28px; }
+nav.toc h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin: 24px 0 8px; font-weight: 600; }
+nav.toc a { display: block; padding: 5px 8px; margin: 0 -8px; color: var(--ink-2); text-decoration: none; border-radius: 4px; transition: background 0.12s, color 0.12s; }
+nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+
+main {
+  padding: 56px 80px 96px;
+  max-width: 880px;
+  font-size: 16px;
+}
+header.page { margin-bottom: 64px; padding-bottom: 40px; border-bottom: 1px solid var(--border); }
+header.page h1 { font-size: 44px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin: 0 0 16px; }
+header.page .lede { font-size: 19px; color: var(--ink-2); line-height: 1.55; max-width: 720px; margin: 0; }
+header.page .meta { margin-top: 24px; font-size: 13px; color: var(--ink-3); font-family: var(--font-mono); }
+
+section.chapter { margin: 80px 0; }
+section.chapter > .chapter-label { font-size: 12px; letter-spacing: 0.12em; font-weight: 600; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+section.chapter > h2 { font-size: 34px; font-weight: 700; letter-spacing: -0.022em; margin: 0 0 16px; line-height: 1.2; }
+section.chapter > h2 + p { font-size: 17px; color: var(--ink-2); max-width: 720px; margin: 0; }
+
+section.sub { margin: 56px 0; scroll-margin-top: 24px; }
+section.sub > h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; }
+section.sub > h3 .anchor { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--ink-3); }
+section.sub > h3 + p { color: var(--ink-2); margin-top: 0; max-width: 720px; font-size: 16px; }
+
+.layered {
+  border-left: 3px solid var(--accent-soft);
+  padding: 6px 0 6px 24px;
+  margin: 24px 0 32px;
+  background: linear-gradient(to right, var(--surface), transparent 80%);
+}
+.layered .label-human, .layered .label-system {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.layered .label-human { background: var(--teal-soft); color: var(--teal); }
+.layered .label-system { background: var(--accent-soft); color: var(--accent); margin-top: 18px; }
+
+p { margin: 0 0 16px; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; color: var(--code-ink); }
+pre { background: var(--code-bg); padding: 18px 22px; border-radius: var(--r-md); overflow-x: auto; font-size: 13px; line-height: 1.6; border: 1px solid var(--border); margin: 20px 0; }
+pre code { background: none; padding: 0; }
+.kw { color: #7c3aed; }
+.str { color: #b45309; }
+.com { color: #78716c; font-style: italic; }
+.fn { color: #0e7490; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 26px; margin: 24px 0; box-shadow: var(--shadow-sm); }
+.card h4 { margin: 0 0 14px; font-size: 16px; letter-spacing: -0.01em; font-weight: 600; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 24px 0; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+@media (max-width: 980px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } main { padding: 32px; } .layout { grid-template-columns: 1fr; } nav.toc { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); } }
+
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14.5px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); background: var(--surface-2); border-bottom: 1px solid var(--border-strong); }
+tr:last-child td { border-bottom: none; }
+.cell-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); }
+
+.tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 500; font-family: var(--font-mono); background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
+.tag-accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.tag-green  { background: var(--green-soft); color: var(--green); border-color: transparent; }
+.tag-amber  { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+.tag-teal   { background: var(--teal-soft); color: var(--teal); border-color: transparent; }
+
+.callout { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 16px 22px; border-radius: 0 var(--r-md) var(--r-md) 0; margin: 24px 0; font-size: 14.5px; line-height: 1.6; }
+.callout .label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.callout.amber { background: var(--amber-soft); border-color: var(--amber); }
+.callout.amber .label { color: var(--amber); }
+.callout.green { background: var(--green-soft); border-color: var(--green); }
+.callout.green .label { color: var(--green); }
+.callout.teal { background: var(--teal-soft); border-color: var(--teal); }
+.callout.teal .label { color: var(--teal); }
+
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 32px; margin: 28px 0; text-align: center; overflow-x: auto; }
+.diagram svg { max-width: 100%; height: auto; display: inline-block; }
+.caption { font-size: 13px; color: var(--ink-3); text-align: center; font-style: italic; margin: 12px 0 0; }
+
+.dictionary { border-top: 1px solid var(--border); margin-top: 20px; }
+.dictionary dt { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--accent); padding-top: 16px; }
+.dictionary dd { margin: 4px 0 0; font-size: 14.5px; color: var(--ink-2); padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+
+ul.clean { padding-left: 22px; }
+ul.clean li { margin-bottom: 8px; }
+ol.clean { padding-left: 22px; }
+ol.clean li { margin-bottom: 8px; }
+
+.product-card {
+  border-radius: var(--r-lg);
+  padding: 22px;
+  margin: 14px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 20px;
+  align-items: start;
+  box-shadow: var(--shadow-sm);
+}
+.product-card .num {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--accent);
+  text-align: right;
+  line-height: 1;
+  font-family: var(--font-mono);
+}
+.product-card h4 { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+.product-card .one-liner { font-size: 14.5px; color: var(--ink-2); margin-bottom: 12px; }
+.product-card .details { font-size: 13.5px; color: var(--ink-3); }
+.product-card .pill-row { margin-top: 10px; }
+
+.flow-step {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 18px;
+  margin: 16px 0;
+  align-items: start;
+}
+.flow-step .step-num {
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+}
+.flow-step .step-body { font-size: 14.5px; }
+.flow-step strong { font-weight: 600; }
+
+footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-align: center; border-top: 1px solid var(--border); margin-top: 80px; }
+.foot-link { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <div class="brand">ExSol Suite</div>
+  <div class="brand-sub">Architecture · Expansive</div>
+
+  <a href="#what">What is ExSol?</a>
+  <a href="#suite">The Seven Products</a>
+  <a href="#erp">The 13 ERP Modules</a>
+
+  <h4>Foundations</h4>
+  <a href="#one-codebase">One codebase, many products</a>
+  <a href="#tenant">The Tenant Model</a>
+  <a href="#three-tiers">Three tiers of users</a>
+  <a href="#permissions">The Permission Model</a>
+
+  <h4>How a request works</h4>
+  <a href="#request-flow">End-to-end request lifecycle</a>
+  <a href="#data-model">The Data Model</a>
+  <a href="#fsm">State machines</a>
+  <a href="#audit">Audit trail</a>
+
+  <h4>How modules are built</h4>
+  <a href="#module-anatomy">Anatomy of a module</a>
+  <a href="#registry">The Registry</a>
+  <a href="#api-patterns">API patterns</a>
+
+  <h4>Operations</h4>
+  <a href="#deployment">Deployment</a>
+  <a href="#migrations">Database migrations</a>
+  <a href="#traps">Operational cliffs</a>
+
+  <h4>Reference</h4>
+  <a href="#glossary">Glossary</a>
+  <a href="#sibling">Sibling document</a>
+</nav>
+
+<main>
+
+<header class="page">
+  <h1>ExSol Suite — Architecture, in depth</h1>
+  <p class="lede">
+    A long-form, plain-language walkthrough of what we're building and how it fits together — from the
+    seven separate products that ship from this codebase, down through the 13 ERP modules at its heart,
+    the way one workspace becomes seven views of itself, and the operational machinery that keeps it
+    all running. Written so a careful reader without a software-engineering background can follow.
+  </p>
+  <div class="meta">Companion to architecture.html · technical but accessible</div>
+</header>
+
+<!-- ═══════════════════════════════════════════════ WHAT IS EXSOL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="what">
+  <div class="chapter-label">Chapter 1</div>
+  <h2>What is ExSol?</h2>
+  <p>The simplest possible description, then a more honest one.</p>
+
+  <div class="layered">
+    <div class="label-human">First, in everyday terms</div>
+    <p>
+      Imagine you run a small business — a salon, a café, a clothing store. To operate it well you need
+      a calendar (who's booked when), a register (taking payment), a product list (what you sell, for
+      how much), a way for customers to find you online, a way for them to book or order, a place to keep
+      your documents, a record of who works for you, and a back office where you can see how the business is doing.
+    </p>
+    <p>
+      ExSol gives you all of that in one piece of software, but adapted to your business. We don't make
+      one app for salons and a different one for cafés. We make one platform that's reconfigurable: each
+      business turns on the parts they need, brands them, and uses them.
+    </p>
+
+    <div class="label-system">Now, the technical framing</div>
+    <p>
+      ExSol is a <strong>multi-tenant SaaS suite</strong>. There is one codebase, one running platform,
+      and one database — but inside it, every business (we call them <em>tenants</em> or <em>clients</em>)
+      gets a private workspace that no other business can see. From the same codebase the system produces
+      <strong>seven distinct customer-facing products</strong>: an internal ERP for the operators, a
+      data-collection onboarding flow, a booking system (customer + staff), an ecommerce storefront,
+      an in-store POS, a catalog showcase site, and per-brand portfolio sites.
+    </p>
+  </div>
+
+  <p>
+    The phrase "data-collection app" in this repo's name reflects history, not present scope.
+    The system started as a way to collect product data during client onboarding. It has since grown
+    into the platform described here — a full operational suite. The repo name is a historical artifact;
+    the architecture is what's described below.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THE SEVEN PRODUCTS ═══════════════════════════════════════════════ -->
+<section class="chapter" id="suite">
+  <div class="chapter-label">Chapter 2</div>
+  <h2>The Seven Products</h2>
+  <p>
+    Seven distinct things ExSol ships to its users — each with its own audience, URL, and reason to exist.
+    They share a single backend.
+  </p>
+
+  <div class="product-card">
+    <div class="num">1</div>
+    <div>
+      <h4>The Internal App (ERP)</h4>
+      <div class="one-liner">The operator's home base. Where the business runs itself.</div>
+      <div class="details">
+        Used by Owners and staff of every workspace to manage their entire business: catalog, inventory,
+        orders, customers, finance, HR, marketing, and 7 more modules. Lives at <code>/c/&lt;slug&gt;/...</code>
+        in the browser. Today: 5 modules live (POS, Booking, File Manager, Product Manager, Workspace/AMS);
+        8 more modules planned. This is also where every other product gets configured — toggling a storefront,
+        adding products to the catalog, setting business hours, granting staff permissions.
+      </div>
+      <div class="pill-row">
+        <span class="tag tag-green">live (5 / 13 modules + 3 ops modules)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">2</div>
+    <div>
+      <h4>The Data Collection App</h4>
+      <div class="one-liner">A focused mini-app that gets a new client onboarded fast.</div>
+      <div class="details">
+        When a new business signs up, the slowest part of onboarding is loading their product catalog.
+        We extract the Product Manager module from the Internal App and ship it as a standalone, single-purpose
+        URL that the client (or their assistant) can use to upload products in bulk. Once the catalog is
+        in, the rest of the Internal App is preconfigured around it. This product reuses the same
+        <code>products</code> table as the Internal App — there is no separate data pipeline.
+      </div>
+      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">3</div>
+    <div>
+      <h4>The Booking System (staff + customer)</h4>
+      <div class="one-liner">A double-sided appointment system. One for the business, one for the customer.</div>
+      <div class="details">
+        Two surfaces of the same data: a staff calendar at <code>/c/&lt;slug&gt;/booking</code> for the
+        business owner / staff to see their day and manage services, resources, and hours; plus an
+        anonymous customer widget at <code>/c/&lt;slug&gt;/book</code> where a guest can pick a service,
+        a time, and a stylist, enter their name + phone, and reserve a slot — no account required.
+        Behind both, the same <code>bookings</code> table, the same <code>booking_resources</code>,
+        the same atomic no-overbooking constraint. Today: live, end-to-end smoke completed.
+      </div>
+      <div class="pill-row"><span class="tag tag-green">live</span></div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">4</div>
+    <div>
+      <h4>The Ecommerce Storefront</h4>
+      <div class="one-liner">The customer's online ordering page for any business that opts in.</div>
+      <div class="details">
+        A public, anonymous, mobile-friendly menu+cart at <code>/menu/&lt;slug&gt;</code>. The customer
+        browses the same products the in-store POS shows, adds to cart, enters minimal details, and places
+        a pickup or delivery order. Pay-on-pickup by default (no Razorpay required to launch). The order
+        flows into the same <code>sales</code> table as the in-store POS — but with <code>source='storefront'</code>
+        and a null staff attribution, so the operator can see both channels side-by-side in the order list.
+        Today: live, smoke verified, currently enabled on papa-s-saloon.
+      </div>
+      <div class="pill-row"><span class="tag tag-green">live</span></div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">5</div>
+    <div>
+      <h4>The In-Store POS System</h4>
+      <div class="one-liner">A cashier register, browser-based, tap-friendly.</div>
+      <div class="details">
+        Lives inside the Internal App at <code>/c/&lt;slug&gt;/pos/menu</code>. Staff browse products,
+        tap to add to a side cart, enter customer info, mark paid, and watch the order's state advance
+        through a finite state machine. For in-store sales, paid → fulfilled in one click (auto-fulfill);
+        for pickup channel, two clicks (mark paid when payment received, mark fulfilled when customer
+        picks up). Same backend as the ecommerce storefront — different UI, different default channel.
+      </div>
+      <div class="pill-row"><span class="tag tag-green">live</span></div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">6</div>
+    <div>
+      <h4>The Catalog Website</h4>
+      <div class="one-liner">Like the storefront, but no purchase. Just a beautiful showcase.</div>
+      <div class="details">
+        Some businesses want a customer-facing site that displays their products or services but doesn't
+        accept orders — interior designers showing portfolios, B2B suppliers showing line cards, restaurants
+        showing menus before opening. Same product catalog as the ecommerce storefront, same browsing UX,
+        but the "Add to cart" button is replaced with a contact or call-back link. Reuses every component
+        of the storefront except the cart and checkout.
+      </div>
+      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+    </div>
+  </div>
+
+  <div class="product-card">
+    <div class="num">7</div>
+    <div>
+      <h4>Brand Portfolio Sites</h4>
+      <div class="one-liner">A bespoke single-brand site, assembled from suite components.</div>
+      <div class="details">
+        Some clients want a fully-branded website that uses the suite's data and components but doesn't
+        look like a generic SaaS template. Each one is assembled per-client from a kit of components
+        (the same hero, gallery, calendar, contact form, product grid, etc. used across the other products)
+        wired up to that client's data. Custom domain, custom palette, custom layout. The reason to build
+        this in-platform rather than letting clients hire a separate web agency is that the brand site
+        stays in sync with the Internal App — change a product's price in the catalog and it updates on
+        the brand site automatically.
+      </div>
+      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THE 13 ERP MODULES ═══════════════════════════════════════════════ -->
+<section class="chapter" id="erp">
+  <div class="chapter-label">Chapter 3</div>
+  <h2>The 13 ERP Modules</h2>
+  <p>
+    The Internal App is structured around 13 ERP modules — the same set you'd find in any traditional
+    enterprise resource planning system. Each is a self-contained area of business operations with its
+    own data, permissions, UI, and backend.
+  </p>
+
+  <div class="layered">
+    <div class="label-human">What is "ERP," anyway?</div>
+    <p>
+      ERP stands for <em>Enterprise Resource Planning</em>. The idea is old and simple: every business
+      has a fixed set of repeating concerns — money in, money out, who works here, what we sell, what
+      we have in the warehouse, who our customers are, what's being made. An ERP is the single software
+      where all of those concerns are tracked, so the answer to "are we doing well?" doesn't require
+      stitching together five spreadsheets.
+    </p>
+    <p>
+      The version of "ERP" you might know from corporate IT (SAP, Oracle, Microsoft Dynamics) is gigantic,
+      expensive, and aimed at multinationals. ExSol is the same conceptual idea — same 13 modules — built
+      for businesses with 1 to 100 employees, who actually use the apps from their phone, and who pay
+      monthly. That's the gap we're filling.
+    </p>
+
+    <div class="label-system">The 13 modules, briefly</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card"><h4>1. Finance</h4><p style="font-size: 13.5px;">The books. Money in, money out, P&amp;L, accounts receivable / payable, payment ledgers, basic tax filing inputs.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>2. Procurement</h4><p style="font-size: 13.5px;">Buying things. Purchase orders, supplier catalog, RFQs (requests for quotes), goods-received notes.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>3. Manufacturing</h4><p style="font-size: 13.5px;">Making things. BOMs (bills of material: what goes into a finished product), work orders, production runs.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>4. Inventory Management</h4><p style="font-size: 13.5px;">What we have. Stock levels per warehouse, internal transfers, reorder points so we don't run out.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>5. Order Management</h4><p style="font-size: 13.5px;">What customers asked for. Order intake from every channel (in-store, online, phone), fulfillment, returns. Today: the POS <code>sales</code> table is the partial implementation; live for the two POS channels.</p><span class="tag tag-green">partial</span></div>
+    <div class="card"><h4>6. Warehouse Management</h4><p style="font-size: 13.5px;">Moving physical stuff. Pick lists, put-away routes, bin and lot tracking — for businesses with a real warehouse.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>7. Supply Chain Management</h4><p style="font-size: 13.5px;">The connection. Procurement → manufacturing → inventory → orders — this module is the cross-module dashboard, not a new data store.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>8. Customer Relationship Management (CRM)</h4><p style="font-size: 13.5px;">Who we sell to. Contacts, leads, opportunities, communication history. Today: the <code>user_nodes</code> table is the seed; bookings auto-create customer nodes by phone+email, which is the start of a real CRM.</p><span class="tag tag-green">partial</span></div>
+    <div class="card"><h4>9. Project Service Resource Management</h4><p style="font-size: 13.5px;">For services businesses with projects. Track jobs, billable hours, resource allocation. Booking's named-resource primitive (Stylist A, Chair 2) is the foundation this will extend.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>10. Workforce Management</h4><p style="font-size: 13.5px;">Scheduling staff. Shifts, timesheets, attendance, leave. The booking calendar's resource-availability machinery is reused here.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>11. Human Resources Management</h4><p style="font-size: 13.5px;">People. Roles, salary bands, payroll inputs, leave balances, performance notes. Today: the access-levels matrix + roles tables are the foundation, currently used for permissions.</p><span class="tag tag-green">partial</span></div>
+    <div class="card"><h4>12. Ecommerce</h4><p style="font-size: 13.5px;">The internal half of the customer storefront. Product visibility flags, channel routing, payment-on-pickup configuration, marketing campaign integration. Powers <code>/menu/&lt;slug&gt;</code>. Today: live.</p><span class="tag tag-green">live</span></div>
+    <div class="card"><h4>13. Marketing Automation</h4><p style="font-size: 13.5px;">Reaching customers. Email + SMS campaigns, drip flows triggered by behavior (cart abandoned, no booking in 60 days), audience segmentation, basic analytics.</p><span class="tag tag-amber">planned</span></div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Three non-ERP modules also live in the Internal App</div>
+    <p>
+      Not every Module in the Internal App is an ERP module. Three of today's live modules are operational
+      rather than business-function:
+    </p>
+    <ul class="clean">
+      <li><strong>POS</strong> — the cashier register UI, technically a surface of Order Management (#5).</li>
+      <li><strong>Booking</strong> — the calendar + customer widget; will eventually fold into Workforce + CRM.</li>
+      <li><strong>File Manager</strong> — a document vault with storage quotas; supports every other module by holding their files.</li>
+    </ul>
+    <p>They share the same auth, tenant, and permission infrastructure as the 13 ERP modules.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ ONE CODEBASE ═══════════════════════════════════════════════ -->
+<section class="chapter" id="one-codebase">
+  <div class="chapter-label">Chapter 4 · Foundations</div>
+  <h2>One codebase, many products</h2>
+  <p>How do seven distinct products come from one Git repo?</p>
+
+  <div class="layered">
+    <div class="label-human">The analogy</div>
+    <p>
+      Think of a TV studio that records one news program and then re-edits the same footage into seven
+      different formats — a one-hour broadcast, a 90-second social clip, a podcast cut, a long-form
+      YouTube version, a written transcript, an alert text. The source is the same; the packaging is
+      different. ExSol is a similar idea, but with software components instead of footage.
+    </p>
+
+    <div class="label-system">In code, this means three things</div>
+  </div>
+
+  <div class="card">
+    <h4>1 · A shared component library</h4>
+    <p>
+      The same React component that draws a "product tile" with a photo and a price appears on the POS,
+      on the ecommerce storefront, on the catalog site, and in the Product Manager's edit page. It lives
+      once in <code>src/modules/products/components/ProductTile.tsx</code> and is imported by every page
+      that needs it. When we improve the tile (better photo cropping, smoother hover state) every product
+      improves.
+    </p>
+  </div>
+  <div class="card">
+    <h4>2 · A shared data layer</h4>
+    <p>
+      The PostgreSQL database has one <code>products</code> table per workspace. The POS reads it, the
+      storefront reads it, the catalog reads it. There's no copy-paste between products, no synchronization
+      lag, no data inconsistency. The downside is that one bad write to <code>products</code> shows up in
+      every surface immediately — which is why audit trails and the permission model exist.
+    </p>
+  </div>
+  <div class="card">
+    <h4>3 · Per-route gates</h4>
+    <p>
+      The URL is the configuration. <code>/c/&lt;slug&gt;/pos/menu</code> says: render the staff POS view.
+      <code>/menu/&lt;slug&gt;</code> says: render the public storefront. Both URLs end up fetching from the
+      same products endpoint, but the route gate decides which auth model applies (staff JWT vs. anonymous)
+      and which UI to render.
+    </p>
+  </div>
+
+  <p style="margin-top: 24px;">
+    The challenge is keeping the "shared library" abstraction honest: when a sibling chat builds a new product,
+    they have to resist the temptation to copy-paste an existing component and "just tweak it a little." The
+    discipline is to extract the difference as a prop, not fork the component. Today's session preserved
+    this for the most part — the <code>SideCartPanel</code>'s "merge-safe" refactor is exactly that: its
+    qty controls became optional props so the same panel works for the staff POS (with steppers) and the
+    guest storefront (without).
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THE TENANT MODEL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="tenant">
+  <div class="chapter-label">Chapter 5 · Foundations</div>
+  <h2>The Tenant Model</h2>
+  <p>How one platform serves many businesses without leaking data between them.</p>
+
+  <div class="layered">
+    <div class="label-human">First, an analogy</div>
+    <p>
+      Think of a large coworking building. There are 200 companies inside, each in their own room. They all
+      share the lobby, the elevators, the wifi, the cleaners. But you can't walk into another company's
+      room and read their mail. The building's security model is: each room has a key, and your key only
+      opens your room.
+    </p>
+    <p>
+      ExSol is the building. Each business — we call them a <strong>client</strong> or <strong>tenant</strong>
+      or <strong>workspace</strong> (these all mean the same thing) — is one room. The data they create
+      stays in their room. The other 199 businesses on the platform can never read it, even if they go
+      poking at the URL.
+    </p>
+
+    <div class="label-system">In code</div>
+  </div>
+
+  <p>
+    Every meaningful data row in the database has a <code>client_id</code> column. The application code,
+    at every entry point, scopes every query by <code>client_id</code>. There is no Postgres Row-Level
+    Security — tenancy is enforced at the application layer through three coordinated mechanisms:
+  </p>
+
+  <ol class="clean">
+    <li>
+      <strong>JWT cookie carries the tenant binding.</strong> When a staff member logs into a workspace,
+      the cookie they receive contains their <code>user_node_id</code> AND their <code>client_id</code>.
+      They cannot "log into" a different workspace without obtaining a different cookie. The cookie is
+      signed; tampering would invalidate it.
+    </li>
+    <li>
+      <strong>Every endpoint checks the URL's client param against the cookie.</strong> If a malicious user
+      hand-edits a URL from <code>/c/papa-s-saloon/pos/menu</code> to <code>/c/another-business/pos/menu</code>
+      and tries to load it, the backend sees: cookie says client=papa-s-saloon, URL says client=another-business,
+      these don't match → return 403 forbidden_cross_client.
+    </li>
+    <li>
+      <strong>Every SQL query is parameterized by client_id.</strong> The auth helper resolves the client_id
+      from the cookie, hands it to the handler, and the handler uses it in every SQL query. There is no
+      query that pulls data without a client_id filter.
+    </li>
+  </ol>
+
+  <div class="callout amber">
+    <div class="label">What about admins?</div>
+    <p>
+      Admins (the operators of ExSol itself — Faraaz and team) have a different cookie that grants
+      cross-workspace access. Their authentication is separate (the admin login flow, the admin dashboard
+      at <code>/</code>). When an admin acts on a specific workspace, they pass <code>?client=&lt;uuid&gt;</code>
+      explicitly in the URL — which is how the backend knows which workspace to target.
+    </p>
+    <p>
+      Bucket-users (workspace owners and staff) cannot pass <code>?client=</code> — it's silently ignored
+      or rejected if it mismatches their JWT. This asymmetry is the cross-client guard.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THREE TIERS OF USERS ═══════════════════════════════════════════════ -->
+<section class="chapter" id="three-tiers">
+  <div class="chapter-label">Chapter 6 · Foundations</div>
+  <h2>Three tiers of users</h2>
+  <p>Who logs in, what they can see, how the system tells them apart.</p>
+
+  <div class="layered">
+    <div class="label-human">In everyday terms</div>
+    <p>
+      Three kinds of people use ExSol. The platform <em>operators</em> (us) — we run the building.
+      The workspace <em>owners and staff</em> — they're the tenants who live in their room. And the
+      <em>customers</em> of those tenants — they're guests who walk into the storefront, place an order
+      or book an appointment, and leave. Each group has a different door, a different key, different
+      permissions.
+    </p>
+
+    <div class="label-system">The three sessions</div>
+  </div>
+
+  <table>
+    <thead><tr><th>Tier</th><th>Who</th><th>Auth mechanism</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Admin</strong></td>
+        <td>ExSol team (us)</td>
+        <td>Username + password, lives in <code>admins</code> table; argon2 hashed</td>
+        <td>Cross-workspace; can act on any tenant by passing <code>?client=</code></td>
+      </tr>
+      <tr>
+        <td><strong>Bucket-user</strong></td>
+        <td>Workspace Owners + their staff</td>
+        <td>Username + password OR Google OAuth, lives in <code>user_node_credentials</code>; JWT cookie scoped to one client</td>
+        <td>One workspace only; subtree-scoped if they're L2+</td>
+      </tr>
+      <tr>
+        <td><strong>Guest</strong></td>
+        <td>End-customers using a storefront or booking widget</td>
+        <td>No login. Identified by IP rate-limiting + honeypot + manage-token cookie for receipt links</td>
+        <td>Only the public endpoints (storefront menu, booking availability, create + manage their own order/booking)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout teal">
+    <div class="label">Levels within bucket-users</div>
+    <p>
+      Within a workspace, staff are organized into levels: <strong>L1 (Primary / Owner)</strong> at the top,
+      then L2, L3, etc. The Owner can see and do everything in their workspace by default. L2+ staff need
+      explicit permissions granted via the access-levels admin UI. This level hierarchy is what makes
+      "Stylist A can only see her own bookings, Owner can see everyone's" work cleanly.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ PERMISSION MODEL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="permissions">
+  <div class="chapter-label">Chapter 7 · Foundations</div>
+  <h2>The Permission Model</h2>
+  <p>How the system decides whether an action is allowed.</p>
+
+  <div class="layered">
+    <div class="label-human">The everyday version</div>
+    <p>
+      Imagine the workspace as an office with several rooms — products room, bookings room, files room.
+      The Owner has master keys to every room. Each staff member gets a key ring with only the keys they
+      need: maybe "products: can look at, can edit" but not "files: can delete." The set of keys is called
+      their <em>permission matrix</em>, and it's stored once per level (L2's keys, L3's keys, etc.).
+    </p>
+
+    <div class="label-system">The technical model</div>
+  </div>
+
+  <p>
+    Permissions are strings like <code>products.products.view</code> (module = products, bucket = products,
+    verb = view). Each level in a workspace has a JSONB map of <code>{ "permissions.key": true }</code> in
+    the <code>client_levels</code> table. The auth chain looks up the level for the requesting user,
+    consults this matrix, and either approves the action or returns 403.
+  </p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Model A: Bucket × Verb</h4>
+      <p style="font-size: 13.5px;">
+        For CRUD-style operations (Create / Read / Update / Delete on a resource). Keys look like
+        <code>&lt;module&gt;.&lt;bucket&gt;.&lt;verb&gt;</code>.
+      </p>
+      <pre style="margin-top: 10px; font-size: 12px;"><code>products.products.create
+products.categories.edit
+booking.customers.view
+booking.employees.edit
+files.documents.delete</code></pre>
+      <div class="pill-row" style="margin-top: 12px;">
+        <span class="tag tag-accent">Used by</span>
+        <span class="tag">Products</span><span class="tag">Booking</span><span class="tag">Files</span><span class="tag">Team</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4>Model B: Action namespace</h4>
+      <p style="font-size: 13.5px;">
+        For state-machine operations where "verbs on a resource" doesn't carve cleanly.
+        Keys look like <code>&lt;module&gt;.&lt;action&gt;</code>.
+      </p>
+      <pre style="margin-top: 10px; font-size: 12px;"><code>pos.menu.view
+pos.sale.markPaid
+pos.sale.refund
+pos.history.viewAll</code></pre>
+      <div class="pill-row" style="margin-top: 12px;">
+        <span class="tag tag-accent">Used by</span>
+        <span class="tag">POS</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <div class="label">L1 Owner is all-on by default</div>
+    <p>
+      Both models honor a special rule: if <code>level_number === 1</code>, skip the matrix check and grant
+      every permission. This is what makes a fresh workspace usable on day one without configuring keys.
+      The Owner can immediately log in and do everything. L2+ staff need explicit grants.
+    </p>
+    <p>
+      This sounds simple, but it took shipping the same fix to three different modules (POS, Booking,
+      and the public storefront helpers) before it became a documented pattern. See the operational traps
+      section below for why.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ REQUEST FLOW ═══════════════════════════════════════════════ -->
+<section class="chapter" id="request-flow">
+  <div class="chapter-label">Chapter 8 · How a request works</div>
+  <h2>End-to-end request lifecycle</h2>
+  <p>What happens between a click in the browser and a row in the database.</p>
+
+  <div class="layered">
+    <div class="label-human">Walking through it slowly</div>
+    <p>
+      Let's follow a single click: a staff member at papa-s-saloon clicks "Mark paid" on order S-00002.
+      Here's everything that happens, in order.
+    </p>
+  </div>
+
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>The browser sends a network request.</strong> A POST to <code>/api/pos/sales/&lt;id&gt;/state</code>
+      with body <code>{ action: 'markPaid', paymentMethod: 'cash' }</code> and the user's session cookie attached.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Netlify Edge receives it.</strong> Netlify is the platform we host on — it has servers all
+      over the world. The request hits whichever edge node is closest to the user. The edge consults its
+      function registry and figures out: this URL routes to the function file at
+      <code>netlify/functions/pos-sale-state.ts</code>.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>The function spins up.</strong> Netlify Functions are short-lived processes — they start
+      fresh per request (or per small batch), run their code, return a response, and shut down. This is
+      "serverless." The function file we wrote runs.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <strong>Auth chain runs.</strong> The function calls <code>requirePos(req, ['pos.sale.markPaid'])</code>.
+      That helper: reads the cookie, validates the JWT signature, looks up the user_node in the database,
+      checks that POS is enabled for this workspace, checks the user holds the markPaid permission
+      (skipped if they're L1 Owner), and either returns an authorized context or returns a 403/401 response.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <strong>The handler does the work.</strong> Validates the body with zod (rejects malformed input
+      with 400), consults the FSM (is the current sale state pending_payment? if not, return 409),
+      updates the database row inside a transaction, and — because the channel is "instore" — auto-advances
+      the state from <code>paid</code> to <code>fulfilled</code> in the same call.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <strong>Audit log entry is written.</strong> A row is inserted into <code>audit_log</code> with
+      <code>op: 'pos.sale.markPaid'</code>, the actor's user_node_id, the target sale's id, and a JSON
+      blob with the from/to states. This is the immutable history of what happened.
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <strong>Response goes back.</strong> The handler returns <code>jsonOk({ sale: updatedRow })</code>.
+      Netlify Edge forwards it to the browser. The browser's React code receives the JSON, updates the
+      page (in theory — there's an open UX bug where it doesn't auto-refetch, see operational cliffs).
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Total time: ~200-400ms</div>
+    <p>
+      A well-behaved POS state transition runs end-to-end in about a quarter to half a second. Most of that
+      is network latency, not computation. The actual database write is &lt;5ms; the function cold-start
+      (first request after idle) adds 100-200ms; subsequent requests in the same minute are warm.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ DATA MODEL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="data-model">
+  <div class="chapter-label">Chapter 9 · How a request works</div>
+  <h2>The Data Model</h2>
+  <p>The shape of the database, and why it's shaped that way.</p>
+
+  <div class="layered">
+    <div class="label-human">A short orientation</div>
+    <p>
+      The database is one PostgreSQL instance with about 40 tables. Every table either belongs to a
+      workspace (via <code>client_id</code>) or is platform-level (the <code>admins</code> table is the
+      only one). Conceptually, the tables form a tree: <code>clients</code> is the root, and most other
+      tables hang off it.
+    </p>
+
+    <div class="label-system">The core tables, by group</div>
+  </div>
+
+  <div class="card">
+    <h4>Identity</h4>
+    <ul class="clean">
+      <li><code>admins</code> — ExSol team members. Cross-workspace.</li>
+      <li><code>clients</code> — workspaces. One row per business. Has a slug (URL identifier) and a name.</li>
+      <li><code>user_nodes</code> — every person inside a workspace: Owner, staff, customers. Has a level_number, a parent_id (for L2 reporting to L1), and a role_id.</li>
+      <li><code>user_node_credentials</code> — login credentials for any user_node that needs them (Owner, staff). Customers don't have credentials unless they sign up.</li>
+      <li><code>client_levels</code> — the permission matrix per level per workspace. Stored as JSONB.</li>
+      <li><code>client_roles</code> — named role labels (Owner, Cashier, Stylist) with optional color and bucket_family.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Configuration</h4>
+    <ul class="clean">
+      <li><code>client_enabled_products</code> — which modules each workspace has turned on. A workspace without "pos" enabled here cannot use the POS module even if their code path tries.</li>
+      <li><code>client_cardinality_rules</code> — limits like "max 1 user per L1" — used by AMS for tier policies.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Products (catalog)</h4>
+    <ul class="clean">
+      <li><code>products</code> — the catalog. Has name, type, price_cents, optional sale_price_cents, discount_percent, status (active / draft / archived), pos_visible, storefront_visible, and a long tail of Phase B columns (sku, gtin, category, brand, etc.). 49 columns total.</li>
+      <li><code>product_categories</code> — categorization tree.</li>
+      <li><code>product_images</code> — image files attached to products, stored in Netlify Blobs with thumb pipeline.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Sales (orders)</h4>
+    <ul class="clean">
+      <li><code>sales</code> — order header. order_no (per-bucket sequence), status (FSM enum), channel (instore / pickup / online), source (storefront / instore / pickup / online), customer info (plain text, no FK to a customer table), payment_ref (idempotency key + future Razorpay id), payment_method, paid_at, fulfilled_at, cancelled_at, refunded_at.</li>
+      <li><code>sale_lines</code> — one row per line in the cart, with <em>snapshot prices</em> so future product edits don't rewrite history.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Bookings</h4>
+    <ul class="clean">
+      <li><code>booking_settings</code> — per-workspace timezone, weekly schedule, slot interval, cancellation cutoff.</li>
+      <li><code>booking_resources</code> — named resources (Stylist A, Chair 2). Active flag.</li>
+      <li><code>booking_resource_time_off</code> — vacation/blocks per resource.</li>
+      <li><code>booking_services</code> — services offered (Haircut, Color), with duration, price, payment_mode (pay_at_venue / deposit / full_upfront).</li>
+      <li><code>bookings</code> — the actual appointment. resource_id, service_id, customer_user_node_id (nullable for blocked time), time_range (tstzrange), status enum, manage_token. Has a GIST exclusion constraint preventing two bookings overlapping on the same resource.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Files</h4>
+    <ul class="clean">
+      <li><code>files</code> — uploaded documents (PDFs, photos, videos). Per-client storage path in Netlify Blobs.</li>
+      <li><code>file_categories</code> — finance/HR/legal/etc. taxonomy.</li>
+      <li><code>file_audience</code> — who can see this file (role / node / user grants).</li>
+      <li><code>workspace_storage_quotas</code> — per-client byte limit + current usage cache.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Audit</h4>
+    <ul class="clean">
+      <li><code>audit_log</code> — every mutation writes a row. actor_admin OR actor_user_node, op (e.g. <code>pos.sale.markPaid</code>), client_id, target_type, target_id, detail JSONB. Cross-cutting; not owned by any single module.</li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <div class="label">Key design decisions you should know</div>
+    <ul class="clean">
+      <li><strong>Snapshot prices on sale_lines and product_name on sale_lines.</strong> When a sale is created, we copy the product name and unit price into the line row. Future edits to the product don't change history.</li>
+      <li><strong>customer_name and customer_phone as plain text on sales.</strong> No foreign key to a customer table. Why: guest sales would otherwise force every guest to create a record. Future CRM integration can match-or-link these post-hoc.</li>
+      <li><strong>tstzrange + GIST exclusion on bookings.</strong> Concurrent requests for the same slot can't both succeed because the database itself enforces the no-overlap rule. The application doesn't need to "lock" anything.</li>
+      <li><strong>JSONB for permission matrices.</strong> Permissions vary in shape per module; a rigid relational model would be painful. JSONB gives flexibility at the cost of slightly more complex queries.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ STATE MACHINES ═══════════════════════════════════════════════ -->
+<section class="chapter" id="fsm">
+  <div class="chapter-label">Chapter 10 · How a request works</div>
+  <h2>State machines</h2>
+  <p>Why most operational records have a well-defined lifecycle and what we get for the trouble.</p>
+
+  <div class="layered">
+    <div class="label-human">Why states matter</div>
+    <p>
+      Take a POS sale. It can be pending payment, paid, fulfilled, cancelled, or refunded. Each transition
+      between these states is a business event with its own rules: you can refund a paid sale, but you
+      can't refund a cancelled one. You can mark fulfilled from paid, but not from pending. If we didn't
+      encode these rules, a careless click could put a sale into a nonsense state.
+    </p>
+    <p>
+      A <strong>finite state machine</strong> (FSM) is the formal name for "a set of states + the rules
+      about which transitions are legal." We use FSMs for sales (5 states), bookings (6 states), and
+      most operational records.
+    </p>
+
+    <div class="label-system">The POS sale FSM</div>
+  </div>
+
+  <pre><code>pending_payment → paid       (action: markPaid)
+pending_payment → cancelled  (action: cancel)
+paid → fulfilled             (action: fulfill — auto if channel='instore')
+paid → refunded              (action: refund)
+fulfilled → refunded         (action: refund)
+
+<span class="com">// channel-aware: instore auto-fulfills, pickup requires two clicks</span></code></pre>
+
+  <p>
+    The FSM is enforced server-side in the handler before any database write. The client UI also reads
+    the current state and shows only the legal action buttons (so the user can't even click "fulfill"
+    when the sale is still pending), but the server check is the authority — a malicious client could
+    forge the request and the server would still reject illegal transitions with 409.
+  </p>
+
+  <div class="callout green">
+    <div class="label">The booking FSM is similar but channel-aware in a different way</div>
+    Per-service payment policy decides whether a booking starts at <code>pending_payment</code> or
+    <code>confirmed</code>. <code>payment: 'none'</code> → confirmed immediately. <code>payment: 'required'</code>
+    → pending_payment, with a cleanup cron that cancels stale bookings after 15 min. <code>payment: 'optional'</code>
+    behaves like 'none' but allows post-hoc payment at the counter.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ AUDIT TRAIL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="audit">
+  <div class="chapter-label">Chapter 11 · How a request works</div>
+  <h2>Audit trail</h2>
+  <p>How we know what happened, who did it, and when.</p>
+
+  <div class="layered">
+    <div class="label-human">Why every business needs an audit log</div>
+    <p>
+      A customer complains: "I ordered three coffees, you charged me for five." The Owner asks: "Who took
+      the order? When? What did they enter?" Without an audit log, there's no answer. With one: a few SQL
+      queries and you can reconstruct the exact sequence of events.
+    </p>
+    <p>
+      Audit logs are also legal protection (for disputes), operational insight (was the storefront slow
+      because someone was hammering it?), and a debugging aid (this row looks wrong — who edited it?).
+    </p>
+  </div>
+
+  <p>
+    The <code>audit_log</code> table is append-only by convention (no UPDATEs, no DELETEs in normal use).
+    Every mutation across the platform writes a row via the <code>logAudit(session, op, { target, detail })</code>
+    helper. The detail JSONB blob is module-specific:
+  </p>
+
+  <pre><code><span class="com">// Example: storefront sale created by an anonymous guest</span>
+{
+  occurred_at: <span class="str">'2026-06-30T14:48:18Z'</span>,
+  op: <span class="str">'pos.sale.created'</span>,
+  actor_admin: <span class="kw">null</span>,
+  actor_user_node: <span class="kw">null</span>,  <span class="com">// both null = anonymous guest</span>
+  client_id: <span class="str">'a9c733b4-...'</span>,
+  target_type: <span class="str">'sale'</span>,
+  target_id: <span class="str">'050e97fc-...'</span>,
+  detail: {
+    lines: 1,
+    source: <span class="str">'storefront'</span>,
+    channel: <span class="str">'pickup'</span>,
+    total_cents: 1000
+  }
+}</code></pre>
+
+  <p>
+    What makes this powerful: the <code>op</code> namespace is structured (<code>module.entity.action</code>),
+    so you can ask "all POS state transitions in the last 24 hours" with a simple <code>WHERE op LIKE 'pos.sale.%'</code>.
+    The <code>detail</code> JSONB captures whatever the module thinks is interesting at the moment — for
+    state transitions, the from/to states; for exports, the byte count + table counts; for FSM auto-transitions,
+    a flag like <code>auto: true</code> so you can distinguish "staff clicked twice" from "system
+    auto-advanced."
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ MODULE ANATOMY ═══════════════════════════════════════════════ -->
+<section class="chapter" id="module-anatomy">
+  <div class="chapter-label">Chapter 12 · How modules are built</div>
+  <h2>Anatomy of a module</h2>
+  <p>What a "module" actually consists of in this codebase, layer by layer.</p>
+
+  <p>
+    When a sibling chat builds a new module, they're writing code in roughly seven places.
+    The example below is the POS module — but every module follows this same structure.
+  </p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Where</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Registry entry</td>
+        <td><code>src/modules/registry/{products-list, manifests}/*.ts</code></td>
+        <td>Declares the module's identity, its permission keys, which products unlock it</td>
+      </tr>
+      <tr>
+        <td>Database migration</td>
+        <td><code>db/migrations/&lt;NNN&gt;_&lt;name&gt;.sql</code></td>
+        <td>Tables, indexes, enums the module needs</td>
+      </tr>
+      <tr>
+        <td>Backend functions</td>
+        <td><code>netlify/functions/&lt;module&gt;-&lt;action&gt;.ts</code></td>
+        <td>HTTP endpoints — one per action (list, create, edit, detail, state-transition...)</td>
+      </tr>
+      <tr>
+        <td>Module-specific helpers</td>
+        <td><code>netlify/functions/_&lt;module&gt;-authz.ts</code>, <code>_&lt;module&gt;-validators.ts</code></td>
+        <td>Auth helper, zod schemas, FSM helper, anything module-internal</td>
+      </tr>
+      <tr>
+        <td>Pure logic (shared)</td>
+        <td><code>src/modules/&lt;module&gt;/lib/*.ts</code></td>
+        <td>Pure functions usable from both backend and frontend — FSM transitions, availability calculations, etc.</td>
+      </tr>
+      <tr>
+        <td>Frontend pages</td>
+        <td><code>src/modules/&lt;module&gt;/pages/*.tsx</code></td>
+        <td>React components — one per screen</td>
+      </tr>
+      <tr>
+        <td>Frontend components</td>
+        <td><code>src/modules/&lt;module&gt;/components/*.tsx</code></td>
+        <td>Reusable bits — tiles, drawers, panels, badges</td>
+      </tr>
+      <tr>
+        <td>Module CSS</td>
+        <td><code>src/modules/&lt;module&gt;/&lt;module&gt;.css</code></td>
+        <td>All the module's class rules, themed off shared tokens</td>
+      </tr>
+      <tr>
+        <td>Tests</td>
+        <td><code>tests/&lt;module&gt;/*.test.ts</code> + <code>__tests__/*.tsx</code></td>
+        <td>Integration tests against handlers + unit/component tests on pure logic</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    The Booking module, the most recently shipped, has 12 backend functions, ~30 frontend files, 64 tests,
+    and a 460-line CSS file. The whole shape can be inspected at <code>src/modules/booking/</code>.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ REGISTRY ═══════════════════════════════════════════════ -->
+<section class="chapter" id="registry">
+  <div class="chapter-label">Chapter 13 · How modules are built</div>
+  <h2>The Registry</h2>
+  <p>How modules announce themselves to the rest of the system.</p>
+
+  <p>
+    The Registry is a static configuration in <code>src/modules/registry/</code> that knows about every
+    Module and every Product. It's the source of truth for:
+  </p>
+
+  <ul class="clean">
+    <li>What modules exist and their labels (e.g. "Booking & Calendar" not just "booking")</li>
+    <li>What permission keys each module has (e.g. <code>pos.sale.markPaid</code>)</li>
+    <li>Which products unlock which modules (e.g. enabling the <code>'saloon-booking'</code> product unlocks the <code>booking</code> module)</li>
+    <li>What "buckets" each module exposes (used by the bucket×verb permission matrix UI)</li>
+  </ul>
+
+  <p>
+    The registry is consumed by: <code>/api/u-me</code> (to figure out what enabled_modules to return for the
+    current user), <code>AccessLevelDashboard</code> (to render the permissions matrix), and the
+    sidebar (to show which links to render).
+  </p>
+
+  <pre><code><span class="com">// src/modules/registry/modules.ts</span>
+<span class="kw">export const</span> moduleRegistry = {
+  booking: bookingManifest,
+  payments: paymentsManifest,
+  products: productsManifest,
+  pos: posManifest,
+} <span class="kw">as const</span>;
+
+<span class="com">// src/modules/registry/products.ts</span>
+<span class="kw">export const</span> productRegistry = {
+  <span class="str">'saloon-booking'</span>: saloonBookingProduct,
+  <span class="str">'products'</span>:       productsProduct,
+  <span class="str">'pos'</span>:            posProduct,    <span class="com">// requires: ['products']</span>
+} <span class="kw">as const</span>;</code></pre>
+
+  <p>
+    The "products require products" wording is a quirk: <code>posProduct.requires = ['products']</code>
+    means "the POS product requires the Products product to also be enabled for the workspace."
+    The POS reads the catalog from the Products module, so enabling POS without Products would
+    leave the POS with nothing to sell.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ API PATTERNS ═══════════════════════════════════════════════ -->
+<section class="chapter" id="api-patterns">
+  <div class="chapter-label">Chapter 14 · How modules are built</div>
+  <h2>API patterns</h2>
+  <p>What every backend function looks like, structurally.</p>
+
+  <p>
+    Every Netlify Function in this repo follows the same skeleton. Once you can read one, you can read all
+    ~91 of them. The shape is:
+  </p>
+
+  <pre><code><span class="com">// netlify/functions/&lt;name&gt;.ts</span>
+<span class="kw">import type</span> { Context } <span class="kw">from</span> <span class="str">'@netlify/functions'</span>;
+<span class="kw">import</span> { jsonError, jsonOk } <span class="kw">from</span> <span class="str">'./_shared/http'</span>;
+<span class="kw">import</span> { requirePos } <span class="kw">from</span> <span class="str">'./_pos-authz'</span>;
+<span class="kw">import</span> { logAudit } <span class="kw">from</span> <span class="str">'./_shared/audit'</span>;
+<span class="kw">import</span> { db } <span class="kw">from</span> <span class="str">'./_shared/db'</span>;
+<span class="kw">import</span> { SaleStateBody } <span class="kw">from</span> <span class="str">'./_pos-validators'</span>;
+
+<span class="kw">export const</span> config = { path: <span class="str">'/api/pos/sales/:id/state'</span>, method: <span class="str">'POST'</span> };
+
+<span class="kw">export default async</span> (req: Request, _ctx: Context) =&gt; {
+  <span class="com">// 1. Auth + perm gate (returns Response on failure)</span>
+  <span class="kw">const</span> auth = <span class="kw">await</span> <span class="fn">requirePos</span>(req, [<span class="str">'pos.sale.markPaid'</span>]);
+  <span class="kw">if</span> (!auth.ok) <span class="kw">return</span> auth.res;
+
+  <span class="com">// 2. Validate body with zod</span>
+  <span class="kw">const</span> body = SaleStateBody.<span class="fn">safeParse</span>(<span class="kw">await</span> req.<span class="fn">json</span>());
+  <span class="kw">if</span> (!body.success) <span class="kw">return</span> <span class="fn">jsonError</span>(400, <span class="str">'invalid_body'</span>, { details: body.error });
+
+  <span class="com">// 3. Do the work (FSM transition, channel-aware auto-fulfill)</span>
+  <span class="kw">const</span> sql = <span class="fn">db</span>();
+  <span class="kw">const</span> [updated] = <span class="kw">await</span> sql<span class="str">`UPDATE sales SET status = ..., paid_at = now() WHERE ...`</span>;
+
+  <span class="com">// 4. Audit</span>
+  <span class="kw">await</span> <span class="fn">logAudit</span>(auth.ctx, <span class="str">'pos.sale.markPaid'</span>, {
+    target_id: updated.id,
+    detail: { from: <span class="str">'pending_payment'</span>, to: <span class="str">'paid'</span> },
+  });
+
+  <span class="kw">return</span> <span class="fn">jsonOk</span>(updated);
+};</code></pre>
+
+  <p>
+    Auth → validate → work → audit → respond. Always in that order. The auth helper is module-specific
+    (<code>requirePos</code> for POS, <code>requireBooking</code> for booking) but they all share the same
+    pattern: enable-gate first, then permission check, with the L1 Owner bypass after the enable-gate.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ DEPLOYMENT ═══════════════════════════════════════════════ -->
+<section class="chapter" id="deployment">
+  <div class="chapter-label">Chapter 15 · Operations</div>
+  <h2>Deployment</h2>
+  <p>How code goes from a developer's laptop to a customer's screen.</p>
+
+  <div class="layered">
+    <div class="label-human">The non-technical version</div>
+    <p>
+      We use Netlify, a service that takes our code from GitHub, builds the website + backend, and runs
+      it on their servers. Every time someone with permission pushes new code to the <code>main</code>
+      branch on GitHub, Netlify notices, runs the build, and replaces the live version with the new one.
+      No manual server management; no SSH; no "did the deploy work" anxiety beyond a "ready" signal in the
+      Netlify dashboard.
+    </p>
+    <p>
+      The database is hosted on a different service called Neon — they run PostgreSQL, and we have two
+      separate "branches" (think: copies) of our database: one for development, one for production.
+      Changing the database structure (called a "migration") is a manual step done before pushing code
+      that depends on the change.
+    </p>
+
+    <div class="label-system">The full sequence for a production push</div>
+  </div>
+
+  <ol class="clean">
+    <li>Verify the prod Neon endpoint is the right one: <code>echo $PROD_DB_URL | grep dawn-bird</code>. If we get this wrong and run a destructive migration on the dev database thinking it's prod, we'd silently break the dev workflow.</li>
+    <li>For additive migrations (new tables, new columns): run <code>npm run migrate</code> against prod FIRST. This is because code that expects the column would crash if the column doesn't exist yet. Once the column is there, code that doesn't yet use it is fine — additive migrations are forward-compatible.</li>
+    <li>For destructive migrations (dropping columns, dropping tables): run code FIRST. This is the opposite of additive — destructive migrations are backward-incompatible. You want the old code that uses the column to stop running before you drop the column.</li>
+    <li><code>git push origin main</code>. Netlify auto-builds (~30-50s) and auto-deploys.</li>
+    <li>Watch for the "ready" state. Probe new endpoints — if they 404 with SPA HTML, the Edge function registry hasn't picked them up yet (this is a known trap — see operational cliffs). Run <code>netlify api restoreSiteDeploy</code> to nudge it.</li>
+    <li>If the alias-not-promoted trap fires (alias URL serves the old bundle hash while per-deploy URL serves the new one), <code>restoreSiteDeploy</code> again.</li>
+    <li>UI smoke on a real workspace. Verify the new feature actually works for an end user, not just that the deploy went green.</li>
+  </ol>
+</section>
+
+<!-- ═══════════════════════════════════════════════ MIGRATIONS ═══════════════════════════════════════════════ -->
+<section class="chapter" id="migrations">
+  <div class="chapter-label">Chapter 16 · Operations</div>
+  <h2>Database migrations</h2>
+  <p>How we evolve the database schema over time without losing data.</p>
+
+  <p>
+    Migrations are numbered SQL files in <code>db/migrations/</code>. Each one is a small set of CREATE TABLE,
+    ALTER TABLE, CREATE INDEX statements that describe a change. They're applied in numeric order
+    (<code>001</code>, <code>002</code>, …, <code>049</code>). Once applied, a row is inserted into
+    <code>schema_migrations</code> so the runner knows to skip it next time.
+  </p>
+
+  <p>
+    Today the repo has 49 migrations. The names are descriptive: <code>038_products_discount_percent.sql</code>
+    adds a discount percent column; <code>040_sales.sql</code> creates the sales table; <code>046_workspace_storage_quota.sql</code>
+    creates the quota table.
+  </p>
+
+  <p>
+    Parallel-development friction surfaces when two sibling chats both reserve the same migration number.
+    Today, the POS-v2 storefront work, the Booking work, and the File Manager Phase B work all branched
+    independently and each tried to claim 043/044/045. We resolved by applying POS-v2's first, renumbering
+    Booking's to 047/048/049, and File Manager landed cleanly at 046 (the gap we'd left). The
+    <code>feedback_booking_migration_number_coordination</code> memory documents this.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ OPERATIONAL CLIFFS ═══════════════════════════════════════════════ -->
+<section class="chapter" id="traps">
+  <div class="chapter-label">Chapter 17 · Operations</div>
+  <h2>Operational cliffs</h2>
+  <p>Things that have gone wrong, written down so they don't go wrong again.</p>
+
+  <p>
+    Every system accumulates a list of subtle failure modes that you only learn by hitting them. ExSol has
+    a handful, all documented as memory entries and many in the architecture diagrams. The most important
+    five:
+  </p>
+
+  <div class="card">
+    <h4>The new-function-404 trap</h4>
+    <p style="font-size: 14px;">
+      <strong>Symptom:</strong> a new Netlify Function is in the deploy's function manifest, but probing
+      its URL returns the SPA's 404 HTML instead of the function's response.
+      <strong>Cause:</strong> Edge function routing registry hasn't caught up with the new function.
+      <strong>Fix:</strong> <code>netlify api restoreSiteDeploy</code> nudges it. Always probe new
+      endpoints after deploying them; never assume "ready" state means the routing is registered.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>The alias-not-promoted trap</h4>
+    <p style="font-size: 14px;">
+      <strong>Symptom:</strong> the build produces a new JS / CSS bundle hash, but the workspace alias
+      keeps serving HTML that references the previous hash. The new code is technically deployed but
+      nobody is loading it.
+      <strong>Detection:</strong> compare the bundle hash on the per-deploy URL vs. the alias URL.
+      <strong>Fix:</strong> <code>restoreSiteDeploy</code>. Today's session hit this 4 times.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>The browser-cache trap</h4>
+    <p style="font-size: 14px;">
+      <strong>Symptom:</strong> after a successful deploy, an open browser tab still loads the previous
+      bundle (the HTML it loaded is cached in the browser, and that HTML references the old hash).
+      <strong>Detection:</strong> compare <code>document.querySelector('script[src*="/assets/"]').src</code>
+      in the open tab vs. <code>curl /</code>.
+      <strong>Fix:</strong> hard reload. Always tell users after a deploy: refresh your tabs.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>The L1-Owner bypass omission</h4>
+    <p style="font-size: 14px;">
+      <strong>Symptom:</strong> Owner of a workspace tries to use a newly-shipped module and gets blank UI
+      or 403 errors, even though they "should" have access.
+      <strong>Cause:</strong> the module's auth helper does a strict permission matrix check without the
+      L1 bypass. Default-empty matrix means L1 Owner has no keys, so they're denied.
+      <strong>Fix:</strong> add <code>if (level_number === 1) return full-perm-set</code> after the module
+      enable-gate. Mirrors <code>requirePos</code> as the reference. Has now shipped 3 times (POS Phase 1,
+      Booking, public storefront helpers) — memory entry <code>feedback_module_l1_bypass_pattern</code>
+      documents the fix.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Function-shape collisions and naming</h4>
+    <p style="font-size: 14px;">
+      Three related ones to watch:
+      <strong>(1)</strong> Two functions can't share the same <code>config.path</code> without
+      <code>config.method</code> to discriminate (one will silently lose at the Edge layer).
+      <strong>(2)</strong> Functions in subdirectories <code>netlify/functions/foo/</code> are NOT
+      auto-discovered as separate functions — the whole folder is treated as ONE function. Flat layout
+      only: <code>netlify/functions/foo-action.ts</code>.
+      <strong>(3)</strong> Integration tests bypass Netlify's routing, so a test suite can pass
+      while routing is misconfigured.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ GLOSSARY ═══════════════════════════════════════════════ -->
+<section class="chapter" id="glossary">
+  <div class="chapter-label">Chapter 18 · Reference</div>
+  <h2>Glossary</h2>
+  <p>Terms that show up throughout this document, defined in one place.</p>
+
+  <dl class="dictionary">
+    <dt>tenant / client / workspace</dt>
+    <dd>Three names for the same thing: one business inside ExSol. Has a unique slug (URL identifier) and a name. All their data is scoped to their client_id.</dd>
+
+    <dt>module</dt>
+    <dd>A self-contained area of business functionality (POS, Booking, Files, etc.). Each module has its own database tables, permission keys, backend functions, and frontend pages.</dd>
+
+    <dt>product (in registry context)</dt>
+    <dd>A purchasable unit that unlocks one or more modules. Confusing word — the same English word also refers to physical things in the catalog. In the registry context, "product" = "what you buy to enable this module."</dd>
+
+    <dt>bucket</dt>
+    <dd>A category of data within a module that can be CRUD'd. "Customers" is a bucket of the Booking module; "Employees" is another. Permission keys take the form <code>module.bucket.verb</code>.</dd>
+
+    <dt>L1 / L2 / L3</dt>
+    <dd>Levels within a workspace. L1 is the Primary Owner; L2 is one step below (managers); L3 below that (staff). The level hierarchy is used for both permissions and reporting structure (parent_id on user_nodes).</dd>
+
+    <dt>bucket-user</dt>
+    <dd>A user_node that has login credentials (Owner, staff). Distinguished from admins (cross-workspace) and customers (no login).</dd>
+
+    <dt>JWT</dt>
+    <dd>JSON Web Token. A signed string that carries the bucket-user's identity (sub, email, client_id). Stored in a cookie called <code>bu_session</code>.</dd>
+
+    <dt>FSM</dt>
+    <dd>Finite State Machine. A formal model of "states + legal transitions." Used for sales (5 states), bookings (6 states).</dd>
+
+    <dt>GIST exclusion constraint</dt>
+    <dd>A PostgreSQL feature that prevents overlap on a range column. Used by bookings to atomically prevent two bookings for the same resource at the same time. Concurrent requests can't both succeed.</dd>
+
+    <dt>idempotency key</dt>
+    <dd>A token the client sends with a write request so the server can detect "this is a retry, not a new request." Used by sale-create and booking-create.</dd>
+
+    <dt>migration</dt>
+    <dd>A numbered SQL file that changes the database schema. Applied in order, recorded in <code>schema_migrations</code>.</dd>
+
+    <dt>Netlify Function</dt>
+    <dd>A short-lived serverless process that handles one HTTP request. We have ~91 of them. Each lives in a .ts file in <code>netlify/functions/</code>.</dd>
+
+    <dt>Neon</dt>
+    <dd>The PostgreSQL hosting service we use. Supports "branching" — the dev and prod databases are conceptually two branches of the same database, with the same schema but different data.</dd>
+
+    <dt>Sibling chat</dt>
+    <dd>One of several Claude Code chats running in parallel on different feature branches. The "main chat" (this one) owns integration + deployment. POS / Booking / Login+AMS / Product Manager / File Manager each have their own sibling chat owning their respective modules.</dd>
+
+    <dt>Handoff doc</dt>
+    <dd>A markdown file at <code>docs/superpowers/handoffs/</code> that summarizes "where I left off" so the next agent (or next-day-me) can continue work. The convention is: sections marked <code>OVERWRITE</code> get rewritten each milestone; sections marked <code>APPEND</code> grow over time.</dd>
+  </dl>
+</section>
+
+<!-- ═══════════════════════════════════════════════ SIBLING ═══════════════════════════════════════════════ -->
+<section class="chapter" id="sibling">
+  <div class="chapter-label">Companion</div>
+  <h2>Sibling document</h2>
+  <p>
+    For the engineer-oriented, denser, less prose-heavy version of this architecture, see
+    <a href="./architecture.html" class="foot-link"><strong>architecture.html</strong></a>.
+    That document is structured as System Context → HLD → LLD, with more SVG diagrams, code snippets,
+    and a tighter operational-traps table. This document and that one cover the same system; pick whichever
+    matches your reading preference.
+  </p>
+</section>
+
+<footer>
+  ExSol Suite · Architecture (Expansive) · companion to <a href="./architecture.html" class="foot-link">architecture.html</a><br>
+  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: 3763323 · 49 migrations · 948 tests · ~91 functions · 5 modules live · 7 products planned</span>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
