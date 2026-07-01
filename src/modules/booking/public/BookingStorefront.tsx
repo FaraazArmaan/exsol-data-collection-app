@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ServicePicker } from './ServicePicker';
 import { SlotPicker } from './SlotPicker';
 import { Checkout } from './Checkout';
 import { Confirmation } from './Confirmation';
-import { type PublicService, type Slot, type CreateResult } from '../api';
+import { bookingPublicApi, type PublicService, type Slot, type CreateResult } from '../api';
 
 type Step = 'service' | 'slot' | 'checkout' | 'done';
 const STEPS: Array<{ key: Step; label: string }> = [
@@ -16,6 +16,7 @@ const STEPS: Array<{ key: Step; label: string }> = [
 // Anonymous public storefront mounted at /c/:slug/book (outside the auth gate).
 export default function BookingStorefront() {
   const { slug = '' } = useParams<{ slug: string }>();
+  const [tenant, setTenant] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('service');
   const [service, setService] = useState<PublicService | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
@@ -23,6 +24,12 @@ export default function BookingStorefront() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const activeIndex = step === 'done' ? STEPS.length : STEPS.findIndex((s) => s.key === step);
+
+  useEffect(() => {
+    let cancel = false;
+    bookingPublicApi.tenant(slug).then((r) => { if (!cancel) setTenant(r.client.name); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [slug]);
 
   function reset() {
     setService(null); setSlot(null); setResult(null); setNotice(null); setStep('service');
@@ -32,8 +39,10 @@ export default function BookingStorefront() {
     <div className="booking-sf">
       <div className="booking-sf-col">
         <header className="booking-sf-header">
+          {tenant ? <div className="booking-sf-avatar" aria-hidden>{tenant.charAt(0).toUpperCase()}</div> : null}
           <span className="booking-sf-brandline">Online booking</span>
-          <h1 className="booking-sf-title">Book an appointment</h1>
+          <h1 className="booking-sf-title">{tenant ?? 'Book an appointment'}</h1>
+          {tenant ? <p className="booking-sf-sub">Book an appointment</p> : null}
         </header>
 
         {step !== 'done' && (

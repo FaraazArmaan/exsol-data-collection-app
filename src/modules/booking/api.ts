@@ -88,6 +88,7 @@ export const bookingApi = {
 
 // ---------- Public (anonymous) ----------
 export const bookingPublicApi = {
+  tenant: (slug: string) => call<{ client: { id: string; slug: string; name: string } }>(`/api/u-client-by-slug?slug=${encodeURIComponent(slug)}`),
   services: (slug: string) => call<{ services: PublicService[] }>(`/api/booking-public/${slug}/services`),
   resources: (slug: string) => call<{ resources: PublicResource[] }>(`/api/booking-public/${slug}/resources`),
   availability: (slug: string, serviceId: string, date: string, resourceId = 'any') =>

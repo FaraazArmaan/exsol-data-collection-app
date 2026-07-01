@@ -731,3 +731,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .booking-daychip-dom { font-size: 15px; }
   .booking-datestrip-nav { height: 52px; }
 }
+
+.booking-sf-avatar { width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--text-on-accent); font-size: 24px; font-weight: 700; }
+.booking-sf-sub { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
