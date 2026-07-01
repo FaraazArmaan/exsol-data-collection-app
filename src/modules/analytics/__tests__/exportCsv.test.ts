@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildDomainCsv } from '../exportCsv';
+import JSZip from 'jszip';
+import { buildDomainCsv, domainZipBytes } from '../exportCsv';
 import type { DomainResponse } from '../types';
 
 const data: DomainResponse = {
@@ -34,5 +35,18 @@ describe('buildDomainCsv', () => {
         rows: [{ key: 'A, B', value: 1, pct: 100 }] }],
     });
     expect(csv).toContain('"A, B",1,100.0');
+  });
+});
+
+describe('domainZipBytes', () => {
+  it('produces a valid ZIP containing a working .csv with the data', async () => {
+    const { base, bytes } = await domainZipBytes('Sales', data, 'uint8array');
+    expect(base).toBe('sales-2026-07-01');
+    const zip = await JSZip.loadAsync(bytes);
+    const names = Object.keys(zip.files);
+    expect(names).toContain('sales-2026-07-01.csv');
+    const csv = await zip.file('sales-2026-07-01.csv')!.async('string');
+    expect(csv).toContain('Revenue,2500.00');
+    expect(csv).toContain('instore,2500.00,100.0');
   });
 });

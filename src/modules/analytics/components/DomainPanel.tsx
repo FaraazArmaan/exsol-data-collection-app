@@ -4,7 +4,7 @@ import { TrendChart } from './TrendChart';
 import { BarChart } from './BarChart';
 import { DonutChart } from './DonutChart';
 import { formatValue } from '../format';
-import { downloadDomainCsv } from '../exportCsv';
+import { downloadDomainZip } from '../exportCsv';
 import type { DomainResponse, Breakdown } from '../types';
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
@@ -52,7 +52,7 @@ export function DomainPanel({ title, data }: {
         {title}
         {!empty && (
           <button type="button" className="analytics-export analytics-panel-export"
-                  onClick={() => downloadDomainCsv(title, data)}>Export</button>
+                  onClick={() => { void downloadDomainZip(title, data); }}>Export</button>
         )}
       </h2>
       <div className="analytics-kpi-row">
