@@ -1,6 +1,5 @@
 import { DomainPanel } from './DomainPanel';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { domainExportUrl } from '../api';
 import type { AnalyticsParams, DomainKey } from '../types';
 
 // One domain's data-fetch + render lifecycle. Each section fetches independently
@@ -29,5 +28,5 @@ export function DomainSection({ domain, title, params }: {
     );
   }
   if (!data) return null;
-  return <DomainPanel title={title} data={data} exportHref={domainExportUrl(domain, params, 'xlsx')} />;
+  return <DomainPanel title={title} data={data} />;
 }

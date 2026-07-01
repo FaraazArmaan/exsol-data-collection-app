@@ -3,6 +3,7 @@ import handler from '../../netlify/functions/analytics-overview';
 import {
   seedClientWithProductsEnabled, grantPerms, seedSubordinateUser, makeBucketUserRequest,
 } from '../pos/_helpers';
+import { seedPaidSales } from './_analytics-helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
 beforeAll(async () => {
@@ -35,5 +36,19 @@ describe('GET /api/analytics-overview', () => {
     const sub = await seedSubordinateUser(base, 2, []);
     const res = await handler(makeBucketUserRequest(sub, 'GET', `/api/analytics-overview?${W}`));
     expect(res.status).toBe(403);
+  });
+
+  it('windowed headlines carry a delta vs the comparison window', async () => {
+    const D = '2026-02-20';
+    const ctx = await seedPaidSales({ when: [`${D}T10:00:00Z`, `${D}T11:00:00Z`], channel: ['instore', 'instore'], priceCents: 1000 });
+    const res = await handler(makeBucketUserRequest(ctx, 'GET',
+      `/api/analytics-overview?from=${D}&to=${D}&compare=prior_period`));
+    const body = await res.json();
+    const revenue = body.kpis.find((k: any) => k.id === 'revenue');
+    expect(revenue.value).toBe(2000);
+    expect(revenue.delta).toBe(2000);   // prior day had no sales → +2000
+    expect(revenue.deltaPct).toBeNull(); // no baseline
+    // Snapshot headlines (team/catalog) have no delta.
+    expect(body.kpis.find((k: any) => k.id === 'catalog').delta).toBeNull();
   });
 });

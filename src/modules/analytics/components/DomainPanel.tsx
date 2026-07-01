@@ -4,6 +4,7 @@ import { TrendChart } from './TrendChart';
 import { BarChart } from './BarChart';
 import { DonutChart } from './DonutChart';
 import { formatValue } from '../format';
+import { downloadDomainCsv } from '../exportCsv';
 import type { DomainResponse, Breakdown } from '../types';
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
@@ -37,10 +38,9 @@ function BreakdownTable({ b }: { b: Breakdown }) {
 // Generic domain panel — renders any endpoint's { kpis, series, breakdowns }.
 // Every analytics domain reuses this; adding a domain is a new endpoint + a
 // call site, not a new component.
-export function DomainPanel({ title, data, exportHref }: {
+export function DomainPanel({ title, data }: {
   title: string;
   data: DomainResponse;
-  exportHref?: string;
 }) {
   const empty =
     data.kpis.every((k) => k.value === 0) &&
@@ -50,7 +50,10 @@ export function DomainPanel({ title, data, exportHref }: {
     <section className="analytics-panel">
       <h2>
         {title}
-        {exportHref && <a className="analytics-export analytics-panel-export" href={exportHref}>Export</a>}
+        {!empty && (
+          <button type="button" className="analytics-export analytics-panel-export"
+                  onClick={() => downloadDomainCsv(title, data)}>Export</button>
+        )}
       </h2>
       <div className="analytics-kpi-row">
         {data.kpis.map((k) => (

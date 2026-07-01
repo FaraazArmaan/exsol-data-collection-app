@@ -8,6 +8,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { resolveAnalyticsAccess } from './_analytics-authz';
 import { AnalyticsQuery } from './_analytics-validators';
+import { compareWindow, pctDelta } from './_analytics-sql';
 
 export const config = { path: '/api/analytics-overview', method: 'GET' };
 
@@ -30,37 +31,56 @@ export default async function handler(req: Request): Promise<Response> {
   const sql = db();
   const nodes = scopeNodes ?? [];
   const noNodeFilter = scopeNodes === null;
-  const kpis: Array<{ id: string; label: string; value: number; unit: string }> = [];
+  const cmp = compareWindow(q.from, q.to, q.compare);
+  const kpis: Array<{ id: string; label: string; value: number; unit: string; delta: number | null; deltaPct: number | null }> = [];
 
-  if (buckets.has('business')) {
+  // Windowed headline (revenue/customers) — same scope + storefront-at-root rule
+  // as the domain endpoints, with a delta vs the comparison window so the
+  // scorecard reflects the compare selector consistently with the panels.
+  async function revenue(from: string, to: string): Promise<number> {
     const r = (await sql`
       SELECT COALESCE(SUM(total_cents) FILTER (WHERE status IN ('paid','fulfilled')), 0)::bigint AS v
       FROM public.sales
       WHERE bucket_id = ${clientId}::uuid
-        AND created_at >= ${q.from}::date AND created_at < (${q.to}::date + interval '1 day')
+        AND created_at >= ${from}::date AND created_at < (${to}::date + interval '1 day')
         AND (${noNodeFilter}::boolean OR created_by_user_node = ANY(${nodes}::uuid[]))
         AND (${isRootScope}::boolean OR source = 'pos')
     `) as Array<{ v: string }>;
-    kpis.push({ id: 'revenue', label: 'Revenue', value: Number(r[0]!.v), unit: 'cents' });
+    return Number(r[0]!.v);
   }
-  if (buckets.has('customers')) {
+  async function customers(from: string, to: string): Promise<number> {
     const r = (await sql`
       SELECT COUNT(DISTINCT customer_phone)::int AS v
       FROM public.sales
       WHERE bucket_id = ${clientId}::uuid
-        AND created_at >= ${q.from}::date AND created_at < (${q.to}::date + interval '1 day')
+        AND status IN ('paid','fulfilled')
+        AND created_at >= ${from}::date AND created_at < (${to}::date + interval '1 day')
         AND (${noNodeFilter}::boolean OR created_by_user_node = ANY(${nodes}::uuid[]))
         AND (${isRootScope}::boolean OR source = 'pos')
     `) as Array<{ v: number }>;
-    kpis.push({ id: 'customers', label: 'Customers', value: Number(r[0]!.v), unit: 'count' });
+    return Number(r[0]!.v);
+  }
+  const withDelta = (id: string, label: string, unit: string, cur: number, prior: number | null) =>
+    ({ id, label, unit, value: cur, delta: prior == null ? null : cur - prior, deltaPct: prior == null ? null : pctDelta(cur, prior) });
+
+  if (buckets.has('business')) {
+    const cur = await revenue(q.from, q.to);
+    const prior = cmp ? await revenue(cmp.from, cmp.to) : null;
+    kpis.push(withDelta('revenue', 'Revenue', 'cents', cur, prior));
+  }
+  if (buckets.has('customers')) {
+    const cur = await customers(q.from, q.to);
+    const prior = cmp ? await customers(cmp.from, cmp.to) : null;
+    kpis.push(withDelta('customers', 'Customers', 'count', cur, prior));
   }
   if (buckets.has('employees')) {
+    // Current-state headcount snapshot — no window, so no delta.
     const r = (await sql`
       SELECT COUNT(*)::int AS v FROM public.user_nodes
       WHERE client_id = ${clientId}::uuid
         AND (${noNodeFilter}::boolean OR id = ANY(${nodes}::uuid[]))
     `) as Array<{ v: number }>;
-    kpis.push({ id: 'staff', label: 'Team members', value: Number(r[0]!.v), unit: 'count' });
+    kpis.push({ id: 'staff', label: 'Team members', value: Number(r[0]!.v), unit: 'count', delta: null, deltaPct: null });
   }
   if (buckets.has('products')) {
     // products keys on client_id (bucket_id only exists on sales). Catalog is
@@ -69,7 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
       SELECT COUNT(*)::int AS v FROM public.products
       WHERE client_id = ${clientId}::uuid AND status = 'active' AND deleted_at IS NULL
     `) as Array<{ v: number }>;
-    kpis.push({ id: 'catalog', label: 'Active products', value: Number(r[0]!.v), unit: 'count' });
+    kpis.push({ id: 'catalog', label: 'Active products', value: Number(r[0]!.v), unit: 'count', delta: null, deltaPct: null });
   }
 
   return jsonOk({
