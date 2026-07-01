@@ -1925,7 +1925,6 @@ Append this block to `src/lib/components.css`:
   --border-default: #d8d2c6;
   --border-strong:  #c3bcae;
   --text-primary:   #1f1c17;
-  --text-secondary: #55504700;
   --text-secondary: #555047;
   --text-muted:     #8a8478;
 }
@@ -1985,8 +1984,6 @@ Append this block to `src/lib/components.css`:
 .brand-upload-slot img { max-width: 72px; max-height: 72px; object-fit: contain; }
 .brand-swatch { width: 28px; height: 28px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-default, #3a3a3a); display: inline-block; vertical-align: middle; }
 ```
-
-Note: the duplicate `--text-secondary` line above is a typo guard — use the single correct declaration `--text-secondary: #555047;` and delete the `#55504700` line. (Left visible so the implementer removes it.)
 
 - [ ] **Step 3: Verify build + typecheck**
 
