@@ -602,27 +602,33 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-row-actions { display: flex; gap: 8px; }
 
 /* Booking day-view time grid */
-.booking-grid { display: grid; align-items: start; overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
-.booking-grid-corner { border-bottom: 1px solid var(--border-default); border-right: 1px solid var(--border-subtle); }
-.booking-grid-colhead { font-weight: 600; padding: 8px; text-align: center; border-bottom: 1px solid var(--border-default); border-left: 1px solid var(--border-subtle); }
-.booking-grid-gutter { position: relative; border-right: 1px solid var(--border-subtle); }
-.booking-grid-hourlabel { position: absolute; right: 6px; font-size: 11px; color: var(--text-muted); transform: translateY(-7px); }
+.booking-grid { display: grid; align-items: start; overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+.booking-grid-corner { border-bottom: 1px solid var(--border-default); }
+.booking-grid-colhead { font-weight: 600; font-size: 14px; padding: 12px 8px; text-align: center; border-bottom: 1px solid var(--border-default); border-left: 1px solid var(--border-subtle); position: sticky; top: 0; background: var(--bg-surface); z-index: 3; }
+.booking-grid-gutter { position: relative; }
+.booking-grid-hourlabel { position: absolute; right: 8px; font-size: 11px; color: var(--text-muted); transform: translateY(-6px); }
 .booking-grid-col { position: relative; border-left: 1px solid var(--border-subtle); cursor: pointer; }
+.booking-grid-col:hover { background: rgba(127,127,127,0.03); }
 .booking-grid-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border-subtle); pointer-events: none; }
 .booking-grid-block {
-  position: absolute; left: 3px; right: 3px; overflow: hidden; text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; gap: 1px; padding: 2px 6px; border-radius: var(--radius-sm);
+  position: absolute; left: 4px; right: 4px; overflow: hidden; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; border-radius: 6px;
   background: var(--bg-elevated); border: 1px solid var(--border-default); border-left: 3px solid var(--accent);
-  color: var(--text-primary); font: inherit; line-height: 1.15;
+  color: var(--text-primary); font: inherit; line-height: 1.2;
+  transition: box-shadow 120ms ease, transform 120ms ease;
 }
-.booking-grid-block-time { font-size: 11px; font-weight: 600; }
-.booking-grid-block-name { font-size: 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.booking-grid-block:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.35); transform: translateX(1px); z-index: 2; }
+.booking-grid-block-time { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+.booking-grid-block-name { font-size: 13px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .block-confirmed { border-left-color: var(--success); }
+.block-confirmed .booking-grid-block-time { color: var(--success); }
 .block-pending   { border-left-color: var(--accent); }
-.block-blocked   { border-left-color: var(--text-muted); background: var(--bg-surface); }
-.block-completed { border-left-color: var(--text-muted); opacity: 0.75; }
-.block-cancelled { border-left-color: var(--danger); opacity: 0.5; }
+.block-pending .booking-grid-block-time { color: var(--accent); }
+.block-blocked   { border-left-color: var(--text-muted); background: repeating-linear-gradient(45deg, var(--bg-surface), var(--bg-surface) 6px, var(--bg-elevated) 6px, var(--bg-elevated) 12px); }
+.block-completed { border-left-color: var(--text-muted); opacity: 0.7; }
+.block-cancelled { border-left-color: var(--danger); opacity: 0.55; text-decoration: line-through; }
 .block-no_show   { border-left-color: var(--danger); }
+.block-no_show .booking-grid-block-time { color: var(--danger); }
 
 /* ═══════════ Booking public storefront — redesign ═══════════ */
 .booking-sf { min-height: 100vh; background: var(--bg-base); padding: 48px 16px 80px; }

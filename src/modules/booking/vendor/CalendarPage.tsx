@@ -8,7 +8,7 @@ import { BookingTabs } from './BookingTabs';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
-const PX_PER_MIN = 0.9;                 // vertical scale of the time grid
+const PX_PER_MIN = 1.4;                 // vertical scale of the time grid (~84px/hour)
 const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const pad = (n: number) => String(n).padStart(2, '0');
 const localMin = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
@@ -87,12 +87,12 @@ export default function CalendarPage({ slug, perms }: Props) {
               {hours.map((h) => <div key={h} className="booking-grid-line" style={{ top: (h - dayStart) * PX_PER_MIN }} />)}
               {byResource(r.id).map((b) => {
                 const top = (localMin(b.start_at) - dayStart) * PX_PER_MIN;
-                const height = Math.max(22, (localMin(b.end_at) - localMin(b.start_at)) * PX_PER_MIN);
+                const height = Math.max(38, (localMin(b.end_at) - localMin(b.start_at)) * PX_PER_MIN - 2);
                 return (
                   <button key={b.id} className={`booking-grid-block block-${b.status}`} style={{ top, height }}
                     onClick={(e) => { e.stopPropagation(); setOpenId(b.id); }}>
-                    <span className="booking-grid-block-time">{formatTime(b.start_at)}</span>
-                    <span className="booking-grid-block-name">{b.customer_name ?? 'Blocked'}</span>
+                    <span className="booking-grid-block-time">{formatTime(b.start_at)}–{formatTime(b.end_at)}</span>
+                    <span className="booking-grid-block-name">{b.customer_name ?? 'Blocked time'}</span>
                   </button>
                 );
               })}
