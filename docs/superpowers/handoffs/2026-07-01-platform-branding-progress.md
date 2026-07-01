@@ -52,3 +52,33 @@ All tasks: TDD (RED→GREEN), `npm run typecheck` clean, committed on-branch. Se
 
 ### Consume-contract status (§9)
 Reviewed by BOTH the POS chat (2 blockers folded in — retain a POS product-image endpoint; `.brand-main` carries the content column) and the Booking chat (5-point recipe, no blockers). Handback ready once FE lands.
+
+---
+
+## MILESTONE 2 — Feature complete, full suite green (2026-07-01)
+
+**16 / 16 tasks done. `HEAD = 1dcac46`, 24 commits ahead of `origin/main`. FULL SUITE 1011/1011 across 160 files. Typecheck clean. Build clean (83 WOFF2 subset assets emitted).**
+
+### FE tasks completed since Milestone 1
+| Task | What | Commit | Tests |
+|---|---|---|---|
+| 9 | Self-hosted 14 `@fontsource*` fonts + `brand-fonts.ts` + `main.tsx` wire | `9386be0` | build+typecheck |
+| 10 | `useBrand.ts` hook | `e8a19fc` | 3/3 |
+| 11 | `BrandShell.tsx` (theme/accent/font props + icon injection) | `2237361` | 5/5 |
+| 12 | `BrandHero.tsx` (auto-rotating carousel) | `cf5ff6e` | 4/4 |
+| 13 | Light-theme CSS + `.brand-*` + `.brand-main` column + `index.ts` barrel | `ced30df` | build |
+| 14 | `BrandingForm.tsx` (shared 4-section form) | `2cb8079` | 4/4 |
+| 15 | `WorkspaceBrandingCard` + `AdminWorkspaceBrandingCard` | `7319ad9` | 4/4 |
+| 16 | Mounts (UserAccount + AccessDashboard) + full suite | `1dcac46` | 1011/1011 |
+
+### Consume contract (§9) is ready to hand back
+The `src/modules/branding/index.ts` barrel exports `{ BrandShell, BrandHero, useBrand, Brand, onAccent, isHexColor, isAllowlistedFont, suggestAccentFromLogo, downscaleImage, MAX_EDGE, BRAND_FONT_ALLOWLIST }`. Public endpoints live and tested: `GET /api/public/brand/:slug`, `GET /api/public/brand/:slug/image/:key`. POS + Booking chats can start their refactor per §9.4 / §9.5.
+
+### Final whole-branch review
+Dispatched on Opus (holistic cohesion + contract-consistency + merge-readiness). Outcome recorded here once it returns.
+
+### Deferred v1.1 follow-ups (non-blocking, logged in ledger)
+- Hero drag-reorder + per-slide delete (form currently appends).
+- `useBrand` auto-refetch after save (currently optimistic).
+- SSR OG-meta injection for `socialUrl` (inert until SSR exists).
+- Tenant custom-font upload; live preview panel.
