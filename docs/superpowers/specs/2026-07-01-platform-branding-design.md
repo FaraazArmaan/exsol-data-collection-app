@@ -102,7 +102,7 @@ Column semantics:
 - `brand_accent` is null → theme's default accent applies. Hex format validated at PATCH boundary.
 - `brand_font_heading` / `brand_font_body` are CSS family names (e.g. `Inter`, `Merriweather`). Null → theme's default font stack. Only names in the curated allowlist load remote fonts; unknown names fall through to system font stack.
 - `brand_theme` defaults to `dark` (the app's current default).
-- `storefront_enabled` is **not** in this migration — it stays POS-specific and is added by the POS v3 branch's own separate migration.
+- `storefront_enabled` is **not** in this migration — it stays POS-specific and already shipped to prod via POS v2 migration `043_clients_storefront_enabled.sql`. POS needs no new migration for it.
 
 ## 5. Backend
 
@@ -416,6 +416,7 @@ Mounts on `/clients/:clientId` (AccessDashboard) after `<AdminWorkspaceExportCar
   - `--text-primary`, `--text-secondary`, `--text-muted` → dark warm.
   - `--accent`, `--text-on-accent` come from inline props (theme-independent).
 - **Brand-shell layout**: `.brand-shell` full-height, uses `--brand-font-body` for body text; `.brand-header` centered logo strip.
+- **Content column** (`.brand-main`): provides the centered content column that the POS storefront layout previously got from `.storefront-main` — `max-width` (~880px), horizontal auto-margins, and page padding. This is load-bearing: after POS renames `.storefront-shell`→`.brand-shell`, its `.storefront-main { max-width/padding }` layout rules stop matching, so `.brand-main` must carry the column or the storefront margins regress. (Per POS consume-review finding 2.) POS additionally re-scopes any narrower per-page rules — e.g. its centered checkout `max-width: 600px; margin: auto` — under `.brand-shell` itself; see §9.4.
 - **Logo rules**: `.brand-logo` (max-height ~40px on mobile, 48px desktop, object-fit contain).
 - **Hero rules**: `.brand-hero` (full-width, rounded corners, object-fit cover, capped height ~360px), `.brand-hero-carousel` (grid + dot pagination + chevron buttons).
 - **Card rules**: `.brand-card` (mirrors `.ams-export-card` conventions after the workspace-backup theme fix); `.brand-card-section`; `.brand-upload-slot` (dashed border, hover state).
@@ -589,13 +590,15 @@ GET  /api/public/brand/:slug/image/:key   → image bytes; Cache-Control: public
 
 ### 9.3 FE consumption pattern
 
+This is the **pure brand page** pattern — the page's availability IS the brand's availability, so gating on `!brand` is correct here. Modules with their own availability gate (POS storefront: enabled + POS/products) must NOT gate on `!brand` — see the POS-specific note in §9.4.
+
 ```tsx
 import { BrandShell, BrandHero, useBrand } from 'src/modules/branding';
 
-function PublicPage({ slug }: { slug: string }) {
+function PureBrandPage({ slug }: { slug: string }) {
   const { brand, loading, error } = useBrand(slug);
   if (loading) return <SplashScreen />;
-  if (error || !brand) return <NotAvailableCard />;
+  if (error || !brand) return <NotAvailableCard />;   // OK only when brand-availability == page-availability
   return (
     <BrandShell brand={brand} fallbackName="Storefront">
       {brand.heroUrls.length > 0 && <BrandHero heroUrls={brand.heroUrls} />}
@@ -607,14 +610,20 @@ function PublicPage({ slug }: { slug: string }) {
 
 ### 9.4 POS refactor recipe (executed by the POS chat after this lands)
 
+Reviewed and confirmed by the POS chat. Findings from that review are folded in below (🔴 = consume-blocker, addressed).
+
 1. **Drop** `src/modules/pos/lib/branding.ts` → replaced by `src/modules/branding/branding.ts`.
 2. **Drop** `src/modules/pos/pages/StorefrontShell.tsx` → replace with `<BrandShell brand={...} fallbackName={tenantName}>`.
-3. **Drop** the `branding` object from `pub-menu.ts` response and its Zod schema.
+   - 🔴 **Layout (finding 2):** POS's storefront layout fix (margins) and centered-checkout rules are scoped under `.storefront-shell`/`.storefront-main` and stop matching after the rename. `.brand-main` now carries the content column (max-width + padding — see §6.7), so the base margins survive. POS must **re-scope its narrower per-page rules** (e.g. `.storefront-shell .pos-cart-page { max-width: 600px; margin: auto }`) under `.brand-shell` (`.brand-shell .pos-cart-page { … }`). Otherwise centered checkout regresses.
+3. **Drop** the `branding` object from `pub-menu.ts` response and its Zod schema. Keep the product `thumbUrl` fields — but see step 5 for where those URLs point.
 4. **Drop** `netlify/functions/_shared/storefront-branding.ts` → replaced by `_shared/brand.ts`.
-5. **Drop** `netlify/functions/client-settings-image.ts` and `netlify/functions/pub-image.ts` (the branding path is handled here; product images stay in their own store and get their own separate public endpoint if needed).
+5. 🔴 **(finding 1) Do NOT drop `pub-image.ts` outright — RETAIN it as a product-photo-only endpoint.** In POS v3 `pub-image` served BOTH brand images and `storefront_visible` product photos (its ownership check matched `brand_*` keys OR a product's `hero_image_key`). The new branding image endpoint (`/api/public/brand/:slug/image/:key`) validates **brand keys only** — it is intentionally module-agnostic (ADR-0001) and must not learn about the `products` table. Therefore:
+   - **Decision:** branding stays brand-only; **POS keeps a product-image public endpoint.** Strip the brand-key branch from `pub-image.ts` so it validates only `storefront_visible`, active, non-deleted products' `hero_image_key` (optionally rename it `pub-product-image.ts` for clarity). `pub-menu`'s product `thumbUrl` continues to point at this POS-owned endpoint. This is required, not optional — dropping it with no replacement regresses product tiles to placeholders.
+   - **Drop** `netlify/functions/client-settings-image.ts` (brand-image upload now lives in `client-settings-brand-image.ts` here).
 6. **Slim** `netlify/functions/client-settings-storefront.ts` to only handle `{ enabled }` — remove `logoKey`, `heroKey`, `accent`, `theme`.
-7. **Drop** the POS v3 migration 046 (columns move to `brand_*` per this spec's migration 050); keep only `storefront_enabled` in a slim POS-specific migration if it's not already applied.
-8. The POS storefront pages wrap themselves in `<BrandShell>` and call `useBrand(slug)` in parallel with `pub-menu` (two fetches; brand cached 1 min at Edge).
+7. 🟡 **(finding 4) Migration:** **Drop the POS v3 migration 046** (`046_clients_storefront_branding.sql` — branding columns move to `brand_*` in this spec's migration 050; note v3's 046 also collided with `046_workspace_storage_quota` on main). **No new POS migration is needed for `storefront_enabled`** — it already shipped to prod via POS v2 migration 043 (`043_clients_storefront_enabled.sql`). In short: *drop 046; `storefront_enabled` is already live.*
+8. **FE wiring:** POS storefront pages wrap themselves in `<BrandShell>` and call `useBrand(slug)` in parallel with `pub-menu` (two fetches; brand cached 1 min at Edge).
+   - 🟡 **(finding 3) Availability:** POS must drive its "Online ordering isn't available" card off the **`pub-menu` 404** (which is storefront/products/pos-gated), NOT off the brand fetch. `resolveClientBySlug` is module-agnostic — a workspace can have a brand while its storefront is disabled. Apply the brand regardless; gate the *menu content* on the menu fetch. Do NOT use the §9.3 `if (!brand) return <NotAvailable>` pattern for the POS storefront.
 
 ### 9.5 Booking refactor (executed by the Booking chat)
 

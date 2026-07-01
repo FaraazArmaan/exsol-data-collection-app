@@ -1942,7 +1942,12 @@ Append this block to `src/lib/components.css`:
 .brand-header { display: flex; align-items: center; justify-content: center; padding: 16px; }
 .brand-logo { max-height: 40px; object-fit: contain; }
 .brand-tenant { font-size: 18px; font-weight: 600; }
-.brand-main { padding: 16px; }
+/* Content column — load-bearing. POS's storefront layout previously got its
+   max-width/margins from .storefront-main; after the .brand-shell rename those
+   rules orphan, so .brand-main must carry the column (POS consume-review
+   finding 2). POS re-scopes its narrower per-page rules (e.g. centered
+   checkout) under .brand-shell itself. */
+.brand-main { max-width: 880px; margin: 0 auto; padding: 16px; width: 100%; box-sizing: border-box; }
 
 /* Hero carousel */
 .brand-hero-carousel { position: relative; }
