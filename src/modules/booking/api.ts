@@ -40,6 +40,7 @@ export interface CreateResult {
 export interface ManageView {
   id: string; status: string; start_at: string; end_at: string;
   customer_name: string; price_cents: number; cancellable: boolean;
+  reschedulable: boolean; service_id: string; service_name: string; duration_min: number; slug: string;
 }
 
 // ---------- Vendor (authed) types ----------
@@ -83,6 +84,7 @@ export const bookingApi = {
   list: (query: string) => call<{ bookings: VendorBooking[] }>(`/api/booking/list${query ? '?' + query : ''}`),
   get: (id: string) => call<VendorBooking>(`/api/booking/detail/${id}`),
   transition: (id: string, action: BookingAction, reason?: string) => call<any>(`/api/booking/detail/${id}`, { ...json({ action, reason }), method: 'PATCH' }),
+  reschedule: (id: string, start: string, resourceId?: string) => call<any>(`/api/booking/detail/${id}`, { ...json({ action: 'reschedule', start, resource_id: resourceId }), method: 'PATCH' }),
   manualCreate: (body: any) => call<{ id: string; status: string }>('/api/booking/manual-create', json(body)),
 };
 
@@ -97,4 +99,5 @@ export const bookingPublicApi = {
     call<CreateResult>(`/api/booking-public/${slug}/create`, json(body)),
   getManage: (token: string) => call<ManageView>(`/api/booking-public/manage/${token}`),
   cancelManage: (token: string) => call<{ id: string; status: string }>(`/api/booking-public/manage/${token}`, json({ action: 'cancel' })),
+  rescheduleManage: (token: string, start: string) => call<{ id: string; status: string; start_at: string; end_at: string }>(`/api/booking-public/manage/${token}`, json({ action: 'reschedule', start })),
 };

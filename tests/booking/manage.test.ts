@@ -49,4 +49,23 @@ describe('magic-link manage', () => {
     expect(cancel.status).toBe(409);
     expect((await cancel.json()).error.code).toBe('too_late_to_cancel');
   });
+
+  it('GET exposes reschedule info; reschedule moves a future booking', async () => {
+    const tok = `tok-${crypto.randomUUID()}`;
+    await mkBooking('[2031-06-01T09:00:00Z,2031-06-01T10:00:00Z)', tok);
+    const get = await (await manage(req(tok, 'GET'))).json();
+    expect(get.reschedulable).toBe(true);
+    expect(get.duration_min).toBe(60);
+    const r = await manage(req(tok, 'POST', { action: 'reschedule', start: '2031-06-01T14:00:00Z' }));
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(new Date(j.start_at).toISOString()).toBe('2031-06-01T14:00:00.000Z');
+    expect(new Date(j.end_at).toISOString()).toBe('2031-06-01T15:00:00.000Z');
+  });
+
+  it('reschedule past the cutoff → 409', async () => {
+    const tok = `tok-${crypto.randomUUID()}`;
+    await mkBooking('[2020-06-01T09:00:00Z,2020-06-01T10:00:00Z)', tok);
+    expect((await manage(req(tok, 'POST', { action: 'reschedule', start: '2020-06-01T14:00:00Z' }))).status).toBe(409);
+  });
 });

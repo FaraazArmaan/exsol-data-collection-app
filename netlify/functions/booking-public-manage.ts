@@ -17,26 +17,49 @@ export default async function handler(req: Request): Promise<Response> {
     SELECT b.id, b.bucket_id, b.status, b.service_id, b.resource_id,
            lower(b.time_range) AS start_at, upper(b.time_range) AS end_at,
            b.customer_name, b.price_cents,
-           COALESCE(s.cancel_cutoff_min, 0) AS cancel_cutoff_min
+           COALESCE(s.cancel_cutoff_min, 0) AS cancel_cutoff_min,
+           svc.name AS service_name, svc.duration_min, cl.slug
     FROM public.bookings b
     LEFT JOIN public.booking_settings s ON s.bucket_id = b.bucket_id
+    LEFT JOIN public.booking_services svc ON svc.id = b.service_id
+    LEFT JOIN public.clients cl ON cl.id = b.bucket_id
     WHERE b.manage_token = ${token} LIMIT 1
   `) as any[];
   if (!rows[0]) return jsonError(404, 'booking_not_found');
   const b = rows[0];
   const startAt = new Date(b.start_at);
   const cutoff = new Date(startAt.getTime() - Number(b.cancel_cutoff_min) * 60_000);
-  const cancellable = (b.status === 'pending' || b.status === 'confirmed') && new Date() < cutoff;
+  const changeable = (b.status === 'pending' || b.status === 'confirmed') && new Date() < cutoff;
 
   if (req.method === 'GET') {
     return jsonOk({
       id: b.id, status: b.status, start_at: b.start_at, end_at: b.end_at,
-      customer_name: b.customer_name, price_cents: b.price_cents, cancellable,
+      customer_name: b.customer_name, price_cents: b.price_cents, cancellable: changeable,
+      reschedulable: changeable, service_id: b.service_id, service_name: b.service_name,
+      duration_min: b.duration_min, slug: b.slug,
     });
   }
   if (req.method === 'POST') {
-    let body: { action?: string };
+    let body: { action?: string; start?: string };
     try { body = await req.json(); } catch { return jsonError(400, 'invalid_body'); }
+
+    if (body.action === 'reschedule') {
+      if (!changeable) return jsonError(409, 'too_late_to_cancel');
+      if (!body.start) return jsonError(400, 'start_required');
+      const start = new Date(body.start);
+      if (Number.isNaN(start.getTime()) || !b.duration_min) return jsonError(400, 'invalid_start');
+      const endIso = new Date(start.getTime() + Number(b.duration_min) * 60_000).toISOString();
+      try {
+        const moved = (await sql`UPDATE public.bookings
+          SET time_range = tstzrange(${start.toISOString()}::timestamptz, ${endIso}::timestamptz), updated_at = now()
+          WHERE id = ${b.id}::uuid RETURNING id, lower(time_range) AS start_at, upper(time_range) AS end_at`) as any[];
+        return jsonOk({ id: moved[0].id, status: b.status, start_at: moved[0].start_at, end_at: moved[0].end_at });
+      } catch (err: any) {
+        if ((err?.code ?? err?.cause?.code) === '23P01') return jsonError(409, 'slot_taken');
+        throw err;
+      }
+    }
+
     if (body.action !== 'cancel') return jsonError(400, 'invalid_action');
 
     // Token possession authorizes the customer's own cancel.

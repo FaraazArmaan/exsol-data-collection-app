@@ -30,8 +30,35 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'GET') return jsonOk(booking);
 
   // PATCH
-  let body: { action?: string; reason?: string };
+  let body: { action?: string; reason?: string; start?: string; resource_id?: string };
   try { body = await req.json(); } catch { return jsonError(400, 'invalid_body'); }
+
+  // Reschedule: move the booking to a new start (and optionally resource). Off-grid
+  // allowed (vendor); the gist constraint still guards → 23P01 → 409 slot_taken.
+  if (body.action === 'reschedule') {
+    if (!['pending', 'confirmed'].includes(booking.status)) return jsonError(409, 'illegal_transition');
+    if (!body.start) return jsonError(400, 'start_required');
+    const start = new Date(body.start);
+    if (Number.isNaN(start.getTime())) return jsonError(400, 'invalid_start');
+    const svc = (await sql`SELECT duration_min FROM public.booking_services WHERE id = ${booking.service_id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid LIMIT 1`) as any[];
+    if (!svc[0]) return jsonError(404, 'service_not_found');
+    const endIso = new Date(start.getTime() + svc[0].duration_min * 60_000).toISOString();
+    const resourceId = body.resource_id ?? booking.resource_id;
+    try {
+      const moved = (await sql`
+        UPDATE public.bookings
+           SET time_range = tstzrange(${start.toISOString()}::timestamptz, ${endIso}::timestamptz),
+               resource_id = ${resourceId}::uuid, updated_at = now()
+         WHERE id = ${id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid
+         RETURNING id, lower(time_range) AS start_at, upper(time_range) AS end_at, status, resource_id
+      `) as any[];
+      return jsonOk(moved[0]);
+    } catch (err: any) {
+      if ((err?.code ?? err?.cause?.code) === '23P01') return jsonError(409, 'slot_taken');
+      throw err;
+    }
+  }
+
   const action = body.action as BookingAction;
   if (!['cancel', 'complete', 'noShow', 'unblock', 'pay'].includes(action)) return jsonError(400, 'invalid_action');
 

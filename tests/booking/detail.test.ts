@@ -59,4 +59,21 @@ describe('GET/PATCH /api/booking/detail/:id', () => {
     expect((await del.json()).deleted).toBe(true);
     expect((await detail(bookingRequest(ctx, 'GET', `/api/booking/detail/${r[0].id}`))).status).toBe(404);
   });
+
+  it('reschedule moves a booking to a new time (end recomputed from duration)', async () => {
+    const id = await mkBooking('[2033-03-01T09:00:00Z,2033-03-01T10:00:00Z)');
+    const r = await detail(bookingRequest(ctx, 'PATCH', `/api/booking/detail/${id}`, { action: 'reschedule', start: '2033-03-01T13:00:00Z' }));
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(new Date(j.start_at).toISOString()).toBe('2033-03-01T13:00:00.000Z');
+    expect(new Date(j.end_at).toISOString()).toBe('2033-03-01T14:00:00.000Z'); // 60-min service
+  });
+
+  it('reschedule into an occupied slot → 409 slot_taken', async () => {
+    await mkBooking('[2033-04-01T09:00:00Z,2033-04-01T10:00:00Z)');
+    const b = await mkBooking('[2033-04-01T11:00:00Z,2033-04-01T12:00:00Z)');
+    const r = await detail(bookingRequest(ctx, 'PATCH', `/api/booking/detail/${b}`, { action: 'reschedule', start: '2033-04-01T09:00:00Z' }));
+    expect(r.status).toBe(409);
+    expect((await r.json()).error.code).toBe('slot_taken');
+  });
 });
