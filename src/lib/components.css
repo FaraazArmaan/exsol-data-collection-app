@@ -539,6 +539,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-service-card {
   display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
   text-align: left; cursor: pointer; border: 1px solid var(--border-default);
+  color: var(--text-primary); font: inherit;
 }
 .booking-service-card:hover { border-color: var(--accent); }
 .booking-service-name { font-weight: 600; color: var(--text-primary); }
@@ -585,7 +586,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .booking-cal-grid { display: grid; gap: 10px; overflow-x: auto; }
 .booking-cal-col { display: flex; flex-direction: column; gap: 8px; }
 .booking-cal-col-head { font-weight: 600; padding-bottom: 4px; border-bottom: 1px solid var(--border-default); }
-.booking-cal-card { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; cursor: pointer; }
+.booking-cal-card { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; cursor: pointer; color: var(--text-primary); font: inherit; }
 .booking-cal-time { font-weight: 600; font-size: 0.9rem; }
 .booking-cal-empty { padding: 8px 0; }
 
