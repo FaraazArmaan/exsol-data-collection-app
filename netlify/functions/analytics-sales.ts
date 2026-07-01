@@ -127,11 +127,12 @@ export default async function handler(req: Request): Promise<Response> {
       mk('aov', 'Avg order value', 'cents'),
     ],
     series: [
-      { id: 'revenue_by_day', chart: 'line', points: seriesRows.map((r) => ({ x: r.x, y: Number(r.y) })) },
+      { id: 'revenue_by_day', label: 'Revenue over time', chart: 'line', unit: 'cents',
+        points: seriesRows.map((r) => ({ x: r.x, y: Number(r.y) })) },
     ],
     breakdowns: [
-      { id: 'by_channel', label: 'By channel', rows: toRows(channelRows) },
-      { id: 'by_category', label: 'By category', rows: toRows(categoryRows) },
+      { id: 'by_channel', label: 'Revenue by channel', unit: 'cents', viz: 'bar', rows: toRows(channelRows) },
+      { id: 'by_category', label: 'Revenue by category', unit: 'cents', viz: 'donut', rows: toRows(categoryRows) },
     ],
     generatedAt: new Date().toISOString(),
   });

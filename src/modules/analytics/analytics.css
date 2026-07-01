@@ -1,0 +1,232 @@
+/* ────────────────────────────────────────────────────────────────────────
+ * Analytics Module stylesheet.
+ *
+ * Surface map (matches theme.css): dashboard sits on --bg-base; every card
+ * (KPI tile, chart, table) sits on --bg-surface with --border-subtle
+ * hairlines; hover/insets use --bg-elevated. Deltas use --success/--danger.
+ * Loaded once via an import in AnalyticsDashboard.tsx.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.analytics-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 32px 64px;
+  color: var(--text-primary);
+}
+
+.analytics-dashboard > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.analytics-dashboard > header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.analytics-generated {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Filter bar ─────────────────────────────────────────────────────────── */
+.analytics-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+.analytics-segmented {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.analytics-segmented button {
+  padding: 6px 14px;
+  background: none;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.analytics-segmented button:hover { color: var(--text-primary); }
+.analytics-segmented button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+.analytics-filterbar select {
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.analytics-filterbar label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.analytics-filterbar input[type="date"] {
+  padding: 5px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  color-scheme: dark;
+}
+.analytics-export {
+  margin-left: auto;
+  padding: 7px 16px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.analytics-export:hover { background: var(--accent-hover); }
+
+/* ── Scorecard (overview strip) ─────────────────────────────────────────── */
+.analytics-scorecard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+/* ── KPI tiles ──────────────────────────────────────────────────────────── */
+.analytics-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.analytics-kpi-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.analytics-kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.analytics-kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.analytics-kpi-delta {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-kpi-delta.is-up   { color: var(--success); }
+.analytics-kpi-delta.is-down { color: var(--danger); }
+.analytics-kpi-delta.is-flat { color: var(--text-muted); }
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+.analytics-panel { margin-bottom: 36px; }
+.analytics-panel > h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.analytics-panel-export { font-size: 12px; padding: 4px 12px; }
+
+/* ── Chart cards ────────────────────────────────────────────────────────── */
+.analytics-chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px 8px;
+}
+.analytics-chart-card > h3 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+.analytics-breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* ── Data table (drill-down / top-N) ────────────────────────────────────── */
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.analytics-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-default);
+}
+.analytics-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.analytics-table tr:last-child td { border-bottom: 0; }
+.analytics-table td.num, .analytics-table th.num { text-align: right; }
+
+/* ── States ─────────────────────────────────────────────────────────────── */
+.analytics-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+}
+.analytics-error {
+  padding: 14px 16px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-surface));
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+}
+.analytics-loading { color: var(--text-muted); padding: 24px 0; }
+
+/* Recharts surface overrides so tooltips read on the dark theme. */
+.analytics-dashboard .recharts-default-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+.analytics-dashboard .recharts-tooltip-label { color: var(--text-secondary) !important; }
+.analytics-dashboard .recharts-cartesian-axis-tick text { fill: var(--text-muted); }

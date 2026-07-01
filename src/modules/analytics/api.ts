@@ -1,4 +1,4 @@
-import type { SalesResponse, OverviewResponse, AnalyticsParams } from './types';
+import type { DomainResponse, OverviewResponse, AnalyticsParams, DomainKey } from './types';
 
 function qs(p: AnalyticsParams): string {
   const u = new URLSearchParams();
@@ -16,7 +16,15 @@ async function get<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const fetchSales = (p: AnalyticsParams) => get<SalesResponse>(`/api/analytics-sales?${qs(p)}`);
-export const fetchOverview = (p: AnalyticsParams) => get<OverviewResponse>(`/api/analytics-overview?${qs(p)}`);
-export const salesExportUrl = (p: AnalyticsParams, format: 'xlsx' | 'csv') =>
-  `/api/analytics-sales-export?${qs(p)}&format=${format}`;
+export const fetchOverview = (p: AnalyticsParams) =>
+  get<OverviewResponse>(`/api/analytics-overview?${qs(p)}`);
+
+export const fetchDomain = (domain: DomainKey, p: AnalyticsParams) =>
+  get<DomainResponse>(`/api/analytics-${domain}?${qs(p)}`);
+
+// Only Sales exposes an export endpoint today; others return undefined so the
+// panel omits its Export link.
+export function domainExportUrl(domain: DomainKey, p: AnalyticsParams, format: 'xlsx' | 'csv'): string | undefined {
+  if (domain !== 'sales') return undefined;
+  return `/api/analytics-sales-export?${qs(p)}&format=${format}`;
+}

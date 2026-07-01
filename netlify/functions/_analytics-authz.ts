@@ -11,15 +11,27 @@
 // analytics bucket but not another — the overview endpoint must still serve the
 // buckets they do hold. So we authenticate directly and read the matrix here.
 
+import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { subtreeOf } from './_shared/subtree';
+
+type SQL = NeonQueryFunction<false, false>;
 import {
   requireAdmin, requireBucketUser, getLevelMatrix, UnauthorizedError,
 } from './_shared/permissions';
 
 export type Bucket = 'business' | 'customers' | 'employees' | 'products';
 const ALL_BUCKETS: Bucket[] = ['business', 'customers', 'employees', 'products'];
+
+// Tenant timezone for day/week/month bucketing. clients.timezone is NOT NULL
+// DEFAULT 'Asia/Kolkata' (migration 047) so every client resolves a value.
+export async function resolveTenantTz(sql: SQL, clientId: string): Promise<string> {
+  const rows = (await sql`
+    SELECT timezone FROM public.clients WHERE id = ${clientId}::uuid LIMIT 1
+  `) as Array<{ timezone: string }>;
+  return rows[0]?.timezone ?? 'UTC';
+}
 
 export interface AnalyticsAccess {
   clientId: string;
