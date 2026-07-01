@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-06-30 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `888f09b Merge branding module (migration 050, 4 fns, 14 @fontsource deps)`
+**Latest commit:** `0c63f2b fix(booking): professional week view — time grid instead of agenda list`
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
-**Test count:** **1084 passing** across 176 test files · typecheck + build clean
+**Test count:** **1085 passing** across 176 test files · typecheck + build clean (`u-products-image-thumb` DELETE test is FLAKY on the shared dev DB — passes in isolation; not a regression)
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
 
 > **Convention for this file:**
@@ -34,9 +34,9 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `888f09b` |
-| Local `main` HEAD | `888f09b` (synced) |
-| Latest Netlify deploy | `ready` at commit `888f09b` (after `restoreSiteDeploy` — **17th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
+| `origin/main` HEAD | `0c63f2b` |
+| Local `main` HEAD | `0c63f2b` (synced) |
+| Latest Netlify deploy | `ready` at commit `0c63f2b` (after `restoreSiteDeploy` — **20th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
 | Migrations applied to prod (`dawn-bird`) | **001–050** (050 = `brand_columns`, 10 additive `brand_*` cols on `clients`, applied 2026-07-01 before code push) |
 | **Modules live on prod** | **6**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, Sales domain)** + AMS/Workspace foundation |
 | New dep | `recharts ^3.9.1` (FE-bundled, NOT in external_node_modules). Bundle now >500kB (lazy-load deferred) |
@@ -309,7 +309,7 @@ Patterns refined (no new memory entries; just reinforced):
 - Fix: Bookings/Catalog panels + scorecard gated on `enabledModules` (mirrors Sidebar's `enabledModules.some(m=>m.key===…)`). I wrote the handoff prompt → routed to **Analytics chat** (analytics-owned files, not Booking).
 - **Gating verified both directions** via a reversible DB toggle on papa-s-saloon (capture-row → delete → verify → re-insert identical row → verify restored): booking ON → 5 panels incl. Bookings; booking OFF → 4 panels, Bookings gone, Catalog stays (products still on); restored → Bookings back. papa-s-saloon left in its exact prior state.
 - Compare-deltas: overview returns `delta`/`deltaPct`; `deltaPct: null` on zero baseline (correct — no misleading "+∞%").
-- **⚠️ CSV export bug (open — Analytics chat working on it):** a per-domain "Export" click DID trigger a download (`sales-…csv`, text/csv, 190B), so my smoke passed on "download fired" — but the **CSV content is not functional** (user caught it). LESSON: "a download triggered" ≠ "the file is valid"; must parse/validate exported content, not just confirm the blob downloaded.
+- ~~⚠️ CSV export bug~~ — **FIXED** `43b59c6` (2026-07-01, see milestone below). The per-domain "Export" click revoked the blob object-URL synchronously after `click()`, so Chromium wrote an untyped, UUID-named, unopenable file. My smoke passed on "download fired" — but the **CSV content was not functional** (user caught it). LESSON: "a download triggered" ≠ "the file is valid"; parse/validate exported content, not just confirm the blob downloaded.
 
 ### 2026-07-01 — Platform Branding domain merged to prod (migration 050 + 4 fns + 14 fonts)
 - **`--no-ff` merge** `feat/platform-branding-iso → 888f09b` (26 commits off a stale `3763323`). Chose merge over cherry-pick because the branch had **npm dependency churn** — cherry-picking 26 commits would conflict on `package-lock.json` repeatedly; a single 3-way merge auto-resolved package.json/lock cleanly (branding's `@fontsource*` keys vs main's `recharts` are disjoint). **Heuristic: dependency-churn branch off a stale base → merge-once, not cherry-pick-many.**
@@ -319,6 +319,12 @@ Patterns refined (no new memory entries; just reinforced):
 - **Persistence verified end-to-end:** PATCH theme=light/accent=#c9a26a/fontHeading=Poppins → reflected in the brand read; reverted → **DB pristine** (dark/nulls). ⚠️ `pub-brand` is **cached `max-age=86400`** — read-after-write on the public endpoint serves stale for up to 24h; verify writes against the DB or an authed read, not the cached public endpoint. Consume-contract note for Branding chat: if instant brand updates are needed, add a cache-bust on save.
 - **Handback READY for POS (§9.4) + Booking (§9.5) chats** (BrandShell/BrandHero/useBrand barrel at `src/modules/branding`): both must wrap public pages in BrandShell, drop their own `.page-narrow`/checkout-narrowing in favor of `.brand-main`, and read slug appropriately. v1.1 follow-ups (hero drag-reorder, useBrand auto-refetch, SSR OG-meta) are non-blocking.
 - Probe false-alarms this round (all my test errors, zero real bugs): hyphen-vs-slash path (404), no-logo `not_found` JSON vs unregistered HTML 404, snake_case vs `.strict()` camelCase (400). **Read the contract before concluding "broken."**
+
+### 2026-07-01 — Two hotfixes deployed + smoked sequentially (analytics CSV export + booking week grid)
+- **Analytics CSV export FIX** (`12e29f3 → 43b59c6`): the export revoked the blob object-URL synchronously after `click()` → Chromium wrote an untyped UUID-named unopenable file. Fix zips via **JSZip** (already a dep; lands in the lazy analytics chunk → 517kB, main bundle unchanged) + defers the revoke. Now downloads `<domain>-<date>.zip` → `<domain>-<date>.csv`. **Content-validated on prod** (the correction of my earlier miss): captured the blob → ZIP magic bytes `50 4b 03 04` → unzipped → CSV has real rows (Revenue 29.00, Sales 10, channel/category breakdowns). alias trap (19th) → restore.
+- **Booking week-view time-grid** (`d7b1184 → 0c63f2b`): rewrote the vendor week view from an agenda list to a Google-Calendar-style time grid (gutter + 7 day-columns + hour lines + time-positioned events with lane-packing), unifying day+week on one grid engine. FE-only (CalendarPage.tsx + append-only CSS). Resolved the `components.css` conflict by union (branding block + new `.booking-week-head` CSS). Smoke: Week = 7 `.booking-week-head` cols + 10 hour labels + 11 positioned blocks, old `.booking-week-col` agenda GONE; day-header click → Day view. alias trap (20th) → restore.
+- **Process note:** I chained `npm test && git push` on the analytics hotfix and only saw the (flaky `u-products-image-thumb`) failure AFTER pushing. Given the shared-dev-DB flakiness, run the suite as its OWN step and eyeball it BEFORE pushing, so a real regression can't slip out unseen. Harmless here (flake, FE-only change), but don't chain test→push.
+- **Content-validation rule (now proven twice):** for any file-producing feature, verify the produced BYTES (magic bytes → unzip → read rows), never just that a download was triggered. "Download fired" passed while the file was broken last round.
 
 ---
 
