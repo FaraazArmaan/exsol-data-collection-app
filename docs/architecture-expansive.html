@@ -222,6 +222,8 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
 
   <h4>Foundations</h4>
   <a href="#one-codebase">One codebase, many products</a>
+  <a href="#folders">The folder structure</a>
+  <a href="#load-bearing">Load-bearing files &amp; flows</a>
   <a href="#tenant">The Tenant Model</a>
   <a href="#three-tiers">Three tiers of users</a>
   <a href="#permissions">The Permission Model</a>
@@ -546,9 +548,471 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   </p>
 </section>
 
+<!-- ═══════════════════════════════════════════════ FOLDER STRUCTURE ═══════════════════════════════════════════════ -->
+<section class="chapter" id="folders">
+  <div class="chapter-label">Chapter 5 · Foundations</div>
+  <h2>The folder structure</h2>
+  <p>What lives where in the repository — and, more importantly, why. This is the high-level system design you can see with <code>ls</code>.</p>
+
+  <div class="layered">
+    <div class="label-human">Why a folder tree is architecture</div>
+    <p>
+      The folder tree is the first diagram anyone sees — before any document, before any line of code.
+      A good tree answers "what IS this system?" in one glance and "where would this change go?" in two.
+      A bad one turns every task into a scavenger hunt. Because this document is also meant to teach
+      software design, each part of this chapter leads with the transferable principle, then shows how
+      ExSol applies it as the worked example.
+    </p>
+
+    <div class="label-system">The repository, top to bottom</div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Principle 1 — the top level of a repo should scream what the system IS</div>
+    <p>
+      Before reading a single code file, a newcomer running <code>ls</code> at the root should see the
+      system's shape: here is the app, here is the API, here is the database schema, here are the tests,
+      here are the docs. Every top-level entry answers exactly one question — and there is no
+      <code>misc/</code>, no <code>old/</code>, no mystery folder.
+    </p>
+  </div>
+
+  <table>
+    <thead><tr><th>Path</th><th>What it is</th><th>The question it answers</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">src/</td>
+        <td>The React 18 + Vite + TypeScript single-page app — 253 files. Routing via <code>react-router-dom</code> v7, Zustand for the one piece of cross-page state (the POS cart), Zod for validation at the boundaries.</td>
+        <td>What does the user see? (the frontend of all seven products)</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">netlify/functions/</td>
+        <td>The entire backend: ~94 flat Netlify Functions v2 endpoints, plus <code>_shared/</code> server helpers — db, session, permissions, audit, exporters.</td>
+        <td>What can the system do?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">db/migrations/</td>
+        <td>Forward-only numbered SQL files, <code>001</code> through <code>050</code>. The schema's complete, replayable history.</td>
+        <td>What shape is the data, and how did it get that way?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">scripts/</td>
+        <td>Operator tooling: the <code>migrate.ts</code> runner and <code>bootstrap-admin.ts</code>.</td>
+        <td>How does an operator run it?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">tests/</td>
+        <td>153 test files, grouped by kind and module: <code>integration/</code>, <code>unit/</code>, <code>pos/</code>, <code>booking/</code>, <code>analytics/</code>, <code>fixtures/</code>, <code>helpers/</code>.</td>
+        <td>How do we know it works?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">docs/</td>
+        <td>These architecture documents plus ADRs (architecture decision records).</td>
+        <td>Why is it the way it is?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">netlify.toml</td>
+        <td>The deployment contract in one file: build command, dev proxy, the <code>/api</code> redirect, <code>external_node_modules</code>.</td>
+        <td>How does it deploy?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">package.json · vite.config.ts · vitest.config.ts · tsconfig.json</td>
+        <td>Toolchain configuration, in the standard locations tools expect.</td>
+        <td>How does it build?</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Read that table top to bottom and you have the whole system: a single-page app, a serverless backend,
+    a database whose history is fully replayable, operator tooling, and proof it all works.
+  </p>
+
+  <div class="callout">
+    <div class="label">Principle 2 — organize by feature/product, not by technical layer</div>
+    <p>
+      The classic alternative — a global <code>components/</code>, <code>hooks/</code>, <code>services/</code>,
+      <code>utils/</code> — groups code by what it <em>is</em>. Feature-first structure groups code by what
+      it's <em>for</em>. The payoff: a module can be added, handed to a single owner (here: one parallel
+      chat session), or deleted <em>as one folder</em> — and the folder listing doubles as the product
+      catalog of the platform.
+    </p>
+  </div>
+
+  <pre><code>src/
+├── App.tsx                <span class="com">AuthProvider &gt; RouterProvider — the whole app, composed in one file</span>
+├── main.tsx               <span class="com">root mount + global CSS + brand fonts</span>
+├── lib/                   <span class="com">cross-app infrastructure — deliberately tiny</span>
+│     router.tsx           <span class="com">THE central route table (see next chapter)</span>
+│     auth-context.tsx     <span class="com">admin auth state</span>
+│     api-client.ts        <span class="com">fetch wrapper</span>
+│     google-signin.ts · theme.css · components.css
+└── modules/               <span class="com">one folder per product / module — the heart of the structure</span>
+      registry/  ams/  user-portal/  pos/  booking/  analytics/
+      products/  files/  branding/  login/  shared/</code></pre>
+
+  <p>Inside <code>src/modules/</code>, each folder is one product or one platform surface:</p>
+
+  <table>
+    <thead><tr><th>Module folder</th><th>What's inside</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">registry/</td>
+        <td>The module/product manifest system: <code>types.ts</code>, <code>modules.ts</code>, <code>products.ts</code>, <code>manifests/</code> (one per module), <code>products-list/</code> (one per product). This is the <strong>composition root</strong> — the next chapter explains why it's the most load-bearing folder in the repo.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">ams/</td>
+        <td>The admin management surface: Sidebar, AdminDashboard, AccessLevelDashboard, LevelEditor, PermissionMatrixCard — the cross-workspace operator console.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">user-portal/</td>
+        <td>The bucket-user workspace shell: UserPortalRoutes, <code>user-auth-context</code> (with <code>useUserAuth</code>), <code>layout/Sidebar</code> with nav gating, <code>nav/useNavItems</code>, pages. Every product mounts inside this shell.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">pos/</td>
+        <td>The POS product: PosRouteMounts, Menu/Cart/Sales pages plus the public Storefront pages, ProductTile / SideCartPanel components, the Zustand cart store, the FSM lib, <code>pos.css</code>.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">booking/</td>
+        <td>Booking: BookingRouteMounts, <code>vendor/</code> (calendar + config), <code>public/</code> (storefront + manage), pure libs for availability / auto-assign / FSM / timezones, ICS calendar-file generation.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">analytics/</td>
+        <td>A lazy-loaded chunk — recharts stays out of the main bundle: AnalyticsRouteMount, useAnalytics, exportCsv.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">products/</td>
+        <td>The Product Manager: <code>admin/</code> and <code>workspace/</code> page sets, <code>shared/</code> (scope, permissions, api, types).</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">files/</td>
+        <td>The File Manager: FileGrid, UploadModal, QuotaMeter.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">branding/</td>
+        <td>Platform branding: BrandShell, BrandingForm, useBrand, brand-fonts.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">login/ · shared/</td>
+        <td>Login pages; genuinely cross-module UI (onboarding-import, team-modals).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout amber">
+    <div class="label">Principle 3 — shared infrastructure stays small, explicit, and boring</div>
+    <p>
+      <code>src/lib/</code> contains only what literally <em>every</em> module needs: the router, the admin
+      auth context, the API client, Google sign-in, and the theme stylesheets. The rule: the moment
+      something is needed by only <em>some</em> modules, it moves into a module (or <code>modules/shared/</code>).
+      A fat shared layer is where feature-first structure goes to die — every casual "just put it in utils"
+      quietly rebuilds the layer-first architecture you were trying to avoid.
+    </p>
+  </div>
+
+  <div class="callout green">
+    <div class="label">Principle 4 — let the platform's constraints shape the backend layout</div>
+    <p>
+      <code>netlify/functions/</code> is deliberately <strong>flat</strong>: ~94 endpoint files side by side,
+      named <code>&lt;module&gt;-&lt;action&gt;.ts</code>. Netlify's discovery rule is "each top-level file is
+      one function; a subdirectory is treated as ONE function" — so nesting endpoints in folders silently
+      breaks routing. Rather than fight the platform, the convention embraces it: the module prefix in the
+      filename provides the grouping a folder would have, and the underscore prefix (<code>_shared/</code>,
+      <code>_pos-authz.ts</code>) marks "helper, not an endpoint" — Netlify skips it, and humans read it
+      as internal.
+    </p>
+  </div>
+
+  <div class="layered">
+    <div class="label-human">The test of a good structure</div>
+    <p>
+      Ask: "a bug in the booking calendar's timezone math — where's the fix?"
+      <code>src/modules/booking/</code>, in the tz lib. "A new export format for the product catalog?"
+      <code>netlify/functions/_shared/exporters/</code>. "A whole new module?" One folder under
+      <code>src/modules/</code>, one manifest in the registry, a set of <code>&lt;module&gt;-*.ts</code>
+      functions, one migration, one test folder. When every plausible change has one obvious home,
+      the structure is doing its job.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ LOAD-BEARING FILES ═══════════════════════════════════════════════ -->
+<section class="chapter" id="load-bearing">
+  <div class="chapter-label">Chapter 6 · Foundations</div>
+  <h2>Load-bearing files &amp; how they connect</h2>
+  <p>The low-level system design in one chapter: the ~20 files that carry the architecture, and the four flows that run through them.</p>
+
+  <div class="layered">
+    <div class="label-human">The idea of a load-bearing file</div>
+    <p>
+      In a building, most walls just divide rooms; a few carry the structure. Codebases are the same.
+      Of the 253 frontend files and ~94 backend functions, most are leaf code — a page here, an endpoint
+      there — that could be rewritten without anything else noticing. A small set of files, though, is
+      load-bearing: every route, every request, every permission check passes through them. Know these
+      twenty and you know the system.
+    </p>
+
+    <div class="label-system">The principle, then the list</div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Principle — a system is legible when you can name the files that carry it</div>
+    <p>
+      If you can't write down the short list of files where the architecture lives, you don't have an
+      architecture — you have a pile. Keeping the list short, and each file on it to a <em>single</em>
+      responsibility, is a design activity, not documentation. When a load-bearing file grows a second
+      job, that's the signal to split it before the list stops being writable.
+    </p>
+  </div>
+
+  <h4 style="margin-top: 36px;">Group 1 — Composition &amp; routing</h4>
+  <div class="callout teal">
+    <div class="label">Group principle — one route table, one type source, one composition root</div>
+    Scattering routes, shared types, or module registration across many files hides the product map.
+    ExSol keeps each in exactly one file, so "what exists?" always has one answer.
+  </div>
+  <table>
+    <thead><tr><th>File</th><th>Single responsibility</th><th>Connections</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">src/lib/router.tsx</td>
+        <td>The single route table. Three trees: public (<code>/menu/:slug</code>, <code>/c/:slug/book</code>), the bucket-user portal under <code>/c/:slug</code> (RequireBucketUser + UserDashboardLayout + per-product RouteMounts), and the admin tree (RequireAdmin).</td>
+        <td>Imports every module's RouteMount — the one file that knows the whole URL space.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">src/modules/registry/types.ts</td>
+        <td>The source-of-truth type system: <code>DataBucket</code>, <code>Verb</code>, the <code>PermissionKey</code> union (<code>&lt;module&gt;.&lt;bucket&gt;.&lt;verb&gt;</code> | <code>_platform.&lt;surface&gt;.&lt;verb&gt;</code> | legacy <code>pos.&lt;action&gt;</code>), <code>ModuleManifest</code>, <code>ProductManifest</code>.</td>
+        <td>Imported by BOTH the frontend registry and the backend's <code>permission-keys.ts</code> — the one file that crosses the <code>src</code> ↔ <code>netlify</code> boundary, so both realms share a single truth.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">src/modules/registry/modules.ts</td>
+        <td><code>moduleRegistry</code> — the module composition root.</td>
+        <td>Adding a module = 1 manifest file + 1 line here. No scavenger hunt.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">src/modules/registry/products.ts</td>
+        <td><code>productRegistry</code> + the derivation helpers: <code>derivePermissionRows</code> (the permission-matrix grid), <code>enabledModulesForProducts</code> (nav), <code>requiresSatisfied</code> (product dependency gating).</td>
+        <td>Consumed by <code>u-me</code>, the access-levels UI, and the sidebar.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 36px;">Group 2 — The server authorization spine</h4>
+  <div class="callout teal">
+    <div class="label">Group principle — authorization is a chain of small helpers, reused verbatim</div>
+    Every endpoint composes the same helpers in the same order: session → level → matrix → tenant scope →
+    enable-gate. Uniformity here is a security property: an endpoint that looks different is an endpoint
+    to review.
+  </div>
+  <table>
+    <thead><tr><th>File</th><th>Single responsibility</th><th>Connections</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">_shared/permissions.ts</td>
+        <td>THE server authz core: <code>requireAdmin</code>, <code>requireBucketUser</code>, <code>requirePermission</code> (admin → L1-bypass → matrix lookup); <code>resolveClientId</code> / <code>authorizeClientScope</code> / <code>authorizeSubtreeScope</code> — the cross-tenant guard that returns <code>forbidden_cross_client</code>.</td>
+        <td>Called by effectively every protected endpoint.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_shared/permission-keys.ts</td>
+        <td>Key validation: <code>isValidPermissionKey</code> — structural check, module-enabled-by-product check, bucket/verb-in-manifest check.</td>
+        <td>Built on the registry's types; called by <code>client-levels-permissions</code> on every PUT.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_shared/session.ts</td>
+        <td>JWT mint/verify for both realms: the admin session cookie (15&nbsp;min TTL) and <code>bu_session</code> (24&nbsp;h, <code>kind:'bucket_user'</code> with the <code>client_id</code> claim enforced).</td>
+        <td>Sits beneath <code>permissions.ts</code>; tokens issued by the login endpoints.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_shared/db.ts · _shared/env.ts</td>
+        <td>The Neon serverless connection singleton; the Zod-validated env loader that fails fast on a missing variable.</td>
+        <td>All data access flows through <code>db()</code>; no handler reads <code>process.env</code> directly.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_shared/audit.ts</td>
+        <td><code>logAudit</code> — the append-only <code>audit_log</code> INSERT called from every mutating endpoint; never rolls back the business operation it records.</td>
+        <td>Called after every successful write, in every module.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">u-me.ts</td>
+        <td>The bucket-user identity endpoint: loads node + role + client, computes <code>level_number</code>, returns <code>permissions</code> + <code>enabled_modules</code>.</td>
+        <td>THE data source for frontend authz state — <code>user-auth-context</code> calls it once on mount.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_pos-authz.ts (+ _booking-authz.ts, _analytics-authz.ts, _pub-authz.ts)</td>
+        <td>Per-product gates: the enable-gate first (<code>client_enabled_products</code>, else 412), then the permission check with the L1 Owner bypass.</td>
+        <td>Wraps <code>permissions.ts</code> for each product's endpoints.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">client-levels-permissions.ts</td>
+        <td>Admin GET/PUT of a level's permission matrix; derives the editable rows from the registry, validates every key on PUT, audits the change.</td>
+        <td>The write path for the RBAC matrix.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 36px;">Group 3 — UI gates &amp; shared components</h4>
+  <div class="callout teal">
+    <div class="label">Group principle — the client mirrors server checks; it never replaces them</div>
+    Every client-side gate exists so the user never sees a link or screen the server would reject.
+    The server remains the authority — see Flow B below.
+  </div>
+  <table>
+    <thead><tr><th>File</th><th>Single responsibility</th><th>Connections</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">user-portal/layout/Sidebar.tsx + nav/useNavItems.ts</td>
+        <td>Nav gating from <code>enabledModules</code> + permission keys (L1 all-on); a generic "Modules" rail covers modules without dedicated nav.</td>
+        <td>Uses the same <code>u-me</code> data as the route guards, so nav and guards always agree.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">modules/*/[Pos|Booking|Analytics]RouteMounts.tsx</td>
+        <td>Client-side route guards mirroring server authz: loading → auth → module-enabled → permission → render, or <code>&lt;Navigate&gt;</code> away.</td>
+        <td>Mounted by <code>router.tsx</code>; Analytics is lazy-imported so recharts ships as its own bundle.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">pos/components/ProductTile.tsx &amp; SideCartPanel.tsx</td>
+        <td>The catalog tile and cart panel shared across the staff POS and the guest storefront.</td>
+        <td>The living example of "extract the difference as a prop, not fork the component" (Chapter 4).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 36px;">Group 4 — Operations &amp; export</h4>
+  <table>
+    <thead><tr><th>File</th><th>Single responsibility</th><th>Connections</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">scripts/migrate.ts</td>
+        <td>The forward-only migration runner: ensures <code>schema_migrations</code> exists, applies pending numbered SQL in a transaction.</td>
+        <td>Dev and prod Neon branches are migrated by swapping the env URL; the build never runs migrations — it's an operator step.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">_shared/exporters/</td>
+        <td>Product-export formatters — amazon, flipkart, meta, whatsapp, csv, xlsx, zip — behind one index.</td>
+        <td>New formats plug in without touching any endpoint.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 40px;">The four flows that connect them</h4>
+  <p>
+    Every meaningful behavior of the system is one of these four flows running through the files above.
+    Each flow demonstrates a principle worth carrying to the next project.
+  </p>
+
+  <div class="callout green">
+    <div class="label">Flow A — SPA route → gate · Principle: the client-side gate is UX, not security</div>
+    <p>
+      Its whole job is to never show a link or screen the server would reject. Deleting every client
+      gate wouldn't open a security hole — it would just be a slower, uglier way to see 403s.
+    </p>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>The app composes itself.</strong> <code>main.tsx</code> mounts <code>App.tsx</code>: AuthProvider wraps RouterProvider, so auth state exists before any route renders.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong>The URL picks a tree.</strong> <code>/c/papa-s-saloon/pos/menu</code> falls in the bucket-user portal tree of <code>router.tsx</code>, so <code>RequireBucketUser</code> runs first: no valid session → redirect to the workspace login.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>The RouteMount gate runs, in order.</strong> Still loading → render nothing yet. Authenticated? Does <code>enabledModules</code> contain <code>pos</code>? Does the user hold the required permission key (for the L1 Owner, everything is on)? Any failure → <code>&lt;Navigate&gt;</code> away; all pass → render the page.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>The Sidebar makes the same decisions from the same data.</strong> <code>useNavItems</code> derives nav links from <code>enabledModules</code> + permission keys, so a user never sees a link the guard would bounce.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">5</div>
+    <div class="step-body"><strong>All of that state came from one call.</strong> <code>user-auth-context</code> fetched <code>GET /api/u-me</code> once on mount — the frontend's entire authz picture is that single response.</div>
+  </div>
+
+  <div class="callout green">
+    <div class="label">Flow B — API request → DB · Principle: the server re-derives authorization from the database on every request</div>
+    <p>
+      The JWT proves <em>who</em> you are; the database says what you may do, <em>right now</em>.
+      A stale or tampered claim can name a user, but it can never grant a permission.
+    </p>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>Every function is a <code>(Request) ⇒ Response</code>.</strong> No framework, no middleware stack — just a function whose first act is calling the auth chain.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong><code>requirePermission</code> tries the admin realm first;</strong> failing that, it verifies the <code>bu_session</code> JWT.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>Authority is re-fetched, not trusted.</strong> For bucket users, <code>level_number</code> and <code>client_id</code> are fetched fresh from <code>user_nodes</code> — deliberately NOT read out of the JWT beyond identity.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>The matrix decides.</strong> L1 bypasses it; L2+ needs the exact key in the level's <code>client_levels</code> JSONB matrix.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">5</div>
+    <div class="step-body"><strong>Tenancy is enforced.</strong> <code>resolveClientId</code> compares the requested tenant to the session's — a mismatch is a <code>403 forbidden_cross_client</code>, regardless of permissions.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">6</div>
+    <div class="step-body"><strong>Product endpoints add the enable-gate.</strong> <code>_&lt;product&gt;-authz.ts</code> checks <code>client_enabled_products</code>; product off for this workspace → 412, before any permission logic.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">7</div>
+    <div class="step-body"><strong>Only now does <code>db()</code> run SQL</strong> — and every mutation ends with <code>logAudit()</code>. The client-side gates of Flow A were convenience; this chain is the security.</div>
+  </div>
+
+  <div class="callout green">
+    <div class="label">Flow C — Registry → everything · Principle: one composition root — adding a module is a declaration, not a scavenger hunt</div>
+    <p>
+      Register once; everything else is <em>derived</em>. A fact declared once and derived N times
+      cannot drift out of sync — the corollary is "derive, don't duplicate."
+    </p>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>A Product declares its modules</strong> in its ProductManifest — plus <code>requires</code> dependencies and any legacy action permissions.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong><code>u-me</code> derives <code>enabled_modules</code></strong> from <code>client_enabled_products</code> × the registry → Sidebar and <code>useNavItems</code> render the nav.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong><code>client-levels-permissions</code> derives the admin permission-matrix UI</strong> — the rows an admin can toggle come from the same manifests.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong><code>isValidPermissionKey</code> validates every write</strong> against the same declaration. Forget the manifest and the module is invisible everywhere at once — a loud failure, not a quiet drift.</div>
+  </div>
+
+  <div class="callout green">
+    <div class="label">Flow D — Migrations, dev → prod · Principle: schema changes are forward-only code, applied by an operator, never by the build</div>
+    <p>The runner is deliberately dumb; the discipline lives in the ordering.</p>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>A schema change is a new numbered SQL file</strong> in <code>db/migrations/</code> — never an edit to an applied one.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong><code>scripts/migrate.ts</code> applies what's pending.</strong> It ensures <code>schema_migrations</code> exists, applies each pending file in a transaction, and records it — idempotent on re-run.</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>Dev first, then prod, by env swap.</strong> <code>npm run migrate</code> against the dev Neon branch; the same command against the prod URL — BEFORE deploying code that depends on the new schema (additive changes).</div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>Destructive changes invert the order.</strong> Deploy the code that stops using the column first; only then drop it.</div>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════ THE TENANT MODEL ═══════════════════════════════════════════════ -->
 <section class="chapter" id="tenant">
-  <div class="chapter-label">Chapter 5 · Foundations</div>
+  <div class="chapter-label">Chapter 7 · Foundations</div>
   <h2>The Tenant Model</h2>
   <p>How one platform serves many businesses without leaking data between them.</p>
 
@@ -613,7 +1077,7 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
 
 <!-- ═══════════════════════════════════════════════ THREE TIERS OF USERS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="three-tiers">
-  <div class="chapter-label">Chapter 6 · Foundations</div>
+  <div class="chapter-label">Chapter 8 · Foundations</div>
   <h2>Three tiers of users</h2>
   <p>Who logs in, what they can see, how the system tells them apart.</p>
 
@@ -667,7 +1131,7 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
 
 <!-- ═══════════════════════════════════════════════ PERMISSION MODEL ═══════════════════════════════════════════════ -->
 <section class="chapter" id="permissions">
-  <div class="chapter-label">Chapter 7 · Foundations</div>
+  <div class="chapter-label">Chapter 9 · Foundations</div>
   <h2>The Permission Model</h2>
   <p>How the system decides whether an action is allowed.</p>
 
@@ -742,7 +1206,7 @@ pos.history.viewAll</code></pre>
 
 <!-- ═══════════════════════════════════════════════ REQUEST FLOW ═══════════════════════════════════════════════ -->
 <section class="chapter" id="request-flow">
-  <div class="chapter-label">Chapter 8 · How a request works</div>
+  <div class="chapter-label">Chapter 10 · How a request works</div>
   <h2>End-to-end request lifecycle</h2>
   <p>What happens between a click in the browser and a row in the database.</p>
 
@@ -825,7 +1289,7 @@ pos.history.viewAll</code></pre>
 
 <!-- ═══════════════════════════════════════════════ DATA MODEL ═══════════════════════════════════════════════ -->
 <section class="chapter" id="data-model">
-  <div class="chapter-label">Chapter 9 · How a request works</div>
+  <div class="chapter-label">Chapter 11 · How a request works</div>
   <h2>The Data Model</h2>
   <p>The shape of the database, and why it's shaped that way.</p>
 
@@ -919,7 +1383,7 @@ pos.history.viewAll</code></pre>
 
 <!-- ═══════════════════════════════════════════════ STATE MACHINES ═══════════════════════════════════════════════ -->
 <section class="chapter" id="fsm">
-  <div class="chapter-label">Chapter 10 · How a request works</div>
+  <div class="chapter-label">Chapter 12 · How a request works</div>
   <h2>State machines</h2>
   <p>Why most operational records have a well-defined lifecycle and what we get for the trouble.</p>
 
@@ -966,7 +1430,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ AUDIT TRAIL ═══════════════════════════════════════════════ -->
 <section class="chapter" id="audit">
-  <div class="chapter-label">Chapter 11 · How a request works</div>
+  <div class="chapter-label">Chapter 13 · How a request works</div>
   <h2>Audit trail</h2>
   <p>How we know what happened, who did it, and when.</p>
 
@@ -1018,7 +1482,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ MODULE ANATOMY ═══════════════════════════════════════════════ -->
 <section class="chapter" id="module-anatomy">
-  <div class="chapter-label">Chapter 12 · How modules are built</div>
+  <div class="chapter-label">Chapter 14 · How modules are built</div>
   <h2>Anatomy of a module</h2>
   <p>What a "module" actually consists of in this codebase, layer by layer.</p>
 
@@ -1086,7 +1550,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ REGISTRY ═══════════════════════════════════════════════ -->
 <section class="chapter" id="registry">
-  <div class="chapter-label">Chapter 13 · How modules are built</div>
+  <div class="chapter-label">Chapter 15 · How modules are built</div>
   <h2>The Registry</h2>
   <p>How modules announce themselves to the rest of the system.</p>
 
@@ -1133,7 +1597,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ API PATTERNS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="api-patterns">
-  <div class="chapter-label">Chapter 14 · How modules are built</div>
+  <div class="chapter-label">Chapter 16 · How modules are built</div>
   <h2>API patterns</h2>
   <p>What every backend function looks like, structurally.</p>
 
@@ -1183,7 +1647,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ DEPLOYMENT ═══════════════════════════════════════════════ -->
 <section class="chapter" id="deployment">
-  <div class="chapter-label">Chapter 15 · Operations</div>
+  <div class="chapter-label">Chapter 17 · Operations</div>
   <h2>Deployment</h2>
   <p>How code goes from a developer's laptop to a customer's screen.</p>
 
@@ -1219,7 +1683,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ MIGRATIONS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="migrations">
-  <div class="chapter-label">Chapter 16 · Operations</div>
+  <div class="chapter-label">Chapter 18 · Operations</div>
   <h2>Database migrations</h2>
   <p>How we evolve the database schema over time without losing data.</p>
 
@@ -1247,7 +1711,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ OPERATIONAL CLIFFS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="traps">
-  <div class="chapter-label">Chapter 17 · Operations</div>
+  <div class="chapter-label">Chapter 19 · Operations</div>
   <h2>Operational cliffs</h2>
   <p>Things that have gone wrong, written down so they don't go wrong again.</p>
 
@@ -1321,7 +1785,7 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ GLOSSARY ═══════════════════════════════════════════════ -->
 <section class="chapter" id="glossary">
-  <div class="chapter-label">Chapter 18 · Reference</div>
+  <div class="chapter-label">Chapter 20 · Reference</div>
   <h2>Glossary</h2>
   <p>Terms that show up throughout this document, defined in one place.</p>
 
