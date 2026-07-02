@@ -1,8 +1,8 @@
 # POS v1 stack complete + storefront staged — Handoff
 
-**Last updated:** 2026-06-30 (live; appended at every milestone)
+**Last updated:** 2026-07-03 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `0c63f2b fix(booking): professional week view — time grid instead of agenda list`
+**Latest commit:** `9c9af2f fix(branding): professional redesign of the BrandingForm settings panel`
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
 **Test count:** **1085 passing** across 176 test files · typecheck + build clean (`u-products-image-thumb` DELETE test is FLAKY on the shared dev DB — passes in isolation; not a regression)
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
@@ -34,9 +34,9 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `0c63f2b` |
-| Local `main` HEAD | `0c63f2b` (synced) |
-| Latest Netlify deploy | `ready` at commit `0c63f2b` (after `restoreSiteDeploy` — **20th consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
+| `origin/main` HEAD | `9c9af2f` |
+| Local `main` HEAD | `9c9af2f` (synced) |
+| Latest Netlify deploy | `ready` at commit `9c9af2f` (after `restoreSiteDeploy` — **21st consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
 | Migrations applied to prod (`dawn-bird`) | **001–050** (050 = `brand_columns`, 10 additive `brand_*` cols on `clients`, applied 2026-07-01 before code push) |
 | **Modules live on prod** | **6**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, Sales domain)** + AMS/Workspace foundation |
 | New dep | `recharts ^3.9.1` (FE-bundled, NOT in external_node_modules). Bundle now >500kB (lazy-load deferred) |
@@ -325,6 +325,13 @@ Patterns refined (no new memory entries; just reinforced):
 - **Booking week-view time-grid** (`d7b1184 → 0c63f2b`): rewrote the vendor week view from an agenda list to a Google-Calendar-style time grid (gutter + 7 day-columns + hour lines + time-positioned events with lane-packing), unifying day+week on one grid engine. FE-only (CalendarPage.tsx + append-only CSS). Resolved the `components.css` conflict by union (branding block + new `.booking-week-head` CSS). Smoke: Week = 7 `.booking-week-head` cols + 10 hour labels + 11 positioned blocks, old `.booking-week-col` agenda GONE; day-header click → Day view. alias trap (20th) → restore.
 - **Process note:** I chained `npm test && git push` on the analytics hotfix and only saw the (flaky `u-products-image-thumb`) failure AFTER pushing. Given the shared-dev-DB flakiness, run the suite as its OWN step and eyeball it BEFORE pushing, so a real regression can't slip out unseen. Harmless here (flake, FE-only change), but don't chain test→push.
 - **Content-validation rule (now proven twice):** for any file-producing feature, verify the produced BYTES (magic bytes → unzip → read rows), never just that a download was triggered. "Download fired" passed while the file was broken last round.
+
+### 2026-07-01 — BrandingForm settings panel redesign (FE-only, `9c9af2f`)
+- Redesigned the branding settings UI that shipped raw in v1 (`888f09b`). Two files: `BrandingForm.tsx` (+280/−66) + `components.css` (+123). No migration, no function, no dep change. Tests held at **1085** (the 20 branding FE tests stay green — all accessible names/aria-labels preserved through the rework).
+- **Real bug fixed: "Choose file doesn't open."** The v1 inline `<label>`-wraps-`<input type=file>` markup didn't reliably trigger the OS picker. Replaced with custom upload tiles that drive a **hidden ref'd `<input>` via button/keydown handler** — the reliable cross-browser pattern for styled file pickers. Tiles add a transparency-checkerboard preview, drag-and-drop, live object-URL preview after pick, and a hover "remove".
+- Other polish: 5-tile logo grid (Primary/Alternate/Favicon/App icon/Social) with dimension hints; hero dropzone + thumbnail strip; accent color picker (native swatch + `#`-hex field + "Suggest from logo" surfacing `suggestAccentFromLogo`); segmented Dark|Light theme control with preview dots (v1's raw radio fieldset rendered broken); typography selects grouped by optgroup with a live font-preview line; uppercase section labels on the warm-dark token palette.
+- **Deploy:** already pushed + synced (`origin/main` = local = `9c9af2f`); Netlify `ready` after the **21st consecutive `restoreSiteDeploy`** (CSS+JS bundle-hash changed → alias-not-promoted, as predicted). Visually verified via screenshot.
+- **Still owed (unchanged from branding merge):** `pub-brand` is cached `max-age=86400`, so public read-after-write is stale ≤24h — add a cache-bust on save if instant brand updates are wanted. POS (§9.4) + Booking (§9.5) chats still need to wrap their public pages in `BrandShell`/`.brand-main`.
 
 ---
 
