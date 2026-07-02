@@ -16,7 +16,7 @@ function jsonResponse(status: number, body: unknown) {
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); vi.restoreAllMocks(); });
 
 describe('StorefrontMenuPage', () => {
-  it('renders tenant name + product tiles from the public menu', async () => {
+  it('renders product tiles from the public menu', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(jsonResponse(200, {
       tenant: { name: 'Corner Cafe' },
       categories: [],
@@ -27,7 +27,9 @@ describe('StorefrontMenuPage', () => {
         <Routes><Route path="/menu/:slug" element={<StorefrontMenuPage />} /></Routes>
       </MemoryRouter>,
     );
-    expect(await screen.findByText('Corner Cafe')).toBeInTheDocument();
+    // The branded header (brand/tenant name) is supplied by StorefrontLayout —
+    // covered in tests/unit/storefront-layout.test.tsx. Rendered in isolation
+    // here, the page itself is only responsible for the menu tiles.
     expect(await screen.findByText('Latte')).toBeInTheDocument();
   });
 

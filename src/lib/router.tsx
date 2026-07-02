@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
+import StorefrontLayout from '../modules/pos/pages/StorefrontLayout';
 import StorefrontMenuPage from '../modules/pos/pages/StorefrontMenuPage';
 import StorefrontCartPage from '../modules/pos/pages/StorefrontCartPage';
 import StorefrontDetailsPage from '../modules/pos/pages/StorefrontDetailsPage';
@@ -64,11 +65,19 @@ function RequireAdmin() {
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   // Public storefront — unauthenticated, mounted OUTSIDE /c/:slug (no portal
-  // shell, no auth). See POS v2 storefront design §3.3.
-  { path: '/menu/:slug', element: <StorefrontMenuPage /> },
-  { path: '/menu/:slug/cart', element: <StorefrontCartPage /> },
-  { path: '/menu/:slug/details', element: <StorefrontDetailsPage /> },
-  { path: '/menu/:slug/order/:saleUuid', element: <StorefrontReceiptPage /> },
+  // shell, no auth). See POS v2 storefront design §3.3. The StorefrontLayout
+  // wraps all four steps in one shared BrandShell (brand fetched once for the
+  // whole guest flow); see branding spec §9.4.
+  {
+    path: '/menu/:slug',
+    element: <StorefrontLayout />,
+    children: [
+      { index: true, element: <StorefrontMenuPage /> },
+      { path: 'cart', element: <StorefrontCartPage /> },
+      { path: 'details', element: <StorefrontDetailsPage /> },
+      { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
+    ],
+  },
   {
     path: '/c/:slug',
     element: <UserPortalLayout />,

@@ -3,12 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createGuestCartStore } from '../store/cart';
 import { getOrCreateStorefrontSession } from '../lib/session';
 import { publicApi, PosApiError } from '../api';
-import { StorefrontShell } from './StorefrontShell';
 
 // Customer details + place order. Owns the honeypot (a hidden field bots fill
 // and humans never see) so it lives with the form, not in the shared
 // CustomerForm. Submits the guest cart; the per-tab session id doubles as the
-// idempotency key. See spec §6.7.
+// idempotency key. See spec §6.7. Branded chrome is supplied by StorefrontLayout.
 export default function StorefrontDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const sessionId = getOrCreateStorefrontSession();
@@ -55,8 +54,7 @@ export default function StorefrontDetailsPage() {
   }
 
   return (
-    <StorefrontShell>
-      <form className="pos-cart-page__customer" onSubmit={submit}>
+    <form className="pos-cart-page__customer" onSubmit={submit}>
         <header>
           <Link to={`/menu/${slug}/cart`}>← Back to cart</Link>
           <h1>Your details</h1>
@@ -97,7 +95,6 @@ export default function StorefrontDetailsPage() {
         <button className="pos-side-cart__checkout" type="submit" disabled={!canSubmit}>
           {submitting ? 'Placing order…' : 'Place order'}
         </button>
-      </form>
-    </StorefrontShell>
+    </form>
   );
 }

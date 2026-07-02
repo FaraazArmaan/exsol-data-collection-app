@@ -4,11 +4,10 @@ import { createGuestCartStore } from '../store/cart';
 import { getOrCreateStorefrontSession } from '../lib/session';
 import { CartLineRow } from '../components/CartLineRow';
 import { formatRupees } from '../lib/money';
-import { StorefrontShell } from './StorefrontShell';
 
 // Guest cart review. Reuses CartLineRow (−/＋/× stepper); "Continue" advances
 // to the details page. No customer form here — that lives on details with the
-// honeypot. See spec §6.6.
+// honeypot. See spec §6.6. Branded chrome is supplied by StorefrontLayout.
 export default function StorefrontCartPage() {
   const { slug } = useParams<{ slug: string }>();
   const sessionId = getOrCreateStorefrontSession();
@@ -20,8 +19,7 @@ export default function StorefrontCartPage() {
   const nav = useNavigate();
 
   return (
-    <StorefrontShell>
-      <div className="pos-cart-page">
+    <div className="pos-cart-page">
         <header>
           <Link to={`/menu/${slug}`}>← Back to menu</Link>
           <h1>Your order</h1>
@@ -51,7 +49,6 @@ export default function StorefrontCartPage() {
             </button>
           </>
         )}
-      </div>
-    </StorefrontShell>
+    </div>
   );
 }

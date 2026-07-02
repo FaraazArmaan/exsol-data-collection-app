@@ -463,51 +463,26 @@
 /* ── Inline error text (POS uses .err; .error is the global variant) ───── */
 .err { color: var(--danger); font-size: 12px; }
 
-/* ── Public storefront shell (POS v2) ──────────────────────────────────────
- * Chromeless guest layout (no app sidebar/topbar): a slim branded header over
- * a centered content column. The inner pages reuse the .pos-* surfaces above,
- * so only the shell + the unavailable/settings chrome live here. */
-.storefront-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-base);
-}
-.storefront-header {
-  flex-shrink: 0;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
-}
-.storefront-tenant {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  color: var(--text-primary);
-}
-.storefront-main {
-  flex: 1;
-  width: 100%;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 24px;
-}
+/* ── Public storefront chrome (POS v2 → shared branding) ───────────────────
+ * The chromeless guest shell + header + content column now come from the
+ * shared BrandShell (.brand-shell / .brand-header / .brand-main; see branding
+ * spec §9.4). Only POS-specific storefront chrome remains here: the narrower
+ * checkout column, the loading state, and the unavailable/settings cards. */
 /* Checkout-flow pages are a single narrow, centered column (mobile-first) —
- * a one-line order shouldn't stretch the full width like the menu grid does. */
-.storefront-shell .pos-cart-page,
-.storefront-shell .pos-cart-page__customer,
-.storefront-shell .pos-drawer {
+ * a one-line order shouldn't stretch the full width like the menu grid does.
+ * Scoped under .brand-shell (was .storefront-shell before the branding rename). */
+.brand-shell .pos-cart-page,
+.brand-shell .pos-cart-page__customer,
+.brand-shell .pos-drawer {
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
 }
-.storefront-shell .pos-cart-page > header h1 { margin-top: 4px; }
+.brand-shell .pos-cart-page > header h1 { margin-top: 4px; }
 /* The continue/place-order CTA reads better as a comfortable button, not a
  * full-bleed bar, on the wide checkout column. */
-.storefront-shell .pos-side-cart__checkout { display: inline-block; min-width: 200px; }
+.brand-shell .pos-side-cart__checkout { display: inline-block; min-width: 200px; }
+.storefront-loading { padding: 40px 24px; text-align: center; color: var(--text-muted); }
 .storefront-unavailable {
   max-width: 460px;
   margin: 80px auto;
@@ -533,5 +508,4 @@
   .pos-menu { grid-template-columns: 1fr; }
   .pos-side-cart { position: static; max-height: none; }
   .pos-cart-page__cols { grid-template-columns: 1fr; }
-  .storefront-main { padding: 16px; }
 }

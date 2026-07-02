@@ -4,7 +4,7 @@ import { publicApi, PosApiError } from '../api';
 import { formatRupees, formatOrderNo } from '../lib/money';
 import { StatusPill } from '../components/StatusPill';
 import type { SaleStatus } from '../lib/fsm';
-import { StorefrontShell, NotAvailableCard } from './StorefrontShell';
+import { NotAvailableCard } from './NotAvailableCard';
 
 const TERMINAL = ['fulfilled', 'cancelled', 'refunded'];
 
@@ -35,8 +35,8 @@ export default function StorefrontReceiptPage() {
     return () => { cancelled = true; clearInterval(t); };
   }, [saleUuid]);
 
-  if (error) return <StorefrontShell><NotAvailableCard /></StorefrontShell>;
-  if (!sale) return <StorefrontShell>Loading…</StorefrontShell>;
+  if (error) return <NotAvailableCard />;
+  if (!sale) return <p className="storefront-loading">Loading…</p>;
 
   const t = sale.timeline ?? {};
   const strip = [
@@ -48,8 +48,7 @@ export default function StorefrontReceiptPage() {
   ].filter(Boolean);
 
   return (
-    <StorefrontShell tenantName="Your order">
-      <div className="pos-drawer" style={{ position: 'static', width: 'auto', boxShadow: 'none' }}>
+    <div className="pos-drawer" style={{ position: 'static', width: 'auto', boxShadow: 'none' }}>
         <header>
           <h2>{formatOrderNo(sale.orderNo)} <StatusPill status={sale.status as SaleStatus} /></h2>
           <p>{strip.join(' · ')}</p>
@@ -66,7 +65,6 @@ export default function StorefrontReceiptPage() {
           <h3>Total</h3>
           <div>{formatRupees(sale.totalCents)}</div>
         </section>
-      </div>
-    </StorefrontShell>
+    </div>
   );
 }
