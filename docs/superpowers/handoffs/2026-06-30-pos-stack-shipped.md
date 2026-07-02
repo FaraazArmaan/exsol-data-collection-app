@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-03 (live; appended at every milestone)
 **Branch:** `main` (origin synced)
-**Latest commit:** `9c9af2f fix(branding): professional redesign of the BrandingForm settings panel`
+**Latest code deploy:** `9c9af2f fix(branding): professional redesign of the BrandingForm settings panel` · **HEAD (handoff docs on top):** `0be2d91` — origin synced, ahead 0, tree clean
 **Prod URL:** https://exsoldatacollectionapp.netlify.app
 **Test count:** **1085 passing** across 176 test files · typecheck + build clean (`u-products-image-thumb` DELETE test is FLAKY on the shared dev DB — passes in isolation; not a regression)
 **Working tree:** clean (untracked: smoke artifact PNGs across all modules — `pos-menu-after.png`, `prod-pos-*.png`, `prod-storefront-*.png`, `prod-staff-*.png`, `prod-booking-*.png`, `prod-access-levels.png`, `prod-sidebar-new-links.png`, `prod-storefront-chrome.png`, `prod-file-manager.png`, `arch-*.png`, `exsol-arch-*.png`)
@@ -34,8 +34,8 @@
 
 | Metric | Value |
 |---|---|
-| `origin/main` HEAD | `9c9af2f` |
-| Local `main` HEAD | `9c9af2f` (synced) |
+| `origin/main` HEAD | `0be2d91` as of this update (handoff docs; last **code** deploy = `9c9af2f`). Handoff commits keep advancing this — trust `git log` / `git rev-list --count origin/main..HEAD`, not this cell. Origin fully synced. |
+| Local `main` HEAD | = `origin/main`, ahead 0, tree clean (only untracked `.playwright-mcp/*` smoke artifacts) |
 | Latest Netlify deploy | `ready` at commit `9c9af2f` (after `restoreSiteDeploy` — **21st consecutive**; new-function-404 AND/OR alias-not-promoted fire on EVERY push. STRONGLY consider a `bin/deploy.sh` wrapper: `git push → poll-ready → restoreSiteDeploy → verify-hash-triple`). Note: "no new functions → no restore needed" is a FALSE assumption a sibling made — alias-not-promoted is about the bundle hash, independent of functions; it fires on every JS/CSS-changing push regardless. |
 | Migrations applied to prod (`dawn-bird`) | **001–050** (050 = `brand_columns`, 10 additive `brand_*` cols on `clients`, applied 2026-07-01 before code push) |
 | **Domains live on prod** | **7**: POS v1 (kiosk), POS v2 (storefront), Booking v1 (pay-at-venue, day/week grid + reschedule + anti-abuse), File Manager Phase B, Product Manager, **Analytics (read-only cross-module, 5 domains, lazy-loaded, ZIP-CSV export)**, **Platform Branding (logos/hero/theme/fonts, 4 fns)** + AMS/Workspace foundation |
@@ -338,6 +338,12 @@ Patterns refined (no new memory entries; just reinforced):
 - **CONFLICT resolution note (non-trivial):** `components.css` conflict was NOT a simple union. HEAD intermingled orphaned OLD brand rules (`.brand-upload-slot`/`.brand-swatch` — drop, superseded by the rewrite) with `.booking-week-head` week-grid CSS (KEEP — landed on main after the branding branch forked). Verified by grepping the new component (uses `.brand-swatch-btn`, defined in the new block; 0 refs to the old classes) before dropping. LESSON: when one conflict side is a rewrite and the other has unrelated additions, read the CONSUMING code — don't pick a side.
 - **Smoke proven end-to-end on prod:** 6 file inputs all hidden/ref-driven, **0 label-wrapped inputs** (buggy pattern gone); clicking a logo tile fires its hidden input's `.click()` (`accept=image/*`) — verified by intercepting `HTMLInputElement.prototype.click` so the OS dialog stayed closed while proving the wiring reaches it. The last millimeter (OS dialog visibly opens) is the one thing left to human eyes; sibling's pre-commit screenshot covered it.
 - The previously-unpushed handoff commit `dc06c3c` rode along in this push — origin handoff now current.
+
+### 2026-07-03 — State-review session (no code change) + handoff pointer sync
+- Fresh session picked up, read this handoff end-to-end, reconciled it against live git. **No code touched, no tests run, no deploy.**
+- **Correction to the last startup snapshot:** it described `27bca23` as local-only (ahead of origin by 1, unpushed). Reality at pickup: `27bca23` AND `0be2d91` are both on `origin/main`; local = origin = `0be2d91`, ahead 0, tree clean (only the usual untracked `.playwright-mcp/*` smoke artifacts). Those handoff commits were pushed between sessions — **trust `git log` / `git rev-list --count origin/main..HEAD` over any prose snapshot.**
+- Refreshed the HEAD-pointer cells in "Current state on prod" so the next agent doesn't hit the same "snapshot disagrees with git" confusion.
+- **Nothing on fire:** all 7 domains verified on prod last session, 1085 tests green (1 known dev-DB flake `u-products-image-thumb`), migs 001–050 applied. Highest-leverage *main-chat-owned* open code item = architecture-doc status bump (#8, POS v2 storefront still framed "building" but it's live); the `requireModulePermission()` refactor (#12) is routed to the Login+AMS sibling chat, not this one.
 
 ---
 
