@@ -22,6 +22,10 @@ describe('finance-expenses', () => {
     expect(body.category).toBe('supplies');
     expect(body.amount_cents).toBe(12345);
     expect(body.id).toBeTruthy();
+    // incurred_on must round-trip as a bare 'YYYY-MM-DD' string (no tz shift —
+    // a DATE hydrated to a JS Date would slide across the UTC day boundary).
+    expect(body.incurred_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.incurred_on).toBe(today());
 
     const listRes = await expensesHandler(
       makeBucketUserRequest(ctx, 'GET', `/api/finance/expenses?month=${MONTH}`));

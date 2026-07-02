@@ -44,7 +44,8 @@ export default async function handler(req: Request): Promise<Response> {
         note         = CASE WHEN ${patch.note !== undefined} THEN ${patch.note ?? null} ELSE note END,
         updated_at   = now()
       WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      RETURNING id, client_id, category, amount_cents, note, incurred_on, created_by, created_at
+      RETURNING id, client_id, category, amount_cents, note,
+                to_char(incurred_on, 'YYYY-MM-DD') AS incurred_on, created_by, created_at
     `) as any[];
     if (!rows[0]) return jsonError(404, 'not_found');
     return jsonOk(shapeExpense(rows[0]));

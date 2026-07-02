@@ -32,7 +32,8 @@ export default async function handler(req: Request): Promise<Response> {
     const sql = db();
     const monthStart = `${q.month}-01`;
     const rows = (await sql`
-      SELECT id, client_id, category, amount_cents, note, incurred_on, created_by, created_at
+      SELECT id, client_id, category, amount_cents, note,
+             to_char(incurred_on, 'YYYY-MM-DD') AS incurred_on, created_by, created_at
       FROM public.finance_expenses
       WHERE client_id = ${a.ctx.clientId}::uuid
         AND incurred_on >= ${monthStart}::date
@@ -60,7 +61,8 @@ export default async function handler(req: Request): Promise<Response> {
       VALUES
         (${a.ctx.clientId}::uuid, ${body.category}, ${body.amount_cents},
          ${body.note ?? null}, ${body.incurred_on}::date, ${a.ctx.userNodeId}::uuid)
-      RETURNING id, client_id, category, amount_cents, note, incurred_on, created_by, created_at
+      RETURNING id, client_id, category, amount_cents, note,
+                to_char(incurred_on, 'YYYY-MM-DD') AS incurred_on, created_by, created_at
     `) as any[];
     return jsonOk(shapeExpense(rows[0]), { status: 201 });
   }
