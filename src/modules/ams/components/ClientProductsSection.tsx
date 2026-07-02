@@ -1,4 +1,4 @@
-// src/modules/admin/components/ClientProductsSection.tsx
+// src/modules/ams/components/ClientProductsSection.tsx
 //
 // Shown on the Admin's view of a Client. Lists every Product available in
 // the registry; checked = enabled for this Client. PUT replaces the whole
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import {
   getAdminClientProducts, putAdminClientProducts,
   type ProductAvailable,
-} from '../../ams/api';
+} from '../api';
 
 interface Props { clientId: string }
 

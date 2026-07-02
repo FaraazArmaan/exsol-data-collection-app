@@ -10,7 +10,7 @@ import {
   listUserNodes, moveUserNode,
   type UserNode, type ClientRole, type ClientLevel,
 } from '../api';
-import { ClientProductsSection } from '../../admin/components/ClientProductsSection';
+import { ClientProductsSection } from '../components/ClientProductsSection';
 import AdminWorkspaceExportCard from '../components/settings/AdminWorkspaceExportCard';
 import AdminWorkspaceBrandingCard from '../../branding/AdminWorkspaceBrandingCard';
 import { BulkInviteModal } from '../../shared/team-modals/BulkInviteModal';

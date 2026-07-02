@@ -14,9 +14,7 @@
     "test:watch": "vitest",
     "migrate": "tsx --env-file=.env scripts/migrate.ts",
     "migrate:status": "tsx --env-file=.env scripts/migrate.ts --status",
-    "reconcile": "tsx --env-file=.env scripts/reconcile-clients.ts",
-    "bootstrap:admin": "tsx --env-file=.env scripts/bootstrap-admin.ts",
-    "seed:dummy": "tsx --env-file=.env scripts/seed-dummy-clients.ts"
+    "bootstrap:admin": "tsx --env-file=.env scripts/bootstrap-admin.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

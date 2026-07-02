@@ -19,3 +19,11 @@ coverage/
 
 # Netlify CLI auto-generated
 deno.lock
+
+# Playwright MCP scratch output (page snapshots, screenshots, downloads)
+.playwright-mcp/
+
+# Ephemeral smoke-test artifacts at repo ROOT only.
+# Intentional images live in docs/images/ (a subdir — unaffected by these root-anchored globs).
+/*.png
+/*.csv
