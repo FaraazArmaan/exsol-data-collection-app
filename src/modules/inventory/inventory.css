@@ -1,0 +1,249 @@
+/* Inventory module — namespaced .inv-* styles. Imported once in src/main.tsx.
+   Uses the shared theme tokens (see src/lib/theme.css) so it tracks dark/light. */
+
+.inv-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.inv-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.inv-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.inv-muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+.inv-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inv-search-input {
+  padding: 8px 12px;
+  min-width: 220px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.inv-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.inv-empty {
+  color: var(--text-muted);
+  padding: 32px;
+  text-align: center;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.inv-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0 6px;
+  font: inherit;
+}
+.inv-link:hover {
+  text-decoration: underline;
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.inv-table th,
+.inv-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.inv-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+.inv-table tr:last-child td {
+  border-bottom: none;
+}
+.inv-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.inv-row-low td {
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+.inv-row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inv-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.inv-badge-low {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+.inv-badge-ok {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+
+/* Modal (adjust stock) */
+.inv-modal-backdrop,
+.inv-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  z-index: 50;
+}
+.inv-modal-backdrop {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.inv-modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.inv-modal-header,
+.inv-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.inv-modal-header h2,
+.inv-drawer-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.inv-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.inv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inv-field > span {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.inv-field input {
+  padding: 8px 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+.inv-req {
+  color: var(--danger);
+}
+.inv-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+.inv-icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* Drawer (movements history) */
+.inv-drawer-backdrop {
+  justify-content: flex-end;
+}
+.inv-drawer {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+}
+.inv-drawer-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.inv-movements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.inv-movement {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.inv-movement-type {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.inv-movement-ref {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.inv-movement time {
+  margin-left: auto;
+}

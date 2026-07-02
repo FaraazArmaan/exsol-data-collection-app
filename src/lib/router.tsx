@@ -42,6 +42,7 @@ import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
 } from '../modules/booking/BookingRouteMounts';
+import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
 
 function ShellLayout() {
   return (
@@ -112,6 +113,7 @@ export const router = createBrowserRouter([
               { path: 'booking/services', element: <BookingServicesMount /> },
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
+              { path: 'inventory', element: <InventoryListMount /> },
               { path: 'analytics', element: (
                 <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
                   <AnalyticsRouteMount />

@@ -36,6 +36,14 @@ export function Sidebar() {
     permissions['booking.employees.view'] === true
   );
 
+  // Inventory appears only when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds the inventory view permission. Mirrors POS/Booking.
+  const inventoryEnabled = enabledModules.some((m) => m.key === 'inventory');
+  const showInventory = inventoryEnabled && (
+    isOwner ||
+    permissions['inventory.products.view'] === true
+  );
+
   // Sale History needs pos.history.view (Owners always qualify) — surfaced as a
   // sibling sidebar link so staff can reach orders, not just the menu.
   const canViewSales = !!user && (
@@ -69,7 +77,7 @@ export function Sidebar() {
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showAnalytics || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showAnalytics || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -80,6 +88,9 @@ export function Sidebar() {
             )}
             {showBooking && (
               <NavLink to={`/c/${slug}/booking`}>Booking</NavLink>
+            )}
+            {showInventory && (
+              <NavLink to={`/c/${slug}/inventory`}>Inventory</NavLink>
             )}
             {showPos && canViewSales && (
               <NavLink to={`/c/${slug}/pos/sales`}>Orders</NavLink>

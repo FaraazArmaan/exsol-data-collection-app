@@ -9,12 +9,14 @@ import { saloonBookingProduct } from './products-list/saloon-booking';
 import { productsProduct } from './products-list/products';
 import { posProduct } from './products-list/pos';
 import { analyticsProduct } from './products-list/analytics';
+import { inventoryProduct } from './products-list/inventory';
 
 export const productRegistry = {
   'saloon-booking': saloonBookingProduct,
   'products': productsProduct,
   'pos': posProduct,
   'analytics': analyticsProduct,
+  'inventory': inventoryProduct,
 } as const satisfies Record<string, ProductManifest>;
 
 export function allProducts(): ProductManifest[] {
