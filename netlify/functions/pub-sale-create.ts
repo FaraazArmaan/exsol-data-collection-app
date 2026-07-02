@@ -22,6 +22,7 @@ import { resolveStorefront } from './_pub-authz';
 import { checkLimit, clientIp } from './_pub-ratelimit';
 import { PublicSaleCreateBody } from './_pub-validators';
 import { serializePublicSale } from './_pub-serialize';
+import { sendMail } from './_shared/mailer';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 export const config = { path: '/api/public/sales', method: 'POST' };
@@ -107,6 +108,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // 7. allocate order_no + insert header (retry on 23505 race)
   let saleId: string | null = null;
+  let orderNo: number | null = null;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const inserted = (await sql`
@@ -125,9 +127,10 @@ export default async function handler(req: Request): Promise<Response> {
                ${subtotal}, ${total},
                NULL, ${IDEM_PREFIX + body.idempotencyKey}
         FROM next_no
-        RETURNING id
-      `) as Array<{ id: string }>;
+        RETURNING id, order_no
+      `) as Array<{ id: string; order_no: number }>;
       saleId = inserted[0]!.id;
+      orderNo = inserted[0]!.order_no;
       break;
     } catch (err: any) {
       const code = err?.code ?? err?.cause?.code;
@@ -157,6 +160,23 @@ export default async function handler(req: Request): Promise<Response> {
     targetType: 'sale',
     targetId: saleId,
     detail: { source: 'storefront', total_cents: total, channel: body.channel, lines: lineSpecs.length },
+  });
+
+  // Storefront receipt — fresh-insert path only (idempotent replays returned at step 5).
+  await sendMail({
+    clientId,
+    to: body.customer.email,
+    template: 'storefront_receipt',
+    data: {
+      customerName: body.customer.name,
+      orderNo: orderNo ?? saleId,
+      lines: lineSpecs.map((l) => ({
+        productName: l.productName, qty: l.qty,
+        unitPriceCents: l.unitPriceCents, lineTotalCents: l.lineTotalCents,
+      })),
+      subtotalCents: subtotal,
+      totalCents: total,
+    },
   });
 
   return jsonOk(await loadPublicSale(sql, saleId), { status: 201 });

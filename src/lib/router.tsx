@@ -43,6 +43,7 @@ import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
 } from '../modules/booking/BookingRouteMounts';
 import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
+import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 
 function ShellLayout() {
   return (
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
                   <AnalyticsRouteMount />
                 </Suspense>
               ) },
+              { path: 'email', element: <EmailOutboxMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

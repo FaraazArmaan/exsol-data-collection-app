@@ -6,6 +6,7 @@ export const posProduct: ProductManifest = {
   label: 'POS',
   modules: [
     { module: 'pos', side: 'vendor' },
+    { module: 'email', side: 'vendor' },
   ],
   requires: ['products'],
   permissions: POS_ACTIONS.map((a) => ({

@@ -9,6 +9,7 @@ import { allowBookingCreate } from './_booking-ratelimit';
 import { PublicCreateBody } from './_booking-validators';
 import { upsertCustomer } from './_booking-customer-upsert';
 import { pickLeastBusy } from '../../src/modules/booking/lib/autoassign';
+import { sendMail } from './_shared/mailer';
 import { randomUUID } from 'node:crypto';
 
 export const config = { path: '/api/booking-public/:slug/create', method: 'POST' };
@@ -33,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!c[0]) return jsonError(404, 'tenant_not_found');
   const clientId = c[0].id;
 
-  const svc = (await sql`SELECT id, duration_min, buffer_min, price_cents, payment_mode, deposit_cents, eligible_resource_ids
+  const svc = (await sql`SELECT id, name, duration_min, buffer_min, price_cents, payment_mode, deposit_cents, eligible_resource_ids
     FROM public.booking_services WHERE id = ${body.service_id}::uuid AND bucket_id = ${clientId}::uuid AND active = true LIMIT 1`) as any[];
   if (!svc[0]) return jsonError(404, 'service_not_found');
 
@@ -89,6 +90,23 @@ export default async function handler(req: Request): Promise<Response> {
       RETURNING id, status
     `) as Array<{ id: string; status: string }>;
     const booking = rows[0]!;
+    // Confirmation email (+ .ics) only when the booking is actually confirmed now.
+    // deposit/full_upfront stay 'pending' until the payment webhook (v1.1).
+    if (isPayAtVenue) {
+      await sendMail({
+        clientId,
+        to: body.customer.email,
+        template: 'booking_confirmation',
+        data: {
+          customerName: body.customer.name,
+          serviceName: svc[0].name,
+          startIso,
+          endIso,
+          priceCents: svc[0].price_cents,
+          uid: `${manageToken}@exsol`,
+        },
+      });
+    }
     const payment_intent = isPayAtVenue ? undefined : {
       provider: 'razorpay',
       amount_cents: svc[0].payment_mode === 'deposit' ? svc[0].deposit_cents : svc[0].price_cents,

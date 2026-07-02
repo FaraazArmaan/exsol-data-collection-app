@@ -114,6 +114,7 @@ describe('client-levels-permissions', () => {
     expect(keys).toEqual([
       'booking.customers',
       'booking.employees',
+      'email.customers',
       'payments.customers',
       'payments.products',
       'products.products',

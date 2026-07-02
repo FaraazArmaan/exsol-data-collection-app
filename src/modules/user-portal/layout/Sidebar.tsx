@@ -71,13 +71,21 @@ export function Sidebar() {
     permissions['analytics.products.view'] === true
   );
 
+  // Email/Notifications appears when the workspace has it enabled AND the caller
+  // is an Owner (all-on) or holds the outbox view permission. Mirrors POS/Booking.
+  const emailEnabled = enabledModules.some((m) => m.key === 'email');
+  const showEmail = emailEnabled && (
+    isOwner ||
+    permissions['email.customers.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showAnalytics || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -97,6 +105,9 @@ export function Sidebar() {
             )}
             {showAnalytics && (
               <NavLink to={`/c/${slug}/analytics`}>Analytics</NavLink>
+            )}
+            {showEmail && (
+              <NavLink to={`/c/${slug}/email`}>Email</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

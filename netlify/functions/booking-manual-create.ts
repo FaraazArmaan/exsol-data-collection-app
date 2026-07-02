@@ -6,6 +6,7 @@ import { db } from './_shared/db';
 import { requireBooking } from './_booking-authz';
 import { ManualCreateBody } from './_booking-validators';
 import { upsertCustomer } from './_booking-customer-upsert';
+import { sendMail } from './_shared/mailer';
 
 export const config = { path: '/api/booking/manual-create', method: 'POST' };
 
@@ -43,7 +44,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Normal vendor booking.
     if (!body.service_id || !body.customer) return jsonError(400, 'service_and_customer_required');
-    const svc = (await sql`SELECT id, duration_min, price_cents FROM public.booking_services
+    const svc = (await sql`SELECT id, name, duration_min, price_cents FROM public.booking_services
       WHERE id = ${body.service_id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid AND active = true LIMIT 1`) as any[];
     if (!svc[0]) return jsonError(404, 'service_not_found');
     const endIso = new Date(start.getTime() + svc[0].duration_min * 60_000).toISOString();
@@ -57,6 +58,21 @@ export default async function handler(req: Request): Promise<Response> {
               ${body.customer.name}, ${body.customer.phone}, ${body.customer.email ?? null},
               ${svc[0].price_cents}, ${body.mark_paid ? svc[0].price_cents : 0}, ${a.ctx.userNodeId}::uuid)
       RETURNING id, status`) as any[];
+    // Vendor-created bookings are always confirmed → send the confirmation + .ics.
+    // No manage_token on this path; the booking id seeds the calendar UID.
+    await sendMail({
+      clientId: a.ctx.clientId,
+      to: body.customer.email,
+      template: 'booking_confirmation',
+      data: {
+        customerName: body.customer.name,
+        serviceName: svc[0].name,
+        startIso: start.toISOString(),
+        endIso,
+        priceCents: svc[0].price_cents,
+        uid: `${rows[0].id}@exsol`,
+      },
+    });
     return jsonOk(rows[0], { status: 201 });
   } catch (err: any) {
     const code = err?.code ?? err?.cause?.code;

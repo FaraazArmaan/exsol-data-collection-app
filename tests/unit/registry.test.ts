@@ -80,11 +80,12 @@ describe('derivePermissionRows', () => {
   it('returns (module, bucket) rows for every enabled product\'s modules', () => {
     const rows = derivePermissionRows(['saloon-booking']);
     // saloon-booking includes Booking (customers + employees), Payments
-    // (customers + products), and Products (products).
+    // (customers + products), Products (products), and Email (customers).
     const keys = rows.map((r) => `${r.module.key}.${r.bucket}`).sort();
     expect(keys).toEqual([
       'booking.customers',
       'booking.employees',
+      'email.customers',
       'payments.customers',
       'payments.products',
       'products.products',

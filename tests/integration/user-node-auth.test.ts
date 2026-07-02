@@ -826,7 +826,7 @@ describe('u-me payload extensions (dashboard)', () => {
     expect(body.user.level_number).toBe(1);
     expect(typeof body.permissions).toBe('object'); // may be empty — L1 bypasses matrix
     const moduleKeys = body.enabled_modules.map((m) => m.key).sort();
-    expect(moduleKeys).toEqual(['booking', 'payments', 'products']);
+    expect(moduleKeys).toEqual(['booking', 'email', 'payments', 'products']);
   });
 
   test('L2 user u-me response surfaces only the granted matrix keys', async () => {
@@ -864,7 +864,7 @@ describe('u-me payload extensions (dashboard)', () => {
     // Module is enabled on the client regardless of the user's matrix —
     // the client-side useNavItems hook is what filters by matrix.
     const moduleKeys = body.enabled_modules.map((m) => m.key).sort();
-    expect(moduleKeys).toEqual(['booking', 'payments', 'products']);
+    expect(moduleKeys).toEqual(['booking', 'email', 'payments', 'products']);
   });
 
   test('user on a client with no enabled Products receives empty enabled_modules', async () => {
