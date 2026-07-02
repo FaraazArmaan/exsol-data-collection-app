@@ -79,13 +79,21 @@ export function Sidebar() {
     permissions['email.customers.view'] === true
   );
 
+  // Finance appears when the workspace has it enabled AND the caller is an Owner
+  // (all-on) or holds the finance view permission. Mirrors POS/Booking/Analytics.
+  const financeEnabled = enabledModules.some((m) => m.key === 'finance');
+  const showFinance = financeEnabled && (
+    isOwner ||
+    permissions['finance.business.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || showFinance || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -108,6 +116,9 @@ export function Sidebar() {
             )}
             {showEmail && (
               <NavLink to={`/c/${slug}/email`}>Email</NavLink>
+            )}
+            {showFinance && (
+              <NavLink to={`/c/${slug}/finance`}>Finance</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

@@ -45,6 +45,7 @@ import {
 } from '../modules/booking/BookingRouteMounts';
 import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
+import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
 
 function ShellLayout() {
   return (
@@ -130,6 +131,7 @@ export const router = createBrowserRouter([
                 </Suspense>
               ) },
               { path: 'email', element: <EmailOutboxMount /> },
+              { path: 'finance', element: <FinanceMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

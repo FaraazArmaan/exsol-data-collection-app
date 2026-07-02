@@ -1,0 +1,201 @@
+/* Finance module — namespaced .fin-* styles. Uses the shared theme tokens from
+   theme.css so it tracks light/dark automatically. Reuses global .btn / .card. */
+
+.fin-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header + month picker */
+.fin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.fin-title { font-size: 24px; font-weight: 650; margin: 0; color: var(--text-primary); }
+.fin-subtitle { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
+.fin-muted { color: var(--text-muted); font-style: normal; }
+
+.fin-month-picker { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.fin-month-picker input {
+  padding: 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+/* Error banner */
+.fin-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  font-size: 14px;
+}
+
+/* P&L cards */
+.fin-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.fin-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  border-left: 3px solid var(--border-strong);
+}
+.fin-card-revenue { border-left-color: var(--accent); }
+.fin-card-expense { border-left-color: var(--text-muted); }
+.fin-card-positive { border-left-color: var(--success); }
+.fin-card-negative { border-left-color: var(--danger); }
+.fin-card-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.fin-card-value { font-size: 26px; font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.fin-card-negative .fin-card-value { color: var(--danger); }
+
+.fin-skeleton {
+  display: inline-block;
+  width: 80px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-elevated), var(--border-subtle), var(--bg-elevated));
+  opacity: 0.6;
+}
+
+/* Panels (channel breakdown + expenses) */
+.fin-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.fin-panel-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.fin-panel-header-row { display: flex; align-items: center; justify-content: space-between; }
+.fin-add-btn { padding: 6px 12px; font-size: 13px; }
+.fin-pad { padding: 16px; }
+
+/* Channel bars */
+.fin-bars { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.fin-bar-row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 12px; }
+.fin-bar-label { font-size: 14px; color: var(--text-secondary); }
+.fin-bar-track { height: 10px; background: var(--bg-elevated); border-radius: 999px; overflow: hidden; }
+.fin-bar-fill { height: 100%; border-radius: 999px; transition: width 240ms ease; min-width: 2px; }
+.fin-bar-pos { background: var(--accent); }
+.fin-bar-storefront { background: var(--success); }
+.fin-bar-booking { background: #8a9bb0; }
+.fin-bar-value { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+
+/* Empty states */
+.fin-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Expenses table */
+.fin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fin-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.fin-table td { padding: 11px 16px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); vertical-align: middle; }
+.fin-table tr:last-child td { border-bottom: none; }
+.fin-num { text-align: right; font-variant-numeric: tabular-nums; }
+.fin-note-cell { color: var(--text-secondary); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fin-actions-col { text-align: right; width: 130px; }
+
+.fin-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.fin-row-actions, .fin-confirm { display: inline-flex; gap: 10px; align-items: center; }
+.fin-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 14px;
+}
+.fin-link:hover:not(:disabled) { text-decoration: underline; }
+.fin-link:disabled { opacity: 0.5; cursor: default; }
+.fin-danger { color: var(--danger); }
+
+/* Modal */
+.fin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+.fin-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+.fin-modal-header { padding: 16px 18px; font-size: 17px; font-weight: 650; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+.fin-modal-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.fin-modal-footer { padding: 14px 18px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-subtle); }
+
+.fin-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--text-secondary); }
+.fin-field select,
+.fin-field input,
+.fin-field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+}
+.fin-field textarea { resize: vertical; }
+.fin-form-error { color: var(--danger); font-size: 13px; margin: 0; }
+
+@media (max-width: 640px) {
+  .fin-cards { grid-template-columns: 1fr; }
+  .fin-note-cell { max-width: 120px; }
+}

@@ -64,16 +64,19 @@ describe('computeNavItems', () => {
   });
 
   test('alphabetical ordering by label', () => {
-    // Add a second rail module so we can observe ordering (booking is dedicated, not in rail).
-    const finance: UserPortalEnabledModule = { key: 'finance', label: 'Finance' };
+    // Two generic (non-dedicated) rail modules to observe ordering. Synthetic
+    // keys so the test stays valid as real modules gain dedicated sidebar
+    // entries (finance is now dedicated, like booking/pos/analytics).
+    const zebra: UserPortalEnabledModule = { key: 'zebra-mod', label: 'Zebra' };
+    const apple: UserPortalEnabledModule = { key: 'apple-mod', label: 'Apple' };
     const items = computeNavItems({
       slug: 'acme',
       levelNumber: 1,
-      enabledModules: [payments, finance, booking], // pass in mixed order
+      enabledModules: [zebra, apple, booking], // pass in non-sorted order
       permissions: {},
     });
-    // Only non-dedicated modules surface; sorted by label.
-    expect(items.map((i) => i.label)).toEqual(['Finance', 'Payments']);
+    // Only non-dedicated modules surface; sorted by label (booking is dedicated).
+    expect(items.map((i) => i.label)).toEqual(['Apple', 'Zebra']);
   });
 
   test('null levelNumber treated as L1 (legacy safety)', () => {
