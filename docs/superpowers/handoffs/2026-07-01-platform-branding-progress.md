@@ -82,3 +82,21 @@ APPROVED FOR MERGE (Opus, read-only). No Critical/Important. Contract-consistenc
 - `useBrand` auto-refetch after save (currently optimistic).
 - SSR OG-meta injection for `socialUrl` (inert until SSR exists).
 - Tenant custom-font upload; live preview panel.
+
+---
+
+## MILESTONE 3 — BrandingForm redesign + file-picker fix; upload "bug" triaged (2026-07-03)
+
+**Status: DONE + LIVE. No open code work on platform branding.**
+
+### UI redesign + file-picker fix — shipped as `9c9af2f`
+Redesigned the `BrandingForm` settings panel (logo tile grid with transparency-checkerboard previews + drag-drop, hero dropzone + thumbnail strip, real accent color picker + "Suggest from logo", segmented Dark|Light, grouped font selects). Fixed the original "Choose file doesn't open" bug — root cause was a native `<input type=file>` nested in a `<label>`, mangled by the global `label { flex-direction:column }` rule; replaced with hidden ref-driven inputs triggered by `ref.current.click()` from the tile/dropzone. Two files only: `src/modules/branding/BrandingForm.tsx` + `src/lib/components.css`.
+
+- **Merged + deployed** on `origin/main` as `9c9af2f`. Verified in the LIVE prod bundle (`index-DaWSO4dh.js` / `index-C-BlDxy1.css`): contains `brand-tile`/`brand-dropzone`/"Hero carousel", zero `brand-upload-slot`.
+- **Merge-check caveat:** `git merge-base --is-ancestor 0685764 origin/main` returns NOT-MERGED (false-negative) — main took the change under rebased SHA `9c9af2f`. Confirm branding merges by CONTENT (per-file diff vs `origin/main`), not by the polish-branch SHA lineage.
+
+### 2026-07-03 "upload button doesn't open file explorer" report → NOT a code bug
+Reported broken again on prod. Systematic triage (browser console probes) proved: the fix is live, `input.click()` fires on a connected+enabled input, zero JS errors, zero Chromium `[Violation]`, no dialog — and it failed for EVERY file input app-wide (Files, Product too), yet worked in a real browser. Root cause: the report was being tested inside an **automation-controlled Chrome (Playwright/CDP) which suppresses the native file chooser by design**. No code change. See memory `feedback_playwright_suppresses_file_chooser`.
+
+### Worktree repurposed for future branding work
+`ExSol-Branding-WT` was retained (not deleted) and moved to a fresh branch **`feat/branding-iso`** based on latest `origin/main` — a clean base for future branding features. The old polish branch **`feat/ams-branding-ui-polish-iso` @ `e8f3f47`** is preserved (holds earlier handoff-doc corrections). Run `npm install` in the worktree before the next feature session (main may have added deps since).
