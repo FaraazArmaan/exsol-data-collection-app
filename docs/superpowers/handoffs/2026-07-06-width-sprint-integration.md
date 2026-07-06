@@ -46,6 +46,16 @@ present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 
 `057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
 ## Merged into main + pushed to prod (integrated) ✅
+- **Marketing Automation 060** (`c3b0bcd`): campaigns over CRM + mailer. Migration 060 (the free
+  gap). Endpoints marketing/campaigns(+:id)/audience-count/send; live send reuses Email RESEND key
+  (dev-fallback logs). Smoketest passed (a 500 seen once was a transient Neon fetch-failed, cleared
+  on reload). **Before enabling live Resend: sanitize `body_html` on render (stored-XSS).**
+  PROD: migrate 060, enable product, `seed:marketing`.
+- **Pending (not merged): Workforce Timesheet** — feat/workforce-psrm-iso@47647bb appended
+  `timesheet_entries` to already-applied migration 059 (won't propagate to prod). Fix queued:
+  extract to a NEW migration in the depth range — **107** (ERP9 Project Manager, per depth-phase-plan
+  where "Time Sheets" is listed), revert the 059 edit, make it idempotent for dev (table already there).
+
 Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, **Data Collection + Catalog 061**, **Brand Portfolio 062**, **Supply Chain dashboard (no mig)**, POS branding-consume, Branding 050.
 
 - **Supply Chain dashboard** (`7d3250a` + dark-theme fix `a4fe1d0`): read-projection over
