@@ -1,0 +1,8 @@
+# Prettier is config-for-new-code only — the repo has NOT been world-reformatted.
+# Format the files you touch; do not run prettier across src/ wholesale.
+dist/
+node_modules/
+.netlify/
+coverage/
+docs/reference/
+package-lock.json

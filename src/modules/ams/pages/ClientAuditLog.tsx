@@ -8,12 +8,13 @@ import { AuditDetailDrawer } from '../components/audit/AuditDetailDrawer';
 const DEFAULT_PAGE_SIZE = 50;
 
 export default function ClientAuditLog() {
+  // NB: hooks must run unconditionally — the empty-clientId early return lives
+  // AFTER the hook block (rules-of-hooks; the route always provides clientId).
   const { clientId } = useParams<{ clientId: string }>();
-  if (!clientId) return null;
 
   function makeDefault(): AuditLogFilter {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return { client_id: clientId, since: sevenDaysAgo.toISOString(), page: 1, page_size: DEFAULT_PAGE_SIZE };
+    return { client_id: clientId ?? '', since: sevenDaysAgo.toISOString(), page: 1, page_size: DEFAULT_PAGE_SIZE };
   }
 
   const [draft, setDraft] = useState<AuditLogFilter>(makeDefault());
@@ -35,6 +36,8 @@ export default function ClientAuditLog() {
   }, [clientId]);
 
   useEffect(() => { void fetchData(applied); }, [applied, fetchData]);
+
+  if (!clientId) return null;
 
   function apply() { setApplied({ ...draft, client_id: clientId, page: 1 }); }
   function changePage(p: number) { setApplied({ ...applied, page: p }); }

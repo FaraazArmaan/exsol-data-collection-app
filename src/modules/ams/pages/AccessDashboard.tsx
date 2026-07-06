@@ -247,7 +247,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
               selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={(id) => setSelectedIds((prev) => {
-                const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+                const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next;
               })}
             />
           );
@@ -262,7 +262,7 @@ function DashboardInner({ clientId }: { clientId: string }) {
           selectMode={selectMode}
           selectedIds={selectedIds}
           onToggleSelect={(id) => setSelectedIds((prev) => {
-            const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+            const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next;
           })}
         />
 

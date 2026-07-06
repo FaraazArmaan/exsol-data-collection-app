@@ -73,7 +73,7 @@ function trim(v: unknown): string | null {
 
 function parsePrice(s: string | null, errors: FieldError[]): number {
   if (!s) { errors.push({ field: 'price', message: 'required' }); return 0; }
-  const cleaned = s.replace(/[^0-9.\-]/g, '');
+  const cleaned = s.replace(/[^0-9.-]/g, '');
   const n = Number(cleaned);
   if (!Number.isFinite(n)) { errors.push({ field: 'price', message: 'not a number' }); return 0; }
   if (n < 0) { errors.push({ field: 'price', message: 'must be >= 0' }); return 0; }
@@ -90,7 +90,7 @@ export function parseDecimal(
     errors.push({ field: opts.field, message: 'required' });
     return null;
   }
-  const cleaned = s.replace(/[^0-9.\-]/g, '');
+  const cleaned = s.replace(/[^0-9.-]/g, '');
   if (cleaned === '' || cleaned === '-' || cleaned === '.') {
     errors.push({ field: opts.field, message: 'not a number' });
     return null;
