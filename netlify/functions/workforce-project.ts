@@ -7,6 +7,13 @@ import { requireWorkforce } from './_workforce-authz';
 
 export const config = { path: '/api/workforce/project/:id' };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function idFromUrl(req: Request): string | null {
+  const m = new URL(req.url).pathname.match(/workforce\/project\/([^/?]+)/);
+  return m && UUID.test(m[1]!) ? m[1]! : null;
+}
+
 // Forward-only FSM. 'done' is terminal.
 const FSM: Record<string, string> = { quoted: 'active', active: 'done' };
 
@@ -71,7 +78,8 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  const id = new URL(req.url).pathname.split('/').at(-1) ?? '';
+  const id = idFromUrl(req);
+  if (!id) return jsonError(400, 'invalid_id');
   if (req.method === 'GET') return handleGet(req, id);
   if (req.method === 'PATCH') return handlePatch(req, id);
   return jsonError(405, 'method_not_allowed');

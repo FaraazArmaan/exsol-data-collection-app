@@ -315,3 +315,193 @@
 }
 
 .wf-advance-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ========== Timesheets (.wf-ts-*) — platform dark theme tokens ========== */
+
+.wf-ts-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.wf-ts-week-nav span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 220px;
+  text-align: center;
+}
+
+.wf-ts-week-nav button {
+  background: none;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: background 0.1s, color 0.1s;
+}
+
+.wf-ts-week-nav button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.wf-ts-entries {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.wf-ts-resource-section {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.wf-ts-resource-section h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+
+.wf-ts-entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.wf-ts-entry-date {
+  min-width: 90px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ts-entry-time {
+  min-width: 110px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ts-entry-notes {
+  flex: 1;
+  color: var(--text-secondary);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-ts-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wf-ts-approved-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--success) 22%, transparent);
+  color: var(--success);
+}
+
+.wf-ts-action-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: opacity 0.1s;
+}
+
+.wf-ts-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wf-ts-action-btn.approve {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.wf-ts-action-btn.approve:hover:not(:disabled) { opacity: 0.85; }
+
+.wf-ts-action-btn.delete {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--danger);
+}
+
+.wf-ts-action-btn.delete:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 32%, transparent); }
+
+.wf-ts-log-form {
+  border: 1px dashed var(--border-default);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  margin-top: 8px;
+}
+
+.wf-ts-log-form h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+
+.wf-ts-log-form-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.wf-ts-log-form-fields select,
+.wf-ts-log-form-fields input[type="date"],
+.wf-ts-log-form-fields input[type="time"] {
+  padding: 5px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+.wf-ts-log-form-fields textarea {
+  padding: 5px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  resize: vertical;
+  min-width: 160px;
+  flex: 1;
+  font-family: inherit;
+}
+
+.wf-ts-log-form-fields button {
+  padding: 5px 16px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  align-self: flex-start;
+}
+
+.wf-ts-log-form-fields button:disabled { opacity: 0.5; cursor: not-allowed; }

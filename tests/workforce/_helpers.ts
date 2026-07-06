@@ -56,6 +56,40 @@ export async function seedProject(
   return rows[0]!.id;
 }
 
+// Seed a timesheet entry (returns id). Optionally pre-approve by passing approvedBy user_node_id.
+export async function seedTimesheetEntry(
+  ctx: PosTestCtx,
+  resourceId: string,
+  opts: { entryDate?: string; startTime?: string; endTime?: string; approvedBy?: string } = {},
+): Promise<string> {
+  const entryDate = opts.entryDate ?? '2026-01-15';
+  const startTime = opts.startTime ?? '09:00';
+  const endTime = opts.endTime ?? '17:00';
+  const approvedBy = opts.approvedBy ?? null;
+  if (approvedBy) {
+    const rows = (await sql`
+      INSERT INTO public.timesheet_entries
+        (client_id, resource_id, entry_date, start_time, end_time, approved_by, approved_at)
+      VALUES (
+        ${ctx.clientId}::uuid, ${resourceId}::uuid, ${entryDate}::date,
+        ${startTime}::time, ${endTime}::time, ${approvedBy}::uuid, now()
+      )
+      RETURNING id
+    `) as Array<{ id: string }>;
+    return rows[0]!.id;
+  }
+  const rows = (await sql`
+    INSERT INTO public.timesheet_entries
+      (client_id, resource_id, entry_date, start_time, end_time)
+    VALUES (
+      ${ctx.clientId}::uuid, ${resourceId}::uuid, ${entryDate}::date,
+      ${startTime}::time, ${endTime}::time
+    )
+    RETURNING id
+  `) as Array<{ id: string }>;
+  return rows[0]!.id;
+}
+
 // Seed a shift (returns id).
 export async function seedShift(
   ctx: PosTestCtx,

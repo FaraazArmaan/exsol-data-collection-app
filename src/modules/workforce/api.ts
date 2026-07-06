@@ -73,6 +73,21 @@ export interface ProjectAssignment {
   assigned_at: string;
 }
 
+export interface TimesheetEntry {
+  id: string;
+  resource_id: string;
+  resource_name?: string;
+  user_node_id: string | null;
+  user_display_name?: string | null;
+  entry_date: string;
+  start_time: string;
+  end_time: string;
+  notes: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
 // ---------- API ----------
 
 export const workforceApi = {
@@ -130,5 +145,40 @@ export const workforceApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ project_id: projectId, resource_id: resourceId }),
     });
+  },
+
+  listTimesheets(params?: { resource_id?: string; from?: string; to?: string }): Promise<{ entries: TimesheetEntry[] }> {
+    const q = new URLSearchParams();
+    if (params?.resource_id) q.set('resource_id', params.resource_id);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return call(`/api/workforce/timesheets${qs}`);
+  },
+
+  logTimesheet(data: {
+    resource_id: string;
+    user_node_id?: string | null;
+    entry_date: string;
+    start_time: string;
+    end_time: string;
+    notes?: string;
+  }): Promise<{ entry: TimesheetEntry }> {
+    return call('/api/workforce/timesheets', json(data));
+  },
+
+  updateTimesheet(
+    id: string,
+    data: { start_time?: string; end_time?: string; notes?: string; approve?: boolean },
+  ): Promise<{ entry: TimesheetEntry }> {
+    return call(`/api/workforce/timesheet/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteTimesheet(id: string): Promise<void> {
+    return call(`/api/workforce/timesheet/${id}`, { method: 'DELETE' });
   },
 };

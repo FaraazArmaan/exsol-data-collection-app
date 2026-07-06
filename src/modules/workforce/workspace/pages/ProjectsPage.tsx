@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { workforceApi, type Project } from '../../api';
 import '../../workforce.css';
 
@@ -49,6 +49,9 @@ export default function ProjectsPage({ slug, perms }: Props) {
       <div className="wf-tabs">
         <Link to={`/c/${slug}/workforce`} className="wf-tab" style={{ textDecoration: 'none' }}>
           Staff & Schedule
+        </Link>
+        <Link to={`/c/${slug}/workforce/timesheets`} className="wf-tab" style={{ textDecoration: 'none' }}>
+          Timesheets
         </Link>
         <button className="wf-tab active">Projects</button>
       </div>

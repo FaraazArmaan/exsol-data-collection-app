@@ -57,7 +57,7 @@ import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
 import { MarketingListMount, MarketingComposeMount, MarketingDetailMount } from '../modules/marketing/MarketingRouteMounts';
 import {
-  WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount,
+  WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount, WorkforceTimesheetsMount,
 } from '../modules/workforce/WorkforceRouteMounts';
 import CatalogPage from '../modules/catalog/CatalogPage';
 import OnboardPage from '../modules/data-collection/OnboardPage';
@@ -180,6 +180,7 @@ export const router = createBrowserRouter([
               { path: 'workforce', element: <WorkforceMount /> },
               { path: 'workforce/projects', element: <WorkforceProjectsMount /> },
               { path: 'workforce/projects/:projectId', element: <WorkforceProjectDetailMount /> },
+              { path: 'workforce/timesheets', element: <WorkforceTimesheetsMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

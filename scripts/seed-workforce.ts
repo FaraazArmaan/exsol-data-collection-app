@@ -124,9 +124,62 @@ async function main(): Promise<void> {
     console.log(`  ✓ Assigned "${resources[0].name}" to "${DEMO_PROJECTS[0]!.name}"`);
   }
 
+  // Seed 2–3 timesheet entries for the first resource across the current week.
+  if (resources[0]) {
+    const firstResource = resources[0];
+
+    // Compute Monday of the current week (local time, ISO date strings).
+    const today = new Date();
+    const dow = today.getDay(); // 0 = Sun
+    const diffToMon = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMon);
+
+    const isoDate = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+
+    const DEMO_ENTRIES = [
+      { offset: 0, start: '09:00', end: '13:00', notes: 'Morning session' },
+      { offset: 1, start: '10:00', end: '17:00', notes: 'Full day' },
+      { offset: 3, start: '08:30', end: '12:30', notes: 'Training prep' },
+    ];
+
+    for (const { offset, start, end, notes } of DEMO_ENTRIES) {
+      const entryDate = new Date(monday);
+      entryDate.setDate(monday.getDate() + offset);
+      const dateStr = isoDate(entryDate);
+
+      const existing = (await sql`
+        SELECT id FROM public.timesheet_entries
+        WHERE client_id = ${clientId}::uuid
+          AND resource_id = ${firstResource.id}::uuid
+          AND entry_date = ${dateStr}::date
+        LIMIT 1
+      `) as Array<{ id: string }>;
+
+      if (!existing.length) {
+        await sql`
+          INSERT INTO public.timesheet_entries
+            (client_id, resource_id, entry_date, start_time, end_time, notes)
+          VALUES
+            (${clientId}::uuid, ${firstResource.id}::uuid, ${dateStr}::date,
+             ${start}::time, ${end}::time, ${notes})
+        `;
+        console.log(`  ✓ Timesheet entry: ${firstResource.name} ${dateStr} ${start}–${end}`);
+      } else {
+        console.log(`  · Timesheet entry for ${dateStr} already exists`);
+      }
+    }
+  }
+
   console.log('\nDone. Golden flows:');
   console.log('  1. Workforce → Staff & Schedule → see weekly shift grid per resource');
   console.log('  2. Workforce → Projects → open an active project → assign a resource');
+  console.log('  3. Workforce → Timesheets → see entries for the current week');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

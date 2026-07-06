@@ -120,6 +120,9 @@ export default function WorkforcePage({ slug, perms }: Props) {
     <div className="wf-page">
       <div className="wf-tabs">
         <button className="wf-tab active">Staff & Schedule</button>
+        <Link to={`/c/${slug}/workforce/timesheets`} className="wf-tab" style={{ textDecoration: 'none' }}>
+          Timesheets
+        </Link>
         <Link to={`/c/${slug}/workforce/projects`} className="wf-tab" style={{ textDecoration: 'none' }}>
           Projects
         </Link>

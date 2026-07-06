@@ -4,6 +4,7 @@ import { useUserAuth } from '../user-portal/user-auth-context';
 import WorkforcePage from './workspace/pages/WorkforcePage';
 import ProjectsPage from './workspace/pages/ProjectsPage';
 import ProjectDetailPage from './workspace/pages/ProjectDetailPage';
+import TimesheetsPage from './workspace/pages/TimesheetsPage';
 
 // L1 Owner (or legacy null-level) is all-on — consistent with the backend
 // requireWorkforce bypass and every other gate in the codebase (Iron Rule 2).
@@ -58,4 +59,13 @@ export function WorkforceProjectDetailMount() {
   if (!perms.has('project-service.business.view')) return <Navigate to={`/c/${slug}`} replace />;
   if (!projectId) return <Navigate to={`/c/${slug}/workforce/projects`} replace />;
   return <ProjectDetailPage slug={slug} projectId={projectId} perms={perms} />;
+}
+
+export function WorkforceTimesheetsMount() {
+  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
+  if (loading) return null;
+  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
+  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
+  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
+  return <TimesheetsPage slug={slug} perms={perms} />;
 }
