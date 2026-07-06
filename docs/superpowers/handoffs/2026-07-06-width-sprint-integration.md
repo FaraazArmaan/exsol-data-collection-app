@@ -19,13 +19,15 @@ prompts.
   054/056 gap) and probe the new `/api/{warehouse,finance,procurement}/*` endpoints
   (`restoreSiteDeploy` on any 404). All modules are gated behind `client_enabled_products`,
   so no live tenant is affected during the migrate-right-after window.
-- **MERGED (not yet pushed) 2026-07-06:** local `main` HEAD = `200304d`, **3 commits ahead of
-  origin**: `cdba0ad` (docs), `2218180` **CRM 055**, `200304d` **Workforce 059**. Both squash-merged
-  from their worktrees, full suite **1220/1220** + typecheck clean, and **local smoketest PASSED**
-  (CRM: list→detail→timeline→add-note; Workforce: staff empty-state, 3 projects w/ FSM, project
-  detail w/ crm_customers FK path — no 500s). Push held pending user go / next batch. Prod migrations
-  `055_crm` + `059_workforce` must be applied to prod before/with that push (dev already has both).
-  Ordering: **055 before 059** (059's `projects.customer_id` FKs `crm_customers`).
+- **PUSHED 2026-07-06 (batch 2):** `origin/main` = `ab5f475` (was `554cb3b`). Added **CRM 055**
+  (`2218180`), **Workforce 059** (`200304d`), **Manufacturing 058** (`ab5f475`) + docs. All three
+  squash-merged, full suite **1248/1248** + typecheck clean, **local smoketests PASSED** (CRM:
+  list→detail→timeline→add-note; Workforce: projects FSM + crm_customers FK path; Manufacturing:
+  complete order → consume/produce, 4 `type='production'` ledger rows, output +25 / 3 components −25).
+  **Prod migration follow-up (run now):** `npm run migrate` against prod applies **055, 057, 058, 059**
+  in filename order (055 before 059 satisfies the FK; 058 needs only 053). Then probe
+  `/api/{crm,workforce,manufacturing}/*` (+ warehouse if 057 wasn't applied in batch 1) —
+  `restoreSiteDeploy` on any 404. All modules gated behind `client_enabled_products`.
 - (Superseded) Local `main` HEAD was `2399f58`; before the push local was 8 commits ahead:
   - `e7dc36b`,`bf9db06` — POS branding consume-refactor (FE-only)
   - `91fde77`,`37efc7a` — **Finance 054**
@@ -43,8 +45,16 @@ confirm the unpushed commits' features have their migrations present on prod in 
 present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 051, no 055**).
 `057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
-## Merged into local main (integrated) ✅
-Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, POS branding-consume, Branding 050.
+## Merged into main + pushed to prod (integrated) ✅
+Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, POS branding-consume, Branding 050.
+
+- **Manufacturing 058** (`ab5f475`, squash of feat/manufacturing-iso): BOMs + production orders over
+  Inventory. Product `manufacturing` (requires products+inventory). Migration `058_manufacturing.sql`
+  (enum production_order_status + boms/bom_components/production_orders). Order-advance consumes
+  components + produces output via `stock_movements` type='production'. 4 endpoints + authz.
+  Smoketest: completed a qty-25 order → 4 production ledger rows, output +25 / 3 components −25.
+  v1 deferrals (documented, not bugs): concurrent double-complete can double-consume (needs
+  SELECT FOR UPDATE); BOM picker lists only stocked products. See `project_manufacturing_058_deferrals`.
 
 - **CRM 055** (`2218180`, squash of feat/crm-iso): read-model over sales+bookings; `crm_customers`
   + `crm_notes`; endpoints crm-refresh/customers-list/customer-detail/notes/note-detail; FE list +
@@ -77,7 +87,7 @@ Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057*
 | ~~CRM 055~~ | ~~`feat/crm-iso`~~ | **MERGED to local main `2218180` on 2026-07-06** (squash, smoketested). | Done — see above. |
 | ~~Warehouse 057~~ | ~~`feat/warehouse-iso`~~ | **MERGED to local main `dff6f24` + nav fix `2399f58` on 2026-07-06.** | Done — see above. |
 | ~~Workforce+PSRM 059~~ | ~~`feat/workforce-psrm-iso`~~ | **MERGED to local main `200304d` on 2026-07-06** (squash, after CRM). | Done — see above. |
-| **Manufacturing 058** | `feat/manufacturing-iso` @ `6271f46` | **Spec + impl-plan + migration 058 only — implementation IN PROGRESS, not done.** | Do NOT merge yet; TDD in flight. |
+| ~~Manufacturing 058~~ | ~~`feat/manufacturing-iso`~~ | **MERGED to main + pushed `ab5f475` on 2026-07-06** (squash, smoketested). | Done — see above. |
 | **Analytics** | `feat/analytics-review-iso` @ `24a9a86` | Author's handoff says COMPLETE / prod-live (doc-only commit on branch). | Confirm nothing code-side is stranded on the branch. |
 
 ## Wave gates
