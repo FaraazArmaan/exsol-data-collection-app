@@ -22,6 +22,7 @@ import { projectServiceManifest } from './manifests/project-service';
 import { catalogManifest } from './manifests/catalog';
 import { dataCollectionManifest } from './manifests/data-collection';
 import { portfolioManifest } from './manifests/portfolio';
+import { supplyChainManifest } from './manifests/supply-chain';
 
 export const moduleRegistry = {
   booking: bookingManifest,
@@ -29,6 +30,7 @@ export const moduleRegistry = {
   products: productsManifest,
   pos: posManifest,
   analytics: analyticsManifest,
+  'supply-chain': supplyChainManifest,
   inventory: inventoryManifest,
   email: emailManifest,
   finance: financeManifest,

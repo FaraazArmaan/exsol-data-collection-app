@@ -133,13 +133,20 @@ export function Sidebar() {
     permissions['portfolio.business.view'] === true
   );
 
+  // Supply Chain appears when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds the supply-chain view permission. Mirrors Analytics.
+  const supplyChainEnabled = enabledModules.some((m) => m.key === 'supply-chain');
+  const showSupplyChain = supplyChainEnabled && (
+    isOwner || permissions['supply-chain.products.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || showPortfolio || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || showPortfolio || showSupplyChain || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -165,6 +172,9 @@ export function Sidebar() {
             )}
             {showAnalytics && (
               <NavLink to={`/c/${slug}/analytics`}>Analytics</NavLink>
+            )}
+            {showSupplyChain && (
+              <NavLink to={`/c/${slug}/supply-chain`}>Supply Chain</NavLink>
             )}
             {showEmail && (
               <NavLink to={`/c/${slug}/email`}>Email</NavLink>

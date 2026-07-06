@@ -38,6 +38,9 @@ import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRou
 // Lazy-loaded so the analytics bundle (incl. recharts) is a separate chunk
 // fetched only when a user opens Analytics — keeps the main bundle lean.
 const AnalyticsRouteMount = lazy(() => import('../modules/analytics/AnalyticsRouteMount'));
+// Lazy-loaded so the supply-chain bundle (incl. recharts) is a separate chunk,
+// fetched only when a user opens Supply Chain — mirrors Analytics.
+const SupplyChainRouteMount = lazy(() => import('../modules/supply-chain/SupplyChainRouteMount'));
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
@@ -156,6 +159,11 @@ export const router = createBrowserRouter([
               { path: 'analytics', element: (
                 <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
                   <AnalyticsRouteMount />
+                </Suspense>
+              ) },
+              { path: 'supply-chain', element: (
+                <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
+                  <SupplyChainRouteMount />
                 </Suspense>
               ) },
               { path: 'email', element: <EmailOutboxMount /> },

@@ -1,0 +1,19 @@
+.sc-dashboard { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.sc-header h1 { margin: 0 0 4px; font-size: 22px; }
+.sc-sub { margin: 0 0 20px; color: var(--sc-muted, #64748b); font-size: 13px; }
+.sc-sections { display: flex; flex-direction: column; gap: 24px; }
+.sc-section { border: 1px solid var(--sc-border, #e2e8f0); border-radius: 10px; padding: 16px; background: var(--sc-card, #fff); }
+.sc-section-title { margin: 0 0 12px; font-size: 15px; }
+.sc-kpis { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sc-kpi { flex: 1 1 160px; border: 1px solid var(--sc-border, #e2e8f0); border-radius: 8px; padding: 12px; }
+.sc-kpi-value { font-size: 22px; font-weight: 600; }
+.sc-kpi-label { font-size: 12px; color: var(--sc-muted, #64748b); margin-top: 2px; }
+.sc-chart { margin: 8px 0 12px; }
+.sc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sc-table th, .sc-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--sc-border, #eef2f6); }
+.sc-table th { color: var(--sc-muted, #64748b); font-weight: 500; }
+.sc-deficit { color: #dc2626; font-weight: 600; }
+.sc-state { padding: 16px; font-size: 13px; color: var(--sc-muted, #64748b); }
+.sc-error { color: #b91c1c; }
+.sc-note { font-size: 13px; color: var(--sc-muted, #64748b); margin: 8px 0 0; }
+.sc-empty-all { border: 1px dashed var(--sc-border, #cbd5e1); border-radius: 10px; text-align: center; }

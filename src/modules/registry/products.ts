@@ -19,12 +19,14 @@ import { workforceProduct } from './products-list/workforce';
 import { catalogProduct } from './products-list/catalog';
 import { dataCollectionProduct } from './products-list/data-collection';
 import { brandPortfolioProduct } from './products-list/brand-portfolio';
+import { supplyChainProduct } from './products-list/supply-chain';
 
 export const productRegistry = {
   'saloon-booking': saloonBookingProduct,
   'products': productsProduct,
   'pos': posProduct,
   'analytics': analyticsProduct,
+  'supply-chain': supplyChainProduct,
   'inventory': inventoryProduct,
   'finance': financeProduct,
   'manufacturing': manufacturingProduct,
