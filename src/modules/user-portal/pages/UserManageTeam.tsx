@@ -23,7 +23,8 @@ import {
   getStructure, listNodes, moveNode,
   type ClientStructure, type ClientRole, type UserNode,
 } from '../team/api';
-import { LevelRow } from '../../ams/components/LevelRow';
+import { TeamLevelBox } from '../team/TeamLevelBox';
+import '../team/team.css';
 import { AddUserModal } from '../../shared/team-modals/AddUserModal';
 import { EditUserModal } from '../../shared/team-modals/EditUserModal';
 import { LoginManageModal } from '../../shared/team-modals/LoginManageModal';
@@ -229,10 +230,10 @@ export default function UserManageTeam() {
           const parentNode = parentId ? nodes.find((n) => n.id === parentId) : (nodesByLevel.get(parentLevel) ?? [])[0];
           const subtitle = l.level_number > 1 && parentNode ? `under ${parentNode.display_name}` : undefined;
           return (
-            <LevelRow
+            <TeamLevelBox
               key={l.id}
               dropId={`level:${l.level_number}`}
-              title={`Level ${l.level_number}${l.label ? ` — ${l.label}` : ''}`}
+              title={`Level ${l.level_number}${l.label ? ` · ${l.label}` : ''}`}
               subtitle={subtitle}
               nodes={nodesForLevel(l.level_number)}
               rolesById={rolesById}
@@ -246,7 +247,7 @@ export default function UserManageTeam() {
           );
         })}
 
-        <LevelRow
+        <TeamLevelBox
           dropId="unassigned"
           title="Unassigned access"
           nodes={nodesByLevel.get('unassigned') ?? []}
