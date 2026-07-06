@@ -46,7 +46,19 @@ present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 
 `057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
 ## Merged into main + pushed to prod (integrated) ✅
-Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, **Data Collection + Catalog 061**, **Brand Portfolio 062**, POS branding-consume, Branding 050.
+Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, **Data Collection + Catalog 061**, **Brand Portfolio 062**, **Supply Chain dashboard (no mig)**, POS branding-consume, Branding 050.
+
+- **Supply Chain dashboard** (`7d3250a` + dark-theme fix `a4fe1d0`): read-projection over
+  inventory/procurement/manufacturing — **NO migration**. 3 GET endpoints
+  (`supply-chain-inventory/procurement/manufacturing`). Route `/c/:slug/supply-chain` (recharts
+  code-split). Enable the `supply-chain` product per client. Smoketest passed (panels populate;
+  fixed white-panel light-CSS on merge). PROD: enable product + `seed:supply-chain` for the demo.
+
+### Prod-enablement pattern (learned this session)
+Migrations create tables; they do NOT enable modules for a tenant. A new module is invisible on prod
+until its product is in `client_enabled_products` AND (for demo data) its `seed:*` script has run
+against prod. Full prod bring-up = push → migrate → **enable products** → **seed** (all done for
+papa-s-saloon; joe-s-hardware still only saloon-booking).
 
 - **Data Collection + Catalog 061** (`b2d7a0a`): public `/catalog/:slug` (storefront-minus-cart + contact CTA)
   + `/onboard/:token` (guest CSV/XLSX import → Product Manager). Migration 061 (onboard_tokens +
