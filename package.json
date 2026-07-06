@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "docs:reference": "tsx scripts/generate-reference.ts",
     "migrate": "tsx --env-file=.env scripts/migrate.ts",
     "migrate:status": "tsx --env-file=.env scripts/migrate.ts --status",
     "bootstrap:admin": "tsx --env-file=.env scripts/bootstrap-admin.ts",
