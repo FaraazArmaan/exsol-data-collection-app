@@ -963,3 +963,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .em-drawer-subject { font-size: 15px; font-weight: 600; color: var(--text-primary, #ece8df); }
 .em-drawer-meta { margin-top: 4px; font-size: 12px; color: var(--text-muted, #6b6862); }
 .em-drawer-frame { flex: 1; width: 100%; border: 0; background: #ffffff; }
+
+/* CRM module */
+.crm-timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.crm-timeline li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
+.crm-note { padding: 10px 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; margin-bottom: 8px; }
+.crm-note-form { display: flex; gap: 8px; margin: 12px 0; }
+.crm-source-pill { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--muted-bg, #f3f4f6); }

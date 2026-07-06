@@ -50,6 +50,7 @@ import {
   ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount,
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
+import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
 
 function ShellLayout() {
   return (
@@ -129,6 +130,8 @@ export const router = createBrowserRouter([
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
               { path: 'inventory', element: <InventoryListMount /> },
+              { path: 'crm', element: <CrmListMount /> },
+              { path: 'crm/:id', element: <CrmDetailMount /> },
               { path: 'analytics', element: (
                 <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
                   <AnalyticsRouteMount />

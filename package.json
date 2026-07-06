@@ -19,7 +19,8 @@
     "seed:email": "tsx --env-file=.env scripts/seed-email.ts",
     "seed:finance": "tsx --env-file=.env scripts/seed-finance.ts",
     "seed:procurement": "tsx --env-file=.env scripts/seed-procurement.ts",
-    "seed:warehouse": "tsx --env-file=.env scripts/seed-warehouse.ts"
+    "seed:warehouse": "tsx --env-file=.env scripts/seed-warehouse.ts",
+    "seed:crm": "tsx --env-file=.env scripts/seed-crm.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
