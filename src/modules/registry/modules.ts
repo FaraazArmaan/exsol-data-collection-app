@@ -13,6 +13,7 @@ import { analyticsManifest } from './manifests/analytics';
 import { inventoryManifest } from './manifests/inventory';
 import { emailManifest } from './manifests/email';
 import { financeManifest } from './manifests/finance';
+import { manufacturingManifest } from './manifests/manufacturing';
 import { procurementManifest } from './manifests/procurement';
 import { warehouseManifest } from './manifests/warehouse';
 import { crmManifest } from './manifests/crm';
@@ -28,6 +29,7 @@ export const moduleRegistry = {
   inventory: inventoryManifest,
   email: emailManifest,
   finance: financeManifest,
+  manufacturing: manufacturingManifest,
   procurement: procurementManifest,
   warehouse: warehouseManifest,
   crm: crmManifest,

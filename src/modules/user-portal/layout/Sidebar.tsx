@@ -92,6 +92,13 @@ export function Sidebar() {
     permissions['finance.business.view'] === true
   );
 
+  // Manufacturing appears when enabled AND Owner (all-on) or holds the view key.
+  const manufacturingEnabled = enabledModules.some((m) => m.key === 'manufacturing');
+  const showManufacturing = manufacturingEnabled && (
+    isOwner ||
+    permissions['manufacturing.products.view'] === true
+  );
+
   // Procurement appears when the workspace has it enabled AND the caller is an
   // Owner (all-on) or holds the procurement view permission. Mirrors the others.
   const procurementEnabled = enabledModules.some((m) => m.key === 'procurement');
@@ -124,7 +131,7 @@ export function Sidebar() {
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -138,6 +145,9 @@ export function Sidebar() {
             )}
             {showInventory && (
               <NavLink to={`/c/${slug}/inventory`}>Inventory</NavLink>
+            )}
+            {showManufacturing && (
+              <NavLink to={`/c/${slug}/manufacturing`}>Manufacturing</NavLink>
             )}
             {showCrm && (
               <NavLink to={`/c/${slug}/crm`}>CRM</NavLink>

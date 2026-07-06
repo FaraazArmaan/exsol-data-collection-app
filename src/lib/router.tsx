@@ -44,6 +44,7 @@ import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
 } from '../modules/booking/BookingRouteMounts';
 import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
+import { ManufacturingMount } from '../modules/manufacturing/ManufacturingRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
 import {
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
               { path: 'inventory', element: <InventoryListMount /> },
+              { path: 'manufacturing', element: <ManufacturingMount /> },
               { path: 'crm', element: <CrmListMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },
               { path: 'analytics', element: (

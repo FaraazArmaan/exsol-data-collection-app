@@ -21,7 +21,8 @@
     "seed:procurement": "tsx --env-file=.env scripts/seed-procurement.ts",
     "seed:warehouse": "tsx --env-file=.env scripts/seed-warehouse.ts",
     "seed:crm": "tsx --env-file=.env scripts/seed-crm.ts",
-    "seed:workforce": "tsx --env-file=.env scripts/seed-workforce.ts"
+    "seed:workforce": "tsx --env-file=.env scripts/seed-workforce.ts",
+    "seed:manufacturing": "tsx --env-file=.env scripts/seed-manufacturing.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

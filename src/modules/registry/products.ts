@@ -11,6 +11,7 @@ import { posProduct } from './products-list/pos';
 import { analyticsProduct } from './products-list/analytics';
 import { inventoryProduct } from './products-list/inventory';
 import { financeProduct } from './products-list/finance';
+import { manufacturingProduct } from './products-list/manufacturing';
 import { procurementProduct } from './products-list/procurement';
 import { warehouseProduct } from './products-list/warehouse';
 import { crmProduct } from './products-list/crm';
@@ -23,6 +24,7 @@ export const productRegistry = {
   'analytics': analyticsProduct,
   'inventory': inventoryProduct,
   'finance': financeProduct,
+  'manufacturing': manufacturingProduct,
   'procurement': procurementProduct,
   'warehouse': warehouseProduct,
   'crm': crmProduct,
