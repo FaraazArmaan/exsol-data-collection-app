@@ -22,7 +22,7 @@ import { deriveSlug } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
 import { defaultPermissionsForLevel } from './_shared/level-permissions';
-import { getProduct } from '../../src/modules/registry/products';
+import { getProduct } from '@registry/products';
 
 // ----- Validation (Zod) -----
 

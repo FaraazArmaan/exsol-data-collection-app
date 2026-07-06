@@ -5,9 +5,9 @@
 // Permission keys enumerate from the active module manifests for the
 // workspace's enabled products — same source the /access-levels page reads.
 
-import { PLATFORM_SURFACES, VERBS } from '../../../src/modules/registry/types';
-import { getModule } from '../../../src/modules/registry/modules';
-import { getProduct } from '../../../src/modules/registry/products';
+import { PLATFORM_SURFACES, VERBS } from '@registry/types';
+import { getModule } from '@registry/modules';
+import { getProduct } from '@registry/products';
 
 export function defaultPermissionsForLevel(
   levelNumber: number,

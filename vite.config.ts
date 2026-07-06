@@ -6,7 +6,10 @@ export default defineConfig({
   root: path.resolve(__dirname, 'src'),
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: {
+      '@registry': path.resolve(__dirname, 'src/modules/registry'),
+      '@': path.resolve(__dirname, 'src'),
+    },
   },
   server: {
     port: 5173,

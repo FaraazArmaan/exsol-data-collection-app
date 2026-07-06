@@ -7,9 +7,9 @@
 
 import {
   VERBS, PLATFORM_SURFACES, type Verb, type DataBucket, type PlatformSurface,
-} from '../../../src/modules/registry/types';
-import { getModule } from '../../../src/modules/registry/modules';
-import { getProduct, actionPermissionKeys } from '../../../src/modules/registry/products';
+} from '@registry/types';
+import { getModule } from '@registry/modules';
+import { getProduct, actionPermissionKeys } from '@registry/products';
 
 export type ParsedPermissionKey =
   | { scope: 'module'; module: string; bucket: DataBucket; verb: Verb }

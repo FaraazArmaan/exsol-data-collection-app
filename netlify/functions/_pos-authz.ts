@@ -20,7 +20,7 @@
 import { jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { db } from './_shared/db';
-import { POS_ACTIONS } from '../../src/modules/registry/types';
+import { POS_ACTIONS } from '@registry/types';
 
 export interface PosAuthCtx {
   userNodeId: string;

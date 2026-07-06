@@ -10,7 +10,7 @@
 import { jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { db } from './_shared/db';
-import { getProduct } from '../../src/modules/registry/products';
+import { getProduct } from '@registry/products';
 
 export interface ProcurementAuthCtx {
   userNodeId: string;

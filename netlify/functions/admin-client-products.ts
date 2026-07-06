@@ -13,7 +13,7 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
-import { allProducts, getProduct } from '../../src/modules/registry/products';
+import { allProducts, getProduct } from '@registry/products';
 
 const PutBody = z.object({ keys: z.array(z.string().min(1).max(80)).max(64) });
 

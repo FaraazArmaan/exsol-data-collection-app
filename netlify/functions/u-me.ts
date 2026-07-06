@@ -9,7 +9,7 @@ import {
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { requireBucketUser, UnauthorizedError, getLevelMatrix } from './_shared/permissions';
-import { enabledModulesForProducts } from '../../src/modules/registry/products';
+import { enabledModulesForProducts } from '@registry/products';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');

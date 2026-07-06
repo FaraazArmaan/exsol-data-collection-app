@@ -22,8 +22,8 @@ import { isValidPermissionKey } from './_shared/permission-keys';
 import { logAudit } from './_shared/audit';
 import {
   VERBS, PLATFORM_SURFACES, type Verb, type PlatformSurface,
-} from '../../src/modules/registry/types';
-import { derivePermissionRows, actionPermissionGroups } from '../../src/modules/registry/products';
+} from '@registry/types';
+import { derivePermissionRows, actionPermissionGroups } from '@registry/products';
 
 const PutBody = z.object({
   permissions: z.record(z.literal(true)),
