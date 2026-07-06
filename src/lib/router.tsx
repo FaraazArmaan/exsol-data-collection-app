@@ -51,6 +51,9 @@ import {
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
+import {
+  WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount,
+} from '../modules/workforce/WorkforceRouteMounts';
 
 function ShellLayout() {
   return (
@@ -143,6 +146,9 @@ export const router = createBrowserRouter([
               { path: 'procurement/suppliers', element: <ProcurementSuppliersMount /> },
               { path: 'procurement/orders/:id', element: <ProcurementOrderDetailMount /> },
               { path: 'warehouse', element: <WarehouseMount /> },
+              { path: 'workforce', element: <WorkforceMount /> },
+              { path: 'workforce/projects', element: <WorkforceProjectsMount /> },
+              { path: 'workforce/projects/:projectId', element: <WorkforceProjectDetailMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

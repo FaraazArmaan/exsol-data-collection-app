@@ -1,0 +1,306 @@
+/* Workforce module styles — namespaced .wf-* */
+
+.wf-page {
+  padding: 24px;
+  max-width: 1100px;
+}
+
+.wf-page h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.wf-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--color-border, #e2e8f0);
+}
+
+.wf-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--color-text-muted, #64748b);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.wf-tab.active {
+  color: var(--color-primary, #4f46e5);
+  border-bottom-color: var(--color-primary, #4f46e5);
+  font-weight: 600;
+}
+
+/* Staff directory */
+.wf-resource-list {
+  display: grid;
+  gap: 12px;
+}
+
+.wf-resource-card {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.wf-resource-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-resource-card .inactive-badge {
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+/* Weekly schedule grid */
+.wf-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wf-day-col {
+  min-height: 80px;
+}
+
+.wf-day-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.wf-shift-pill {
+  background: var(--color-primary-light, #eef2ff);
+  border: 1px solid var(--color-primary, #4f46e5);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  color: var(--color-primary, #4f46e5);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+
+.wf-shift-pill button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary, #4f46e5);
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.wf-shift-pill button:hover { opacity: 1; }
+
+/* Add shift form */
+.wf-add-shift {
+  margin-top: 8px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+}
+
+.wf-add-shift h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.wf-shift-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.wf-shift-form select,
+.wf-shift-form input[type="time"] {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.wf-shift-form button {
+  padding: 5px 14px;
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.wf-shift-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Projects list */
+.wf-project-list {
+  display: grid;
+  gap: 10px;
+}
+
+.wf-project-card {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  color: inherit;
+}
+
+.wf-project-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+.wf-project-name { font-weight: 600; }
+
+.wf-project-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.wf-status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.wf-status-badge.quoted { background: #fef9c3; color: #854d0e; }
+.wf-status-badge.active { background: #dcfce7; color: #166534; }
+.wf-status-badge.done   { background: #f1f5f9; color: #475569; }
+
+/* Create project / shift forms */
+.wf-create-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.wf-create-form input,
+.wf-create-form select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.wf-create-form button {
+  padding: 8px 20px;
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.wf-create-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Project detail */
+.wf-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.wf-detail-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.wf-back-link {
+  font-size: 0.875rem;
+  color: var(--color-primary, #4f46e5);
+  text-decoration: none;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.wf-section {
+  margin-top: 24px;
+}
+
+.wf-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.wf-assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wf-assignment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.wf-assignment-row button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  font-size: 0.8rem;
+}
+
+.wf-empty { color: #94a3b8; font-size: 0.875rem; font-style: italic; }
+.wf-error { color: #ef4444; font-size: 0.875rem; margin: 8px 0; }
+
+.wf-advance-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+}
+
+.wf-advance-btn:disabled { opacity: 0.5; cursor: not-allowed; }

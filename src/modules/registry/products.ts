@@ -14,6 +14,7 @@ import { financeProduct } from './products-list/finance';
 import { procurementProduct } from './products-list/procurement';
 import { warehouseProduct } from './products-list/warehouse';
 import { crmProduct } from './products-list/crm';
+import { workforceProduct } from './products-list/workforce';
 
 export const productRegistry = {
   'saloon-booking': saloonBookingProduct,
@@ -25,6 +26,7 @@ export const productRegistry = {
   'procurement': procurementProduct,
   'warehouse': warehouseProduct,
   'crm': crmProduct,
+  'workforce': workforceProduct,
 } as const satisfies Record<string, ProductManifest>;
 
 export function allProducts(): ProductManifest[] {

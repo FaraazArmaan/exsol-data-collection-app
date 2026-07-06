@@ -109,13 +109,22 @@ export function Sidebar() {
     permissions['warehouse.products.view'] === true
   );
 
+  // Workforce appears when the 'workforce' product is enabled AND the caller is
+  // an Owner (all-on) or holds a workforce/project-service view permission.
+  const workforceEnabled = enabledModules.some((m) => m.key === 'workforce');
+  const showWorkforce = workforceEnabled && (
+    isOwner ||
+    permissions['workforce.employees.view'] === true ||
+    permissions['project-service.business.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -150,6 +159,9 @@ export function Sidebar() {
             )}
             {showWarehouse && (
               <NavLink to={`/c/${slug}/warehouse`}>Warehouse</NavLink>
+            )}
+            {showWorkforce && (
+              <NavLink to={`/c/${slug}/workforce`}>Workforce</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>
