@@ -28,3 +28,14 @@
 7. NEVER `git push` — commit locally; the human pushes via the Main integration chat.
 8. Run `git branch --show-current` before your first commit — confirm you're in your own
    feat/<module>-iso worktree.
+9. Module CSS MUST consume the dark-theme tokens from `src/lib/theme.css`
+   (`--bg-base/-surface/-elevated`, `--text-primary/-secondary/-muted`, `--border-subtle/-default`,
+   `--accent` + `--text-on-accent`, `--danger`/`--success`). NEVER invent your own (`--color-*`,
+   `--sc-*`, `--border`, `--muted-bg`) or hardcode light values (`#fff`, `#e5e7eb`, `#f3f4f6`) —
+   they fall back to a light theme = white cards + invisible text on the dark platform. jsdom
+   doesn't evaluate CSS vars, so tests stay green; verify in a REAL browser. (Shipped broken 5×.)
+10. Register every new module key in `MODULES_WITH_DEDICATED_NAV` (src/modules/user-portal/nav/
+    useNavItems.ts) — this set is hand-synced with the hardcoded Sidebar links and gates the
+    generic `/m/:key` rail. Miss it and the module renders a DUPLICATE nav link (or a dead
+    ModuleStub for surface-less modules like catalog/data-collection). Add the key even if the
+    module has no dashboard page. (Recurred 5×.)
