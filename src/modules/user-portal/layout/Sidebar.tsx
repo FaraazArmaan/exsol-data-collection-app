@@ -95,13 +95,22 @@ export function Sidebar() {
     permissions['procurement.products.view'] === true
   );
 
+  // Warehouse appears when the workspace has it enabled AND the caller is an Owner
+  // (all-on) or can view locations/stock. Mirrors POS/Booking/Inventory.
+  const warehouseEnabled = enabledModules.some((m) => m.key === 'warehouse');
+  const showWarehouse = warehouseEnabled && (
+    isOwner ||
+    permissions['warehouse.business.view'] === true ||
+    permissions['warehouse.products.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || showFinance || showProcurement || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -130,6 +139,9 @@ export function Sidebar() {
             )}
             {showProcurement && (
               <NavLink to={`/c/${slug}/procurement`}>Procurement</NavLink>
+            )}
+            {showWarehouse && (
+              <NavLink to={`/c/${slug}/warehouse`}>Warehouse</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

@@ -49,6 +49,7 @@ import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
 import {
   ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount,
 } from '../modules/procurement/ProcurementRouteMounts';
+import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 
 function ShellLayout() {
   return (
@@ -138,6 +139,7 @@ export const router = createBrowserRouter([
               { path: 'procurement', element: <ProcurementOrdersMount /> },
               { path: 'procurement/suppliers', element: <ProcurementSuppliersMount /> },
               { path: 'procurement/orders/:id', element: <ProcurementOrderDetailMount /> },
+              { path: 'warehouse', element: <WarehouseMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },
