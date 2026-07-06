@@ -48,3 +48,22 @@ Full generated endpoint inventory: `docs/reference/endpoints.md` (`npm run docs:
   the collision case explicitly.
 - New functions can deploy successfully yet fail to register at the Edge (404) —
   `netlify api restoreSiteDeploy` fixes it; always probe a new endpoint after deploy.
+
+## Signed webhook receivers
+
+Inbound third-party webhooks (payment providers, calendar syncs, external systems) are
+authenticated by an HMAC signature over the request body, not by a session. The pattern —
+reference impl `netlify/functions/webhook-example.ts`, helper `_shared/webhook.ts`, original
+`_booking-razorpay.ts`:
+
+1. **Read the RAW body** (`await req.text()`). Verification is over the exact bytes — NEVER
+   `req.json()` first (re-serialising reorders keys / changes whitespace and breaks the MAC).
+2. **Verify in constant time**: `verifyHmacSignature(rawBody, header, secret)` from
+   `_shared/webhook.ts` (`createHmac` + `timingSafeEqual`; returns false, never throws). Options:
+   `{ algorithm = 'sha256', encoding = 'hex' | 'base64' }` per the provider's scheme.
+3. **`401` on missing/invalid signature; parse + act only after it passes.** Missing secret →
+   `500 <name>_not_configured` (mirror the Razorpay guard).
+
+The shared secret is a `process.env.<NAME>_SECRET` (like `RAZORPAY_WEBHOOK_SECRET`), never in the
+zod env schema — absent in dev is fine, the receiver just 500s until configured. Integration tests
+sign a body with the same secret and call the handler directly (no live provider needed).
