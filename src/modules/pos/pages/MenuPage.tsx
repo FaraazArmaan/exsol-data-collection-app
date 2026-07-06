@@ -16,6 +16,9 @@ export interface MenuPageProps {
   loadMenu?: () => Promise<MenuResponse>;
   // Optional checkout target — defaults to the staff cart route.
   checkoutHref?: string;
+  // Catalog Website reuse: hide the cart entirely (no add-to-cart, no side panel).
+  // The single "difference" between the storefront and the catalog, as a prop.
+  catalogMode?: boolean;
 }
 
 export default function MenuPage(props: MenuPageProps) {
@@ -66,8 +69,10 @@ export default function MenuPage(props: MenuPageProps) {
 
   if (!menu) return <div className="pos-loading">Loading menu…</div>;
 
+  const catalogMode = props.catalogMode ?? false;
+
   return (
-    <div className="pos-menu">
+    <div className={catalogMode ? 'pos-menu pos-menu--catalog' : 'pos-menu'}>
       <header>
         <MenuSearchBar value={query} onChange={setQuery} />
         <CategoryTabs categories={menu.categories} value={cat} onChange={setCat} />
@@ -77,18 +82,20 @@ export default function MenuPage(props: MenuPageProps) {
           <ProductTile
             key={p.id}
             product={p}
-            inCartQty={qtyById[p.id] ?? 0}
-            onAdd={() => addLine(p)}
+            inCartQty={catalogMode ? 0 : (qtyById[p.id] ?? 0)}
+            onAdd={catalogMode ? undefined : () => addLine(p)}
           />
         ))}
       </main>
-      <SideCartPanel
-        lines={lines}
-        subtotal={subtotal}
-        checkoutHref={props.checkoutHref ?? `/c/${props.slug}/pos/cart`}
-        onQty={setQty}
-        onRemove={removeLine}
-      />
+      {!catalogMode && (
+        <SideCartPanel
+          lines={lines}
+          subtotal={subtotal}
+          checkoutHref={props.checkoutHref ?? `/c/${props.slug}/pos/cart`}
+          onQty={setQty}
+          onRemove={removeLine}
+        />
+      )}
     </div>
   );
 }

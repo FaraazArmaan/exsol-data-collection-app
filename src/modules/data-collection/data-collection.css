@@ -1,0 +1,91 @@
+/* Data Collection — .dc-* (public onboarding page + PM generate-link control).
+   Imported once in src/main.tsx. Uses shared theme tokens. */
+
+.dc-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  background: var(--bg-base);
+}
+.dc-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+.dc-title {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+}
+.dc-muted {
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+.dc-hint {
+  font-size: 0.85rem;
+}
+.dc-file {
+  display: block;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+}
+.dc-preview {
+  margin: 16px 0;
+  color: var(--text-primary);
+}
+.dc-err-count { color: var(--danger); font-weight: 600; }
+.dc-errors {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.dc-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+.dc-submit { margin-top: 8px; }
+
+/* PM "generate onboarding link" control */
+.dc-genlink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dc-genlink__err { color: var(--danger); font-size: 0.85rem; }
+.dc-genlink__out {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.dc-genlink__input {
+  padding: 6px 10px;
+  min-width: 260px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+.dc-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+}
+.dc-link:hover { text-decoration: underline; }

@@ -1,0 +1,66 @@
+/* Catalog Website — .cat-* + a catalog modifier for the reused POS menu grid.
+   Imported once in src/main.tsx. Uses shared theme tokens. */
+
+.cat-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 16px 32px;
+}
+
+.cat-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 48px;
+}
+
+/* Catalog reuse of the POS menu: drop the cart column, go full-width grid. */
+.pos-menu--catalog {
+  display: block;
+}
+.pos-menu--catalog .pos-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.pos-tile--static {
+  cursor: default;
+  text-align: left;
+}
+
+/* Contact CTA */
+.cat-cta {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cat-cta__label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.cat-cta__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cat-cta__btn {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cat-cta__btn:hover { background: var(--accent-hover); }
+.cat-cta__btn--ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}

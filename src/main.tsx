@@ -5,6 +5,8 @@ import './modules/files/files.css';
 import './modules/inventory/inventory.css';
 import './modules/procurement/procurement.css';
 import './modules/warehouse/warehouse.css';
+import './modules/catalog/catalog.css';
+import './modules/data-collection/data-collection.css';
 import './modules/branding/brand-fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

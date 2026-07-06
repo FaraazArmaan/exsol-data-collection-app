@@ -19,6 +19,8 @@ import { warehouseManifest } from './manifests/warehouse';
 import { crmManifest } from './manifests/crm';
 import { workforceManifest } from './manifests/workforce';
 import { projectServiceManifest } from './manifests/project-service';
+import { catalogManifest } from './manifests/catalog';
+import { dataCollectionManifest } from './manifests/data-collection';
 
 export const moduleRegistry = {
   booking: bookingManifest,
@@ -35,6 +37,8 @@ export const moduleRegistry = {
   crm: crmManifest,
   workforce: workforceManifest,
   'project-service': projectServiceManifest,
+  catalog: catalogManifest,
+  'data-collection': dataCollectionManifest,
 } as const satisfies Record<string, ModuleManifest>;
 
 export type RegisteredModuleKey = keyof typeof moduleRegistry;

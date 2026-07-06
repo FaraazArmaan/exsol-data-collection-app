@@ -55,6 +55,8 @@ import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount,
 } from '../modules/workforce/WorkforceRouteMounts';
+import CatalogPage from '../modules/catalog/CatalogPage';
+import OnboardPage from '../modules/data-collection/OnboardPage';
 
 function ShellLayout() {
   return (
@@ -88,6 +90,15 @@ export const router = createBrowserRouter([
       { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
     ],
   },
+  // Public catalog — unauthenticated; reuses the storefront BrandShell + the menu
+  // grid in catalogMode (no cart). Gated on the `catalog` product server-side.
+  {
+    path: '/catalog/:slug',
+    element: <StorefrontLayout />,
+    children: [{ index: true, element: <CatalogPage /> }],
+  },
+  // Public onboarding — token-scoped guest product import. No auth, no shell.
+  { path: '/onboard/:token', element: <OnboardPage /> },
   {
     path: '/c/:slug',
     element: <UserPortalLayout />,

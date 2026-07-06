@@ -15,6 +15,7 @@ import { ProductBulkBar } from '../components/ProductBulkBar';
 import { ProductTable } from '../components/ProductTable';
 import { ProductTablePager } from '../components/ProductTablePager';
 import { ProductImportModal } from '../components/ProductImportModal';
+import { OnboardingLinkButton } from '../../../data-collection/OnboardingLinkButton';
 
 const POLL_MS = 5_000;
 const PAGE_SIZE = 20;
@@ -129,6 +130,8 @@ export default function ProductsListPage() {
         {catsAllowed && (
           <a className="pm-link" href={`${basePath}/categories`}>Manage categories →</a>
         )}
+        {/* Data Collection recombination: self-gates on the data-collection module. */}
+        <OnboardingLinkButton />
       </div>
 
       {error && (
