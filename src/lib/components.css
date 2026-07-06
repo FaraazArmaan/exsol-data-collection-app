@@ -970,3 +970,51 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .crm-note { padding: 10px 12px; border: 1px solid var(--border-subtle, #2e2e2e); border-radius: 8px; margin-bottom: 8px; background: var(--bg-surface, #1f1f1f); color: var(--text-primary, #ece8df); }
 .crm-note-form { display: flex; gap: 8px; margin: 12px 0; }
 .crm-source-pill { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text-muted) 22%, transparent); color: var(--text-secondary); }
+
+/* ── Brand Portfolio Site — editor (dashboard chrome) ──────────────────── */
+.bp-editor { padding: 24px; max-width: 760px; }
+.bp-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.bp-editor-head h1 { margin: 0 0 4px; font-size: 20px; color: var(--text-primary, #ece8df); }
+.bp-sub { margin: 0; color: var(--text-secondary, #a8a39a); font-size: 13px; }
+.bp-sub code, .bp-tier-note code { background: var(--bg-elevated, #2a2a2a); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+.bp-editor-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bp-status { margin: 16px 0; padding: 10px 14px; border-radius: 8px; font-size: 13px; background: var(--bg-elevated, #2a2a2a); color: var(--text-secondary, #a8a39a); border: 1px solid var(--border-subtle, #2e2e2e); }
+.bp-status.is-live { color: #6fbf95; border-color: rgba(74,163,120,0.4); }
+.bp-saved { color: var(--text-muted, #6b6862); }
+.bp-card { margin-top: 16px; padding: 18px 20px; border: 1px solid var(--border-subtle, #2e2e2e); border-radius: var(--radius-md, 8px); background: var(--bg-elevated, #2a2a2a); }
+.bp-card h2 { margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary, #a8a39a); }
+.bp-toggle { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; }
+.bp-toggle input { width: 16px; height: 16px; flex: none; }
+.bp-toggle-text { display: flex; flex-direction: column; gap: 1px; }
+.bp-toggle-label { font-size: 14px; color: var(--text-primary, #ece8df); }
+.bp-toggle-hint { font-size: 12px; color: var(--text-muted, #6b6862); }
+.bp-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.bp-field:last-child { margin-bottom: 0; }
+.bp-field > span { font-size: 12px; color: var(--text-secondary, #a8a39a); }
+.bp-field input { padding: 9px 11px; border: 1px solid var(--border-default, #3a3a3a); border-radius: 6px; background: var(--bg-base, #1c1c1c); color: var(--text-primary, #ece8df); font-size: 14px; }
+.bp-tier-note { margin-top: 18px; font-size: 12px; color: var(--text-muted, #6b6862); }
+.bp-state { padding: 24px; border: 1px solid var(--border-subtle, #2e2e2e); border-radius: 8px; background: var(--bg-elevated, #2a2a2a); color: var(--text-secondary, #a8a39a); font-size: 14px; }
+.bp-state-error { color: var(--danger, #c97064); }
+
+/* ── Brand Portfolio Site — public page (inside BrandShell) ────────────── */
+.bp-public { max-width: 1080px; margin: 0 auto; padding: 0 20px 48px; }
+.bp-public-state { max-width: 640px; margin: 64px auto; text-align: center; padding: 0 20px; }
+.bp-public-state h2 { margin: 0 0 8px; font-size: 22px; }
+.bp-hero { text-align: center; padding: 56px 20px 40px; }
+.bp-hero-title { margin: 0 0 10px; font-size: 40px; line-height: 1.1; font-family: var(--brand-font-heading, inherit); }
+.bp-hero-tagline { margin: 0 auto 24px; max-width: 560px; font-size: 17px; opacity: 0.8; }
+.bp-cta { display: inline-block; padding: 12px 26px; border-radius: 999px; background: var(--accent, #3b82f6); color: var(--text-on-accent, #fff); font-weight: 600; text-decoration: none; }
+.bp-cta:hover { background: var(--accent-hover, var(--accent, #2563eb)); }
+.bp-section { padding: 32px 0; border-top: 1px solid rgba(128,128,128,0.18); }
+.bp-section-title { margin: 0 0 18px; font-size: 22px; font-family: var(--brand-font-heading, inherit); }
+.bp-empty { opacity: 0.6; font-size: 15px; }
+.bp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.bp-product { padding: 18px; border: 1px solid rgba(128,128,128,0.22); border-radius: 12px; }
+.bp-product-name { font-weight: 600; font-size: 15px; }
+.bp-product-price { margin-top: 6px; color: var(--accent, #3b82f6); font-weight: 600; }
+.bp-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.bp-gallery-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; }
+.bp-booking { text-align: center; }
+.bp-contact-lines { display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.bp-contact-lines a { color: var(--accent, #3b82f6); }
+.bp-footer { padding: 32px 0 8px; text-align: center; font-size: 13px; opacity: 0.55; }

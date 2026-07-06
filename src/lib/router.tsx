@@ -57,6 +57,8 @@ import {
 } from '../modules/workforce/WorkforceRouteMounts';
 import CatalogPage from '../modules/catalog/CatalogPage';
 import OnboardPage from '../modules/data-collection/OnboardPage';
+import BrandPortfolioPage from '../modules/portfolio/public/BrandPortfolioPage';
+import { BrandSiteMount } from '../modules/portfolio/BrandSiteRouteMounts';
 
 function ShellLayout() {
   return (
@@ -99,6 +101,9 @@ export const router = createBrowserRouter([
   },
   // Public onboarding — token-scoped guest product import. No auth, no shell.
   { path: '/onboard/:token', element: <OnboardPage /> },
+  // Public brand portfolio site — unauthenticated, sibling of /menu/:slug.
+  // Wraps itself in <BrandShell> and composes the public brand/site/menu APIs.
+  { path: '/site/:slug', element: <BrandPortfolioPage /> },
   {
     path: '/c/:slug',
     element: <UserPortalLayout />,
@@ -154,6 +159,7 @@ export const router = createBrowserRouter([
                 </Suspense>
               ) },
               { path: 'email', element: <EmailOutboxMount /> },
+              { path: 'brand-site', element: <BrandSiteMount /> },
               { path: 'finance', element: <FinanceMount /> },
               { path: 'procurement', element: <ProcurementOrdersMount /> },
               { path: 'procurement/suppliers', element: <ProcurementSuppliersMount /> },

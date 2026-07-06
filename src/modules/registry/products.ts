@@ -18,6 +18,7 @@ import { crmProduct } from './products-list/crm';
 import { workforceProduct } from './products-list/workforce';
 import { catalogProduct } from './products-list/catalog';
 import { dataCollectionProduct } from './products-list/data-collection';
+import { brandPortfolioProduct } from './products-list/brand-portfolio';
 
 export const productRegistry = {
   'saloon-booking': saloonBookingProduct,
@@ -33,6 +34,7 @@ export const productRegistry = {
   'workforce': workforceProduct,
   'catalog': catalogProduct,
   'data-collection': dataCollectionProduct,
+  'brand-portfolio': brandPortfolioProduct,
 } as const satisfies Record<string, ProductManifest>;
 
 export function allProducts(): ProductManifest[] {

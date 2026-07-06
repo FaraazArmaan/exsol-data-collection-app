@@ -125,13 +125,21 @@ export function Sidebar() {
     permissions['project-service.business.view'] === true
   );
 
+  // Brand Portfolio Site appears when the 'brand-portfolio' product is enabled
+  // AND the caller is an Owner (all-on) or holds the portfolio view permission.
+  const portfolioEnabled = enabledModules.some((m) => m.key === 'portfolio');
+  const showPortfolio = portfolioEnabled && (
+    isOwner ||
+    permissions['portfolio.business.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || showPortfolio || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -172,6 +180,9 @@ export function Sidebar() {
             )}
             {showWorkforce && (
               <NavLink to={`/c/${slug}/workforce`}>Workforce</NavLink>
+            )}
+            {showPortfolio && (
+              <NavLink to={`/c/${slug}/brand-site`}>Brand Site</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>
