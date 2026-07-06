@@ -31,6 +31,7 @@
     "seed:marketing": "tsx --env-file=.env scripts/seed-marketing.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
     "@dnd-kit/core": "^6.3.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
