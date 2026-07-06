@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { workforceApi, type Project } from '../../api';
+import { workforceApi, type Project } from '../../shared/api';
 import '../../workforce.css';
 
 interface Props {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { posApi, type MenuResponse } from '../api';
+import { posApi, type MenuResponse } from '../shared/api';
 import { createCartStore } from '../store/cart';
 import { MenuSearchBar } from '../components/MenuSearchBar';
 import { CategoryTabs } from '../components/CategoryTabs';

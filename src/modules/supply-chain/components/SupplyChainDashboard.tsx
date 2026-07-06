@@ -1,6 +1,6 @@
 import { useUserAuth } from '../../user-portal/user-auth-context';
 import { visibleSectionsFor } from '../gating';
-import type { SectionKey } from '../types';
+import type { SectionKey } from '../shared/types';
 import { InventorySection } from './InventorySection';
 import { ProcurementSection } from './ProcurementSection';
 import { ManufacturingSection } from './ManufacturingSection';

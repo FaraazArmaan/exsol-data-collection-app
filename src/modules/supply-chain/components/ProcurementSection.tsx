@@ -1,5 +1,5 @@
 import { useSupplyChain } from '../hooks/useSupplyChain';
-import type { ProcurementResponse } from '../types';
+import type { ProcurementResponse } from '../shared/types';
 import { formatCount, formatCents } from '../format';
 import { Section } from './Section';
 import { KpiTile } from './KpiTile';

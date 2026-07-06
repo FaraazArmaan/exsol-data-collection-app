@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { posApi } from '../api';
+import { posApi } from '../shared/api';
 import { formatRupees, formatOrderNo } from '../lib/money';
 import { StatusPill } from '../components/StatusPill';
 import { SaleDetailDrawer } from './SaleDetailDrawer';

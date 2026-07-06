@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { bookingPublicApi, type ManageView, type PublicService } from '../api';
+import { bookingPublicApi, type ManageView, type PublicService } from '../shared/api';
 import { formatTime, formatDateLong } from '../format';
 import { SlotPicker } from './SlotPicker';
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { bookingApi, type VendorService, type VendorResource, type PaymentMode } from '../api';
+import { bookingApi, type VendorService, type VendorResource, type PaymentMode } from '../shared/api';
 import { ONLINE_PAYMENTS_ENABLED } from '../config';
 
 interface Props {

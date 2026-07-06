@@ -2,14 +2,10 @@ import { useMemo } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-portal/user-auth-context';
 import FinancePage from './pages/FinancePage';
-
 // L1 Owner (or legacy null-level) is all-on — consistent with the backend
 // requireFinance bypass and every other gate in the codebase. We hand them the
 // full finance.* set so internal page gates (add/edit/delete buttons) render.
-const ALL_FINANCE_PERMS = [
-  'finance.business.view', 'finance.business.create',
-  'finance.business.edit', 'finance.business.delete',
-];
+import { ALL_FINANCE_PERMS } from './shared/permissions';
 
 function useAuthBits() {
   const { user, client, permissions, enabledModules, loading } = useUserAuth();

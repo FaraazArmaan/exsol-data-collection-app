@@ -1,4 +1,4 @@
-import type { SectionKey } from './types';
+import type { SectionKey } from './shared/types';
 
 const SECTION_MODULE: Record<SectionKey, string> = {
   inventory: 'inventory',

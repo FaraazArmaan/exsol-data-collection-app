@@ -14,17 +14,13 @@ import { jsonError } from './_shared/http';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { db } from './_shared/db';
 import { getProduct } from '@registry/products';
+import { ALL_FINANCE_PERMS } from '../../src/modules/finance/shared/permissions';
 
 export interface FinanceAuthCtx {
   userNodeId: string;
   clientId: string;
   perms: ReadonlySet<string>;
 }
-
-const ALL_FINANCE_PERMS = [
-  'finance.business.view', 'finance.business.create',
-  'finance.business.edit', 'finance.business.delete',
-] as const;
 
 export async function requireFinance(
   req: Request,

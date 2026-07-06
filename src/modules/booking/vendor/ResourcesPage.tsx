@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { bookingApi, BookingApiError, type VendorResource, type TimeOff } from '../api';
+import { bookingApi, BookingApiError, type VendorResource, type TimeOff } from '../shared/api';
 import { BookingTabs } from './BookingTabs';
 
 type Sched = Record<string, Array<{ open: string; close: string }>>;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchSection } from '../api';
-import type { SectionKey } from '../types';
+import { fetchSection } from '../shared/api';
+import type { SectionKey } from '../shared/types';
 
 interface State<T> { data: T | null; loading: boolean; error: string | null; }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { posApi, PosApiError } from '../api';
+import { posApi, PosApiError } from '../shared/api';
 import { formatRupees, formatOrderNo } from '../lib/money';
 import { StatusPill } from '../components/StatusPill';
 import { SaleStateButtons } from '../components/SaleStateButtons';

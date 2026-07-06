@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { bookingApi, BookingApiError, type BookingSettings } from '../api';
+import { bookingApi, BookingApiError, type BookingSettings } from '../shared/api';
 import { BookingTabs } from './BookingTabs';
 
 const DAYS: Array<[string, string]> = [

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { buildDomainCsv, domainZipBytes } from '../exportCsv';
-import type { DomainResponse } from '../types';
+import type { DomainResponse } from '../shared/types';
 
 const data: DomainResponse = {
   scope: { isRootScope: true, nodeCount: 0 },

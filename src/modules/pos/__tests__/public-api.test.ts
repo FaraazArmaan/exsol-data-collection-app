@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { publicApi, PosApiError } from '../api';
+import { publicApi, PosApiError } from '../shared/api';
 
 beforeEach(() => vi.restoreAllMocks());
 

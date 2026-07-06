@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import MenuPage from '../pos/pages/MenuPage';
-import type { MenuResponse } from '../pos/api';
+import type { MenuResponse } from '../pos/shared/api';
 import { NotAvailableCard } from '../pos/pages/NotAvailableCard';
 
 // Public catalog page. Fetches the catalog once, then reuses the exact storefront

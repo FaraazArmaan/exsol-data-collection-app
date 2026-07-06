@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { bookingPublicApi, BookingApiError, type PublicService } from '../api';
+import { bookingPublicApi, BookingApiError, type PublicService } from '../shared/api';
 import { formatRupees, paymentChip } from '../format';
 
 interface Props {

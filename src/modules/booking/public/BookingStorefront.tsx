@@ -4,7 +4,7 @@ import { ServicePicker } from './ServicePicker';
 import { SlotPicker } from './SlotPicker';
 import { Checkout } from './Checkout';
 import { Confirmation } from './Confirmation';
-import { bookingPublicApi, type PublicService, type Slot, type CreateResult } from '../api';
+import { bookingPublicApi, type PublicService, type Slot, type CreateResult } from '../shared/api';
 
 type Step = 'service' | 'slot' | 'checkout' | 'done';
 const STEPS: Array<{ key: Step; label: string }> = [

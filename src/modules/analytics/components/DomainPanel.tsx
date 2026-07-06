@@ -5,7 +5,7 @@ import { BarChart } from './BarChart';
 import { DonutChart } from './DonutChart';
 import { formatValue } from '../format';
 import { downloadDomainZip } from '../exportCsv';
-import type { DomainResponse, Breakdown } from '../types';
+import type { DomainResponse, Breakdown } from '../shared/types';
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (

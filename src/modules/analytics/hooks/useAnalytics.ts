@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchDomain, fetchOverview } from '../api';
-import type { AnalyticsParams, DomainKey } from '../types';
+import { fetchDomain, fetchOverview } from '../shared/api';
+import type { AnalyticsParams, DomainKey } from '../shared/types';
 
 interface State<T> { data: T | null; loading: boolean; error: string | null }
 

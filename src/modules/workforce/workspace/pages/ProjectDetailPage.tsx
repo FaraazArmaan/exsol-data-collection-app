@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { workforceApi, type Project, type ProjectAssignment, type ProjectStatus, type StaffResource } from '../../api';
+import { workforceApi, type Project, type ProjectAssignment, type ProjectStatus, type StaffResource } from '../../shared/api';
 import '../../workforce.css';
 
 const FSM_NEXT: Record<ProjectStatus, ProjectStatus | null> = {

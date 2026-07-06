@@ -6,7 +6,7 @@ import { DomainSection } from './DomainSection';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useUserAuth } from '../../user-portal/user-auth-context';
 import { todayISO, daysAgoISO } from '../format';
-import type { AnalyticsParams, DomainKey, Kpi } from '../types';
+import type { AnalyticsParams, DomainKey, Kpi } from '../shared/types';
 
 // Which domains each bucket unlocks. Order here = render order of panels.
 const BUCKET_DOMAINS: Record<string, DomainKey[]> = {

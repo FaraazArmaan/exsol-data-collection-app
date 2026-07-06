@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { bookingPublicApi, BookingApiError, type PublicService, type Slot, type CreateResult } from '../api';
+import { bookingPublicApi, BookingApiError, type PublicService, type Slot, type CreateResult } from '../shared/api';
 import { formatRupees, formatTime, formatDateLong, paymentChip } from '../format';
 
 interface Props {

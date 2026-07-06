@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { crmApi, type CustomerDetail, type CrmNote } from '../api';
+import { crmApi, type CustomerDetail, type CrmNote } from '../shared/api';
 import { money, dateTime } from '../format';
 
 export function CustomerDetailPage({ slug, perms }: { slug: string; perms: ReadonlySet<string> }) {

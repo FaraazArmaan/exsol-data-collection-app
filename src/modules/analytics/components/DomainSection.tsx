@@ -1,6 +1,6 @@
 import { DomainPanel } from './DomainPanel';
 import { useAnalytics } from '../hooks/useAnalytics';
-import type { AnalyticsParams, DomainKey } from '../types';
+import type { AnalyticsParams, DomainKey } from '../shared/types';
 
 // One domain's data-fetch + render lifecycle. Each section fetches independently
 // so a slow domain never blocks the others.

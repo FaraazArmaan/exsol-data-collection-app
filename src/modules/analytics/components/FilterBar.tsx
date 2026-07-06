@@ -1,4 +1,4 @@
-import type { AnalyticsParams } from '../types';
+import type { AnalyticsParams } from '../shared/types';
 import { todayISO, daysAgoISO } from '../format';
 
 const PRESETS: Array<{ label: string; days: number }> = [

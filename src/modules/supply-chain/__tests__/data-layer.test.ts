@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { visibleSectionsFor } from '../gating';
 import { formatCents, formatCount } from '../format';
-import { fetchSection } from '../api';
+import { fetchSection } from '../shared/api';
 import { useSupplyChain } from '../hooks/useSupplyChain';
 
 afterEach(() => vi.unstubAllGlobals());

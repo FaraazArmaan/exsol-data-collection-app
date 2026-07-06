@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { DomainResponse, Unit } from './types';
+import type { DomainResponse, Unit } from './shared/types';
 
 // Client-side export of a domain's loaded aggregates (KPIs + each breakdown).
 // Uniform across all five domains — no per-domain server endpoint needed, and it

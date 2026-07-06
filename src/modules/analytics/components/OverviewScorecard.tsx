@@ -1,5 +1,5 @@
 import { KpiTile } from './KpiTile';
-import type { OverviewResponse } from '../types';
+import type { OverviewResponse } from '../shared/types';
 
 // Top strip: one headline KPI per bucket the caller is entitled to. Windowed
 // headlines (revenue/customers) carry a delta vs the comparison window;

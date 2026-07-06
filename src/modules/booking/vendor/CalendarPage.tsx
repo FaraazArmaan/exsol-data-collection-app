@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { bookingApi, type VendorBooking, type VendorResource, type VendorService, type BookingSettings } from '../api';
+import { bookingApi, type VendorBooking, type VendorResource, type VendorService, type BookingSettings } from '../shared/api';
 import { formatTime, isoDatePlus } from '../format';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
 import { ManualBookingDrawer } from './ManualBookingDrawer';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { type PublicService, type Slot, type CreateResult } from '../api';
+import { type PublicService, type Slot, type CreateResult } from '../shared/api';
 import { formatTime, formatDateLong } from '../format';
 import { buildIcs, downloadIcs } from '../ics';
 

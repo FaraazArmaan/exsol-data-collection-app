@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { marketingApi, type Audience } from '../api';
+import { marketingApi, type Audience } from '../shared/api';
 
 export function CampaignComposePage({ slug }: { slug: string; perms: ReadonlySet<string> }) {
   const nav = useNavigate();

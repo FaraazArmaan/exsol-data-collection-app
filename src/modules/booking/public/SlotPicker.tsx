@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { bookingPublicApi, type PublicService, type PublicResource, type Slot } from '../api';
+import { bookingPublicApi, type PublicService, type PublicResource, type Slot } from '../shared/api';
 import { formatRupees, formatTime, isoDatePlus } from '../format';
 
 interface Props {

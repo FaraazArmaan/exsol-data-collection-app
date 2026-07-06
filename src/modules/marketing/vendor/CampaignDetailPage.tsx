@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { marketingApi, type CampaignDetail } from '../api';
+import { marketingApi, type CampaignDetail } from '../shared/api';
 import { dateTime } from '../format';
 
 export function CampaignDetailPage({ slug, perms }: { slug: string; perms: ReadonlySet<string> }) {

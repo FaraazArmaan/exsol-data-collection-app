@@ -1,5 +1,5 @@
 import { useSupplyChain } from '../hooks/useSupplyChain';
-import type { ManufacturingResponse } from '../types';
+import type { ManufacturingResponse } from '../shared/types';
 import { formatCount } from '../format';
 import { Section } from './Section';
 import { KpiTile } from './KpiTile';

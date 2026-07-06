@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { publicApi, PosApiError } from '../api';
+import { publicApi, PosApiError } from '../shared/api';
 import { formatRupees, formatOrderNo } from '../lib/money';
 import { StatusPill } from '../components/StatusPill';
 import type { SaleStatus } from '../lib/fsm';

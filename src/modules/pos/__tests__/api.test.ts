@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { posApi, PosApiError } from '../api';
+import { posApi, PosApiError } from '../shared/api';
 
 describe('posApi', () => {
   beforeEach(() => { vi.restoreAllMocks(); });

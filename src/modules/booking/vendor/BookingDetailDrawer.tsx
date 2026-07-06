@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { bookingApi, type VendorBooking, type BookingAction } from '../api';
+import { bookingApi, type VendorBooking, type BookingAction } from '../shared/api';
 import { formatRupees, formatTime, formatDateLong } from '../format';
 import { BookingStatusPill } from '../components/BookingStatusPill';
 

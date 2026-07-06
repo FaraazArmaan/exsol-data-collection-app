@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { bookingApi, BookingApiError, type VendorService, type VendorResource, type PaymentMode } from '../api';
+import { bookingApi, BookingApiError, type VendorService, type VendorResource, type PaymentMode } from '../shared/api';
 import { formatRupees } from '../format';
 import { ONLINE_PAYMENTS_ENABLED } from '../config';
 import { BookingTabs } from './BookingTabs';

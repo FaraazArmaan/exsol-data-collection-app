@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { publicApi, PosApiError, type PublicMenuResponse } from '../api';
+import { publicApi, PosApiError, type PublicMenuResponse } from '../shared/api';
 import { getOrCreateStorefrontSession } from '../lib/session';
 import MenuPage from './MenuPage';
 import { NotAvailableCard } from './NotAvailableCard';

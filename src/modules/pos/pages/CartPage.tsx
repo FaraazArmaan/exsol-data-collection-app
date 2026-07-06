@@ -4,7 +4,7 @@ import { createCartStore } from '../store/cart';
 import { CartLineRow } from '../components/CartLineRow';
 import { CustomerForm } from '../components/CustomerForm';
 import { ChannelPicker } from '../components/ChannelPicker';
-import { posApi, PosApiError } from '../api';
+import { posApi, PosApiError } from '../shared/api';
 import { formatRupees } from '../lib/money';
 
 export interface CartPageProps {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { crmApi, type CrmCustomer } from '../api';
+import { crmApi, type CrmCustomer } from '../shared/api';
 import { dateOnly } from '../format';
 
 export function CustomersListPage({ slug, perms: _perms }: { slug: string; perms: ReadonlySet<string> }) {

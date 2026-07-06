@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { workforceApi, type StaffResource, type Shift } from '../../api';
+import { workforceApi, type StaffResource, type Shift } from '../../shared/api';
 import '../../workforce.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

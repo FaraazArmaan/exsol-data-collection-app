@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { bookingApi, type VendorService, type VendorResource } from '../api';
+import { bookingApi, type VendorService, type VendorResource } from '../shared/api';
 
 interface Props {
   services: VendorService[]; resources: VendorResource[];

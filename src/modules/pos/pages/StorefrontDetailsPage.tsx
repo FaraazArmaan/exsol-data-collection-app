@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createGuestCartStore } from '../store/cart';
 import { getOrCreateStorefrontSession } from '../lib/session';
-import { publicApi, PosApiError } from '../api';
+import { publicApi, PosApiError } from '../shared/api';
 
 // Customer details + place order. Owns the honeypot (a hidden field bots fill
 // and humans never see) so it lives with the form, not in the shared
