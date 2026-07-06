@@ -1018,3 +1018,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .bp-contact-lines { display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
 .bp-contact-lines a { color: var(--accent, #3b82f6); }
 .bp-footer { padding: 32px 0 8px; text-align: center; font-size: 13px; opacity: 0.55; }
+
+/* Marketing module */
+.mkt-compose { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.mkt-preview { border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; min-height: 160px; background: var(--bg-elevated); color: var(--text-primary); }
+.mkt-count { font-size: 13px; color: var(--text-muted); margin: 6px 0; }
+.mkt-status { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-subtle); }

@@ -25,7 +25,7 @@ interface ComputeArgs {
 // surface lives entirely outside the dashboard rail (catalog = public /catalog/:slug;
 // data-collection = the Product Manager onboarding button + public /onboard/:token) —
 // all must stay OUT of the generic /m/:key rail so no dead ModuleStub link appears.
-const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service', 'portfolio', 'catalog', 'data-collection', 'supply-chain']);
+const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service', 'portfolio', 'catalog', 'data-collection', 'supply-chain', 'marketing']);
 
 // Pure — exported for unit tests.
 export function computeNavItems(args: ComputeArgs): NavModuleItem[] {

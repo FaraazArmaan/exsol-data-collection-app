@@ -65,6 +65,11 @@ export function Sidebar() {
   const crmEnabled = enabledModules.some((m) => m.key === 'crm');
   const showCrm = crmEnabled && (isOwner || permissions['crm.customers.view'] === true);
 
+  // Marketing appears only when the workspace has it enabled AND the caller is
+  // an Owner (all-on) or holds the marketing customers view permission. Mirrors CRM.
+  const marketingEnabled = enabledModules.some((m) => m.key === 'marketing');
+  const showMarketing = marketingEnabled && (isOwner || permissions['marketing.customers.view'] === true);
+
   // Analytics appears when the workspace has it enabled AND the caller is an
   // Owner (all-on) or holds any analytics view permission. Mirrors POS/Booking.
   const analyticsEnabled = enabledModules.some((m) => m.key === 'analytics');
@@ -146,7 +151,7 @@ export function Sidebar() {
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || showPortfolio || showSupplyChain || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showManufacturing || showCrm || showMarketing || showAnalytics || showEmail || showFinance || showProcurement || showWarehouse || showWorkforce || showPortfolio || showSupplyChain || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -166,6 +171,9 @@ export function Sidebar() {
             )}
             {showCrm && (
               <NavLink to={`/c/${slug}/crm`}>CRM</NavLink>
+            )}
+            {showMarketing && (
+              <NavLink to={`/c/${slug}/marketing`}>Marketing</NavLink>
             )}
             {showPos && canViewSales && (
               <NavLink to={`/c/${slug}/pos/sales`}>Orders</NavLink>

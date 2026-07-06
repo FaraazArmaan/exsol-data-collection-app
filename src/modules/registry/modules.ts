@@ -23,6 +23,7 @@ import { catalogManifest } from './manifests/catalog';
 import { dataCollectionManifest } from './manifests/data-collection';
 import { portfolioManifest } from './manifests/portfolio';
 import { supplyChainManifest } from './manifests/supply-chain';
+import { marketingManifest } from './manifests/marketing';
 
 export const moduleRegistry = {
   booking: bookingManifest,
@@ -43,6 +44,7 @@ export const moduleRegistry = {
   catalog: catalogManifest,
   'data-collection': dataCollectionManifest,
   portfolio: portfolioManifest,
+  marketing: marketingManifest,
 } as const satisfies Record<string, ModuleManifest>;
 
 export type RegisteredModuleKey = keyof typeof moduleRegistry;

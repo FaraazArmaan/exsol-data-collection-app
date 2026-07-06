@@ -55,6 +55,7 @@ import {
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
+import { MarketingListMount, MarketingComposeMount, MarketingDetailMount } from '../modules/marketing/MarketingRouteMounts';
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount,
 } from '../modules/workforce/WorkforceRouteMounts';
@@ -156,6 +157,9 @@ export const router = createBrowserRouter([
               { path: 'manufacturing', element: <ManufacturingMount /> },
               { path: 'crm', element: <CrmListMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },
+              { path: 'marketing', element: <MarketingListMount /> },
+              { path: 'marketing/new', element: <MarketingComposeMount /> },
+              { path: 'marketing/:id', element: <MarketingDetailMount /> },
               { path: 'analytics', element: (
                 <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
                   <AnalyticsRouteMount />
