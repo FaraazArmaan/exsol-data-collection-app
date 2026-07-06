@@ -75,4 +75,14 @@ CSS sweep result: **zero** violations of iron rule 9 anywhere (no `--color-*`/`-
 
 ## tsconfig strictness
 
-(See the "strictness" section appended by the A6 sweep, below, if present.)
+Already on: `strict`, `noUncheckedIndexedAccess`. Enabled in this sweep at zero cost (0 new
+errors): `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noImplicitReturns`.
+
+Remaining flags = debt (error counts measured 2026-07-06):
+
+| flag | errors | note |
+|---|---|---|
+| `noUnusedLocals` | 20 | overlaps eslint `no-unused-vars` (warn-level in the lint baseline) |
+| `noUnusedParameters` | 5 | same |
+| `exactOptionalPropertyTypes` | 72 | mostly `prop?: T` assigned `undefined` explicitly; mechanical but wide |
+| `noPropertyAccessFromIndexSignature` | 306 | permission-matrix `permissions[key]` style access everywhere; NOT recommended — the codebase's index-signature access is idiomatic |
