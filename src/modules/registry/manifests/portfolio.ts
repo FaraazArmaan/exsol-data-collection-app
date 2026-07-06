@@ -7,4 +7,8 @@ export const portfolioManifest: ModuleManifest = {
   verbs: ['view', 'edit'],
   vendor_side: true,
   customer_side: true,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/brand-site', label: 'Brand Site', viewKeys: ['portfolio.business.view'], order: 160 },
+  ],
 };

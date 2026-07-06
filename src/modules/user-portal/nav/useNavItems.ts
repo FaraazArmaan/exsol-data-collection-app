@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { getModule } from '@registry/modules';
 import { useUserAuth } from '../user-auth-context';
 import type {
   UserPortalEnabledModule, UserPortalPermissionMatrix,
@@ -18,14 +19,15 @@ interface ComputeArgs {
   permissions: UserPortalPermissionMatrix;
 }
 
-// Modules with a dedicated sidebar entry — Sidebar.tsx renders these directly
-// against their own route (not via /m/:moduleKey ModuleStub), so we keep them
-// out of the generic Modules rail to avoid a duplicate link.
-// Includes both modules that render a dedicated Sidebar link AND modules whose
-// surface lives entirely outside the dashboard rail (catalog = public /catalog/:slug;
-// data-collection = the Product Manager onboarding button + public /onboard/:token) —
-// all must stay OUT of the generic /m/:key rail so no dead ModuleStub link appears.
-const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service', 'portfolio', 'catalog', 'data-collection', 'supply-chain', 'marketing']);
+// Modules whose manifest sets `hasDedicatedNav` are kept out of the generic
+// /m/:moduleKey rail to avoid a duplicate (or dead-stub) link: Sidebar.tsx
+// renders their links from the manifest's `navLinks`, and surface-less modules
+// (catalog = public /catalog/:slug; data-collection = onboarding wizard;
+// project-service = folded into the Workforce link) render nowhere in the rail.
+// The registry manifest is the single source of truth — there is no hand-synced
+// module list here anymore.
+const hasDedicatedNav = (moduleKey: string): boolean =>
+  getModule(moduleKey)?.hasDedicatedNav === true;
 
 // Pure — exported for unit tests.
 export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
@@ -46,7 +48,7 @@ export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
   const visible = (isOwner
     ? [...enabledModules]
     : enabledModules.filter((m) => hasViewOnModule(m.key))
-  ).filter((m) => !MODULES_WITH_DEDICATED_NAV.has(m.key));
+  ).filter((m) => !hasDedicatedNav(m.key));
 
   visible.sort((a, b) => a.label.localeCompare(b.label));
 

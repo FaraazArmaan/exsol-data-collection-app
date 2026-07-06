@@ -10,4 +10,5 @@ export const projectServiceManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
 };

@@ -7,4 +7,8 @@ export const marketingManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/marketing', label: 'Marketing', viewKeys: ['marketing.customers.view'], order: 70 },
+  ],
 };

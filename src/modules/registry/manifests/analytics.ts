@@ -11,4 +11,8 @@ export const analyticsManifest: ModuleManifest = {
   verbs: ['view'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/analytics', label: 'Analytics', viewKeys: ['analytics.business.view', 'analytics.customers.view', 'analytics.employees.view', 'analytics.products.view'], order: 90 },
+  ],
 };

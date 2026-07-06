@@ -14,4 +14,8 @@ export const warehouseManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/warehouse', label: 'Warehouse', viewKeys: ['warehouse.business.view', 'warehouse.products.view'], order: 140 },
+  ],
 };

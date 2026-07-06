@@ -11,4 +11,8 @@ export const procurementManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/procurement', label: 'Procurement', viewKeys: ['procurement.products.view'], order: 130 },
+  ],
 };

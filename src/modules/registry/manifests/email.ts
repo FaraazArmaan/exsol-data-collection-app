@@ -7,4 +7,8 @@ export const emailManifest: ModuleManifest = {
   verbs: ['view'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/email', label: 'Email', viewKeys: ['email.customers.view'], order: 110 },
+  ],
 };

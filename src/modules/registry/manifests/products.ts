@@ -7,4 +7,8 @@ export const productsManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: true,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/products', label: 'Product Manager', viewKeys: ['products.products.view'], order: 10, skipEnableCheck: true },
+  ],
 };

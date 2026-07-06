@@ -10,4 +10,9 @@ export const posManifest: ModuleManifest = {
   verbs: [],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/pos/menu', label: 'POS', viewKeys: ['pos.menu.view', 'pos.history.view'], order: 20 },
+    { path: '/pos/sales', label: 'Orders', viewKeys: ['pos.history.view'], order: 80 },
+  ],
 };

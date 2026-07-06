@@ -7,4 +7,8 @@ export const crmManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/crm', label: 'CRM', viewKeys: ['crm.customers.view'], order: 60 },
+  ],
 };

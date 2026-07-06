@@ -10,4 +10,8 @@ export const manufacturingManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/manufacturing', label: 'Manufacturing', viewKeys: ['manufacturing.products.view'], order: 50 },
+  ],
 };

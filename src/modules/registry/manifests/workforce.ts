@@ -10,4 +10,8 @@ export const workforceManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/workforce', label: 'Workforce', viewKeys: ['workforce.employees.view', 'project-service.business.view'], order: 150 },
+  ],
 };

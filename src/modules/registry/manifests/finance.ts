@@ -12,4 +12,8 @@ export const financeManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/finance', label: 'Finance', viewKeys: ['finance.business.view'], order: 120 },
+  ],
 };

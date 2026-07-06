@@ -42,6 +42,29 @@ export type PermissionKey =
   | `_platform.${PlatformSurface}.${Verb}`
   | `pos.${PosAction}`;
 
+// A dedicated sidebar link rendered by the user-portal Sidebar.tsx. Modules
+// with dedicated nav are excluded from the generic /m/:key Modules rail so the
+// same module never renders twice (see user-portal/nav/useNavItems.ts).
+export interface ModuleNavLink {
+  /** Route under /c/:slug, e.g. '/pos/menu'. */
+  path: string;
+  /** Sidebar link text (may differ from the module label, e.g. 'Product Manager'). */
+  label: string;
+  /**
+   * Non-Owner users see the link iff ANY of these keys is true in their
+   * permission matrix. L1 Owners (level_number === 1 or null) always qualify.
+   */
+  viewKeys: ReadonlyArray<PermissionKey>;
+  /** Sidebar sort index — preserves the historical hardcoded link order. */
+  order: number;
+  /**
+   * Legacy quirk (preserved as-is): the Product Manager link renders without
+   * checking client_enabled_products. Every other link requires the module to
+   * be enabled for the workspace.
+   */
+  skipEnableCheck?: boolean;
+}
+
 export interface ModuleManifest {
   key: ModuleKey;
   label: string;
@@ -49,6 +72,16 @@ export interface ModuleManifest {
   verbs: ReadonlyArray<Verb>;
   vendor_side: boolean;
   customer_side: boolean;
+  /**
+   * True ⇒ the module is kept OUT of the generic /m/:key Modules rail.
+   * Either it renders its own sidebar link(s) via `navLinks`, or its surface
+   * lives entirely outside the dashboard rail (catalog = public /catalog/:slug,
+   * data-collection = onboarding wizard, project-service = folded into the
+   * Workforce link). Modules without this flag appear in the generic rail.
+   */
+  hasDedicatedNav?: boolean;
+  /** Dedicated sidebar links; requires hasDedicatedNav. */
+  navLinks?: ReadonlyArray<ModuleNavLink>;
 }
 
 export type ProductModuleSide = 'vendor' | 'customer' | 'both' | 'none';

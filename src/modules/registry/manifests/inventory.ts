@@ -11,4 +11,8 @@ export const inventoryManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/inventory', label: 'Inventory', viewKeys: ['inventory.products.view'], order: 40 },
+  ],
 };

@@ -11,4 +11,5 @@ export const catalogManifest: ModuleManifest = {
   verbs: ['view'],
   vendor_side: false,
   customer_side: true,
+  hasDedicatedNav: true,
 };

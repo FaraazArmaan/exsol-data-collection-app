@@ -11,4 +11,8 @@ export const supplyChainManifest: ModuleManifest = {
   verbs: ['view'],
   vendor_side: true,
   customer_side: false,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/supply-chain', label: 'Supply Chain', viewKeys: ['supply-chain.products.view'], order: 100 },
+  ],
 };
