@@ -46,7 +46,17 @@ present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 
 `057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
 ## Merged into main + pushed to prod (integrated) ✅
-Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, POS branding-consume, Branding 050.
+Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, **Manufacturing 058**, **Data Collection + Catalog 061**, **Brand Portfolio 062**, POS branding-consume, Branding 050.
+
+- **Data Collection + Catalog 061** (`b2d7a0a`): public `/catalog/:slug` (storefront-minus-cart + contact CTA)
+  + `/onboard/:token` (guest CSV/XLSX import → Product Manager). Migration 061 (onboard_tokens +
+  clients.contact_phone/email). Smoketest passed. Catalog & Data Collection have NO sidebar entry
+  (fix `8dc4d26` kept them out of the generic rail).
+- **Brand Portfolio 062** (`a6ab94e`): public `/site/:slug` (hero + product grid + gallery + booking/
+  contact) + authed editor `/c/:slug/brand-site`. Standalone `brand-portfolio` product (enable per-client).
+  Migration 062 (brand_site_config). Smoketest passed. **Note:** the site's product grid needs
+  `clients.storefront_enabled=true` (uses pub-menu); else it shows a graceful "catalogue coming soon".
+  Enabled it for papa-s-saloon on **dev** during smoke.
 
 - **Manufacturing 058** (`ab5f475`, squash of feat/manufacturing-iso): BOMs + production orders over
   Inventory. Product `manufacturing` (requires products+inventory). Migration `058_manufacturing.sql`
