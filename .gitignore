@@ -12,8 +12,16 @@ coverage/
 .vscode/
 *.tsbuildinfo
 
-# Local agent / scratch state
-.claude/
+# Local agent / scratch state — EXCEPT the committed harness layer
+# (.claude/{settings.json,rules,commands,agents}). Anything else under
+# .claude/ (todos, local state, settings.local.json) stays local.
+# NB: `.claude/*` not `.claude/` — git can't re-include below an ignored dir.
+.claude/*
+!.claude/settings.json
+!.claude/rules/
+!.claude/commands/
+!.claude/agents/
+!.claude/hooks/
 .remember/
 .superpowers/
 
