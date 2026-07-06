@@ -13,22 +13,36 @@ prompts.
 - **Memory index:** deploy traps, migration coordination, revenue attribution.
 
 ## Ground truth as of this handoff
-- **Local `main` HEAD = `d61ba14`** (Procurement 056).
-- **`origin/main` (= prod code) = `02ef6a2`** (Email 052). **Local main is 5 commits AHEAD, unpushed:**
+- **Local `main` HEAD = `2399f58`** (Warehouse nav fix).
+- **`origin/main` (= prod code) = `02ef6a2`** (Email 052). **Local main is 8 commits AHEAD, unpushed:**
   - `e7dc36b`,`bf9db06` — POS branding consume-refactor (FE-only)
   - `91fde77`,`37efc7a` — **Finance 054**
   - `d61ba14` — **Procurement 056**
+  - `3c6e170` — this handoff doc
+  - `dff6f24` — **Warehouse 057** (cherry-picked; 6 registry/Sidebar conflicts resolved keep-both)
+  - `2399f58` — **Warehouse nav-dedup fix** (found via local smoketest — see below)
 - **Working tree clean.** No push yet — batch-deploy rule (accumulate offline-verified commits →
   single push to conserve Netlify credits). Iron rule #7: **this chat commits, the human pushes.**
 
 ### Prod DB vs prod code (intentional skew — verify before promoting)
 Memory records **migrations 050/052/053/054/056 already applied to prod**, but prod *code* is only
 at Email 052. Additive-migration-first pattern (safe: unused columns/tables). Before the next push,
-confirm the 5 unpushed commits' features have their migrations present on prod in order. Migrations
-present locally on main: `…050, 052, 053, 054, 056` (**note the gaps: no 051, no 055**).
+confirm the unpushed commits' features have their migrations present on prod in order. Migrations
+present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 051, no 055**).
+`057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
 ## Merged into local main (integrated) ✅
-Inventory 053, Email 052, **Finance 054**, **Procurement 056**, POS branding-consume, Branding 050.
+Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, POS branding-consume, Branding 050.
+
+- **Warehouse 057** (`dff6f24` + `2399f58`): locations layer over Inventory — locations CRUD,
+  stock-by-location view, atomic transfer (two `type='transfer'` ledger rows, net-zero on
+  `inventory_stock`). Migration `057_warehouse.sql` (additive; `transfer` already in
+  `stock_movement_type`). New funcs: `warehouse-locations` (GET/POST `/api/warehouse/locations`),
+  `warehouse-location` (PATCH/DELETE `/api/warehouse/location/:id`), `warehouse-stock`
+  (GET `/api/warehouse/stock`), `warehouse-transfer` (POST `/api/warehouse/transfer`) + helper
+  `_warehouse-authz.ts`. No new env vars. **Local smoketest PASSED** (papa-s-saloon, Owner):
+  UI renders, transfer golden flow moves stock + writes ledger. Found + fixed a duplicate
+  `/m/warehouse` nav stub (`useNavItems` dedup set missed `warehouse`).
 
 - **Finance 054** (`91fde77` + `37efc7a`): money-legible P&L read-model over `sales` + expenses
   ledger; `incurred_on` returned as `YYYY-MM-DD` (no tz day-shift). Migration `054_finance_expenses.sql`.
@@ -40,7 +54,7 @@ Inventory 053, Email 052, **Finance 054**, **Procurement 056**, POS branding-con
 | Module | Branch @ HEAD | State | Merge notes |
 |---|---|---|---|
 | **CRM 055** | `feat/crm-iso` @ `25e3765` | ~9/13 tasks: migration, list+detail+notes endpoints, FE list page, routes/sidebar done. **Remaining: FE detail page, seed, full-suite verify.** | **Wave-2 GATE.** Migration 055 not on main yet. |
-| **Warehouse 057** | `feat/warehouse-iso` @ `97ef71a` | v1 complete (locations over Inventory), tests green per author. 1 commit. | Ready to review→merge. |
+| ~~Warehouse 057~~ | ~~`feat/warehouse-iso`~~ | **MERGED to local main `dff6f24` + nav fix `2399f58` on 2026-07-06.** | Done — see above. |
 | **Manufacturing 058** | `feat/manufacturing-iso` @ `6271f46` | **Spec + impl-plan + migration 058 only — implementation IN PROGRESS, not done.** | Do NOT merge yet; TDD in flight. |
 | **Analytics** | `feat/analytics-review-iso` @ `24a9a86` | Author's handoff says COMPLETE / prod-live (doc-only commit on branch). | Confirm nothing code-side is stranded on the branch. |
 
