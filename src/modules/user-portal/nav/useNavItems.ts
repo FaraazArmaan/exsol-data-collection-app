@@ -21,7 +21,11 @@ interface ComputeArgs {
 // Modules with a dedicated sidebar entry — Sidebar.tsx renders these directly
 // against their own route (not via /m/:moduleKey ModuleStub), so we keep them
 // out of the generic Modules rail to avoid a duplicate link.
-const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service', 'portfolio']);
+// Includes both modules that render a dedicated Sidebar link AND modules whose
+// surface lives entirely outside the dashboard rail (catalog = public /catalog/:slug;
+// data-collection = the Product Manager onboarding button + public /onboard/:token) —
+// all must stay OUT of the generic /m/:key rail so no dead ModuleStub link appears.
+const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service', 'portfolio', 'catalog', 'data-collection']);
 
 // Pure — exported for unit tests.
 export function computeNavItems(args: ComputeArgs): NavModuleItem[] {
