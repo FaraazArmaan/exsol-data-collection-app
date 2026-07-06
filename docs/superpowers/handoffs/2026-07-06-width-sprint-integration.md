@@ -17,8 +17,15 @@ prompts.
   + Warehouse 057 + POS-branding-consume are now on prod code. Netlify auto-deploy triggered.
   **Prod migration follow-up:** run `npm run migrate` against prod (applies `057` + closes any
   054/056 gap) and probe the new `/api/{warehouse,finance,procurement}/*` endpoints
-  (`restoreSiteDeploy` on any 404). All three modules are gated behind `client_enabled_products`,
+  (`restoreSiteDeploy` on any 404). All modules are gated behind `client_enabled_products`,
   so no live tenant is affected during the migrate-right-after window.
+- **MERGED (not yet pushed) 2026-07-06:** local `main` HEAD = `200304d`, **3 commits ahead of
+  origin**: `cdba0ad` (docs), `2218180` **CRM 055**, `200304d` **Workforce 059**. Both squash-merged
+  from their worktrees, full suite **1220/1220** + typecheck clean, and **local smoketest PASSED**
+  (CRM: list→detail→timeline→add-note; Workforce: staff empty-state, 3 projects w/ FSM, project
+  detail w/ crm_customers FK path — no 500s). Push held pending user go / next batch. Prod migrations
+  `055_crm` + `059_workforce` must be applied to prod before/with that push (dev already has both).
+  Ordering: **055 before 059** (059's `projects.customer_id` FKs `crm_customers`).
 - (Superseded) Local `main` HEAD was `2399f58`; before the push local was 8 commits ahead:
   - `e7dc36b`,`bf9db06` — POS branding consume-refactor (FE-only)
   - `91fde77`,`37efc7a` — **Finance 054**
@@ -37,7 +44,16 @@ present locally on main: `…050, 052, 053, 054, 056, 057` (**note the gaps: no 
 `057_warehouse` is applied to **dev**; apply to **prod** before/with the batch push.
 
 ## Merged into local main (integrated) ✅
-Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, POS branding-consume, Branding 050.
+Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057**, **CRM 055**, **Workforce 059**, POS branding-consume, Branding 050.
+
+- **CRM 055** (`2218180`, squash of feat/crm-iso): read-model over sales+bookings; `crm_customers`
+  + `crm_notes`; endpoints crm-refresh/customers-list/customer-detail/notes/note-detail; FE list +
+  detail (live timeline + notes CRUD). Smoketest: added a note live, timeline shows 7 orders.
+- **Workforce+PSRM 059** (`200304d`, squash of feat/workforce-psrm-iso): two modules
+  (workforce/employees + project-service/business+customers) under `workforce` product
+  (requires saloon-booking). `workforce_shifts`, `projects`, `project_assignments`
+  (`projects.customer_id` → `crm_customers`, so merged AFTER CRM). 7 workforce-* endpoints.
+  Smoketest: projects list + detail render; shift grid degrades to empty-state without booking_resources.
 
 - **Warehouse 057** (`dff6f24` + `2399f58`): locations layer over Inventory — locations CRUD,
   stock-by-location view, atomic transfer (two `type='transfer'` ledger rows, net-zero on
@@ -58,17 +74,19 @@ Inventory 053, Email 052, **Finance 054**, **Procurement 056**, **Warehouse 057*
 ## Built but NOT yet merged to main (worktrees awaiting handoff/merge)
 | Module | Branch @ HEAD | State | Merge notes |
 |---|---|---|---|
-| **CRM 055** | `feat/crm-iso` @ `25e3765` | ~9/13 tasks: migration, list+detail+notes endpoints, FE list page, routes/sidebar done. **Remaining: FE detail page, seed, full-suite verify.** | **Wave-2 GATE.** Migration 055 not on main yet. |
+| ~~CRM 055~~ | ~~`feat/crm-iso`~~ | **MERGED to local main `2218180` on 2026-07-06** (squash, smoketested). | Done — see above. |
 | ~~Warehouse 057~~ | ~~`feat/warehouse-iso`~~ | **MERGED to local main `dff6f24` + nav fix `2399f58` on 2026-07-06.** | Done — see above. |
+| ~~Workforce+PSRM 059~~ | ~~`feat/workforce-psrm-iso`~~ | **MERGED to local main `200304d` on 2026-07-06** (squash, after CRM). | Done — see above. |
 | **Manufacturing 058** | `feat/manufacturing-iso` @ `6271f46` | **Spec + impl-plan + migration 058 only — implementation IN PROGRESS, not done.** | Do NOT merge yet; TDD in flight. |
 | **Analytics** | `feat/analytics-review-iso` @ `24a9a86` | Author's handoff says COMPLETE / prod-live (doc-only commit on branch). | Confirm nothing code-side is stranded on the branch. |
 
-## Wave gates — corrected against `git branch --merged`
-Wave 2 (Procurement 056, Warehouse 057, Manufacturing 058, Workforce+PSRM 059) was gated on
-**Inventory AND CRM merged**. Inventory is merged; **CRM 055 is still worktree-only.** Procurement
-056 already shipped to local main (Inventory dependency satisfied). Workforce 059 (needs CRM's
-`crm_customers` ref) stays blocked until CRM merges. **Merging CRM 055 is the highest-leverage next
-step** — it unblocks Workforce and the Supply Chain dashboard, and closes the prod migration gap at 055.
+## Wave gates
+Wave 2 (Procurement 056, Warehouse 057, Manufacturing 058, Workforce+PSRM 059) gated on Inventory
+AND CRM merged — **both now merged**, so Workforce 059 landed (CRM FK satisfied). Remaining
+worktree work: **Manufacturing 058** (impl in progress — do not merge). Migration gaps on main:
+**051** (Payments — design-only, awaiting keys) and **058** (Manufacturing — not merged); both
+expected. Wave-3 (Catalog Website, Data Collection 061, Marketing 060, Brand Portfolio 062, Supply
+Chain dashboard) not started.
 
 ## Not yet started / design-only
 - **Payments 051** — spec `docs/superpowers/specs/2026-07-01-pos-v2.5-online-payment-design.md`.
