@@ -238,11 +238,19 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   <a href="#module-anatomy">Anatomy of a module</a>
   <a href="#registry">The Registry</a>
   <a href="#api-patterns">API patterns</a>
+  <a href="#new-modules">The first ERP wave (five modules)</a>
+  <a href="#next-wave">The second wave (six modules)</a>
+  <a href="#third-wave">The third wave — width complete</a>
 
   <h4>Operations</h4>
   <a href="#deployment">Deployment</a>
   <a href="#migrations">Database migrations</a>
   <a href="#traps">Operational cliffs</a>
+
+  <h4>Security &amp; portability</h4>
+  <a href="#security">Security model</a>
+  <a href="#device-compat">Device &amp; platform compatibility</a>
+  <a href="#portability">Portability &amp; alternatives</a>
 
   <h4>Reference</h4>
   <a href="#glossary">Glossary</a>
@@ -297,7 +305,8 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     The phrase "data-collection app" in this repo's name reflects history, not present scope.
     The system started as a way to collect product data during client onboarding. It has since grown
     into the platform described here — a full operational suite. The repo name is a historical artifact;
-    the architecture is what's described below.
+    the architecture is what's described below. (Fittingly, a literal Data Collection App has since
+    shipped as one of the seven products — see Chapter 2.)
   </p>
 </section>
 
@@ -307,7 +316,8 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   <h2>The Seven Products</h2>
   <p>
     Seven distinct things ExSol ships to its users — each with its own audience, URL, and reason to exist.
-    They share a single backend.
+    They share a single backend. As of this revision, <strong>all seven are live</strong>: the last three
+    (Data Collection, Catalog, Brand Portfolio) shipped as v1s in one public-surface wave.
   </p>
 
   <div class="product-card">
@@ -317,14 +327,17 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <div class="one-liner">The operator's home base. Where the business runs itself.</div>
       <div class="details">
         Used by Owners and staff of every workspace to manage their entire business: catalog, inventory,
-        orders, customers, finance, HR, marketing, and 7 more modules. Lives at <code>/c/&lt;slug&gt;/...</code>
-        in the browser. Today: 6 modules live (POS, Booking, File Manager, Product Manager, Workspace/AMS,
-        and Analytics — the first read-only cross-module surface); more modules planned. This is also where
-        every other product gets configured — toggling a storefront, adding products to the catalog,
-        setting business hours, granting staff permissions.
+        orders, customers, finance, HR, marketing, and more. Lives at <code>/c/&lt;slug&gt;/...</code>
+        in the browser. Today: 18 of the 19 registered modules are live — POS, Booking, File Manager,
+        Product Manager, Workspace/AMS, Analytics, the first ERP v1 wave (Inventory, Finance, Procurement,
+        Warehouse, plus Email &amp; Notifications), the second wave (CRM, Manufacturing, Workforce +
+        Project Service), and the third wave (Supply Chain, Marketing Automation) — every row of the
+        13-module ERP table is now real software. The one exception: Payments stays a held registry stub.
+        This is also where every other product gets configured — toggling a storefront, adding products
+        to the catalog, setting business hours, granting staff permissions.
       </div>
       <div class="pill-row">
-        <span class="tag tag-green">live (6 modules + 3 ops modules)</span>
+        <span class="tag tag-green">live (18 modules; all 13 ERP rows)</span>
       </div>
     </div>
   </div>
@@ -336,12 +349,14 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <div class="one-liner">A focused mini-app that gets a new client onboarded fast.</div>
       <div class="details">
         When a new business signs up, the slowest part of onboarding is loading their product catalog.
-        We extract the Product Manager module from the Internal App and ship it as a standalone, single-purpose
-        URL that the client (or their assistant) can use to upload products in bulk. Once the catalog is
-        in, the rest of the Internal App is preconfigured around it. This product reuses the same
-        <code>products</code> table as the Internal App — there is no separate data pipeline.
+        This product is a standalone, single-purpose URL for exactly that. An operator generates a
+        <em>single-use, expiring token</em> (migration 061, <code>onboard_tokens</code>); the client opens
+        <code>/onboard/&lt;token&gt;</code> — no login, token possession <em>is</em> the authorization
+        (unknown token → 404, used or expired → 410) — and bulk-loads their products. Everything lands in
+        the same <code>products</code> table as the Internal App — there is no separate data pipeline, so
+        the rest of the workspace is preconfigured around the catalog the moment it's in.
       </div>
-      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+      <div class="pill-row"><span class="tag tag-green">live (v1)</span></div>
     </div>
   </div>
 
@@ -403,11 +418,12 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <div class="details">
         Some businesses want a customer-facing site that displays their products or services but doesn't
         accept orders — interior designers showing portfolios, B2B suppliers showing line cards, restaurants
-        showing menus before opening. Same product catalog as the ecommerce storefront, same browsing UX,
-        but the "Add to cart" button is replaced with a contact or call-back link. Reuses every component
-        of the storefront except the cart and checkout.
+        showing menus before opening. Live at <code>/catalog/&lt;slug&gt;</code> (migration 061): same product
+        catalog as the ecommerce storefront, same browsing UX, served by <code>pub-catalog</code>, but the
+        "Add to cart" button is replaced with a contact link. Reuses the storefront's components minus the
+        cart and checkout — exactly the shared-library promise of Chapter 4, cashed in.
       </div>
-      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+      <div class="pill-row"><span class="tag tag-green">live (v1)</span></div>
     </div>
   </div>
 
@@ -418,14 +434,16 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <div class="one-liner">A bespoke single-brand site, assembled from suite components.</div>
       <div class="details">
         Some clients want a fully-branded website that uses the suite's data and components but doesn't
-        look like a generic SaaS template. Each one is assembled per-client from a kit of components
-        (the same hero, gallery, calendar, contact form, product grid, etc. used across the other products)
-        wired up to that client's data. Custom domain, custom palette, custom layout. The reason to build
-        this in-platform rather than letting clients hire a separate web agency is that the brand site
-        stays in sync with the Internal App — change a product's price in the catalog and it updates on
-        the brand site automatically.
+        look like a generic SaaS template. v1 is live (migration 062): a per-client
+        <code>brand_site_config</code> row holds a <code>sections</code> JSONB (per-section enable flags +
+        copy) and a <code>published</code> flag; the public site renders at <code>/site/&lt;slug&gt;</code>
+        only when published, and owners assemble it in an internal editor at
+        <code>/c/&lt;slug&gt;/brand-site</code>. The reason to build this in-platform rather than letting
+        clients hire a separate web agency is that the brand site stays in sync with the Internal App —
+        change a product's price in the catalog and it updates on the brand site automatically. Custom
+        domains are the follow-up, not the v1.
       </div>
-      <div class="pill-row"><span class="tag tag-amber">planned</span></div>
+      <div class="pill-row"><span class="tag tag-green">live (v1)</span></div>
     </div>
   </div>
 </section>
@@ -456,29 +474,42 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       monthly. That's the gap we're filling.
     </p>
 
-    <div class="label-system">The 13 modules, briefly</div>
+    <div class="label-system">The 13 modules, briefly — 11 live, 2 partial-but-functional: width complete</div>
   </div>
 
   <div class="grid-2">
-    <div class="card"><h4>1. Finance</h4><p style="font-size: 13.5px;">The books. Money in, money out, P&amp;L, accounts receivable / payable, payment ledgers, basic tax filing inputs.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>2. Procurement</h4><p style="font-size: 13.5px;">Buying things. Purchase orders, supplier catalog, RFQs (requests for quotes), goods-received notes.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>3. Manufacturing</h4><p style="font-size: 13.5px;">Making things. BOMs (bills of material: what goes into a finished product), work orders, production runs.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>4. Inventory Management</h4><p style="font-size: 13.5px;">What we have. Stock levels per warehouse, internal transfers, reorder points so we don't run out.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>1. Finance</h4><p style="font-size: 13.5px;">The books. Money in, money out, P&amp;L, accounts receivable / payable, payment ledgers, basic tax filing inputs. Today: v1 live — an expenses ledger plus a monthly P&amp;L computed live over sales, bookings, and expenses.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>2. Procurement</h4><p style="font-size: 13.5px;">Buying things. Purchase orders, supplier catalog, RFQs (requests for quotes), goods-received notes. Today: v1 live — suppliers + a purchase-order state machine whose <em>receive</em> step puts stock into Inventory.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>3. Manufacturing</h4><p style="font-size: 13.5px;">Making things. BOMs (bills of material: what goes into a finished product), work orders, production runs. Today: v1 live — BOMs + a production-order state machine; completing an order consumes components and produces finished goods through the Inventory movements ledger.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>4. Inventory Management</h4><p style="font-size: 13.5px;">What we have. Stock levels, internal transfers, reorder points so we don't run out. Today: v1 live — stock per product + an append-only movements ledger; a fulfilled POS sale decrements stock automatically.</p><span class="tag tag-green">live (v1)</span></div>
     <div class="card"><h4>5. Order Management</h4><p style="font-size: 13.5px;">What customers asked for. Order intake from every channel (in-store, online, phone), fulfillment, returns. Today: the POS <code>sales</code> table is the partial implementation; live for the two POS channels.</p><span class="tag tag-green">partial</span></div>
-    <div class="card"><h4>6. Warehouse Management</h4><p style="font-size: 13.5px;">Moving physical stuff. Pick lists, put-away routes, bin and lot tracking — for businesses with a real warehouse.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>7. Supply Chain Management</h4><p style="font-size: 13.5px;">The connection. Procurement → manufacturing → inventory → orders — this module is the cross-module dashboard, not a new data store.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>8. Customer Relationship Management (CRM)</h4><p style="font-size: 13.5px;">Who we sell to. Contacts, leads, opportunities, communication history. Today: the <code>user_nodes</code> table is the seed; bookings auto-create customer nodes by phone+email, which is the start of a real CRM.</p><span class="tag tag-green">partial</span></div>
-    <div class="card"><h4>9. Project Service Resource Management</h4><p style="font-size: 13.5px;">For services businesses with projects. Track jobs, billable hours, resource allocation. Booking's named-resource primitive (Stylist A, Chair 2) is the foundation this will extend.</p><span class="tag tag-amber">planned</span></div>
-    <div class="card"><h4>10. Workforce Management</h4><p style="font-size: 13.5px;">Scheduling staff. Shifts, timesheets, attendance, leave. The booking calendar's resource-availability machinery is reused here.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>6. Warehouse Management</h4><p style="font-size: 13.5px;">Moving physical stuff. Pick lists, put-away routes, bin and lot tracking — for businesses with a real warehouse. Today: v1 live — named locations, per-location stock, and transfers between locations.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>7. Supply Chain Management</h4><p style="font-size: 13.5px;">The connection. Procurement → manufacturing → inventory → orders — this module is the cross-module dashboard, not a new data store. Today: v1 live — three read-only endpoints project open purchase orders, in-progress production, low stock, and 30-day movement volume out of tables that already exist. Zero new tables, zero migration.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>8. Customer Relationship Management (CRM)</h4><p style="font-size: 13.5px;">Who we sell to. Contacts, leads, opportunities, communication history. Today: v1 live — a unified customer read-model (<code>crm_customers</code>, deduped from sales + bookings) with staff notes and an activity timeline. Leads and opportunities are the follow-up.</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>9. Project Service Resource Management</h4><p style="font-size: 13.5px;">For services businesses with projects. Track jobs, billable hours, resource allocation. Today: v1 live — projects (quoted → active → done) linked to CRM customers, with booking-resource assignments; shipped together with Workforce (059).</p><span class="tag tag-green">live (v1)</span></div>
+    <div class="card"><h4>10. Workforce Management</h4><p style="font-size: 13.5px;">Scheduling staff. Shifts, timesheets, attendance, leave. Today: v1 live — weekly shifts laid over the booking calendar's named resources, optionally tied to team members — plus the platform's first <em>depth</em> slice: timesheet entries (migration 107), logging and approving billable time against the same resources. Attendance and leave are the follow-up.</p><span class="tag tag-green">live (v1 + depth)</span></div>
     <div class="card"><h4>11. Human Resources Management</h4><p style="font-size: 13.5px;">People. Roles, salary bands, payroll inputs, leave balances, performance notes. Today: the access-levels matrix + roles tables are the foundation, currently used for permissions.</p><span class="tag tag-green">partial</span></div>
     <div class="card"><h4>12. Ecommerce</h4><p style="font-size: 13.5px;">The internal half of the customer storefront. Product visibility flags, channel routing, payment-on-pickup configuration, marketing campaign integration. Powers <code>/menu/&lt;slug&gt;</code>. Today: live.</p><span class="tag tag-green">live</span></div>
-    <div class="card"><h4>13. Marketing Automation</h4><p style="font-size: 13.5px;">Reaching customers. Email + SMS campaigns, drip flows triggered by behavior (cart abandoned, no booking in 60 days), audience segmentation, basic analytics.</p><span class="tag tag-amber">planned</span></div>
+    <div class="card"><h4>13. Marketing Automation</h4><p style="font-size: 13.5px;">Reaching customers. Today: v1 live (migration 060) — email campaigns composed over the CRM read-model, with audience selection (everyone / active in the last 30 days), sent through the transactional mailer seam, and every recipient recorded in <code>campaign_sends</code>. Drip flows, SMS, and finer segmentation are the depth follow-up.</p><span class="tag tag-green">live (v1)</span></div>
+  </div>
+
+  <div class="callout green">
+    <div class="label">Width complete — the depth phase has begun</div>
+    <p>
+      Every row of the table above is now enable-able software: 11 modules at v1 or better, and 2 whose
+      "partial" is deliberate reuse rather than absence — Order Management runs on the POS
+      <code>sales</code> table, HR on the AMS roles + access-levels foundation. With the grid full, the
+      build strategy inverts: instead of adding modules, each module gains <em>depth slices</em>. The
+      first is already live — Workforce Timesheets (migration 107) — and the migration numbering itself
+      changed to match the new phase (see the migrations chapter). Payments remains the one held design:
+      spec ready, number 051 reserved, waiting on Razorpay keys.
+    </p>
   </div>
 
   <div class="callout">
-    <div class="label">Four non-ERP modules also live in the Internal App</div>
+    <div class="label">Five non-ERP modules also live in the Internal App</div>
     <p>
-      Not every Module in the Internal App is an ERP module. Four of today's live modules are operational
+      Not every Module in the Internal App is an ERP module. Five of today's live modules are operational
       or cross-cutting rather than a single business-function:
     </p>
     <ul class="clean">
@@ -486,6 +517,7 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       <li><strong>Booking</strong> — the calendar + customer widget; will eventually fold into Workforce + CRM.</li>
       <li><strong>File Manager</strong> — a document vault with storage quotas; supports every other module by holding their files.</li>
       <li><strong>Analytics</strong> — the first <em>read-only, cross-module</em> surface. It owns no data; it aggregates from the others (sales, bookings, products) into KPIs and charts, subtree-scoped so a manager sees only their branch's numbers. As more ERP modules land, Analytics grows a panel per domain rather than a new module each time.</li>
+      <li><strong>Email &amp; Notifications</strong> — the transactional mailer seam + <code>email_outbox</code> table. Booking confirmations, storefront receipts, and now Marketing campaigns all send through it — Marketing Automation (#13) became its biggest customer exactly as planned. Detailed in the module-wave chapters (17–19).</li>
     </ul>
     <p>They share the same auth, tenant, and permission infrastructure as the 13 ERP modules.</p>
   </div>
@@ -541,10 +573,18 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   <p style="margin-top: 24px;">
     The challenge is keeping the "shared library" abstraction honest: when a sibling chat builds a new product,
     they have to resist the temptation to copy-paste an existing component and "just tweak it a little." The
-    discipline is to extract the difference as a prop, not fork the component. Today's session preserved
-    this for the most part — the <code>SideCartPanel</code>'s "merge-safe" refactor is exactly that: its
-    qty controls became optional props so the same panel works for the staff POS (with steppers) and the
-    guest storefront (without).
+    discipline is to extract the difference as a prop, not fork the component. The <code>SideCartPanel</code>'s
+    "merge-safe" refactor is exactly that: its qty controls became optional props so the same panel works for
+    the staff POS (with steppers) and the guest storefront (without).
+  </p>
+  <p>
+    The discipline also runs in reverse: when a fork slips through, it gets consolidated. The guest
+    storefront originally shipped with its own module-local <code>StorefrontShell</code> for branding.
+    Once the platform-wide <code>BrandShell</code> (+ <code>useBrand</code>) landed in the branding module,
+    the storefront was refactored to nest all four of its steps under a single <code>StorefrontLayout</code>
+    that renders the shared shell — the brand is fetched once per guest visit — and the local fork was
+    deleted. One branding implementation now skins the workspace portal, the admin preview, and the
+    public storefront.
   </p>
 </section>
 
@@ -582,33 +622,38 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     <tbody>
       <tr>
         <td class="cell-mono">src/</td>
-        <td>The React 18 + Vite + TypeScript single-page app — 253 files. Routing via <code>react-router-dom</code> v7, Zustand for the one piece of cross-page state (the POS cart), Zod for validation at the boundaries.</td>
+        <td>The React 18 + Vite + TypeScript single-page app — 385 files. Routing via <code>react-router-dom</code> v7, Zustand for the one piece of cross-page state (the POS cart), Zod for validation at the boundaries. Since the conformance pass, every module keeps its <code>api</code>/<code>types</code>/<code>permissions</code> in a <code>shared/</code> subfolder — one shape, nineteen times.</td>
         <td>What does the user see? (the frontend of all seven products)</td>
       </tr>
       <tr>
         <td class="cell-mono">netlify/functions/</td>
-        <td>The entire backend: ~94 flat Netlify Functions v2 endpoints, plus <code>_shared/</code> server helpers — db, session, permissions, audit, exporters.</td>
+        <td>The entire backend: 138 flat Netlify Functions v2 endpoints (+28 module-scoped <code>_*.ts</code> helpers), plus <code>_shared/</code> server helpers — db, session, permissions, audit, mailer, exporters. Registry imports use the <code>@registry/*</code> path alias rather than <code>../../../src</code> deep-relative paths.</td>
         <td>What can the system do?</td>
       </tr>
       <tr>
         <td class="cell-mono">db/migrations/</td>
-        <td>Forward-only numbered SQL files, <code>001</code> through <code>050</code>. The schema's complete, replayable history.</td>
+        <td>Forward-only numbered SQL files — 61 of them: <code>001</code> through <code>062</code> plus <code>107</code>. The schema's complete, replayable history. Numbers are allocated centrally so branches never collide; 051 (Payments) stays reserved, and the jump to 107 is the depth phase's per-module range allocation, explained in the migrations chapter.</td>
         <td>What shape is the data, and how did it get that way?</td>
       </tr>
       <tr>
         <td class="cell-mono">scripts/</td>
-        <td>Operator tooling: the <code>migrate.ts</code> runner and <code>bootstrap-admin.ts</code>.</td>
+        <td>Operator tooling: the <code>migrate.ts</code> runner, <code>bootstrap-admin.ts</code>, and <code>generate-reference.ts</code> — which derives the reference docs below from the code.</td>
         <td>How does an operator run it?</td>
       </tr>
       <tr>
         <td class="cell-mono">tests/</td>
-        <td>153 test files, grouped by kind and module: <code>integration/</code>, <code>unit/</code>, <code>pos/</code>, <code>booking/</code>, <code>analytics/</code>, <code>fixtures/</code>, <code>helpers/</code>.</td>
+        <td>211 test files (plus 19 co-located in <code>src/</code>), grouped by kind and module: <code>integration/</code>, <code>unit/</code>, then one folder per module from <code>pos/</code> and <code>booking/</code> through <code>marketing/</code> and <code>supply-chain/</code>, with shared <code>fixtures/</code> and <code>helpers/</code>.</td>
         <td>How do we know it works?</td>
       </tr>
       <tr>
         <td class="cell-mono">docs/</td>
-        <td>These architecture documents plus ADRs (architecture decision records).</td>
-        <td>Why is it the way it is?</td>
+        <td>These architecture documents, ADRs (architecture decision records), and <code>docs/reference/</code> — the <em>generated</em> inventories of endpoints, permissions, and schema, plus the module-conformance matrix (see the third-wave chapter).</td>
+        <td>Why is it the way it is — and what exactly exists right now?</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">.claude/ · CONTRIBUTING.md</td>
+        <td>The committed agent-harness layer: <code>rules/</code> (API conventions, migrations, the module pattern, testing), <code>commands/</code> (new-module, hostile-review, handoff), <code>agents/</code> (conformance-auditor, hostile-reviewer), and a hook that blocks <code>git push</code> so releases stay human-only. CONTRIBUTING.md states the same conventions for human readers.</td>
+        <td>How do we keep many parallel builders consistent?</td>
       </tr>
       <tr>
         <td class="cell-mono">netlify.toml</td>
@@ -649,7 +694,10 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
 │     google-signin.ts · theme.css · components.css
 └── modules/               <span class="com">one folder per product / module — the heart of the structure</span>
       registry/  ams/  user-portal/  pos/  booking/  analytics/
-      products/  files/  branding/  login/  shared/</code></pre>
+      products/  inventory/  finance/  procurement/  warehouse/
+      manufacturing/  crm/  workforce/  supply-chain/  marketing/
+      data-collection/  catalog/  portfolio/  email/  files/
+      branding/  login/  shared/</code></pre>
 
   <p>Inside <code>src/modules/</code>, each folder is one product or one platform surface:</p>
 
@@ -685,12 +733,64 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
         <td>The Product Manager: <code>admin/</code> and <code>workspace/</code> page sets, <code>shared/</code> (scope, permissions, api, types).</td>
       </tr>
       <tr>
+        <td class="cell-mono">inventory/</td>
+        <td>Inventory v1: stock list with reorder highlighting, adjust modal, movements timeline — the UI over the <code>stock_movements</code> ledger.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">finance/</td>
+        <td>Finance v1: monthly P&amp;L summary page + expenses ledger with category filters.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">procurement/</td>
+        <td>Procurement v1: suppliers CRUD + purchase-order pages with the draft → ordered → received state machine.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">warehouse/</td>
+        <td>Warehouse v1: locations, per-location stock grid, and the transfer modal — layered over Inventory.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">manufacturing/</td>
+        <td>Manufacturing v1: the BOM builder modal, production-order creation, and the order board driving the planned → in_progress → done state machine.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">crm/</td>
+        <td>CRM v1: customer list + detail pages (activity timeline, notes) and the pure <code>merge</code>/<code>refresh</code> libs that project <code>sales</code> + <code>bookings</code> into <code>crm_customers</code>.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">workforce/</td>
+        <td>Workforce + Project Service v1: the weekly shift grid over booking resources, projects and project-detail pages with resource assignments — and the timesheets pages of the first depth slice (log + approve billable time).</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">supply-chain/</td>
+        <td>The Supply Chain dashboard: a read-projection over purchase orders, production orders, and the stock ledger — the Analytics pattern applied to the procurement → manufacturing → inventory chain. No tables of its own.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">marketing/</td>
+        <td>Marketing Automation v1: campaign compose / list / detail pages over <code>crm_customers</code>, sending through the mailer seam and recording every recipient in <code>campaign_sends</code>.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">data-collection/</td>
+        <td>The public onboarding flow: <code>OnboardPage</code> at <code>/onboard/:token</code> (no login) and the internal <code>OnboardingLinkButton</code> that mints tokens.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">catalog/</td>
+        <td>The public catalog site: <code>CatalogPage</code> at <code>/catalog/:slug</code> — storefront browsing components, no cart.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">portfolio/</td>
+        <td>Brand Portfolio Sites: the public <code>BrandPortfolioPage</code> at <code>/site/:slug</code> plus the internal section editor over <code>brand_site_config</code>.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">email/</td>
+        <td>Email &amp; Notifications: the outbox viewer for the transactional mailer seam.</td>
+      </tr>
+      <tr>
         <td class="cell-mono">files/</td>
         <td>The File Manager: FileGrid, UploadModal, QuotaMeter.</td>
       </tr>
       <tr>
         <td class="cell-mono">branding/</td>
-        <td>Platform branding: BrandShell, BrandingForm, useBrand, brand-fonts.</td>
+        <td>Platform branding: BrandShell, BrandingForm, useBrand, brand-fonts — consumed by the workspace portal, the admin preview, and (via the POS <code>StorefrontLayout</code>) the public guest storefront.</td>
       </tr>
       <tr>
         <td class="cell-mono">login/ · shared/</td>
@@ -713,7 +813,7 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   <div class="callout green">
     <div class="label">Principle 4 — let the platform's constraints shape the backend layout</div>
     <p>
-      <code>netlify/functions/</code> is deliberately <strong>flat</strong>: ~94 endpoint files side by side,
+      <code>netlify/functions/</code> is deliberately <strong>flat</strong>: 138 endpoint files side by side,
       named <code>&lt;module&gt;-&lt;action&gt;.ts</code>. Netlify's discovery rule is "each top-level file is
       one function; a subdirectory is treated as ONE function" — so nesting endpoints in folders silently
       breaks routing. Rather than fight the platform, the convention embraces it: the module prefix in the
@@ -746,7 +846,7 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     <div class="label-human">The idea of a load-bearing file</div>
     <p>
       In a building, most walls just divide rooms; a few carry the structure. Codebases are the same.
-      Of the 253 frontend files and ~94 backend functions, most are leaf code — a page here, an endpoint
+      Of the 385 frontend files and 138 backend functions, most are leaf code — a page here, an endpoint
       there — that could be rewritten without anything else noticing. A small set of files, though, is
       load-bearing: every route, every request, every permission check passes through them. Know these
       twenty and you know the system.
@@ -781,8 +881,8 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       </tr>
       <tr>
         <td class="cell-mono">src/modules/registry/types.ts</td>
-        <td>The source-of-truth type system: <code>DataBucket</code>, <code>Verb</code>, the <code>PermissionKey</code> union (<code>&lt;module&gt;.&lt;bucket&gt;.&lt;verb&gt;</code> | <code>_platform.&lt;surface&gt;.&lt;verb&gt;</code> | legacy <code>pos.&lt;action&gt;</code>), <code>ModuleManifest</code>, <code>ProductManifest</code>.</td>
-        <td>Imported by BOTH the frontend registry and the backend's <code>permission-keys.ts</code> — the one file that crosses the <code>src</code> ↔ <code>netlify</code> boundary, so both realms share a single truth.</td>
+        <td>The source-of-truth type system: <code>DataBucket</code>, <code>Verb</code>, the <code>PermissionKey</code> union (<code>&lt;module&gt;.&lt;bucket&gt;.&lt;verb&gt;</code> | <code>_platform.&lt;surface&gt;.&lt;verb&gt;</code> | legacy <code>pos.&lt;action&gt;</code>), <code>ModuleManifest</code> — including its nav declaration (<code>hasDedicatedNav</code>, <code>navLinks</code>) — and <code>ProductManifest</code>.</td>
+        <td>Imported by BOTH the frontend registry and the backend's <code>permission-keys.ts</code> — the registry is the one place that crosses the <code>src</code> ↔ <code>netlify</code> boundary. Since the cleanup wave, functions cross it through the <code>@registry/*</code> path alias (declared in tsconfig and the Vite config) instead of fragile <code>../../../src</code> relative paths — the boundary is now explicit and greppable.</td>
       </tr>
       <tr>
         <td class="cell-mono">src/modules/registry/modules.ts</td>
@@ -838,9 +938,9 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
         <td>THE data source for frontend authz state — <code>user-auth-context</code> calls it once on mount.</td>
       </tr>
       <tr>
-        <td class="cell-mono">_pos-authz.ts (+ _booking-authz.ts, _analytics-authz.ts, _pub-authz.ts)</td>
-        <td>Per-product gates: the enable-gate first (<code>client_enabled_products</code>, else 412), then the permission check with the L1 Owner bypass.</td>
-        <td>Wraps <code>permissions.ts</code> for each product's endpoints.</td>
+        <td class="cell-mono">_pos-authz.ts (+ _booking, _analytics, _pub, _inventory, _email, _finance, _procurement, _warehouse, _crm, _manufacturing, _workforce, _data-collection, _portfolio, _marketing, _supply-chain)</td>
+        <td>Per-product gates — now sixteen of them, deliberately identical in shape: the enable-gate first (<code>client_enabled_products</code>, else 412), then the permission check with the L1 Owner bypass. One honestly-tracked exception (CONFORMANCE.md): the two read-only dashboards, <code>_analytics</code> and <code>_supply-chain</code>, still skip the 412 enable-gate — their permission checks hold, but a disabled-module workspace isn't told 412.</td>
+        <td>Wraps <code>permissions.ts</code> for each product's endpoints. All three module waves copied the pattern verbatim — the uniformity is the point.</td>
       </tr>
       <tr>
         <td class="cell-mono">client-levels-permissions.ts</td>
@@ -861,8 +961,8 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     <tbody>
       <tr>
         <td class="cell-mono">user-portal/layout/Sidebar.tsx + nav/useNavItems.ts</td>
-        <td>Nav gating from <code>enabledModules</code> + permission keys (L1 all-on); a generic "Modules" rail covers modules without dedicated nav.</td>
-        <td>Uses the same <code>u-me</code> data as the route guards, so nav and guards always agree.</td>
+        <td>Nav gating from <code>enabledModules</code> + permission keys (L1 all-on). Fully registry-driven since the cleanup wave: one loop over the manifests renders each module's declared <code>navLinks</code>; modules without <code>hasDedicatedNav</code> fall into a generic "Modules" rail. The 15 hand-written per-module gates this replaced are gone (the third-wave chapter tells the decision→debt→payoff story).</td>
+        <td>Uses the same <code>u-me</code> data as the route guards, so nav and guards always agree — and the same manifests as everything else, so nav can't drift from the registry either.</td>
       </tr>
       <tr>
         <td class="cell-mono">modules/*/[Pos|Booking|Analytics]RouteMounts.tsx</td>
@@ -874,10 +974,38 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
         <td>The catalog tile and cart panel shared across the staff POS and the guest storefront.</td>
         <td>The living example of "extract the difference as a prop, not fork the component" (Chapter 4).</td>
       </tr>
+      <tr>
+        <td class="cell-mono">pos/pages/StorefrontLayout.tsx → branding/BrandShell.tsx + useBrand</td>
+        <td>Nests all four guest-storefront steps under one layout rendering the shared <code>BrandShell</code>; the brand is fetched once per visit. Replaced (and deleted) the module-local <code>StorefrontShell</code>.</td>
+        <td>One branding implementation skins the workspace portal, the admin preview, and the public storefront (Chapter 4's consolidation story).</td>
+      </tr>
     </tbody>
   </table>
 
-  <h4 style="margin-top: 36px;">Group 4 — Operations &amp; export</h4>
+  <h4 style="margin-top: 36px;">Group 4 — Cross-module write seams</h4>
+  <div class="callout teal">
+    <div class="label">Group principle — one write pattern, many sources</div>
+    When several modules must affect one fact — stock on hand, mail leaving the system — give that fact a
+    single append-only ledger and make every module write through the same pattern. Readers then trust one
+    table instead of reconciling N side-effects scattered across modules.
+  </div>
+  <table>
+    <thead><tr><th>File / table</th><th>Single responsibility</th><th>Connections</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono">_shared/mailer.ts (+ resend.ts, email-templates.ts)</td>
+        <td>The transactional-email seam: <code>sendMail()</code> records an <code>email_outbox</code> row first, then delivers through the provider adapter, then reconciles the row to <code>sent</code> / <code>logged</code> / <code>failed</code>. It never throws — an email problem can never break the booking or sale it announces.</td>
+        <td>Called from booking-manual-create, booking-public-create, and pub-sale-create. With no <code>RESEND_API_KEY</code> set, delivery is skipped and the row is recorded as <code>logged</code> — dev and demo environments run without a provider account.</td>
+      </tr>
+      <tr>
+        <td class="cell-mono">stock_movements (migration 053) + inventory_stock</td>
+        <td>The stock ledger: append-only rows typed <code>sale · purchase · adjustment · production · transfer</code> (a Postgres enum — an unknown type simply can't be written), each inserted in the same transaction as the matching <code>inventory_stock</code> update.</td>
+        <td>Written today by POS fulfilment (sale), Inventory adjust (adjustment), Procurement receive (purchase), Warehouse transfer (transfer), and Manufacturing order-completion (production) — the fifth writer landed with migration 058, so every movement type is now real. One ledger, many sources — by design.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 36px;">Group 5 — Operations &amp; export</h4>
   <table>
     <thead><tr><th>File</th><th>Single responsibility</th><th>Connections</th></tr></thead>
     <tbody>
@@ -1296,9 +1424,10 @@ pos.history.viewAll</code></pre>
   <div class="layered">
     <div class="label-human">A short orientation</div>
     <p>
-      The database is one PostgreSQL instance with about 40 tables. Every table either belongs to a
-      workspace (via <code>client_id</code>) or is platform-level (the <code>admins</code> table is the
-      only one). Conceptually, the tables form a tree: <code>clients</code> is the root, and most other
+      The database is one PostgreSQL instance with 29 tables (the exact, always-current list lives in the
+      generated <code>docs/reference/schema.md</code>). Every table either belongs to a workspace (via
+      <code>client_id</code>) or is platform-level (the <code>admins</code> table is the only one).
+      Conceptually, the tables form a tree: <code>clients</code> is the root, and most other
       tables hang off it.
     </p>
 
@@ -1354,12 +1483,41 @@ pos.history.viewAll</code></pre>
   </div>
 
   <div class="card">
+    <h4>Stock (Inventory + Warehouse)</h4>
+    <ul class="clean">
+      <li><code>inventory_stock</code> — one row per (workspace, product): qty_on_hand, reorder_level. The cached rollup; never negative (CHECK-enforced).</li>
+      <li><code>stock_movements</code> — the append-only ledger. qty_delta, a typed reason (<code>sale / purchase / adjustment / production / transfer</code>, a Postgres enum), a free-text ref (<code>sale:&lt;id&gt;</code>, <code>po:&lt;id&gt;</code>), and who did it. No update trigger, no UPDATE anywhere in code.</li>
+      <li><code>warehouse_locations</code> — named places stock can sit (warehouse / store / storage / other), unique per workspace.</li>
+      <li><code>stock_by_location</code> — the per-location breakdown, layered over <code>inventory_stock</code>; a transfer moves qty between locations without changing the product's total on hand.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Buying &amp; the books (Procurement + Finance)</h4>
+    <ul class="clean">
+      <li><code>suppliers</code> — who we buy from; soft-deleted (<code>deleted_at</code>) so old purchase orders keep their supplier.</li>
+      <li><code>purchase_orders</code> + <code>purchase_order_items</code> — header with a 4-state FSM (draft / ordered / received / cancelled) + snapshot lines (qty, unit_cost_cents).</li>
+      <li><code>finance_expenses</code> — the expenses ledger: a constrained category set, amount_cents ≥ 0, incurred_on DATE. Deliberately expenses-only — revenue is read live from <code>sales</code> and <code>bookings</code>, never copied.</li>
+      <li><code>email_outbox</code> — one row per send attempt: template, payload, rendered body, and a status (<code>pending / sent / logged / failed</code>). The record of every email the platform tried to send.</li>
+    </ul>
+  </div>
+
+  <div class="card">
     <h4>Files</h4>
     <ul class="clean">
       <li><code>files</code> — uploaded documents (PDFs, photos, videos). Per-client storage path in Netlify Blobs.</li>
       <li><code>file_categories</code> — finance/HR/legal/etc. taxonomy.</li>
       <li><code>file_audience</code> — who can see this file (role / node / user grants).</li>
       <li><code>workspace_storage_quotas</code> — per-client byte limit + current usage cache.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Campaigns &amp; time (Marketing + Workforce depth)</h4>
+    <ul class="clean">
+      <li><code>marketing_campaigns</code> — one row per campaign: subject, body, audience (<code>all</code> / <code>recent_30d</code>), status (draft → sent). The audience is a query over <code>crm_customers</code>, resolved at send time.</li>
+      <li><code>campaign_sends</code> — one row per recipient per campaign; the campaign-side ledger that pairs with <code>email_outbox</code>'s delivery record.</li>
+      <li><code>timesheet_entries</code> (107) — billable time logged by a user against a booking resource, with an approval workflow (<code>approved_by</code>, <code>approved_at</code>). The first depth-phase table.</li>
     </ul>
   </div>
 
@@ -1377,6 +1535,8 @@ pos.history.viewAll</code></pre>
       <li><strong>customer_name and customer_phone as plain text on sales.</strong> No foreign key to a customer table. Why: guest sales would otherwise force every guest to create a record. Future CRM integration can match-or-link these post-hoc.</li>
       <li><strong>tstzrange + GIST exclusion on bookings.</strong> Concurrent requests for the same slot can't both succeed because the database itself enforces the no-overlap rule. The application doesn't need to "lock" anything.</li>
       <li><strong>JSONB for permission matrices.</strong> Permissions vary in shape per module; a rigid relational model would be painful. JSONB gives flexibility at the cost of slightly more complex queries.</li>
+      <li><strong>Stock truth is a ledger, not a number.</strong> <code>stock_movements</code> is append-only; <code>inventory_stock.qty_on_hand</code> is the rollup, updated in the same transaction as each movement. You can always answer "why is the count 7?" by reading the movements.</li>
+      <li><strong>DATE columns are serialized as text.</strong> The Neon driver turns a bare Postgres <code>date</code> into a JS Date at local midnight, which can shift a day when serialized as UTC. Finance returns <code>incurred_on</code> via <code>to_char(incurred_on, 'YYYY-MM-DD')</code> instead — a one-line fix that took a real bug to learn.</li>
     </ul>
   </div>
 </section>
@@ -1397,8 +1557,8 @@ pos.history.viewAll</code></pre>
     </p>
     <p>
       A <strong>finite state machine</strong> (FSM) is the formal name for "a set of states + the rules
-      about which transitions are legal." We use FSMs for sales (5 states), bookings (6 states), and
-      most operational records.
+      about which transitions are legal." We use FSMs for sales (5 states), bookings (6 states),
+      purchase orders (4 states: draft / ordered / received / cancelled), and most operational records.
     </p>
 
     <div class="label-system">The POS sale FSM</div>
@@ -1543,8 +1703,12 @@ fulfilled → refunded         (action: refund)
   </table>
 
   <p>
-    The Booking module, the most recently shipped, has 12 backend functions, ~30 frontend files, 64 tests,
-    and a 460-line CSS file. The whole shape can be inspected at <code>src/modules/booking/</code>.
+    The Booking module, the largest instance of the pattern, has 12 backend functions, ~30 frontend files,
+    64 tests, and a 460-line CSS file — inspect it at <code>src/modules/booking/</code>. The pattern has
+    since been instantiated five more times in one wave (Inventory, Email, Finance, Procurement, Warehouse —
+    Chapter 17), each by a different parallel session, which is the strongest evidence the anatomy is
+    teachable rather than tribal knowledge — and then six more times in a second wave (CRM, Manufacturing,
+    Workforce + Project Service, Data Collection, Catalog, Brand Portfolio — Chapter 18).
   </p>
 </section>
 
@@ -1572,20 +1736,55 @@ fulfilled → refunded         (action: refund)
     sidebar (to show which links to render).
   </p>
 
-  <pre><code><span class="com">// src/modules/registry/modules.ts</span>
+  <pre><code><span class="com">// src/modules/registry/modules.ts — 19 modules registered</span>
 <span class="kw">export const</span> moduleRegistry = {
   booking: bookingManifest,
-  payments: paymentsManifest,
+  payments: paymentsManifest,    <span class="com">// manifest exists; no product yet (held)</span>
   products: productsManifest,
   pos: posManifest,
+  analytics: analyticsManifest,
+  inventory: inventoryManifest,
+  email: emailManifest,
+  finance: financeManifest,
+  manufacturing: manufacturingManifest,
+  procurement: procurementManifest,
+  warehouse: warehouseManifest,
+  crm: crmManifest,
+  workforce: workforceManifest,
+  <span class="str">'project-service'</span>: projectServiceManifest,
+  <span class="str">'supply-chain'</span>: supplyChainManifest,
+  marketing: marketingManifest,
+  catalog: catalogManifest,
+  <span class="str">'data-collection'</span>: dataCollectionManifest,
+  portfolio: portfolioManifest,
 } <span class="kw">as const</span>;
 
-<span class="com">// src/modules/registry/products.ts</span>
+<span class="com">// src/modules/registry/products.ts — 16 products</span>
 <span class="kw">export const</span> productRegistry = {
   <span class="str">'saloon-booking'</span>: saloonBookingProduct,
   <span class="str">'products'</span>:       productsProduct,
-  <span class="str">'pos'</span>:            posProduct,    <span class="com">// requires: ['products']</span>
+  <span class="str">'pos'</span>:            posProduct,        <span class="com">// requires: ['products']</span>
+  <span class="str">'analytics'</span>:      analyticsProduct,
+  <span class="str">'inventory'</span>:      inventoryProduct,
+  <span class="str">'finance'</span>:        financeProduct,
+  <span class="str">'manufacturing'</span>:  manufacturingProduct,
+  <span class="str">'procurement'</span>:    procurementProduct,
+  <span class="str">'warehouse'</span>:      warehouseProduct,
+  <span class="str">'crm'</span>:            crmProduct,
+  <span class="str">'workforce'</span>:      workforceProduct,   <span class="com">// unlocks workforce + project-service</span>
+  <span class="str">'supply-chain'</span>:   supplyChainProduct,
+  <span class="str">'marketing'</span>:      marketingProduct,
+  <span class="str">'catalog'</span>:        catalogProduct,
+  <span class="str">'data-collection'</span>: dataCollectionProduct,
+  <span class="str">'brand-portfolio'</span>: brandPortfolioProduct,
 } <span class="kw">as const</span>;</code></pre>
+
+  <p>
+    Note the asymmetry: <code>payments</code> has a ModuleManifest but no ProductManifest — deliberately,
+    while the module is on hold. A module without a product is invisible (its keys don't validate, its nav
+    never renders), which is exactly the right failure mode for a half-built module. The <code>email</code>
+    module takes the opposite route: no standalone product; it's unlocked through the products that use it.
+  </p>
 
   <p>
     The "products require products" wording is a quirk: <code>posProduct.requires = ['products']</code>
@@ -1593,6 +1792,29 @@ fulfilled → refunded         (action: refund)
     The POS reads the catalog from the Products module, so enabling POS without Products would
     leave the POS with nothing to sell.
   </p>
+
+  <div class="layered">
+    <div class="label-human">The registry grew a new job: navigation</div>
+    <p>
+      For most of the platform's life, the workspace sidebar knew about modules the hard way: a
+      hand-maintained list of which modules had their own nav section, plus one hand-written block of
+      JSX per module. Every new module meant editing the sidebar again — and forgetting meant an
+      invisible module.
+    </p>
+
+    <div class="label-system">Decision → debt → payoff</div>
+    <p>
+      <strong>The decision (early):</strong> hard-code nav in the Sidebar. At 4 modules this was the right
+      call — an abstraction would have been speculative. <strong>The debt (by module 19):</strong> a
+      <code>MODULES_WITH_DEDICATED_NAV</code> set plus 15 near-identical gates, each a copy-paste-edit,
+      each a chance to drift from the registry. <strong>The payoff (2026-07-06, commit
+      <code>639daae</code>):</strong> <code>ModuleManifest</code> gained <code>hasDedicatedNav</code> and
+      <code>navLinks</code>; the Sidebar became one loop over the manifests; the set and all 15 gates were
+      deleted. Nav joined the permission matrix and <code>enabled_modules</code> as the third thing
+      <em>derived</em> from the registry (Flow C) — which is the general lesson: when a duplication is
+      young, tolerate it; when it has 15 copies, promote it into the composition root and delete the copies.
+    </p>
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════ API PATTERNS ═══════════════════════════════════════════════ -->
@@ -1603,7 +1825,7 @@ fulfilled → refunded         (action: refund)
 
   <p>
     Every Netlify Function in this repo follows the same skeleton. Once you can read one, you can read all
-    ~91 of them. The shape is:
+    138 of them. The shape is:
   </p>
 
   <pre><code><span class="com">// netlify/functions/&lt;name&gt;.ts</span>
@@ -1645,9 +1867,435 @@ fulfilled → refunded         (action: refund)
   </p>
 </section>
 
+<!-- ═══════════════════════════════════════════════ THE FIVE NEWEST MODULES ═══════════════════════════════════════════════ -->
+<section class="chapter" id="new-modules">
+  <div class="chapter-label">Chapter 17 · How modules are built</div>
+  <h2>The first ERP wave — five modules</h2>
+  <p>
+    One integration wave — migrations 052 through 057 — took four rows of the ERP table from "planned"
+    to working v1 software, and added the email infrastructure underneath. Each module was built by its
+    own parallel session against the anatomy of Chapter 14, then merged and smoke-tested together.
+    (A second wave has since repeated the trick — that's the next chapter.)
+  </p>
+
+  <div class="layered">
+    <div class="label-human">Why these five, together</div>
+    <p>
+      They form a chain. Inventory answers "what do we have?" — the first question every physical business
+      asks. Procurement answers "how does more arrive?" and proves stock can go <em>up</em> through the same
+      ledger that sales push <em>down</em>. Warehouse answers "where is it?" without inventing a second
+      stock system. Finance answers "did we make money?" by reading the sales and bookings that already
+      exist. And Email is the quiet plumbing the others — and Marketing Automation later — speak through.
+    </p>
+
+    <div class="label-system">Module by module</div>
+  </div>
+
+  <div class="card">
+    <h4>Inventory (migration 053) — stock truth</h4>
+    <p style="font-size: 14.5px;">
+      Two tables. <code>inventory_stock</code> holds one row per (workspace, product): quantity on hand and
+      a reorder level, with a CHECK that the count can never go negative. <code>stock_movements</code> is the
+      append-only ledger: every change to stock is an INSERT with a signed <code>qty_delta</code> and a typed
+      reason — <code>sale</code>, <code>purchase</code>, <code>adjustment</code>, <code>production</code>,
+      <code>transfer</code> (a Postgres enum, so an unknown type can't even be written). There is no UPDATE
+      of a movement anywhere in the codebase.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> a cashier fulfils a POS sale → <code>pos-sale-state.ts</code> decrements
+      <code>inventory_stock</code> per sale line and appends a <code>type='sale'</code> movement
+      (<code>ref = sale:&lt;id&gt;</code>) — but only if the workspace opted in via
+      <code>clients.inventory_tracking_enabled</code>, and <em>fail-open</em>: the hook is wrapped so an
+      inventory error can never block taking money. Staff view stock and adjust it (with a reason) at
+      <code>/c/&lt;slug&gt;/inventory</code>.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> Manufacturing (the <code>production</code> movement type reserved here
+      is now in live use — Chapter 18) and the Supply Chain dashboard (which reads the ledger, not new tables).
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Email &amp; Notifications (migration 052) — the mailer seam</h4>
+    <p style="font-size: 14.5px;">
+      One helper, one table. <code>_shared/mailer.ts</code> exposes <code>sendMail()</code>, which writes an
+      <code>email_outbox</code> row <em>first</em> (status <code>pending</code>), renders the template, delivers
+      through a thin provider adapter (<code>_shared/resend.ts</code> — a raw <code>fetch</code> call, no SDK
+      dependency), and reconciles the row to <code>sent</code>, <code>logged</code>, or <code>failed</code>.
+      The helper never throws: an email problem cannot break the booking or sale it announces.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> a guest books online or checks out on the storefront → the create
+      endpoint calls <code>sendMail()</code> → a confirmation (with a calendar <code>.ics</code> attachment,
+      for bookings) or a receipt goes out. If <code>RESEND_API_KEY</code> isn't set, nothing leaves the
+      machine — the row is recorded as <code>logged</code>, which is how dev and demo environments run
+      without a provider account. The outbox is browsable at <code>/c/&lt;slug&gt;/email</code>.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeded — now cashed in:</strong> Marketing Automation (#13) shipped exactly as
+      predicted: a campaign is "many <code>sendMail</code> calls over a CRM audience," and the outbox is
+      its delivery record (see the third-wave chapter).
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Finance (migration 054) — a money-legible P&amp;L</h4>
+    <p style="font-size: 14.5px;">
+      One deliberately small table: <code>finance_expenses</code> (a constrained category set — rent,
+      utilities, salaries, … — amount in cents, an <code>incurred_on</code> date). Revenue gets <em>no</em>
+      table at all: the monthly summary endpoint computes it live — POS + storefront revenue from
+      <code>sales</code> (paid/fulfilled), booking revenue from <code>bookings</code> (confirmed/completed),
+      minus the month's expenses = net. Because revenue is never copied, Finance can't drift out of sync
+      with the order books.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> the owner logs an expense → it appears in the ledger and the month's
+      P&amp;L moves, at <code>/c/&lt;slug&gt;/finance</code>. A teaching detail: <code>incurred_on</code> is
+      returned as <code>to_char(…, 'YYYY-MM-DD')</code> because the Neon driver otherwise turns a bare DATE
+      into a local-midnight timestamp that can shift a day in transit — a real bug, fixed the honest way.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> AR/AP, payment ledgers, and tax inputs — all extensions of the same
+      read-model-over-existing-truth approach.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Procurement (migration 056) — stock goes up</h4>
+    <p style="font-size: 14.5px;">
+      <code>suppliers</code> (soft-deleted, so history keeps its names) plus <code>purchase_orders</code>
+      with snapshot line items. Orders move through a 4-state FSM — draft → ordered → received, or
+      cancelled — with illegal transitions rejected as 409, exactly like POS sales.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> the <em>receive</em> transition is the module's reason to exist: in one
+      database transaction it upserts <code>inventory_stock</code> (+qty per line), appends a
+      <code>type='purchase'</code> movement per line (<code>ref = po:&lt;id&gt;</code>), and stamps the order
+      received. This is the first module to <em>write</em> into another module's domain — and it does so
+      through the movements ledger, not by reaching into Inventory's endpoints.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> the Supply Chain dashboard (procurement → inventory → orders is now a
+      queryable chain) and reorder automation (reorder_level + supplier catalog are both in place).
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Warehouse (migration 057) — where stock sits</h4>
+    <p style="font-size: 14.5px;">
+      A locations layer <em>over</em> Inventory, not a second stock system. <code>warehouse_locations</code>
+      names the places (warehouse, store, storage); <code>stock_by_location</code> breaks the product's total
+      down per place. A transfer, in one transaction, decrements the source location, increments the
+      destination, and writes <em>two</em> <code>type='transfer'</code> movements (−qty and +qty) — net-zero,
+      so the product's total on hand is untouched by design.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> move 10 units from "Back storage" to "Store floor" at
+      <code>/c/&lt;slug&gt;/warehouse</code>; the ledger records both sides, and an over-transfer is rejected
+      by the database CHECK (surfaced as <code>insufficient_stock</code>), not by hopeful application code.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> bin/lot tracking and pick lists — finer-grained "where," same ledger.
+    </p>
+  </div>
+
+  <div class="callout green">
+    <div class="label">The principle the wave proves — one ledger, many writers</div>
+    <p>
+      Four modules (POS, Inventory, Procurement, Warehouse) changed stock at the end of this wave, and none
+      of them invented a private mechanism: every change is an INSERT into <code>stock_movements</code> plus
+      an atomic update of the rollup. Manufacturing has since landed as exactly the predicted fifth writer —
+      with zero new read paths (Chapter 18). Compare that with the alternative — each module keeping its own
+      count and a nightly job reconciling them — and you have the clearest argument in this codebase for
+      designing the shared fact first and the modules around it.
+    </p>
+  </div>
+
+  <div class="callout amber">
+    <div class="label">Honest status</div>
+    <p>
+      These are v1s, deliberately narrow: Inventory has no lot/expiry tracking; Finance has no AR/AP;
+      Procurement has no RFQs; Warehouse has no pick lists. Each shipped the smallest slice that creates
+      real operational truth, wired into the modules that already exist. The modules that were "in
+      development on parallel branches" when this chapter was first written — CRM (055), Manufacturing
+      (058), Workforce + Project Service (059) — have since merged; the next chapter covers them.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THE SECOND WAVE ═══════════════════════════════════════════════ -->
+<section class="chapter" id="next-wave">
+  <div class="chapter-label">Chapter 18 · How modules are built</div>
+  <h2>The second wave — six modules, five merges</h2>
+  <p>
+    Migrations 055, 058, 059, 061 and 062 — five merges that added six module folders (CRM,
+    Manufacturing, Workforce + Project Service, Data Collection, Catalog, Brand Portfolio) and completed
+    the seven-product suite. Same recipe as the first wave: one parallel session per module, the anatomy
+    of Chapter 14, the per-module authz-gate pattern of Chapter 6, merged and smoke-tested on main.
+  </p>
+
+  <div class="layered">
+    <div class="label-human">Why these six, together</div>
+    <p>
+      The first wave built the operational spine — what do we have, how does more arrive, where is it,
+      did we make money. This wave answers the <em>people and public</em> questions: who are our customers
+      (CRM), who works when and on what (Workforce + Project Service), what are we making (Manufacturing) —
+      and then opens three public doors: a token-gated onboarding flow for new clients, a no-purchase
+      catalog site, and a per-brand portfolio site. With those three doors, every product in the Chapter 2
+      table is live.
+    </p>
+
+    <div class="label-system">Module by module</div>
+  </div>
+
+  <div class="card">
+    <h4>CRM (migration 055) — who buys from us</h4>
+    <p style="font-size: 14.5px;">
+      Two tables. <code>crm_customers</code> is a <em>read-model</em>: one row per real-world customer,
+      deduped by a phone/email <code>dedupe_key</code> (unique per workspace), tagged with a
+      <code>source</code> (<code>pos</code> / <code>storefront</code> / <code>booking</code>) and a
+      <code>last_seen</code> timestamp. <code>crm_notes</code> holds staff notes against a customer.
+      Nothing here is a second source of truth — the truth stays in <code>sales</code> and
+      <code>bookings</code>.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> <code>POST /api/crm/refresh</code> re-projects the read-model — a pure
+      <code>merge</code> lib scans sales + bookings, collapses them by dedupe key, and upserts
+      <code>crm_customers</code>. The list page at <code>/c/&lt;slug&gt;/crm</code> shows every customer
+      across every channel; the detail page unifies their orders, bookings, and notes into one activity
+      timeline.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> Marketing Automation's audience segmentation (a campaign is "a query
+      over <code>crm_customers</code> plus many <code>sendMail</code> calls") and Project Service's
+      customer links, which arrived one migration later.
+    </p>
+  </div>
+
+  <div class="callout green">
+    <div class="label">A design contrast worth studying — two answers to "is this the same person?"</div>
+    <p>
+      The suite answers the same person-question twice, in opposite ways, and both are right.
+      <strong>Employees are shared identity:</strong> Workforce points a shift at a
+      <code>user_nodes</code> row by foreign key, because an employee carries <em>authorization</em> —
+      level, permissions, login — and that must have exactly one authoritative row. Fork it and the
+      copies disagree about what someone may do.
+      <strong>Customers are a projected read-model:</strong> CRM does <em>not</em> FK sales and bookings
+      to a customer master; it periodically projects them into <code>crm_customers</code>, because a
+      customer carries only <em>history</em>, and guest checkout must never require creating an account
+      first. The principle: <em>share identity when it grants authority; project it when it only
+      accumulates history.</em>
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Workforce + Project Service (migration 059) — who works, on what</h4>
+    <p style="font-size: 14.5px;">
+      Three tables, two modules, one migration. <code>workforce_shifts</code> lays a weekly schedule over
+      Booking's named resources: each shift binds a <code>booking_resources</code> row to a weekday (0–6)
+      and a time range (CHECK: end after start), optionally tied to a real team member via
+      <code>user_node_id</code>. <code>projects</code> (quoted → active → done) links a job to a
+      <code>crm_customers</code> row; <code>project_assignments</code> puts named resources on the job.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> the owner lays out the week per resource at
+      <code>/c/&lt;slug&gt;/workforce</code>; a services business opens a project for a CRM customer at
+      <code>/workforce/projects</code>, assigns the resources, and advances it quoted → active → done.
+      Note the reuse: no new "employee" or "calendar" primitive was invented — shifts ride the same
+      resources the booking widget already books against.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> timesheets and attendance (shifts are the schedule half; actuals are
+      the follow-up) and billable hours per project.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Manufacturing (migration 058) — making things</h4>
+    <p style="font-size: 14.5px;">
+      Three tables. <code>boms</code> names an output product; <code>bom_components</code> lists what goes
+      into one unit (component product + qty, CHECK &gt; 0); <code>production_orders</code> runs a
+      four-state FSM — <code>planned → in_progress → done</code>, or <code>cancelled</code> — enforced by a
+      Postgres enum, illegal transitions rejected exactly like POS sales.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> completing an order is the module's reason to exist: in one database
+      transaction it appends <code>type='production'</code> movements — negative for each component
+      consumed, positive for the finished output — and updates the stock rollups; insufficient components
+      reject the completion. This makes Manufacturing the <em>fifth writer</em> through the movements
+      ledger, the one Chapter 17 predicted, and it means all five movement types
+      (<code>sale · purchase · adjustment · transfer · production</code>) now have real writers.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> the Supply Chain dashboard (procurement → manufacturing → inventory →
+      orders is now a fully queryable chain — its read-projection has since shipped, see the third-wave
+      chapter) and production costing.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Data Collection App (migration 061) — the front door for new clients</h4>
+    <p style="font-size: 14.5px;">
+      One tiny table: <code>onboard_tokens</code> — a single-use token per row, with <code>expires_at</code>
+      bounding its life and <code>used_at</code> marking it consumed. No new product tables: the intake
+      writes into the same <code>products</code> catalog everything else reads.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> an operator mints a token from the workspace UI → the new client opens
+      <code>/onboard/&lt;token&gt;</code> — a public page with <em>no login</em>; token possession is the
+      authorization (unknown → 404, used or expired → 410) — and bulk-loads their catalog. The moment the
+      products land, the POS, storefront, and catalog site can all sell/show them.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> the rest of onboarding — the same token pattern extends to any
+      pre-login intake step (hours, branding, staff lists).
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Catalog Website (migration 061) — the no-cart storefront</h4>
+    <p style="font-size: 14.5px;">
+      Zero new tables. One public endpoint (<code>pub-catalog</code>) serves <code>/catalog/&lt;slug&gt;</code>,
+      and the page reuses the storefront's browsing components with the cart and checkout removed —
+      "Add to cart" becomes a contact link.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> a workspace flips the catalog product on → their existing
+      <code>storefront_visible</code> products render as a showcase site, immediately, with no data entry.
+      The cheapest product in the suite to ship, precisely because Chapter 4's shared-component discipline
+      held: the difference really was a prop, not a fork.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> SEO-facing public pages generally — and the browsing half of any
+      future marketplace surface.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Brand Portfolio Sites (migration 062) — one brand, one site</h4>
+    <p style="font-size: 14.5px;">
+      One table: <code>brand_site_config</code>, one row per client — a <code>sections</code> JSONB holding
+      per-section enable flags and copy, plus a <code>published</code> boolean. Sections compose suite
+      components (hero, product grid, contact) wired to the client's live data.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>Golden flow:</strong> the owner assembles their site in the internal editor at
+      <code>/c/&lt;slug&gt;/brand-site</code>, toggles sections, and hits publish → the public site renders
+      at <code>/site/&lt;slug&gt;</code> (and only when published). Because sections read live workspace
+      data, a price change in the catalog updates the brand site with no republish.
+    </p>
+    <p style="font-size: 14.5px;">
+      <strong>What it seeds:</strong> custom domains (the Chapter 1.9 host-resolution plan in the sibling
+      document) and richer section kits.
+    </p>
+  </div>
+
+  <div class="callout amber">
+    <div class="label">Honest status</div>
+    <p>
+      Same deal as the first wave — narrow v1s: CRM has no leads or opportunities pipeline; Manufacturing
+      has no work-in-progress costing; Catalog and Portfolio sites have no custom domains yet. The two
+      modules that were "in motion" when this chapter was first written — Supply Chain and Marketing
+      Automation — have since merged, and Workforce's missing timesheets shipped as the first depth
+      slice. The next chapter covers all three, which closed out the width phase entirely.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ THE THIRD WAVE ═══════════════════════════════════════════════ -->
+<section class="chapter" id="third-wave">
+  <div class="chapter-label">Chapter 19 · How modules are built</div>
+  <h2>The third wave — width complete, and the cleanup that followed</h2>
+  <p>
+    Two merges finished the 13-module grid (Supply Chain, Marketing Automation), a third opened the depth
+    phase (Workforce Timesheets, migration 107), and then — deliberately, before any more depth — a
+    cleanup wave paid down the debts that nineteen modules of parallel building had accumulated.
+  </p>
+
+  <div class="layered">
+    <div class="label-human">Why a cleanup wave, and why now</div>
+    <p>
+      Building wide and fast with parallel sessions is a trade: you get thirteen modules in weeks, and you
+      accumulate small inconsistencies — a sidebar edited nineteen times, import paths that reach across
+      the repo, module folders that <em>almost</em> share a shape. None of these is a bug. All of them are
+      taxes on the next builder. The right moment to pay them off is exactly the seam between phases:
+      width is done, depth hasn't started, and every cleanup makes every future depth slice cheaper.
+    </p>
+
+    <div class="label-system">The wave, piece by piece</div>
+  </div>
+
+  <div class="card">
+    <h4>Supply Chain (no migration) — the Analytics pattern, reapplied</h4>
+    <p style="font-size: 14.5px;">
+      The module that proves the ledger design. Three read-only endpoints
+      (<code>supply-chain-procurement</code>, <code>-manufacturing</code>, <code>-inventory</code>) project
+      open purchase orders, in-progress production, low stock, and 30-day movement volume out of tables
+      other modules already own. Zero new tables, zero migration — like Analytics, it is a
+      <em>read-projection</em>: a dashboard is a query, not a data store. When a module's whole job is
+      answering questions about existing truth, it should own no truth of its own.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Marketing Automation (migration 060) — composition cashing in</h4>
+    <p style="font-size: 14.5px;">
+      Two tables. <code>marketing_campaigns</code> holds name, subject, HTML body, an audience selector
+      (<code>all</code> / <code>recent_30d</code>) and a draft → sent status; <code>campaign_sends</code>
+      records every recipient with per-send status. The module is deliberately thin because its two hard
+      parts already existed: the <em>audience</em> is a query over CRM's <code>crm_customers</code>
+      read-model, and <em>delivery</em> is the Email module's <code>sendMail()</code> outbox seam.
+      A campaign send is: resolve the audience, loop <code>sendMail</code>, record each send. Both
+      Chapter 17's "what it seeds" predictions landed exactly as written — the strongest evidence the
+      seams were real, not documentation optimism.
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>Workforce Timesheets (migration 107) — the first depth slice</h4>
+    <p style="font-size: 14.5px;">
+      <code>timesheet_entries</code>: billable time logged by a team member against a booking resource,
+      with an approval workflow (<code>approved_by</code> / <code>approved_at</code>). Shifts (059) were
+      the <em>schedule</em>; timesheets are the <em>actuals</em> — and they ride the same
+      <code>booking_resources</code> primitive, so no new "employee" concept was invented. The migration
+      number matters as much as the table: 107 is the first draw from the depth phase's reserved
+      per-module ranges (next chapter).
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>The cleanup, itemized</h4>
+    <ul class="clean" style="font-size: 14.5px;">
+      <li><strong>Registry-driven nav</strong> (commit <code>639daae</code>) — <code>hasDedicatedNav</code> + <code>navLinks</code> on the manifest; the Sidebar's 15 hand-written gates and the <code>MODULES_WITH_DEDICATED_NAV</code> set deleted. The decision→debt→payoff story is told in the Registry chapter.</li>
+      <li><strong><code>@registry/*</code> path alias</strong> — backend functions now import registry types through a named alias instead of <code>../../../src</code> relative paths; the one sanctioned <code>src</code> ↔ <code>netlify</code> boundary crossing is explicit and greppable.</li>
+      <li><strong>Module conformance</strong> — every module's <code>api</code>/<code>types</code>/<code>permissions</code> moved under <code>src/modules/&lt;m&gt;/shared/</code>; the audit lives in <code>docs/reference/CONFORMANCE.md</code>, a 19-module × 6-element matrix that also names what it did <em>not</em> fix (notably: Analytics and Supply Chain still lack the 412 enable-gate).</li>
+      <li><strong>Dead weight removed</strong> — unused dependencies and files deleted (depcheck/knip-verified).</li>
+      <li><strong>The <code>.claude/</code> harness committed</strong> — the rules, commands, and agents that keep parallel AI sessions on the paved road are now versioned with the code, including the hook that blocks <code>git push</code> (releases stay human-only). CONTRIBUTING.md says the same things to humans.</li>
+      <li><strong>Lint + typecheck baseline</strong> — ESLint/Prettier matching the existing style; every zero-cost strict TypeScript flag enabled, the expensive ones logged as measured debt rather than switched on blind.</li>
+      <li><strong>Full-suite checkpoint</strong> — 1,329 tests green at the cleanup audit (2026-07-06).</li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <div class="label">The reference layer — documentation that cannot rot</div>
+    <p>
+      The wave's most durable artifact is <code>docs/reference/</code>: <code>endpoints.md</code> (all
+      138 functions — path, method, auth realm), <code>permissions.md</code> (every bucket×verb key per
+      module, plus the frozen POS action keys), and <code>schema.md</code> (all 29 tables across the 61
+      migrations). None of it is written by hand — <code>scripts/generate-reference.ts</code>
+      (<code>npm run docs:reference</code>) derives it from the same sources the runtime uses: the
+      <code>config</code> exports, the registry manifests, the migration files. That is Flow C's
+      "declare once, derive everywhere" principle applied to documentation itself: the registry stays the
+      single source of truth, and the inventory tables can't drift from the code because they <em>are</em>
+      the code, re-projected. This document, in turn, never duplicates those tables — it explains the
+      <em>why</em> and points to the generated <em>what</em>.
+    </p>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════ DEPLOYMENT ═══════════════════════════════════════════════ -->
 <section class="chapter" id="deployment">
-  <div class="chapter-label">Chapter 17 · Operations</div>
+  <div class="chapter-label">Chapter 20 · Operations</div>
   <h2>Deployment</h2>
   <p>How code goes from a developer's laptop to a customer's screen.</p>
 
@@ -1683,35 +2331,67 @@ fulfilled → refunded         (action: refund)
 
 <!-- ═══════════════════════════════════════════════ MIGRATIONS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="migrations">
-  <div class="chapter-label">Chapter 18 · Operations</div>
+  <div class="chapter-label">Chapter 21 · Operations</div>
   <h2>Database migrations</h2>
   <p>How we evolve the database schema over time without losing data.</p>
 
   <p>
     Migrations are numbered SQL files in <code>db/migrations/</code>. Each one is a small set of CREATE TABLE,
     ALTER TABLE, CREATE INDEX statements that describe a change. They're applied in numeric order
-    (<code>001</code>, <code>002</code>, …, <code>049</code>). Once applied, a row is inserted into
+    (<code>001</code>, <code>002</code>, …). Once applied, a row is inserted into
     <code>schema_migrations</code> so the runner knows to skip it next time.
   </p>
 
   <p>
-    Today the repo has 49 migrations. The names are descriptive: <code>038_products_discount_percent.sql</code>
-    adds a discount percent column; <code>040_sales.sql</code> creates the sales table; <code>046_workspace_storage_quota.sql</code>
-    creates the quota table.
+    Today the repo has 61 migration files: <code>001</code> through <code>062</code>, plus <code>107</code>.
+    The names are descriptive: <code>038_products_discount_percent.sql</code> adds a discount percent column;
+    <code>040_sales.sql</code> creates the sales table; <code>053_inventory.sql</code> creates the stock
+    ledger; <code>060_marketing.sql</code> adds campaigns; <code>107_timesheet_entries.sql</code> adds the
+    first depth-phase table.
   </p>
 
   <p>
     Parallel-development friction surfaces when two sibling chats both reserve the same migration number.
-    Today, the POS-v2 storefront work, the Booking work, and the File Manager Phase B work all branched
+    Early on, the POS-v2 storefront work, the Booking work, and the File Manager Phase B work all branched
     independently and each tried to claim 043/044/045. We resolved by applying POS-v2's first, renumbering
     Booking's to 047/048/049, and File Manager landed cleanly at 046 (the gap we'd left). The
     <code>feedback_booking_migration_number_coordination</code> memory documents this.
   </p>
+
+  <p>
+    The lesson became a rule: migration numbers are now allocated <em>centrally by the human coordinator</em>
+    before a branch starts, never picked by the branch itself. That's why the sequence on <code>main</code>
+    shows one honest gap in the width range — <code>051</code>, reserved to Payments (on hold pending
+    Razorpay keys). Gaps are coordination, not loss: 060, once reserved to the in-flight Marketing branch,
+    filled in exactly on schedule when that branch merged, as CRM's 055 had before it.
+  </p>
+
+  <div class="layered">
+    <div class="label-human">Why the numbering suddenly jumps from 062 to 107</div>
+    <p>
+      A reviewer listing the folder sees <code>062_brand_site_config.sql</code> and then
+      <code>107_timesheet_entries.sql</code> and reasonably wonders where forty-four files went. Nowhere:
+      they never existed.
+    </p>
+
+    <div class="label-system">Reserved per-module ranges</div>
+    <p>
+      With the width phase done, one-number-at-a-time allocation stopped scaling: the depth phase runs
+      many parallel sessions, each deepening a different module, each needing migration numbers
+      <em>without waiting on the coordinator per file</em>. So the block <strong>063–139 was pre-allocated
+      as per-module bands</strong> — each module owns a contiguous range it can draw from freely.
+      <code>107</code> is the first draw, from the Project-Manager/Workforce band (the file's own header
+      records "depth range 107–111"). The invariant that matters — no two branches ever hold the same
+      number — is preserved; what changed is the granularity of the reservation, from single numbers to
+      ranges. Read 063–106 as allocated-but-unclaimed, not missing: <code>schema_migrations</code> has
+      never recorded anything in that span.
+    </p>
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════ OPERATIONAL CLIFFS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="traps">
-  <div class="chapter-label">Chapter 19 · Operations</div>
+  <div class="chapter-label">Chapter 22 · Operations</div>
   <h2>Operational cliffs</h2>
   <p>Things that have gone wrong, written down so they don't go wrong again.</p>
 
@@ -1783,9 +2463,422 @@ fulfilled → refunded         (action: refund)
   </div>
 </section>
 
+<!-- ═══════════════════════════════════════════════ SECURITY MODEL ═══════════════════════════════════════════════ -->
+<section class="chapter" id="security">
+  <div class="chapter-label">Chapter 23 · Security &amp; portability</div>
+  <h2>Security model</h2>
+  <p>What protects the data — exactly what is enforced today, and an honest register of what isn't built yet.</p>
+
+  <div class="layered">
+    <div class="label-human">The posture in one sentence</div>
+    <p>
+      Every claim in this chapter was verified against the code at the revision in the footer, and the
+      chapter is split accordingly: a CURRENT section for what the code enforces, and a PLANNED section
+      for what it doesn't. A security chapter that mixes the two is marketing; this one is an audit.
+      The organizing idea throughout: <strong>a token can only name you — the database decides what you
+      may do, again, on every request.</strong>
+    </p>
+
+    <div class="label-system">Current — the three authentication realms</div>
+  </div>
+
+  <table>
+    <thead><tr><th>Realm</th><th>Credential</th><th>Session</th><th>Where authority actually lives</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Admin</strong> (platform operators)</td>
+        <td>Password — argon2-hashed (<code>@node-rs/argon2</code>), with a constant-time dummy-verify so a wrong email and a wrong password take the same time (no account enumeration) — or Google OAuth, verified server-side in <code>google-verifier.ts</code></td>
+        <td>15-minute JWT cookie: <code>HttpOnly</code>, <code>SameSite=Lax</code>, <code>Secure</code> in production</td>
+        <td>Cross-workspace by role, but must name a tenant explicitly (<code>?client=</code>) for every tenant-scoped action</td>
+      </tr>
+      <tr>
+        <td><strong>Bucket-user</strong> (workspace owners + staff)</td>
+        <td>Password (argon2) or a linked Google account</td>
+        <td>24-hour <code>bu_session</code> JWT carrying <code>kind:'bucket_user'</code> and <code>client_id</code>; the verifier rejects any token missing either claim, so realms can't impersonate each other</td>
+        <td><code>level_number</code> and the permission matrix are <strong>re-fetched from the database on every request</strong> (<code>user_nodes</code>, <code>client_levels</code>) — a tampered or stale token can name a user but can never grant a permission</td>
+      </tr>
+      <tr>
+        <td><strong>Guest</strong> (end-customers)</td>
+        <td>None — guests never create accounts</td>
+        <td>None. Public writes are defended by an IP rate-limit (IPs validated with <code>node:net isIP</code> before use) and a honeypot field — a filled honeypot returns a fake success and writes nothing</td>
+        <td>Possession-based, single-purpose tokens where continuity is needed: booking <code>manage_token</code> magic-links; single-use, expiring <code>onboard_tokens</code> (unknown → 404, used or expired → 410)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="layered">
+    <div class="label-human">What happens on every protected request</div>
+    <p>
+      Chapter 6's Flow B is the security spine; here is the same chain read as a defense-in-depth list —
+      each layer assumes the one before it failed.
+    </p>
+
+    <div class="label-system">Current — the enforcement chain</div>
+  </div>
+
+  <ol class="clean">
+    <li><strong>Enable-gate first (412).</strong> <code>_&lt;module&gt;-authz.ts</code> checks <code>client_enabled_products</code>; a module the workspace hasn't enabled answers 412 before any permission logic runs. Only after that comes the <code>level_number === 1</code> Owner bypass, then the matrix lookup — this exact order is iron rule 2, learned by shipping it wrong twice.</li>
+    <li><strong>Cross-tenant guard (403 <code>forbidden_cross_client</code>).</strong> <code>resolveClientId</code> compares the URL's tenant to the JWT's pinned tenant; bucket-users cannot reach another workspace even with a hand-edited URL. <code>authorizeSubtreeScope</code> goes further for L2+ staff: a recursive CTE over <code>user_nodes.parent_id</code> confines them to their own reporting subtree.</li>
+    <li><strong>Input validation.</strong> Request bodies are Zod-parsed at the handler boundary — malformed input dies as a 400 before touching business logic.</li>
+    <li><strong>Append-only audit.</strong> Every mutation ends with <code>logAudit()</code> — one INSERT helper is the table's only writer; no handler anywhere UPDATEs or DELETEs <code>audit_log</code>. The audit write can fail without rolling back the business operation (recording history must not break the present).</li>
+    <li><strong>Fail-fast environment.</strong> The env itself is Zod-validated at boot: no <code>DATABASE_URL</code>, or a <code>JWT_SIGNING_SECRET</code> under 32 characters, refuses to start. Deliberately, the signing secret has <em>no</em> dev fallback; only soft dependencies degrade (no <code>RESEND_API_KEY</code> → outbox rows marked <code>logged</code>, nothing sent).</li>
+    <li><strong>Webhook signatures.</strong> The one live payment-adjacent endpoint, <code>booking-razorpay-webhook.ts</code>, rejects payloads that fail HMAC-SHA256 verification (<code>timingSafeEqual</code>) before reading them.</li>
+    <li><strong>Human-only releases.</strong> A committed PreToolUse hook (<code>.claude/hooks/block-git-push.py</code>) makes it impossible for any AI session to <code>git push</code>; every deploy passes through the human coordinator.</li>
+  </ol>
+
+  <div class="callout amber">
+    <div class="label">A deliberate decision, stated plainly — application-layer tenancy, no RLS</div>
+    <p>
+      PostgreSQL offers Row-Level Security: policies inside the database that filter rows per user, a
+      backstop even if application code forgets a <code>WHERE client_id =</code>. ExSol does not use it —
+      zero <code>CREATE POLICY</code> statements exist in the schema. The reasoning: RLS wants a database
+      role or session variable per request, which fits awkwardly with a serverless HTTP driver and a
+      single shared connection function; and a second enforcement layer that most requests never exercise
+      tends to rot unnoticed. Instead, tenancy is enforced once, uniformly, in the helper chain above —
+      and the compensating control is <em>uniformity itself</em>: every endpoint composes the same helpers
+      in the same order, so an endpoint that looks different is an endpoint to review, and the conformance
+      audit checks exactly that. The trade-off is real: a forgotten filter in a hand-written query has no
+      database backstop. If the platform ever lands on a host where RLS is idiomatic (Supabase — next
+      chapters), this decision gets revisited rather than defended.
+    </p>
+  </div>
+
+  <div class="layered">
+    <div class="label-human">Now the other half of the audit</div>
+    <p>
+      Security documents earn trust by what they admit. The following are <em>not built</em>. Each has a
+      known shape and a known trigger for when it moves up the list.
+    </p>
+
+    <div class="label-system">Planned / known debt</div>
+  </div>
+
+  <table>
+    <thead><tr><th>Gap</th><th>Status</th><th>What it means / what fixes it</th></tr></thead>
+    <tbody>
+      <tr><td><strong>2FA / MFA</strong></td><td><span class="tag tag-amber">planned</span></td><td>Neither login realm offers TOTP or WebAuthn. Trigger: first client with a compliance requirement, or admin-realm hardening before scale.</td></tr>
+      <tr><td><strong>Session revocation</strong></td><td><span class="tag tag-amber">planned</span></td><td>JWTs are stateless; logout clears the cookie but a stolen token stays valid until expiry (15 min admin / 24 h bucket-user — the short TTLs are the current mitigation). Fix: a revocation list checked in <code>verify*Session</code>.</td></tr>
+      <tr><td><strong>CSP &amp; security headers</strong></td><td><span class="tag tag-amber">planned</span></td><td><code>netlify.toml</code> ships no <code>[[headers]]</code> block: no Content-Security-Policy, HSTS, or X-Frame-Options. Cheap to add; needs one careful pass over inline styles and blob URLs first.</td></tr>
+      <tr><td><strong>Per-tenant webhook secrets</strong></td><td><span class="tag tag-amber">spec'd (051)</span></td><td>Booking's webhook verifies against a platform-level secret today; the held Razorpay spec extends verification to per-tenant keys and the POS payment flow.</td></tr>
+      <tr><td><strong>GDPR toolbox</strong></td><td><span class="tag tag-amber">backlog</span></td><td>No erasure or data-subject-request tooling yet; queued with the Marketing depth backlog. (Fonts are already self-hosted — public pages call no third-party CDNs.)</td></tr>
+      <tr><td><strong>Dependency audit cadence</strong></td><td><span class="tag tag-amber">ad hoc</span></td><td>Dependency review happens at cleanup waves (the last one removed unused packages), not on a schedule. Fix: a recurring <code>npm audit</code> gate.</td></tr>
+      <tr><td><strong>Analytics + Supply Chain enable-gate</strong></td><td><span class="tag tag-amber">open, tracked</span></td><td>The one deviation from chain-step 1, flagged in CONFORMANCE.md: both read-only dashboards enforce permissions but skip the 412 enable-gate. The same audit already closed one gap (Finance's duplicated permission list, now deduped into its <code>shared/permissions.ts</code>) — this one is next.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════ DEVICE & PLATFORM ═══════════════════════════════════════════════ -->
+<section class="chapter" id="device-compat">
+  <div class="chapter-label">Chapter 24 · Security &amp; portability</div>
+  <h2>Device &amp; platform compatibility</h2>
+  <p>What runs where — verified against the stylesheets, not asserted from hope.</p>
+
+  <div class="layered">
+    <div class="label-human">The shape of the answer</div>
+    <p>
+      ExSol is one web application; there are no native apps. That single decision buys the whole
+      platform-compatibility story: anything with a modern browser runs it. The honest nuance is
+      <em>which surfaces are designed for which screens</em> — a customer books a haircut from a phone in
+      a bus; an owner reconciles a P&amp;L at a desk. The CSS reflects exactly that split.
+    </p>
+
+    <div class="label-system">Surface × device, from the stylesheets</div>
+  </div>
+
+  <table>
+    <thead><tr><th>Surface</th><th>Phone</th><th>Tablet</th><th>Desktop</th><th>CSS evidence</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Booking widget</strong> (<code>/book</code>, manage links)</td>
+        <td><span class="tag tag-green">designed for</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td class="cell-mono">components.css (.booking-sf) @media (max-width: 560px), plus a fluid auto-fill slot grid</td>
+      </tr>
+      <tr>
+        <td><strong>Storefront</strong> (<code>/menu</code> + guest checkout)</td>
+        <td><span class="tag tag-green">designed for</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td class="cell-mono">pos.css: fluid auto-fill product grid; @media (max-width: 900px) collapses the side cart</td>
+      </tr>
+      <tr>
+        <td><strong>Catalog</strong> (<code>/catalog</code>) · <strong>Brand sites</strong> (<code>/site</code>)</td>
+        <td><span class="tag tag-amber">usable (fluid)</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td class="cell-mono">catalog.css auto-fill/minmax product grid; brand-site sections are centered max-width blocks — no dedicated phone breakpoints yet; honest gap, cheap fix</td>
+      </tr>
+      <tr>
+        <td><strong>Onboarding</strong> (<code>/onboard/&lt;token&gt;</code>)</td>
+        <td><span class="tag tag-amber">usable</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td class="cell-mono">single-column flow; the bulk product table wants a bigger screen</td>
+      </tr>
+      <tr>
+        <td><strong>Internal App + Admin console</strong></td>
+        <td><span class="tag tag-rose">not targeted</span></td>
+        <td><span class="tag tag-green">ready</span></td>
+        <td><span class="tag tag-green">designed for</span></td>
+        <td class="cell-mono">fixed sidebar shell with no phone breakpoint; module pages reflow between 640–920px; dark-theme token system in src/lib/theme.css</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Two platform-wide facts: every page ships the responsive viewport meta tag, and all styling flows
+    from the shared design-token system (dark theme for the operator surfaces; public surfaces re-skin
+    through <code>BrandShell</code>'s scoped light theme) — so a future mobile pass changes token consumers,
+    not colors scattered through nineteen modules.
+  </p>
+
+  <div class="layered">
+    <div class="label-human">"But clients will ask for an app"</div>
+    <p>
+      They will, and the answer is layered by cost. What does <em>not</em> exist today, deliberately:
+      no PWA manifest, no service worker, no Capacitor or React Native wrapper.
+    </p>
+
+    <div class="label-system">The escalation ladder</div>
+    <p>
+      <strong>Step 1 — PWA (planned, additive):</strong> a manifest and a service worker make the existing
+      site installable — home-screen icon, splash screen, offline shell, Android push. No React code
+      changes; days of work; solves "I want an icon on my phone" for most clients.
+      <strong>Step 2 — Capacitor (on demand):</strong> wraps the same SPA into store-distributable
+      binaries when a contract requires app-store presence. Costs store review overhead and — per Apple's
+      sign-in policy — would require adding Apple Sign-In alongside Google (next chapter's auth seam
+      absorbs that). <strong>Step 3 — native rewrite:</strong> not on any roadmap; nothing in the product
+      needs device capabilities a browser lacks.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ PORTABILITY ═══════════════════════════════════════════════ -->
+<section class="chapter" id="portability">
+  <div class="chapter-label">Chapter 25 · Security &amp; portability</div>
+  <h2>Portability &amp; alternatives — the seam inventory as exit strategy</h2>
+  <p>Every external dependency sits behind one owned file. This chapter prices the exits.</p>
+
+  <div class="layered">
+    <div class="label-human">Why a document about leaving your own stack</div>
+    <p>
+      Two audiences ask the same question differently. A technical evaluator asks: "how locked-in is
+      this?" A prospective client asks: "we're a Supabase shop / we can't use Razorpay / we need an iOS
+      app — can your platform meet us?" Both get the same answer: every external dependency is accessed
+      through a single seam file that ExSol owns, so each swap has a known location and a known cost
+      class. The inventory below was verified seam-by-seam against the code.
+    </p>
+
+    <div class="label-system">The principle</div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Principle — we don't promise every stack; we promise a priced exit from every dependency</div>
+    <p>
+      A dependency reached from one file costs what one file costs to rewrite — hours or days. A
+      dependency smeared across 138 handlers costs a migration project — weeks, with regressions. The
+      architecture keeps every vendor in the first shape, which means the honest sales answer is never
+      "we can't" and never "sure, free" — it's a number.
+    </p>
+  </div>
+
+  <table>
+    <thead><tr><th>Dependency</th><th>Owned seam</th><th>Alternative</th><th>Cost</th><th>When the alternative wins</th></tr></thead>
+    <tbody>
+      <tr>
+        <td rowspan="3"><strong>Neon Postgres</strong></td>
+        <td rowspan="3" class="cell-mono">_shared/db.ts — the only request-path file that constructs a DB client; raw SQL, no ORM</td>
+        <td>Supabase / RDS / Cloud SQL</td>
+        <td><span class="tag tag-green">hours</span></td>
+        <td>Client wants bundled BaaS or has an existing cloud estate</td>
+      </tr>
+      <tr><td>MySQL / MariaDB</td><td><span class="tag tag-amber">weeks</span></td><td>Hard organizational mandate only</td></tr>
+      <tr><td>MongoDB</td><td><span class="tag tag-amber">rejected</span></td><td>It doesn't — a considered rejection, argued below</td></tr>
+      <tr>
+        <td><strong>Auth</strong></td>
+        <td class="cell-mono">_shared/session.ts (all JWT mint/verify) + google-verifier.ts + argon.ts</td>
+        <td>Apple / Microsoft SSO (add) · Auth0 / Clerk / Supabase Auth (replace)</td>
+        <td><span class="tag tag-green">days</span></td>
+        <td>iOS-heavy clients; enterprise SSO federation on a deadline</td>
+      </tr>
+      <tr>
+        <td><strong>Netlify (host + functions)</strong></td>
+        <td class="cell-mono">Web-standard (Request) ⇒ Response handlers; Netlify-ness = config exports + netlify.toml</td>
+        <td>Cloudflare Workers / Vercel / Deno Deploy</td>
+        <td><span class="tag tag-green">days–a week</span></td>
+        <td>Pricing, regions, platform consolidation</td>
+      </tr>
+      <tr>
+        <td><strong>Netlify Blobs</strong></td>
+        <td class="cell-mono">4 _shared storage wrappers + 2 rate-limit helpers; handlers never import @netlify/blobs</td>
+        <td>S3 / R2 / Supabase Storage</td>
+        <td><span class="tag tag-green">days</span></td>
+        <td>Leaving Netlify, or storage economics at volume</td>
+      </tr>
+      <tr>
+        <td><strong>Resend (email)</strong></td>
+        <td class="cell-mono">_shared/mailer.ts (outbox-first) + resend.ts (raw fetch, no SDK)</td>
+        <td>SES / Postmark / SMTP</td>
+        <td><span class="tag tag-green">hours</span></td>
+        <td>Deliverability economics; client-mandated provider</td>
+      </tr>
+      <tr>
+        <td><strong>Razorpay (held)</strong></td>
+        <td class="cell-mono">payment_ref + pending_payment FSM states + HMAC webhook pattern</td>
+        <td>Stripe; eventually dual-rail per client</td>
+        <td><span class="tag tag-green">days per rail</span></td>
+        <td>Any non-India client</td>
+      </tr>
+      <tr>
+        <td><strong>React SPA</strong></td>
+        <td class="cell-mono">React + react-router only; Vite build</td>
+        <td>Next / Remix for the public surfaces</td>
+        <td><span class="tag tag-amber">weeks</span></td>
+        <td>Storefront SEO becomes business-critical</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="layered">
+    <div class="label-human">Database — the deepest dependency, three different exits</div>
+    <p>
+      "Can we use our own database?" has three genuinely different answers depending on what "our own"
+      means, and pretending they cost the same would be dishonest.
+    </p>
+
+    <div class="label-system">Postgres-to-Postgres · Postgres-to-MySQL · Postgres-to-document</div>
+  </div>
+
+  <ul class="clean">
+    <li>
+      <strong>Another Postgres host — hours.</strong> The entire request path builds its client in one
+      file (<code>_shared/db.ts</code>, currently the Neon HTTP driver); everything downstream receives a
+      <code>sql</code> tag function. Moving to Supabase, RDS, or Cloud SQL is a connection-string swap plus,
+      at most, exchanging the Neon driver for <code>pg</code> inside that file. <strong>Supabase is the
+      strategically interesting one:</strong> it wins for clients who want a bundled backend-as-a-service —
+      RLS, realtime, storage, and auth in one console — and, crucially, adopting Supabase-<em>Postgres</em>
+      does not force adopting its auth or storage: ExSol's owned session layer and storage wrappers run
+      unchanged against a vanilla Postgres URL. Take the database; keep the seams.
+    </li>
+    <li>
+      <strong>MySQL / MariaDB — weeks, and here is exactly why.</strong> The code uses Postgres <em>as
+      Postgres</em>, and the blockers are enumerable from the schema: the GiST <strong>exclusion
+      constraint</strong> over a <code>TSTZRANGE</code> that makes double-booking atomically impossible
+      (migration 048) has no MySQL equivalent — it would become application-level locking, a genuine
+      correctness regression, not an inconvenience; <strong>ten JSONB columns across eight tables</strong>,
+      including the permission matrix itself; native <code>ENUM</code> types guarding every FSM;
+      <code>RETURNING</code> in 58 function files; <code>ON CONFLICT</code> upserts in 12;
+      <code>to_char</code> date formatting in 14; partial indexes. Each is individually translatable;
+      together they are a dialect-migration project. We quote it as weeks and recommend against it unless
+      the mandate is immovable.
+    </li>
+    <li>
+      <strong>MongoDB or any document store — a considered rejection, not a gap.</strong> The schema is
+      load-bearingly relational: 64 foreign-key references across 26 migrations, three append-only ledgers
+      (<code>stock_movements</code>, <code>audit_log</code>, <code>email_outbox</code>) whose integrity IS
+      the product's trustworthiness, a self-referencing org tree, and invariants (CHECK constraints,
+      exclusion constraints, multi-table transactions) enforced by the database rather than by hope.
+      Porting to Mongo means re-implementing those guarantees in application code — a data-layer rewrite
+      sold as a migration. The honest answer to "can it run on Mongo?" is: it could be made to, and we
+      decline, because the parts a client loves most — stock that always reconciles, bookings that never
+      double-book — are precisely the parts the relational engine provides.
+    </li>
+  </ul>
+
+  <div class="layered">
+    <div class="label-human">Auth — add a provider, or hand the whole layer away</div>
+    <p>
+      Two very different client requests share this seam: "our staff live on iPhones / Microsoft 365" (add
+      a provider) and "we need SSO with SOC2 evidence by Q3" (outsource the layer).
+    </p>
+
+    <div class="label-system">The seam and the two moves</div>
+    <p>
+      All session logic — mint, verify, both realms — lives in <code>_shared/session.ts</code>; Google
+      verification is isolated in <code>google-verifier.ts</code>, the only file importing
+      <code>google-auth-library</code>; argon2 hashing in <code>argon.ts</code>. <strong>Adding Apple
+      Sign-In is days:</strong> a sibling <code>apple-verifier.ts</code> validating Apple's token, feeding
+      the same session mint — needed for iOS-heavy client bases, and mandatory the day a native iOS
+      wrapper ships third-party sign-in (Apple policy; see the previous chapter). <strong>Microsoft /
+      Entra SSO is the same pattern.</strong> <strong>Outsourcing to Auth0 / Clerk / Supabase Auth</strong>
+      replaces <code>session.ts</code>'s internals with the provider's SDK while <code>requirePermission</code>
+      and everything above it stay put. The trade is explicit: the owned layer is a few hundred auditable
+      lines and free at any scale; the hosted product buys federation, MFA, and compliance checkboxes
+      <em>fast</em>, at per-MAU pricing and a third party inside the most sensitive path. The seam keeps
+      both answers available per deployment — that optionality is the asset.
+    </p>
+  </div>
+
+  <div class="layered">
+    <div class="label-human">Hosting — the accidental masterstroke</div>
+    <p>
+      The single biggest portability asset wasn't designed as one: Netlify Functions v2 adopted the web
+      standard, so every handler is a plain <code>(Request) ⇒ Response</code> function — the exact
+      signature Cloudflare Workers, Vercel Edge, and Deno Deploy execute.
+    </p>
+
+    <div class="label-system">What is actually Netlify-shaped</div>
+    <p>
+      Three things: function <em>discovery</em> (flat files in one folder), <em>routing</em>
+      (<code>config.path</code>/<code>method</code> exports plus the <code>/api/*</code> redirect), and
+      Blobs (below). The <code>@netlify/functions</code> import in handlers is type-only. A port is
+      therefore a <strong>router shim</strong> — one table mapping paths to the already-portable handlers —
+      plus the storage swap: days to a week, handler bodies untouched. Storage itself is behind four
+      <code>_shared</code> wrapper modules (files, product images, thumbnails, brand assets) plus two
+      rate-limit helpers; no handler imports <code>@netlify/blobs</code> directly, and every test that
+      touches storage already mocks the seam — the suite proves the swap surface weekly. S3, R2, or
+      Supabase Storage slot in behind the same signatures; the rate-limit counters move to Postgres or
+      the host's KV. Email is even cleaner: <code>sendMail()</code> writes the outbox row first and
+      delivers through a raw-fetch adapter — no Resend SDK exists in the dependency tree — so SES,
+      Postmark, or bare SMTP is one new adapter file, invisible to every module.
+    </p>
+  </div>
+
+  <div class="layered">
+    <div class="label-human">Payments — designed neutral before a single rupee moves</div>
+    <p>
+      Payments is the one seam priced <em>before</em> its first implementation: the design was held
+      (migration 051 reserved) pending Razorpay keys, which forced the schema to be provider-agnostic
+      from day one.
+    </p>
+
+    <div class="label-system">The provider-neutral pattern</div>
+    <p>
+      What exists in code today: the <code>payment_ref</code> column on <code>sales</code>, the
+      <code>pending_payment</code> FSM states in both POS and Booking, and a live HMAC-verified webhook
+      handler on the booking path. None of it says "Razorpay" to the modules. Razorpay is simply the
+      India-first rail; <strong>Stripe is the same shape for non-India clients</strong> — an adapter and a
+      webhook route. The eventual model is <em>dual-rail per client</em>: a workspace setting selects
+      which provider a tenant's checkout uses, two adapter files behind one seam. Days per rail, not a
+      re-architecture — because the seam was priced while it was still on paper.
+    </p>
+  </div>
+
+  <div class="layered">
+    <div class="label-human">Frontend — the one honest "wouldn't port cheaply"</div>
+    <p>
+      A credible exit inventory needs at least one expensive row, or it's advertising.
+    </p>
+
+    <div class="label-system">The SSR/SEO trade-off</div>
+    <p>
+      The frontend locks us to React and nothing else — no meta-framework, no proprietary data layer, and
+      Vite is replaceable build tooling. The genuine limit: the public surfaces (storefront, catalog,
+      brand sites) render client-side. For direct links, QR menus, and link-in-bio traffic — how these
+      surfaces are actually used — that's fine. For <em>organic search</em>, it's weak: crawlers do better
+      with server-rendered HTML. If a client's business depends on storefront SEO, the public pages move
+      to Next or Remix — weeks of work, though contained: the internal app has no SEO need and stays a
+      SPA, and the components those pages render are already shared. Known, accepted, priced — like every
+      other row in this chapter. <em>We don't promise every stack; we promise a priced exit from every
+      dependency.</em>
+    </p>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════ GLOSSARY ═══════════════════════════════════════════════ -->
 <section class="chapter" id="glossary">
-  <div class="chapter-label">Chapter 20 · Reference</div>
+  <div class="chapter-label">Chapter 26 · Reference</div>
   <h2>Glossary</h2>
   <p>Terms that show up throughout this document, defined in one place.</p>
 
@@ -1812,7 +2905,7 @@ fulfilled → refunded         (action: refund)
     <dd>JSON Web Token. A signed string that carries the bucket-user's identity (sub, email, client_id). Stored in a cookie called <code>bu_session</code>.</dd>
 
     <dt>FSM</dt>
-    <dd>Finite State Machine. A formal model of "states + legal transitions." Used for sales (5 states), bookings (6 states).</dd>
+    <dd>Finite State Machine. A formal model of "states + legal transitions." Used for sales (5 states), bookings (6 states), purchase orders (4 states).</dd>
 
     <dt>GIST exclusion constraint</dt>
     <dd>A PostgreSQL feature that prevents overlap on a range column. Used by bookings to atomically prevent two bookings for the same resource at the same time. Concurrent requests can't both succeed.</dd>
@@ -1824,7 +2917,19 @@ fulfilled → refunded         (action: refund)
     <dd>A numbered SQL file that changes the database schema. Applied in order, recorded in <code>schema_migrations</code>.</dd>
 
     <dt>Netlify Function</dt>
-    <dd>A short-lived serverless process that handles one HTTP request. We have ~91 of them. Each lives in a .ts file in <code>netlify/functions/</code>.</dd>
+    <dd>A short-lived serverless process that handles one HTTP request. We have 138 of them. Each lives in a .ts file in <code>netlify/functions/</code>.</dd>
+
+    <dt>Depth phase</dt>
+    <dd>The build phase after "width" (all 13 ERP modules existing): deepening modules one slice at a time — timesheets onto Workforce, leads onto CRM, and so on. Depth migrations draw from reserved per-module number ranges (063–139).</dd>
+
+    <dt>Reference layer (docs/reference/)</dt>
+    <dd>The generated inventories — endpoints, permissions, schema — derived from the code by <code>npm run docs:reference</code>, plus the module-conformance matrix. Regenerated on demand, so they can't rot the way hand-written tables do.</dd>
+
+    <dt>Outbox (email_outbox)</dt>
+    <dd>The table that records every email the platform tried to send, written <em>before</em> delivery is attempted. Status <code>sent</code> / <code>logged</code> (no provider key configured — dev mode) / <code>failed</code>. The pattern means "did we email the customer?" is a SQL query, not a guess.</dd>
+
+    <dt>Movements ledger (stock_movements)</dt>
+    <dd>The append-only table where every stock change is recorded as a signed, typed row (sale / purchase / adjustment / production / transfer). Multiple modules write through it; <code>inventory_stock</code> is the cached rollup.</dd>
 
     <dt>Neon</dt>
     <dd>The PostgreSQL hosting service we use. Supports "branching" — the dev and prod databases are conceptually two branches of the same database, with the same schema but different data.</dd>
@@ -1852,7 +2957,7 @@ fulfilled → refunded         (action: refund)
 
 <footer>
   ExSol Suite · Architecture (Expansive) · companion to <a href="./architecture.html" class="foot-link">architecture.html</a><br>
-  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: b64cedd · 49 migrations · 1001 tests · ~94 functions · 6 modules live · 7 products planned</span>
+  <span style="font-family: var(--font-mono); font-size: 11px;">main HEAD: 9346668 · 61 migrations (001–062 + 107; 051 Payments held; 063–139 reserved per-module for depth) · 1329 tests at last recorded full run (2026-07-06 cleanup audit) · 138 endpoint functions · 18 of 19 registered modules live · all 13 ERP modules live · all 7 products live · depth phase begun (Workforce Timesheets 107) · Payments held (051 reserved)</span>
 </footer>
 
 </main>
