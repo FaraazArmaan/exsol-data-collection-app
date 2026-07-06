@@ -46,6 +46,9 @@ import {
 import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
+import {
+  ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount,
+} from '../modules/procurement/ProcurementRouteMounts';
 
 function ShellLayout() {
   return (
@@ -132,6 +135,9 @@ export const router = createBrowserRouter([
               ) },
               { path: 'email', element: <EmailOutboxMount /> },
               { path: 'finance', element: <FinanceMount /> },
+              { path: 'procurement', element: <ProcurementOrdersMount /> },
+              { path: 'procurement/suppliers', element: <ProcurementSuppliersMount /> },
+              { path: 'procurement/orders/:id', element: <ProcurementOrderDetailMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

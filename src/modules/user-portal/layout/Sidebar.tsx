@@ -87,13 +87,21 @@ export function Sidebar() {
     permissions['finance.business.view'] === true
   );
 
+  // Procurement appears when the workspace has it enabled AND the caller is an
+  // Owner (all-on) or holds the procurement view permission. Mirrors the others.
+  const procurementEnabled = enabledModules.some((m) => m.key === 'procurement');
+  const showProcurement = procurementEnabled && (
+    isOwner ||
+    permissions['procurement.products.view'] === true
+  );
+
   return (
     <aside className="sidebar">
       <nav aria-label="Primary" className="sidebar-nav-grow">
         <NavLink to={`/c/${slug}`} end>Dashboard</NavLink>
         <NavLink to={`/c/${slug}/file-manager`}>File Manager</NavLink>
 
-        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || showFinance || items.length > 0) && (
+        {(showProducts || showPos || showBooking || showInventory || showAnalytics || showEmail || showFinance || showProcurement || items.length > 0) && (
           <>
             <div className="nav-group-header">Modules</div>
             {showProducts && (
@@ -119,6 +127,9 @@ export function Sidebar() {
             )}
             {showFinance && (
               <NavLink to={`/c/${slug}/finance`}>Finance</NavLink>
+            )}
+            {showProcurement && (
+              <NavLink to={`/c/${slug}/procurement`}>Procurement</NavLink>
             )}
             {items.map((item) => (
               <NavLink key={item.moduleKey} to={item.href}>

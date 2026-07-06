@@ -1,0 +1,240 @@
+/* Procurement module — namespaced .proc-* styles. Imported once in src/main.tsx.
+   Uses shared theme tokens (src/lib/theme.css) so it tracks dark/light. */
+
+.proc-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.proc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.proc-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.proc-muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+.proc-empty {
+  color: var(--text-muted);
+  padding: 32px;
+  text-align: center;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.proc-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.proc-flash {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  border: 1px solid var(--success);
+  color: var(--success);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.proc-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0 6px;
+  font: inherit;
+}
+.proc-link:hover { text-decoration: underline; }
+.proc-link-danger { color: var(--danger); }
+
+/* Tabs */
+.proc-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 16px;
+}
+.proc-tab {
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.proc-tab-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Table */
+.proc-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.proc-table th,
+.proc-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.proc-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+.proc-table tr:last-child td { border-bottom: none; }
+.proc-num { text-align: right; font-variant-numeric: tabular-nums; }
+.proc-row-actions { text-align: right; white-space: nowrap; }
+.proc-row-click { cursor: pointer; }
+.proc-row-click:hover td { background: var(--bg-elevated); }
+.proc-total-row td { font-weight: 600; background: var(--bg-elevated); }
+
+/* Status badges */
+.proc-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.proc-badge-muted { background: color-mix(in srgb, var(--text-muted) 22%, transparent); color: var(--text-secondary); }
+.proc-badge-amber { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+.proc-badge-green { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+.proc-badge-red   { background: color-mix(in srgb, var(--danger) 18%, transparent);  color: var(--danger); }
+
+/* PO detail header */
+.proc-po-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.proc-po-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Modal */
+.proc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+.proc-modal {
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.proc-modal-wide { max-width: 640px; }
+.proc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.proc-modal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-primary); }
+.proc-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.proc-field { display: flex; flex-direction: column; gap: 6px; }
+.proc-field > span { font-size: 0.85rem; color: var(--text-secondary); }
+.proc-field input,
+.proc-field select,
+.proc-field textarea {
+  padding: 8px 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+.proc-req { color: var(--danger); }
+.proc-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+.proc-icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.proc-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* PO create line items */
+.proc-lines {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.proc-lines-head,
+.proc-line {
+  display: grid;
+  grid-template-columns: 1fr 80px 110px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.proc-lines-head {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.proc-line select,
+.proc-line input {
+  padding: 6px 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 0;
+}
