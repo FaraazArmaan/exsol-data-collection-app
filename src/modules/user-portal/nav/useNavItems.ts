@@ -21,7 +21,7 @@ interface ComputeArgs {
 // Modules with a dedicated sidebar entry — Sidebar.tsx renders these directly
 // against their own route (not via /m/:moduleKey ModuleStub), so we keep them
 // out of the generic Modules rail to avoid a duplicate link.
-const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm']);
+const MODULES_WITH_DEDICATED_NAV = new Set<string>(['products', 'pos', 'booking', 'analytics', 'inventory', 'email', 'finance', 'procurement', 'warehouse', 'crm', 'manufacturing', 'workforce', 'project-service']);
 
 // Pure — exported for unit tests.
 export function computeNavItems(args: ComputeArgs): NavModuleItem[] {

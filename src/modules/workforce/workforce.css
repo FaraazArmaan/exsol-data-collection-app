@@ -1,4 +1,4 @@
-/* Workforce module styles — namespaced .wf-* */
+/* Workforce module styles — namespaced .wf-*  (platform dark theme tokens) */
 
 .wf-page {
   padding: 24px;
@@ -9,13 +9,14 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 16px;
+  color: var(--text-primary);
 }
 
 .wf-tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
-  border-bottom: 2px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .wf-tab {
@@ -24,15 +25,15 @@
   background: none;
   cursor: pointer;
   font-size: 0.95rem;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-secondary);
   border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 }
 
 .wf-tab.active {
-  color: var(--color-primary, #4f46e5);
-  border-bottom-color: var(--color-primary, #4f46e5);
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
   font-weight: 600;
 }
 
@@ -43,10 +44,11 @@
 }
 
 .wf-resource-card {
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 16px;
-  background: #fff;
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .wf-resource-card h3 {
@@ -60,8 +62,8 @@
 
 .wf-resource-card .inactive-badge {
   font-size: 0.75rem;
-  background: #f1f5f9;
-  color: #64748b;
+  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+  color: var(--text-secondary);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 400;
@@ -83,18 +85,18 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
+  color: var(--text-muted);
   margin-bottom: 4px;
   text-align: center;
 }
 
 .wf-shift-pill {
-  background: var(--color-primary-light, #eef2ff);
-  border: 1px solid var(--color-primary, #4f46e5);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   padding: 4px 6px;
   font-size: 0.75rem;
-  color: var(--color-primary, #4f46e5);
+  color: var(--text-primary);
   margin-bottom: 4px;
   display: flex;
   justify-content: space-between;
@@ -106,7 +108,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--color-primary, #4f46e5);
+  color: var(--text-secondary);
   padding: 0;
   font-size: 0.9rem;
   line-height: 1;
@@ -119,15 +121,16 @@
 .wf-add-shift {
   margin-top: 8px;
   padding: 10px;
-  background: #f8fafc;
+  background: var(--bg-elevated);
   border-radius: 6px;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--border-default);
 }
 
 .wf-add-shift h4 {
   font-size: 0.85rem;
   font-weight: 600;
   margin: 0 0 8px;
+  color: var(--text-primary);
 }
 
 .wf-shift-form {
@@ -140,16 +143,17 @@
 .wf-shift-form select,
 .wf-shift-form input[type="time"] {
   padding: 4px 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   font-size: 0.875rem;
-  background: #fff;
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .wf-shift-form button {
   padding: 5px 14px;
-  background: var(--color-primary, #4f46e5);
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -168,26 +172,26 @@
 }
 
 .wf-project-card {
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--bg-surface);
   cursor: pointer;
-  transition: box-shadow 0.15s;
+  transition: border-color 0.15s;
   display: flex;
   align-items: center;
   justify-content: space-between;
   text-decoration: none;
-  color: inherit;
+  color: var(--text-primary);
 }
 
-.wf-project-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.wf-project-card:hover { border-color: var(--border-strong); }
 
-.wf-project-name { font-weight: 600; }
+.wf-project-name { font-weight: 600; color: var(--text-primary); }
 
 .wf-project-meta {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -200,9 +204,9 @@
   text-transform: capitalize;
 }
 
-.wf-status-badge.quoted { background: #fef9c3; color: #854d0e; }
-.wf-status-badge.active { background: #dcfce7; color: #166534; }
-.wf-status-badge.done   { background: #f1f5f9; color: #475569; }
+.wf-status-badge.quoted { background: color-mix(in srgb, #d4a04a 20%, transparent); color: #e0b968; }
+.wf-status-badge.active { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success); }
+.wf-status-badge.done   { background: color-mix(in srgb, var(--text-muted) 22%, transparent); color: var(--text-secondary); }
 
 /* Create project / shift forms */
 .wf-create-form {
@@ -214,16 +218,18 @@
 .wf-create-form input,
 .wf-create-form select {
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   font-size: 0.9rem;
   flex: 1;
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .wf-create-form button {
   padding: 8px 20px;
-  background: var(--color-primary, #4f46e5);
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -246,15 +252,18 @@
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0;
+  color: var(--text-primary);
 }
 
 .wf-back-link {
   font-size: 0.875rem;
-  color: var(--color-primary, #4f46e5);
+  color: var(--text-secondary);
   text-decoration: none;
   margin-bottom: 16px;
   display: inline-block;
 }
+
+.wf-back-link:hover { color: var(--text-primary); }
 
 .wf-section {
   margin-top: 24px;
@@ -264,6 +273,7 @@
   font-size: 1rem;
   font-weight: 600;
   margin: 0 0 10px;
+  color: var(--text-primary);
 }
 
 .wf-assignment-list {
@@ -277,21 +287,22 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .wf-assignment-row button {
   background: none;
   border: none;
   cursor: pointer;
-  color: #ef4444;
+  color: var(--danger);
   font-size: 0.8rem;
 }
 
-.wf-empty { color: #94a3b8; font-size: 0.875rem; font-style: italic; }
-.wf-error { color: #ef4444; font-size: 0.875rem; margin: 8px 0; }
+.wf-empty { color: var(--text-muted); font-size: 0.875rem; font-style: italic; }
+.wf-error { color: var(--danger); font-size: 0.875rem; margin: 8px 0; }
 
 .wf-advance-btn {
   padding: 6px 16px;
@@ -299,8 +310,8 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
-  background: var(--color-primary, #4f46e5);
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 .wf-advance-btn:disabled { opacity: 0.5; cursor: not-allowed; }

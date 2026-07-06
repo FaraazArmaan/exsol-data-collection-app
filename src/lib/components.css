@@ -966,7 +966,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* CRM module */
 .crm-timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.crm-timeline li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
-.crm-note { padding: 10px 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; margin-bottom: 8px; }
+.crm-timeline li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border-subtle, #2e2e2e); border-radius: 8px; background: var(--bg-surface, #1f1f1f); color: var(--text-primary, #ece8df); }
+.crm-note { padding: 10px 12px; border: 1px solid var(--border-subtle, #2e2e2e); border-radius: 8px; margin-bottom: 8px; background: var(--bg-surface, #1f1f1f); color: var(--text-primary, #ece8df); }
 .crm-note-form { display: flex; gap: 8px; margin: 12px 0; }
-.crm-source-pill { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--muted-bg, #f3f4f6); }
+.crm-source-pill { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text-muted) 22%, transparent); color: var(--text-secondary); }
