@@ -3,11 +3,12 @@ import handler from '../../netlify/functions/supply-chain-inventory';
 import {
   seedClientWithProductsEnabled, grantPerms, seedSubordinateUser, makeBucketUserRequest,
 } from '../pos/_helpers';
-import { seedInventoryData } from './_helpers';
+import { seedInventoryData, enableSupplyChain } from './_helpers';
 
 describe('GET /api/supply-chain-inventory', () => {
   it('returns low-stock rows, 30-day zero-filled series, and KPIs', async () => {
     const ctx = await seedClientWithProductsEnabled();
+    await enableSupplyChain(ctx);
     await grantPerms(ctx.clientId, 1, []);
     await seedInventoryData(ctx.clientId);
 
@@ -31,6 +32,7 @@ describe('GET /api/supply-chain-inventory', () => {
 
   it('is 403 for a sub without the key', async () => {
     const base = await seedClientWithProductsEnabled();
+    await enableSupplyChain(base);
     const sub = await seedSubordinateUser(base, 2, []);
     const res = await handler(makeBucketUserRequest(sub, 'GET', '/api/supply-chain-inventory'));
     expect(res.status).toBe(403);
@@ -38,6 +40,7 @@ describe('GET /api/supply-chain-inventory', () => {
 
   it('does not leak another tenant\'s rows', async () => {
     const a = await seedClientWithProductsEnabled();
+    await enableSupplyChain(a);
     await grantPerms(a.clientId, 1, []);
     const b = await seedClientWithProductsEnabled();
     await seedInventoryData(b.clientId); // b has low-stock; a must not see it

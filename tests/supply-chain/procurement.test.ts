@@ -3,11 +3,12 @@ import handler from '../../netlify/functions/supply-chain-procurement';
 import {
   seedClientWithProductsEnabled, grantPerms, seedSubordinateUser, makeBucketUserRequest,
 } from '../pos/_helpers';
-import { seedProcurementData } from './_helpers';
+import { seedProcurementData, enableSupplyChain } from './_helpers';
 
 describe('GET /api/supply-chain-procurement', () => {
   it('returns only ordered POs with computed totals', async () => {
     const ctx = await seedClientWithProductsEnabled();
+    await enableSupplyChain(ctx);
     await grantPerms(ctx.clientId, 1, []);
     await seedProcurementData(ctx.clientId); // 1 ordered (10@5000=50000c) + 1 received
 
@@ -26,6 +27,7 @@ describe('GET /api/supply-chain-procurement', () => {
 
   it('is 403 for a sub without the key', async () => {
     const base = await seedClientWithProductsEnabled();
+    await enableSupplyChain(base);
     const sub = await seedSubordinateUser(base, 2, []);
     const res = await handler(makeBucketUserRequest(sub, 'GET', '/api/supply-chain-procurement'));
     expect(res.status).toBe(403);

@@ -3,7 +3,7 @@ import bookingsHandler from '../../netlify/functions/analytics-bookings';
 import customersHandler from '../../netlify/functions/analytics-customers';
 import teamHandler from '../../netlify/functions/analytics-team';
 import catalogHandler from '../../netlify/functions/analytics-catalog';
-import { seedPaidSales } from './_analytics-helpers';
+import { seedPaidSales, enableAnalytics } from './_analytics-helpers';
 import { seedSubordinateUser, makeBucketUserRequest } from '../pos/_helpers';
 import { seedClientWithBooking, seedResource, makeService, grantBookingPerms } from '../booking/_helpers';
 import { sqlClient } from '../booking/_helpers';
@@ -82,6 +82,7 @@ describe('analytics-bookings', () => {
   let ctx: Awaited<ReturnType<typeof seedClientWithBooking>>;
   beforeAll(async () => {
     ctx = await seedClientWithBooking();
+    await enableAnalytics(ctx);
     await grantBookingPerms(ctx.clientId, 1, ['analytics.business.view']);
     const resourceId = await seedResource(ctx.clientId);
     const serviceId = await makeService(ctx.clientId, {});

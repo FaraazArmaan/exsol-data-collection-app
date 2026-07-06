@@ -23,7 +23,7 @@ Reference implementations: **inventory** (all six), **products** (E5), **booking
 
 | Module | E1 | E2 | E3 | E4 | E5 | E6 |
 |---|---|---|---|---|---|---|
-| analytics | ✓ | ✓ | ⚠ no enable-gate | ⚠ passthrough mount | ✓ (moved) | ✓ `.analytics-*` |
+| analytics | ✓ | ✓ | ✓ (412 gate added) | ⚠ passthrough mount | ✓ (moved) | ✓ `.analytics-*` |
 | booking | ✓ | ✓ | ✓ | ✓ | ✓ (moved; no permissions.ts) | n/a (no module css) |
 | catalog | ✓ | ✓ | ⚠ inline in pub-catalog.ts (public 404 gate) | n/a public page | ✗ (page-only module) | ✓ `.cat-*` |
 | crm | ✓ | ✓ | ✓ | ✓ | ✓ (moved; permissions.ts unwired) | n/a |
@@ -39,7 +39,7 @@ Reference implementations: **inventory** (all six), **products** (E5), **booking
 | procurement | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ `.proc-*` |
 | products | ✓ | ✓ | ⚠ via `_shared/permissions.ts` | ⚠ direct pages + scope provider | ✓ (reference) | n/a |
 | project-service | ✓ | ✓ (rides workforce.ts) | ✓ via _workforce-authz | ✓ via WorkforceRouteMounts | n/a (no src dir — intentional, lives in workforce) | n/a |
-| supply-chain | ✓ | ✓ | ⚠ no enable-gate | ⚠ passthrough mount | ✓ (moved; gating.ts at root is the de-facto client perm layer) | ✓ `.sc-*` |
+| supply-chain | ✓ | ✓ | ✓ (412 gate added) | ⚠ passthrough mount | ✓ (moved; gating.ts at root is the de-facto client perm layer) | ✓ `.sc-*` |
 | warehouse | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ `.wh-*` |
 | workforce | ✓ | ✓ (carries project-service) | ✓ | ✓ | ✓ (moved; no permissions.ts) | ✓ `.wf-*` |
 
@@ -56,10 +56,12 @@ CSS sweep result: **zero** violations of iron rule 9 anywhere (no `--color-*`/`-
 
 ## Known debt — NOT fixed here (behavioral; needs its own reviewed change)
 
-1. **analytics + supply-chain lack the 412 enable-gate** in their authz files. A disabled-module
-   workspace can still hit their endpoints if the caller holds (or is Owner and bypasses) the
-   permission check. Both also use thin passthrough RouteMounts with section-level gating in the
-   dashboard instead of a route-level redirect. Fixing changes HTTP responses → deferred.
+1. ~~**analytics + supply-chain lack the 412 enable-gate**~~ — **FIXED** (2026-07-06): the 412
+   `<module>_module_not_enabled` enable-gate now runs BEFORE the Owner bypass in both
+   `_analytics-authz.ts` and `_supply-chain-authz.ts` (admin + bucket-user branches), mirroring
+   `_procurement-authz.ts`. Remaining (unchanged): both still use thin passthrough RouteMounts with
+   section-level gating in the dashboard instead of a route-level redirect — client-side only, no
+   HTTP-response impact; deferred.
 2. **payments is a registry-only stub** — manifest + product entry, no module dir, no authz, no
    routes. Either intentional placeholder or dead registry weight; decide before building on it.
 3. **Unwired `shared/permissions.ts` scaffolds** exist in crm, email, inventory, marketing,

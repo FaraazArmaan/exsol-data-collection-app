@@ -1,10 +1,21 @@
 import { db } from '../../netlify/functions/_shared/db';
-import { seedProducts } from '../pos/_helpers';
+import { seedProducts, type PosTestCtx } from '../pos/_helpers';
 
 const sql = db();
 
 export function rand(): string {
   return Math.random().toString(36).slice(2, 7);
+}
+
+// Enable the supply-chain Product for a client so the authz enable-gate passes.
+// The enable-gate runs BEFORE the permission check, so tests expecting 200/403
+// must enable the product first (otherwise they get 412 module_not_enabled).
+export async function enableSupplyChain(ctx: PosTestCtx): Promise<void> {
+  await sql`
+    INSERT INTO public.client_enabled_products (client_id, product_key, enabled_by_admin)
+    VALUES (${ctx.clientId}, 'supply-chain', ${ctx.adminId})
+    ON CONFLICT (client_id, product_key) DO NOTHING
+  `;
 }
 
 // Inventory: one below-reorder product, one healthy; movements across the window.

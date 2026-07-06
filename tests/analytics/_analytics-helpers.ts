@@ -7,6 +7,18 @@
 import { db } from '../../netlify/functions/_shared/db';
 import { seedClientWithProductsEnabled, seedProducts, grantPerms, type PosTestCtx } from '../pos/_helpers';
 
+// Enable the analytics Product for a client so the authz enable-gate passes.
+// The enable-gate runs BEFORE the permission check, so any analytics test
+// expecting 200/403 must enable the product first (otherwise it gets 412).
+export async function enableAnalytics(ctx: { clientId: string; adminId: string }): Promise<void> {
+  const sql = db();
+  await sql`
+    INSERT INTO public.client_enabled_products (client_id, product_key, enabled_by_admin)
+    VALUES (${ctx.clientId}, 'analytics', ${ctx.adminId})
+    ON CONFLICT (client_id, product_key) DO NOTHING
+  `;
+}
+
 interface SeedPaidSalesArgs {
   when: string[];          // ISO timestamps (one per sale), e.g. '2026-03-02T10:00:00Z'
   channel?: string[];      // 'instore' | 'online' | 'pickup' per sale; defaults all 'instore'
@@ -17,6 +29,7 @@ export async function seedPaidSales(args: SeedPaidSalesArgs): Promise<PosTestCtx
   const sql = db();
   const price = args.priceCents ?? 1000;
   const ctx = await seedClientWithProductsEnabled();
+  await enableAnalytics(ctx);
   await grantPerms(ctx.clientId, 1, ['analytics.business.view']);
 
   const suffix = Math.random().toString(36).slice(2, 7);

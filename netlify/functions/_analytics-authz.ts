@@ -15,6 +15,7 @@ import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { subtreeOf } from './_shared/subtree';
+import { getProduct } from '../../src/modules/registry/products';
 
 type SQL = NeonQueryFunction<false, false>;
 import {
@@ -23,6 +24,21 @@ import {
 
 export type Bucket = 'business' | 'customers' | 'employees' | 'products';
 const ALL_BUCKETS: Bucket[] = ['business', 'customers', 'employees', 'products'];
+
+// Enable-gate: is the 'analytics' module brought in by any product the client
+// has enabled? Runs before the permission check (Iron Rule 2) — a client
+// without the analytics product 412s regardless of the caller's level/keys.
+async function analyticsEnabled(clientId: string): Promise<boolean> {
+  const sql = db();
+  const enabled = (await sql`
+    SELECT product_key FROM public.client_enabled_products WHERE client_id = ${clientId}::uuid
+  `) as Array<{ product_key: string }>;
+  for (const e of enabled) {
+    const product = getProduct(e.product_key);
+    if (product && product.modules.some((ref) => ref.module === 'analytics')) return true;
+  }
+  return false;
+}
 
 // Tenant timezone for day/week/month bucketing. clients.timezone is NOT NULL
 // DEFAULT 'Asia/Kolkata' (migration 047) so every client resolves a value.
@@ -50,6 +66,9 @@ export async function resolveAnalyticsAccess(
     await requireAdmin(req);
     const clientId = new URL(req.url).searchParams.get('client');
     if (!clientId) return { ok: false, res: jsonError(400, 'missing_client') };
+    if (!(await analyticsEnabled(clientId))) {
+      return { ok: false, res: jsonError(412, 'analytics_module_not_enabled') };
+    }
     return {
       ok: true,
       access: {
@@ -82,6 +101,12 @@ export async function resolveAnalyticsAccess(
   const levelNumber = nodeRows[0]!.level_number ?? 1; // legacy null level → Primary
   const clientId = nodeRows[0]!.client_id;
   const isRoot = levelNumber === 1;
+
+  // Enable-gate FIRST (Iron Rule 2): a client without the analytics product
+  // 412s before the Owner bypass or the bucket/permission check is reached.
+  if (!(await analyticsEnabled(clientId))) {
+    return { ok: false, res: jsonError(412, 'analytics_module_not_enabled') };
+  }
 
   // Entitled buckets: owner = all; else read from the level matrix.
   let buckets: Set<Bucket>;

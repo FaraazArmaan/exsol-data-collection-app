@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import salesHandler from '../../netlify/functions/analytics-sales';
 import exportHandler from '../../netlify/functions/analytics-sales-export';
-import { insertSale, seedOneProduct } from './_analytics-helpers';
+import { insertSale, seedOneProduct, enableAnalytics } from './_analytics-helpers';
 import {
   seedClientWithProductsEnabled, grantPerms, seedSubordinateUser, makeBucketUserRequest,
 } from '../pos/_helpers';
@@ -24,6 +24,7 @@ describe('storefront-at-root exclusion', () => {
 
   beforeAll(async () => {
     base = await seedClientWithProductsEnabled();
+    await enableAnalytics(base);
     await grantPerms(base.clientId, 1, ['analytics.business.view']);
     const pid = await seedOneProduct(base.clientId);
     // owner POS sale (1000) + storefront house sale (2000, no creator) + a
@@ -64,6 +65,7 @@ describe('cross-subtree isolation + additivity', () => {
 
   beforeAll(async () => {
     base = await seedClientWithProductsEnabled();
+    await enableAnalytics(base);
     await grantPerms(base.clientId, 1, ['analytics.business.view']);
     const pid = await seedOneProduct(base.clientId);
     // Two sibling managers (both L2 → share the L2 perm row, both granted). The

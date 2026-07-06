@@ -3,11 +3,12 @@ import handler from '../../netlify/functions/analytics-overview';
 import {
   seedClientWithProductsEnabled, grantPerms, seedSubordinateUser, makeBucketUserRequest,
 } from '../pos/_helpers';
-import { seedPaidSales } from './_analytics-helpers';
+import { seedPaidSales, enableAnalytics } from './_analytics-helpers';
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
 beforeAll(async () => {
   ctx = await seedClientWithProductsEnabled();
+  await enableAnalytics(ctx);
   await grantPerms(ctx.clientId, 1, []); // L1 owner — bypasses
 });
 
@@ -24,6 +25,7 @@ describe('GET /api/analytics-overview', () => {
 
   it('a sub with only business sees only the business headline', async () => {
     const base = await seedClientWithProductsEnabled();
+    await enableAnalytics(base);
     const sub = await seedSubordinateUser(base, 2, ['analytics.business.view']);
     const res = await handler(makeBucketUserRequest(sub, 'GET', `/api/analytics-overview?${W}`));
     const body = await res.json();
@@ -33,6 +35,7 @@ describe('GET /api/analytics-overview', () => {
 
   it('a sub with no analytics keys is 403', async () => {
     const base = await seedClientWithProductsEnabled();
+    await enableAnalytics(base);
     const sub = await seedSubordinateUser(base, 2, []);
     const res = await handler(makeBucketUserRequest(sub, 'GET', `/api/analytics-overview?${W}`));
     expect(res.status).toBe(403);
