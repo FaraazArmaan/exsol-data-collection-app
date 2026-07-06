@@ -13,8 +13,13 @@ prompts.
 - **Memory index:** deploy traps, migration coordination, revenue attribution.
 
 ## Ground truth as of this handoff
-- **Local `main` HEAD = `2399f58`** (Warehouse nav fix).
-- **`origin/main` (= prod code) = `02ef6a2`** (Email 052). **Local main is 8 commits AHEAD, unpushed:**
+- **PUSHED 2026-07-06:** `origin/main` = `554cb3b` (was `02ef6a2`). Finance 054 + Procurement 056
+  + Warehouse 057 + POS-branding-consume are now on prod code. Netlify auto-deploy triggered.
+  **Prod migration follow-up:** run `npm run migrate` against prod (applies `057` + closes any
+  054/056 gap) and probe the new `/api/{warehouse,finance,procurement}/*` endpoints
+  (`restoreSiteDeploy` on any 404). All three modules are gated behind `client_enabled_products`,
+  so no live tenant is affected during the migrate-right-after window.
+- (Superseded) Local `main` HEAD was `2399f58`; before the push local was 8 commits ahead:
   - `e7dc36b`,`bf9db06` — POS branding consume-refactor (FE-only)
   - `91fde77`,`37efc7a` — **Finance 054**
   - `d61ba14` — **Procurement 056**
