@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-36 tables across 98 forward-only migrations.
+38 tables across 100 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -88,6 +88,18 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `048_bookings.sql`
 - columns at creation: `id UUID`, `bucket_id UUID`, `service_id UUID`, `resource_id UUID`, `user_node_id UUID`, `time_range TSTZRANGE`, `status public.booking_status`, `customer_name TEXT`, `customer_phone TEXT`, `customer_email TEXT`, `price_cents BIGINT`, `deposit_paid_cents BIGINT`, `cancellation_reason TEXT`, `cancelled_at TIMESTAMPTZ`, `manage_token TEXT`, `created_by_user_node UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`, `(status =`, `OR (status`, `)`, `resource_id WITH`, `time_range WITH`, `) WHERE`
+
+## crm
+
+### `crm_leads`
+
+- created in `102_crm_leads.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `name TEXT`, `email TEXT`, `phone TEXT`, `message TEXT`, `source TEXT`, `status TEXT`, `converted_customer_id UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `crm_social_connections`
+
+- created in `103_crm_social_connections.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `provider TEXT`, `status TEXT`, `account_label TEXT`, `imported_total INT`, `last_imported_at TIMESTAMPTZ`, `connected_at TIMESTAMPTZ`, `created_by_user_node UUID`, `updated_at TIMESTAMPTZ`
 
 ## email
 

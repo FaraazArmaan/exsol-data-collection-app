@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { crmApi, type CrmCustomer } from '../shared/api';
 import { dateOnly } from '../format';
+import { CrmNav } from '../components/CrmNav';
+import '../crm.css';
 
 export function CustomersListPage({ slug, perms: _perms }: { slug: string; perms: ReadonlySet<string> }) {
   const [customers, setCustomers] = useState<CrmCustomer[] | null>(null);
@@ -23,8 +25,10 @@ export function CustomersListPage({ slug, perms: _perms }: { slug: string; perms
 
   return (
     <div className="page">
+      <h1 className="page-title">CRM</h1>
+      <CrmNav slug={slug} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 className="page-title">Customers</h1>
+        <h2 className="crm-section-title" style={{ margin: 0 }}>Customers</h2>
         <button className="btn" onClick={refreshThenLoad} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh'}</button>
       </div>
       <form style={{ display: 'flex', gap: '8px', marginBottom: '16px' }} onSubmit={(e) => { e.preventDefault(); load(q); }}>

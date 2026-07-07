@@ -6,7 +6,7 @@
 
 # API endpoints
 
-233 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+240 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -94,9 +94,16 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | crm-customer-detail.ts | `/api/crm/customers/:id` | GET | bucket-user | `crm.customers.view` |
 | crm-customers-list.ts | `/api/crm/customers` | GET | bucket-user | `crm.customers.view` |
+| crm-dashboard.ts | `/api/crm/dashboard` | GET | bucket-user | `crm.customers.view` |
+| crm-lead-action.ts | `/api/crm/lead-action/:id` | POST | bucket-user | `crm.customers.create`, `crm.customers.edit` |
+| crm-lead-submit.ts | `/api/crm/lead-submit` | POST | public | — |
+| crm-leads-list.ts | `/api/crm/leads` | GET | bucket-user | `crm.customers.view` |
 | crm-note-detail.ts | `/api/crm/notes/:id` | PATCH, DELETE | bucket-user | `crm.customers.delete`, `crm.customers.edit` |
 | crm-notes.ts | `/api/crm/notes` | POST | bucket-user | `crm.customers.create` |
 | crm-refresh.ts | `/api/crm/refresh` | POST | bucket-user | `crm.customers.view` |
+| crm-repeat-cart.ts | `/api/crm/repeat-cart/:id` | GET | bucket-user | `crm.customers.view` |
+| crm-social.ts | `/api/crm/social` | GET, POST | bucket-user | `crm.customers.edit`, `crm.customers.view` |
+| crm-timeline.ts | `/api/crm/timeline/:id` | GET | bucket-user | `crm.customers.view` |
 
 ## data-collection
 

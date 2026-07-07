@@ -60,7 +60,8 @@ import {
   ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount, ProcurementMatchMount,
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
-import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
+import { CrmListMount, CrmDetailMount, CrmDashboardMount, CrmLeadsMount, CrmSocialMount } from '../modules/crm/CrmRouteMounts';
+import LeadCaptureForm from '../modules/crm/public/LeadCaptureForm';
 import { MarketingListMount, MarketingComposeMount, MarketingDetailMount, MarketingRoiMount, MarketingWebhooksMount, MarketingGdprMount, MarketingSocialMount } from '../modules/marketing/MarketingRouteMounts';
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount, WorkforceTimesheetsMount,
@@ -125,6 +126,8 @@ export const router = createBrowserRouter([
       // Anonymous booking storefront — sibling of login, OUTSIDE the auth gate.
       { path: 'book', element: <BookingStorefront /> },
       { path: 'book/manage/:token', element: <ManageBooking /> },
+      // Public lead-capture form — anonymous, sibling of book.
+      { path: 'lead', element: <LeadCaptureForm /> },
       {
         element: <RequireBucketUser />,
         children: [
@@ -170,6 +173,9 @@ export const router = createBrowserRouter([
               { path: 'orders', element: <OrdersDashboardMount /> },
               { path: 'manufacturing', element: <ManufacturingMount /> },
               { path: 'crm', element: <CrmListMount /> },
+              { path: 'crm/dashboard', element: <CrmDashboardMount /> },
+              { path: 'crm/leads', element: <CrmLeadsMount /> },
+              { path: 'crm/social', element: <CrmSocialMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },
               { path: 'marketing', element: <MarketingListMount /> },
               { path: 'marketing/roi', element: <MarketingRoiMount /> },

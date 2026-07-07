@@ -3,6 +3,9 @@ import { Navigate, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-portal/user-auth-context';
 import { CustomersListPage } from './vendor/CustomersListPage';
 import { CustomerDetailPage } from './vendor/CustomerDetailPage';
+import { CustomerDashboardPage } from './vendor/CustomerDashboardPage';
+import { LeadsInboxPage } from './vendor/LeadsInboxPage';
+import { SocialSyncPage } from './vendor/SocialSyncPage';
 
 const ALL_CRM_PERMS = [
   'crm.customers.view', 'crm.customers.create', 'crm.customers.edit', 'crm.customers.delete',
@@ -38,3 +41,6 @@ function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) =
 
 export const CrmListMount = gate('crm.customers.view', (slug, perms) => <CustomersListPage slug={slug} perms={perms} />);
 export const CrmDetailMount = gate('crm.customers.view', (slug, perms) => <CustomerDetailPage slug={slug} perms={perms} />);
+export const CrmDashboardMount = gate('crm.customers.view', (slug, perms) => <CustomerDashboardPage slug={slug} perms={perms} />);
+export const CrmLeadsMount = gate('crm.customers.view', (slug, perms) => <LeadsInboxPage slug={slug} perms={perms} />);
+export const CrmSocialMount = gate('crm.customers.view', (slug, perms) => <SocialSyncPage slug={slug} perms={perms} />);
