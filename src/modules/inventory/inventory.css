@@ -247,3 +247,203 @@
 .inv-movement time {
   margin-left: auto;
 }
+
+/* ── Depth: tabs ─────────────────────────────────────────────── */
+.inv-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 20px;
+}
+.inv-tab {
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.inv-tab:hover {
+  color: var(--text-primary);
+}
+.inv-tab-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Depth: dashboard KPIs ───────────────────────────────────── */
+.inv-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.inv-kpi {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.inv-kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.inv-kpi-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+.inv-kpi-danger .inv-kpi-value {
+  color: var(--danger);
+}
+.inv-kpi-ok .inv-kpi-value {
+  color: var(--success);
+}
+
+.inv-dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.inv-dash-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  min-width: 0;
+}
+.inv-dash-h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 560px) {
+  .inv-dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Depth: returns & RMA ────────────────────────────────────── */
+.inv-flash {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  border: 1px solid var(--success);
+  color: var(--success);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.inv-return-form {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+.inv-return-row {
+  display: grid;
+  grid-template-columns: 2fr 80px 130px 2fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.inv-return-row select,
+.inv-return-row input {
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .inv-return-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Depth: valuation ────────────────────────────────────────── */
+.inv-dash-wide {
+  margin-top: 20px;
+}
+
+/* ── Depth: lifecycle ────────────────────────────────────────── */
+.inv-filter {
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+.inv-life-select {
+  padding: 4px 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.inv-badge.inv-life-active {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.inv-badge.inv-life-seasonal {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.inv-badge.inv-life-discontinued {
+  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+  color: var(--text-secondary);
+}
+
+/* ── Depth: location map ─────────────────────────────────────── */
+.inv-loc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.inv-loc-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  min-width: 0;
+}
+.inv-loc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.inv-loc-head .inv-dash-h2 {
+  margin: 0;
+}
+
+/* ── Depth: label generator ──────────────────────────────────── */
+.inv-label-locs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inv-label-locs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}

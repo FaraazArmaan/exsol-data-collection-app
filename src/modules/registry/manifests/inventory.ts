@@ -13,6 +13,8 @@ export const inventoryManifest: ModuleManifest = {
   customer_side: false,
   hasDedicatedNav: true,
   navLinks: [
-    { path: '/inventory', label: 'Inventory', viewKeys: ['inventory.products.view'], order: 40 },
+    // Dashboard is the landing surface; the stock list + other depth pages are
+    // reached via the in-page InventoryTabs.
+    { path: '/inventory/dashboard', label: 'Inventory', viewKeys: ['inventory.products.view'], order: 40 },
   ],
 };

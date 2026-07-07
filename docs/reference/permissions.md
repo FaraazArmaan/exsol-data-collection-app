@@ -23,7 +23,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | data-collection | Data Collection | products | view, create, edit, delete | vendor | ✓ (no link) |
 | email | Email & Notifications | customers | view | vendor | ✓ (/email) |
 | finance | Finance | business | view, create, edit, delete | vendor | ✓ (/finance) |
-| inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory) |
+| inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory/dashboard) |
 | manufacturing | Manufacturing | products | view, create, edit, delete | vendor | ✓ (/manufacturing) |
 | marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing) |
 | payments | Payments | customers, products | view, create, edit | vendor+customer | generic rail |

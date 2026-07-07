@@ -46,7 +46,10 @@ import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
 } from '../modules/booking/BookingRouteMounts';
-import { InventoryListMount } from '../modules/inventory/InventoryRouteMounts';
+import {
+  InventoryListMount, InventoryDashboardMount, InventoryReturnsMount, InventoryLocationsMount,
+  InventoryLabelsMount,
+} from '../modules/inventory/InventoryRouteMounts';
 import { ManufacturingMount } from '../modules/manufacturing/ManufacturingRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
@@ -154,6 +157,10 @@ export const router = createBrowserRouter([
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
               { path: 'inventory', element: <InventoryListMount /> },
+              { path: 'inventory/dashboard', element: <InventoryDashboardMount /> },
+              { path: 'inventory/returns', element: <InventoryReturnsMount /> },
+              { path: 'inventory/locations', element: <InventoryLocationsMount /> },
+              { path: 'inventory/labels', element: <InventoryLabelsMount /> },
               { path: 'manufacturing', element: <ManufacturingMount /> },
               { path: 'crm', element: <CrmListMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },

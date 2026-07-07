@@ -6,7 +6,7 @@
 
 # API endpoints
 
-149 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+155 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -146,8 +146,14 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | inventory-adjust.ts | `/api/inventory/adjust` | POST | bucket-user | `inventory.products.edit` |
+| inventory-by-location.ts | `/api/inventory/by-location` | GET | bucket-user | `inventory.products.view` |
+| inventory-dashboard.ts | `/api/inventory/dashboard` | GET | bucket-user | `inventory.products.view` |
+| inventory-labels.ts | `/api/inventory/labels` | GET | bucket-user | `inventory.products.view` |
+| inventory-lifecycle.ts | `/api/inventory/lifecycle` | POST | bucket-user | `inventory.products.edit` |
 | inventory-list.ts | `/api/inventory/list` | GET | bucket-user | `inventory.products.view` |
 | inventory-movements.ts | `/api/inventory/movements` | GET | bucket-user | `inventory.products.view` |
+| inventory-product-locations.ts | `/api/inventory/product-locations` | GET | bucket-user | `inventory.products.view` |
+| inventory-returns.ts | `/api/inventory/returns` | GET, POST | bucket-user | `inventory.products.edit`, `inventory.products.view` |
 
 ## login (admin)
 

@@ -2,6 +2,10 @@ import { useMemo } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-portal/user-auth-context';
 import InventoryListPage from './workspace/pages/InventoryListPage';
+import InventoryDashboardPage from './workspace/pages/InventoryDashboardPage';
+import ReturnsPage from './workspace/pages/ReturnsPage';
+import LocationMapPage from './workspace/pages/LocationMapPage';
+import LabelsPage from './workspace/pages/LabelsPage';
 
 const ALL_INVENTORY_PERMS = [
   'inventory.products.view', 'inventory.products.create',
@@ -38,4 +42,20 @@ function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) =
 export const InventoryListMount = gate(
   'inventory.products.view',
   (slug, perms) => <InventoryListPage slug={slug} perms={perms} />,
+);
+export const InventoryDashboardMount = gate(
+  'inventory.products.view',
+  (slug, perms) => <InventoryDashboardPage slug={slug} perms={perms} />,
+);
+export const InventoryReturnsMount = gate(
+  'inventory.products.view',
+  (slug, perms) => <ReturnsPage slug={slug} perms={perms} />,
+);
+export const InventoryLocationsMount = gate(
+  'inventory.products.view',
+  (slug, perms) => <LocationMapPage slug={slug} perms={perms} />,
+);
+export const InventoryLabelsMount = gate(
+  'inventory.products.view',
+  (slug, perms) => <LabelsPage slug={slug} perms={perms} />,
 );

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { inventoryApi } from '../../shared/api';
-import type { StockRow } from '../../shared/types';
+import type { LifecycleState, StockRow } from '../../shared/types';
 import { AdjustStockModal } from '../components/AdjustStockModal';
 import { MovementsDrawer } from '../components/MovementsDrawer';
+import { InventoryTabs } from '../components/InventoryTabs';
+import { LocationBreakdownDrawer } from '../components/LocationBreakdownDrawer';
 
 interface Props {
   slug: string;
@@ -16,15 +18,17 @@ export default function InventoryListPage({ perms }: Props) {
   const [rows, setRows] = useState<StockRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
   const [adjustTarget, setAdjustTarget] = useState<StockRow | null>(null);
   const [historyTarget, setHistoryTarget] = useState<StockRow | null>(null);
+  const [locTarget, setLocTarget] = useState<StockRow | null>(null);
 
   const canAdjust = perms.has('inventory.products.edit');
 
-  const load = useCallback((query: string) => {
+  const load = useCallback((query: string, state: string) => {
     setError(null);
     inventoryApi
-      .list(query)
+      .list(query, state)
       .then((r) => setRows(r.items))
       .catch((e) => {
         setRows([]);
@@ -33,19 +37,34 @@ export default function InventoryListPage({ perms }: Props) {
   }, []);
 
   useEffect(() => {
-    load('');
+    load('', '');
   }, [load]);
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
     setRows(null);
-    load(q.trim());
+    load(q.trim(), stateFilter);
+  };
+
+  const onStateFilter = (value: string) => {
+    setStateFilter(value);
+    setRows(null);
+    load(q.trim(), value);
   };
 
   const onAdjusted = () => {
     setAdjustTarget(null);
     setRows(null);
-    load(q.trim());
+    load(q.trim(), stateFilter);
+  };
+
+  const changeLifecycle = async (r: StockRow, next: LifecycleState) => {
+    try {
+      await inventoryApi.setLifecycle({ product_id: r.product_id, state: next });
+      load(q.trim(), stateFilter);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const lowCount = rows?.filter((r) => r.low).length ?? 0;
@@ -71,9 +90,21 @@ export default function InventoryListPage({ perms }: Props) {
             onChange={(e) => setQ(e.target.value)}
             aria-label="Search inventory"
           />
+          <select
+            className="inv-filter"
+            value={stateFilter}
+            onChange={(e) => onStateFilter(e.target.value)}
+            aria-label="Filter by lifecycle state"
+          >
+            <option value="">All states</option>
+            <option value="active">Active</option>
+            <option value="seasonal">Seasonal</option>
+            <option value="discontinued">Discontinued</option>
+          </select>
           <button type="submit" className="btn btn-secondary">Search</button>
         </form>
       </div>
+      <InventoryTabs />
 
       {error && (
         <div className="inv-error" role="alert">
@@ -97,6 +128,7 @@ export default function InventoryListPage({ perms }: Props) {
               <th className="inv-num">On hand</th>
               <th className="inv-num">Reorder at</th>
               <th>Status</th>
+              <th>Lifecycle</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -117,9 +149,28 @@ export default function InventoryListPage({ perms }: Props) {
                     <span className="inv-badge inv-badge-ok">OK</span>
                   )}
                 </td>
+                <td>
+                  {canAdjust ? (
+                    <select
+                      className={`inv-life-select inv-life-${r.lifecycle_state}`}
+                      value={r.lifecycle_state}
+                      onChange={(e) => changeLifecycle(r, e.target.value as LifecycleState)}
+                      aria-label={`Lifecycle for ${r.name}`}
+                    >
+                      <option value="active">Active</option>
+                      <option value="seasonal">Seasonal</option>
+                      <option value="discontinued">Discontinued</option>
+                    </select>
+                  ) : (
+                    <span className={`inv-badge inv-life-${r.lifecycle_state}`}>{r.lifecycle_state}</span>
+                  )}
+                </td>
                 <td className="inv-row-actions">
                   <button type="button" className="inv-link" onClick={() => setHistoryTarget(r)}>
                     History
+                  </button>
+                  <button type="button" className="inv-link" onClick={() => setLocTarget(r)}>
+                    Where
                   </button>
                   {canAdjust && (
                     <button type="button" className="inv-link" onClick={() => setAdjustTarget(r)}>
@@ -138,6 +189,9 @@ export default function InventoryListPage({ perms }: Props) {
       )}
       {historyTarget && (
         <MovementsDrawer row={historyTarget} onClose={() => setHistoryTarget(null)} />
+      )}
+      {locTarget && (
+        <LocationBreakdownDrawer row={locTarget} onClose={() => setLocTarget(null)} />
       )}
     </div>
   );
