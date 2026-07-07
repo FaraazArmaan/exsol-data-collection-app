@@ -13,9 +13,9 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by 6 unpushed commits** → `27c01fc` (handoff)
-  + `f85227b` (**Finance depth**) + `178eda5` (handoff) + `d092974` (**Inventory depth**) + `17e269f`
-  (**Orders depth, new module**) + this handoff update. Working tree clean.
+- **`origin/main` == `00179bd`; local `main` is AHEAD by 8 module/handoff commits** (unpushed):
+  Finance `f85227b`, Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56` (+ interleaved handoff
+  commits). Working tree clean.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -30,19 +30,27 @@ and coordinates prod deploys. It does NOT build modules.
      **Nav dedupe:** renamed the POS `/pos/sales` sidebar link 'Orders'→'Sales' (user decision) so the
      new Order-Management 'Orders' link isn't a duplicate label. `router.tsx` union-merged
      (inventory-depth routes + orders route). docs/reference regenerated.
+  4. **Warehouse** (`30e0f56`, migs 093–096) — depth layer over Warehouse v1 (existing module, no new
+     registration). All 5 tabs Stock&Locations/Putaway/Inbound/Safety/AI-Slotting smoke-tested (putaway
+     queue from POs, ASN + `asn-detail/:id` param-route dialog, safety incidents/checklists, AI-slotting
+     with keyless `_shared/ai.ts` fallback "AI preview"), dark-theme confirmed. authz gate order verified
+     (412→L1→matrix; Owner-bypass gap fixed on-branch). 14 new `/api/warehouse/*` endpoints. Only
+     docs/reference conflicted on merge (regenerated).
   - Verification note: the full `npx vitest run` intermittently flakes on **dev-Neon overload**
     (`NeonDbError: fetch failed` across untouched-module files + the known `pub-menu` 429 / webp-thumb).
     Cleanest full run so far was **1408/1410** (2 flakes, both documented). Each merged module's own suite
-    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72). Capture one clean full run when
-    load subsides.
+    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72, Warehouse 64/64). Capture one clean
+    full run when load subsides.
   - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 + 087–091
-    on prod; probe the new `/api/finance/*`, `/api/inventory/*`, `/api/orders/*` endpoints for the
-    Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` — config.method-array routing); `seed:finance`
-    + `seed:inventory` + `seed:orders` on prod. **Enable the `orders` product** in
-    `client_enabled_products` for papa-s-saloon on prod (it's new — invisible until enabled; seed does it
-    on dev). Finance + Inventory products already enabled on prod.
-  - Remaining depth branches to integrate (own worktrees, unpushed): warehouse (093–096),
-    supply-chain (097–098), hr (120), workforce, marketing.
+    + 093–096 on prod; probe the new `/api/finance/*`, `/api/inventory/*`, `/api/orders/*`,
+    `/api/warehouse/*` endpoints for the Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` —
+    config.method-array routing — and the `:param` routes `warehouse/asn-detail/:id`,
+    `warehouse/safety-incident/:id`); `seed:finance` + `seed:inventory` + `seed:orders` + `seed:warehouse`
+    on prod. **Enable the `orders` product** in `client_enabled_products` for papa-s-saloon on prod (it's
+    new — invisible until enabled; seed does it on dev). Finance/Inventory/Warehouse products already
+    enabled on prod.
+  - Remaining depth branches to integrate (own worktrees, unpushed): supply-chain (097–098), hr (120),
+    workforce, marketing.
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
