@@ -1,12 +1,14 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { ImpersonationBanner } from './ImpersonationBanner';
 
 export function UserDashboardLayout() {
   return (
     <div className="app-shell">
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <ImpersonationBanner />
         <TopBar />
         <main className="main">
           <Outlet />

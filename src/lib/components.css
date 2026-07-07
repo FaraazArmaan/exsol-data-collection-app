@@ -15,6 +15,18 @@ a:hover { color: var(--accent-hover); }
 .sidebar nav a { padding: 8px 12px; border-radius: var(--radius-sm); color: var(--text-secondary); }
 .sidebar nav a.active { background: var(--bg-elevated); color: var(--text-primary); }
 .sidebar .footer { margin-top: auto; font-size: 12px; color: var(--text-muted); }
+/* Admin "view as client" module jumps — buttons styled like the nav links. */
+.sidebar-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 12px 4px; color: var(--text-muted); }
+.sidebar-module-link { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 8px 12px; border-radius: var(--radius-sm); color: var(--text-secondary); font: inherit; }
+.sidebar-module-link:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text-primary); }
+.sidebar-module-link:disabled { opacity: 0.6; cursor: default; }
+.sidebar-imp-err { padding: 4px 12px; font-size: 12px; color: var(--danger); }
+.sidebar-back { margin-top: 8px; border-top: 1px solid var(--border-subtle); padding-top: 12px; }
+
+/* Admin "view as client" banner across the top of the impersonated workspace. */
+.imp-banner { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 8px 16px; background: var(--accent); color: var(--text-on-accent); font-size: 13px; font-weight: 600; }
+.imp-banner__exit { background: var(--text-on-accent); color: var(--accent); border: none; border-radius: var(--radius-sm); padding: 4px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.imp-banner__exit:disabled { opacity: 0.6; cursor: default; }
 .main { flex: 1; padding: 32px; overflow-y: auto; }
 
 /* Buttons */
