@@ -13,18 +13,22 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == local == `35d68e8` (PUSHED 2026-07-07).** The 8 depth modules + fixes + handoffs
-  (20 commits, `00179bd..35d68e8`) are live on GitHub → Netlify deploy triggered. Working tree clean.
-- **DEPTH PHASE IS ~62% DONE — 8 of 13 modules integrated, 5 remain (unbuilt).**
-  - **Merged & pushed (queue-1 set):** Finance `f85227b` (063–066), Inventory `d092974` (080–081),
-    Orders `17e269f` (087–091), Warehouse `30e0f56` (093–096), Supply-Chain `99e253f` (097–098)
-    (+tabs `c14b075`), Workforce `7de8219` (112–119) (+nav fix `c9fc102`), HR `571b6ca` (120)
-    (+POS-label test fixup `c1d21de`), Marketing `f490c19` (131–136).
-  - **NOT built yet (queue-2 set) — reserved migration ranges, no collision:** D1.3 Procurement (069–073),
-    D1.7 Manufacturing (074–079), D1.9 CRM (102–106), D1.11 Project Manager (108–111, 107 Timesheets
-    already live), D1.5 Ecommerce (124–130). Build each in its own worktree rebased on `35d68e8`
-    (Ecommerce depends on Orders; Project Mgr on Workforce/Timesheets — both now on main). Integrate as a
-    SECOND batch, same runbook, only after the current prod rollout is confirmed healthy.
+- **`origin/main` == `673a9b0` (PUSHED + LIVE ON PROD).** The 8 queue-1 depth modules + fixes are live on
+  `exsoldatacollectionapp.netlify.app` — prod migrated (063–136), demo tenant seeded, orders+hr products
+  enabled, endpoints probed healthy. Local `main` is **1 commit ahead** (`31756c8` Procurement depth,
+  unpushed). Working tree clean.
+- **DEPTH PHASE IS ~69% DONE — 9 of 13 modules integrated, 4 remain (unbuilt).**
+  - **Live on prod (queue-1, 8):** Finance (063–066), Inventory (080–081), Orders (087–091), Warehouse
+    (093–096), Supply-Chain (097–098), Workforce (112–119), HR (120), Marketing (131–136) — plus the
+    marketing tabbed-nav fix `673a9b0` and the inventory seed qty>0 fix `4d48ca5`.
+  - **Merged locally, NOT pushed (queue-2 in progress):** D1.3 **Procurement** `31756c8` (migs 069–072;
+    073 spare) — verified (typecheck, suite 41/41, all tabs incl. new 3-Way Match + Trends smoke-tested,
+    dark theme). Push + run the prod runbook (migrate 069–072, `seed:procurement`, probe ~10 new
+    `/api/procurement/*` endpoints for the Edge-404 trap).
+  - **NOT built yet (queue-2 remaining, 4) — reserved ranges, no collision:** D1.7 Manufacturing
+    (074–079), D1.9 CRM (102–106), D1.11 Project Manager (108–111, 107 Timesheets already live), D1.5
+    Ecommerce (124–130). Build each in its own worktree rebased on current `main` (Ecommerce depends on
+    Orders; Project Mgr on Workforce/Timesheets — both live). Same runbook.
 - ✅ **CLEAN FULL SUITE (for the 8 merged): `npx vitest run` → 1708/1708 passed (286 files), 0 failures**
   (2026-07-07, after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
