@@ -52,13 +52,16 @@ async function seedPO(
   productId: string,
   daysOffset: number,
 ): Promise<string> {
-  // daysOffset: positive = future, negative = past; computed in TS to avoid sql.unsafe
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  const expectedOn = d.toISOString().slice(0, 10); // YYYY-MM-DD
+  // daysOffset: positive = future, negative = past. Computed in SQL with the SAME
+  // tenant-tz day arithmetic the handler uses (date_trunc('day', now() AT TIME ZONE
+  // clients.timezone)) — a TS-side `new Date()`/toISOString() seed renders the UTC
+  // date and goes off-by-one whenever local date ≠ UTC date (e.g. 00:00–05:30 IST).
   const poRows = (await sql`
     INSERT INTO public.purchase_orders (client_id, supplier_id, status, expected_on, notes)
-    VALUES (${clientId}::uuid, ${supplierId}::uuid, 'ordered', ${expectedOn}::date, 'test-po')
+    SELECT ${clientId}::uuid, ${supplierId}::uuid, 'ordered',
+           (date_trunc('day', now() AT TIME ZONE COALESCE(c.timezone, 'UTC'))::date + ${daysOffset}::int),
+           'test-po'
+    FROM public.clients c WHERE c.id = ${clientId}::uuid
     RETURNING id
   `) as Array<{ id: string }>;
   const poId = poRows[0]!.id;
