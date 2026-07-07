@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useUserAuth } from '../../user-portal/user-auth-context';
 import { visibleSectionsFor } from '../gating';
 import type { SectionKey } from '../shared/types';
@@ -21,32 +22,64 @@ export function SupplyChainDashboard() {
   const enabledKeys = new Set(enabledModules.map((m) => m.key));
   const sections = visibleSectionsFor(enabledKeys);
 
+  // Overview groups the cross-module live panels (Inventory / Procurement /
+  // Manufacturing), which are gated on those modules being enabled. The
+  // supply-chain-native tools each get their own tab so the page reads like the
+  // other modules instead of one long scroll.
+  const renderOverview = () => {
+    if (sections.length === 0) {
+      return (
+        <div className="sc-state sc-empty sc-empty-all">
+          Inventory, Procurement, and Manufacturing panels are hidden — enable those modules to
+          see their data here. Supply-chain tools (Suppliers, Risk, CO₂, AI Brief) are available in
+          the tabs above.
+        </div>
+      );
+    }
+    return (
+      <div className="sc-sections">
+        {sections.map((key) => {
+          const Cmp = SECTION_COMPONENT[key];
+          return <Cmp key={key} />;
+        })}
+      </div>
+    );
+  };
+
+  const tabs = [
+    { key: 'overview', label: 'Overview', render: renderOverview },
+    { key: 'suppliers', label: 'Suppliers', render: () => <SuppliersSection /> },
+    { key: 'risk', label: 'Risk', render: () => <RiskSection /> },
+    { key: 'co2', label: 'CO₂', render: () => <Co2Section /> },
+    { key: 'brief', label: 'AI Brief', render: () => <BriefSection /> },
+  ];
+
+  const [active, setActive] = useState('overview');
+  const activeTab = tabs.find((t) => t.key === active) ?? tabs[0]!;
+
   return (
     <div className="sc-dashboard">
       <header className="sc-header">
         <h1>Supply Chain</h1>
         <p className="sc-sub">Live view across inventory, procurement, and production.</p>
       </header>
-      {sections.length === 0 && (
-        <div className="sc-state sc-empty sc-empty-all">
-          Inventory, Procurement, and Manufacturing panels are hidden — enable those modules to
-          see their data here. Supply chain tools (Suppliers, Risk, CO₂, Brief) are available
-          below regardless.
-        </div>
-      )}
-      {sections.length > 0 && (
-        <div className="sc-sections">
-          {sections.map((key) => {
-            const Cmp = SECTION_COMPONENT[key];
-            return <Cmp key={key} />;
-          })}
-        </div>
-      )}
-      {/* product_suppliers is supply-chain-native; show whenever the dashboard renders */}
-      <SuppliersSection />
-      <RiskSection />
-      <Co2Section />
-      <BriefSection />
+
+      <div className="sc-tabs" role="tablist" aria-label="Supply chain sections">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={active === t.key}
+            className={`sc-tab${active === t.key ? ' sc-tab-active' : ''}`}
+            onClick={() => setActive(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="sc-tabpanel">{activeTab.render()}</div>
     </div>
   );
 }

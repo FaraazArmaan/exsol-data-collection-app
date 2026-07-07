@@ -1,6 +1,10 @@
 .sc-dashboard { padding: 24px; max-width: 1100px; margin: 0 auto; }
 .sc-header h1 { margin: 0 0 4px; font-size: 22px; color: var(--text-primary); }
 .sc-sub { margin: 0 0 20px; color: var(--text-secondary); font-size: 13px; }
+.sc-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); margin-bottom: 20px; overflow-x: auto; }
+.sc-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); cursor: pointer; padding: 10px 14px; font: inherit; font-weight: 600; white-space: nowrap; }
+.sc-tab:hover { color: var(--text-primary); }
+.sc-tab-active { color: var(--accent); border-bottom-color: var(--accent); }
 .sc-sections { display: flex; flex-direction: column; gap: 24px; }
 .sc-section { border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px; background: var(--bg-surface); color: var(--text-primary); }
 .sc-section-title { margin: 0 0 12px; font-size: 15px; color: var(--text-primary); }
