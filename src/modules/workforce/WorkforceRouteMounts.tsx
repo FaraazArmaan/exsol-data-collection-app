@@ -45,25 +45,33 @@ function useAuthBits() {
   return { user, client, perms, workforceEnabled, slug: slug ?? '', loading };
 }
 
-// Enable-gate THEN permission — same order as the backend and Sidebar.
-export function WorkforceMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <WorkforcePage slug={slug} perms={perms} />;
+// Enable-gate THEN permission — same order as the backend and Sidebar
+// (Iron Rule 2). Mirrors the local gate() factory used by booking/inventory/crm.
+function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) => JSX.Element) {
+  return function Mount() {
+    const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
+    if (loading) return null;
+    if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
+    if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
+    if (!perms.has(perm)) return <Navigate to={`/c/${slug}`} replace />;
+    return render(slug, perms);
+  };
 }
 
-export function WorkforceProjectsMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('project-service.business.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <ProjectsPage slug={slug} perms={perms} />;
-}
+export const WorkforceMount = gate('workforce.employees.view', (slug, perms) => <WorkforcePage slug={slug} perms={perms} />);
+export const WorkforceProjectsMount = gate('project-service.business.view', (slug, perms) => <ProjectsPage slug={slug} perms={perms} />);
+export const WorkforceTimesheetsMount = gate('workforce.employees.view', (slug, perms) => <TimesheetsPage slug={slug} perms={perms} />);
+export const WorkforceLeaveMount = gate('workforce.leave.view', (slug, perms) => <LeaveRequestsPage slug={slug} perms={perms} />);
+export const WorkforcePunchingMount = gate('workforce.employees.view', (slug, perms) => <SmartPunchingPage slug={slug} perms={perms} />);
+export const WorkforceOvertimeMount = gate('workforce.employees.view', (slug, perms) => <OvertimePage slug={slug} perms={perms} />);
+export const WorkforceSwapMount = gate('workforce.employees.view', (slug, perms) => <SwapBoardPage slug={slug} perms={perms} />);
+export const WorkforcePayrollMount = gate('workforce.payroll.view', (slug, perms) => <PayrollPage slug={slug} perms={perms} />);
+export const WorkforceTrainingMount = gate('workforce.employees.view', (slug, perms) => <TrainingPage slug={slug} perms={perms} />);
+export const WorkforceAssetsMount = gate('workforce.assets.view', (slug, perms) => <AssetsPage slug={slug} perms={perms} />);
+export const WorkforceEmployeeDashboardMount = gate('workforce.employees.view', (slug, perms) => <EmployeeDashboardPage slug={slug} perms={perms} />);
 
+// Kept explicit: needs the :projectId param, whose useParams call must run
+// unconditionally BEFORE the early returns (rules-of-hooks).
 export function WorkforceProjectDetailMount() {
   const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
   const { projectId } = useParams<{ projectId: string }>();
@@ -73,85 +81,4 @@ export function WorkforceProjectDetailMount() {
   if (!perms.has('project-service.business.view')) return <Navigate to={`/c/${slug}`} replace />;
   if (!projectId) return <Navigate to={`/c/${slug}/workforce/projects`} replace />;
   return <ProjectDetailPage slug={slug} projectId={projectId} perms={perms} />;
-}
-
-export function WorkforceTimesheetsMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <TimesheetsPage slug={slug} perms={perms} />;
-}
-
-export function WorkforceLeaveMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.leave.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <LeaveRequestsPage slug={slug} perms={perms} />;
-}
-
-export function WorkforcePunchingMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <SmartPunchingPage slug={slug} perms={perms} />;
-}
-
-export function WorkforceOvertimeMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <OvertimePage slug={slug} perms={perms} />;
-}
-
-export function WorkforceSwapMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <SwapBoardPage slug={slug} perms={perms} />;
-}
-
-export function WorkforcePayrollMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.payroll.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <PayrollPage slug={slug} perms={perms} />;
-}
-
-export function WorkforceTrainingMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <TrainingPage slug={slug} perms={perms} />;
-}
-
-export function WorkforceAssetsMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.assets.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <AssetsPage slug={slug} perms={perms} />;
-}
-
-export function WorkforceEmployeeDashboardMount() {
-  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
-  if (loading) return null;
-  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
-  if (!workforceEnabled) return <Navigate to={`/c/${slug}`} replace />;
-  if (!perms.has('workforce.employees.view')) return <Navigate to={`/c/${slug}`} replace />;
-  return <EmployeeDashboardPage slug={slug} perms={perms} />;
 }
