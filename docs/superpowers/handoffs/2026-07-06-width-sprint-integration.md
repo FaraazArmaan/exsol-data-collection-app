@@ -13,10 +13,16 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `673a9b0` (PUSHED + LIVE ON PROD).** The 8 queue-1 depth modules + fixes are live on
-  `exsoldatacollectionapp.netlify.app` — prod migrated (063–136), demo tenant seeded, orders+hr products
-  enabled, endpoints probed healthy. Local `main` is **1 commit ahead** (`31756c8` Procurement depth,
-  unpushed). Working tree clean.
+- **🎉 DEPTH PHASE SHIPPED — all 13 ERP modules LIVE ON PROD.** `origin/main` == `2ab592c` (both
+  batches pushed). `exsoldatacollectionapp.netlify.app`: prod migrated through the full depth set
+  (queue-1 063–136 + queue-2 069–072/074–079/102–103/108–111/124–129 — 22 queue-2 migs applied clean),
+  demo tenant papa-s-saloon seeded across all 13 modules, all new functions Edge-registered
+  (restoreSiteDeploy after each deploy), endpoints probed healthy (401/400). `abandoned-cart-cron`
+  scheduled. Local `main` may sit 1 commit ahead if this handoff-completion commit isn't pushed yet.
+- **Remaining (non-blocking):** (1) marketing campaign `body_html` still needs XSS sanitize before live
+  Resend (queue-1 deferral); (2) optionally grant `manufacturing.business.*` keys to any L2/L3 users who
+  should edit maintenance/capacity (Owner has them via L1 bypass); (3) base_currency not plumbed to the FE
+  client → project budget renders `$` not `₹` (platform follow-up).
 - **🎉 DEPTH PHASE COMPLETE — all 13 of 13 modules integrated.** (8 live on prod; 5 queue-2 merged
   locally, awaiting push.)
   - **Live on prod (queue-1, 8):** Finance (063–066), Inventory (080–081), Orders (087–091), Warehouse
