@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { posApi, PosApiError, type Bundle, type MenuProductDto } from '../shared/api';
 import { formatRupees } from '../lib/money';
+import { EcommerceNav } from './EcommerceNav';
 
 // Staff bundle manager (/c/:slug/pos/bundles). Compose existing products into a
 // priced bundle; stock is derived from components. Gated on pos.sale.refund.
@@ -61,6 +62,7 @@ export default function BundlesPage() {
 
   return (
     <div className="pos-bundles">
+      <EcommerceNav active="bundles" />
       <header><h1>Bundles</h1><p className="muted">Sell products together at a set price.</p></header>
 
       <form className="pos-bundles__form" onSubmit={create}>

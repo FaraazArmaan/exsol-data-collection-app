@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { posApi, PosApiError, type StorefrontTax } from '../shared/api';
+import { EcommerceNav } from './EcommerceNav';
 
 // Staff storefront tax settings (/c/:slug/pos/tax). Gated on pos.sale.refund.
 // rate is entered as a percent and stored as basis points (18% → 1800).
@@ -35,6 +36,7 @@ export default function TaxPage() {
 
   return (
     <div className="pos-tax">
+      <EcommerceNav active="tax" />
       <header><h1>Tax / VAT</h1><p className="muted">Applied to storefront orders after any discount.</p></header>
 
       <form className="pos-tax__form" onSubmit={save}>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EcommerceNav } from './EcommerceNav';
 
 // Staff marketplace feed export (/c/:slug/pos/marketplace). Generates a per-
 // catalog product feed for one marketplace by downloading the file from
@@ -50,6 +51,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="pos-market">
+      <EcommerceNav active="marketplace" />
       <header>
         <h1>Marketplace feeds</h1>
         <p className="muted">Export your storefront catalog as a product feed. Upload it to the marketplace — no live sync.</p>

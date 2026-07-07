@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { posApi, PosApiError, type StorefrontSections, type CmsHero } from '../shared/api';
+import { EcommerceNav } from './EcommerceNav';
 
 // Staff storefront content editor (/c/:slug/pos/storefront). Edits the hero +
 // banners shown on the public /menu/:slug when published. Gated on pos.sale.refund.
@@ -46,6 +47,7 @@ export default function StorefrontCmsPage() {
 
   return (
     <div className="pos-cms">
+      <EcommerceNav active="storefront" />
       <header className="pos-cms__header">
         <h1>Storefront content</h1>
         <label className="pos-cms__pub">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { posApi, PosApiError, type Coupon, type CouponCreateInput } from '../shared/api';
+import { EcommerceNav } from './EcommerceNav';
 import { formatRupees } from '../lib/money';
 
 // Staff coupon manager (mounted at /c/:slug/pos/coupons). Generates storefront
@@ -95,6 +96,7 @@ export default function CouponsPage() {
 
   return (
     <div className="pos-coupons">
+      <EcommerceNav active="coupons" />
       <header className="pos-coupons__header">
         <h1>Coupons</h1>
         <p className="muted">Storefront promo codes, validated at checkout.</p>

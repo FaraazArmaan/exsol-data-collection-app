@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { posApi, PosApiError, type StaffReview } from '../shared/api';
+import { EcommerceNav } from './EcommerceNav';
 
 // Staff review/Q&A moderation queue (/c/:slug/pos/reviews). Approve/reject
 // submissions and answer questions. Gated server-side by pos.history.viewAll;
@@ -42,6 +43,7 @@ export default function ReviewsPage() {
 
   return (
     <div className="pos-reviews">
+      <EcommerceNav active="reviews" />
       <header className="pos-reviews__header">
         <h1>Reviews &amp; Questions</h1>
         <div className="pos-tabs" role="tablist">

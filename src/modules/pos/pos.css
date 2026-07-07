@@ -12,6 +12,12 @@
  * tree (pages + components/) — see the matching React files for each block.
  * ──────────────────────────────────────────────────────────────────────── */
 
+/* ── Ecommerce tab bar (Coupons/Reviews/Bundles/Tax/Storefront/Marketplace) ─ */
+.pos-ecom-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); margin-bottom: 20px; overflow-x: auto; }
+.pos-ecom-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); cursor: pointer; padding: 10px 14px; font: inherit; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.pos-ecom-tab:hover { color: var(--text-primary); }
+.pos-ecom-tab-active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ── Menu page: photo grid + sticky order rail ─────────────────────────── */
 .pos-menu {
   display: grid;
