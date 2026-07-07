@@ -38,6 +38,20 @@ export async function seedWorkforceClient(): Promise<WorkforceTestCtx> {
 
 export { makeBucketUserRequest };
 
+// Bare L2 user_node (no credentials) — enough to be an asset-assignment
+// target. Reuses the owner node's role via subselect.
+export async function seedSecondNode(ctx: PosTestCtx): Promise<string> {
+  const rows = (await sql`
+    INSERT INTO public.user_nodes
+      (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
+    SELECT client_id, id, 2, role_id, ${randName('Assignee')},
+           ${`${randName('assignee')}@exsol.test`.toLowerCase()}, ${ctx.adminId}
+    FROM public.user_nodes WHERE id = ${ctx.userNodeId}::uuid
+    RETURNING id
+  `) as Array<{ id: string }>;
+  return rows[0]!.id;
+}
+
 export function randName(prefix = 'WF'): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }

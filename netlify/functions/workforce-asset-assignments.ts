@@ -34,92 +34,19 @@ async function handleGet(req: Request): Promise<Response> {
 
   const sql = db();
 
-  let assignments: unknown[];
-  if (activeOnly && userNodeId !== null && assetId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.user_node_id = ${userNodeId}::uuid
-        AND aa.asset_id = ${assetId}::uuid
-        AND aa.returned_at IS NULL
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (activeOnly && userNodeId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.user_node_id = ${userNodeId}::uuid
-        AND aa.returned_at IS NULL
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (activeOnly && assetId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.asset_id = ${assetId}::uuid
-        AND aa.returned_at IS NULL
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (activeOnly) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.returned_at IS NULL
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (userNodeId !== null && assetId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.user_node_id = ${userNodeId}::uuid
-        AND aa.asset_id = ${assetId}::uuid
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (userNodeId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.user_node_id = ${userNodeId}::uuid
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else if (assetId !== null) {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-        AND aa.asset_id = ${assetId}::uuid
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  } else {
-    assignments = (await sql`
-      SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
-             aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
-      FROM public.asset_assignments aa
-      JOIN public.workforce_assets wa ON wa.id = aa.asset_id
-      WHERE aa.client_id = ${a.ctx.clientId}::uuid
-      ORDER BY aa.assigned_at DESC
-    `) as unknown[];
-  }
+  // One query: each filter collapses to TRUE when its parameter is NULL/false,
+  // reproducing the old 8-way branch matrix with plain bound parameters.
+  const assignments = (await sql`
+    SELECT aa.id, aa.asset_id, wa.name AS asset_name, aa.user_node_id,
+           aa.assigned_at, aa.returned_at, aa.condition_at_return, aa.notes
+    FROM public.asset_assignments aa
+    JOIN public.workforce_assets wa ON wa.id = aa.asset_id
+    WHERE aa.client_id = ${a.ctx.clientId}::uuid
+      AND (${userNodeId}::uuid IS NULL OR aa.user_node_id = ${userNodeId}::uuid)
+      AND (${assetId}::uuid IS NULL OR aa.asset_id = ${assetId}::uuid)
+      AND (NOT ${activeOnly}::boolean OR aa.returned_at IS NULL)
+    ORDER BY aa.assigned_at DESC
+  `) as unknown[];
 
   return jsonOk({ assignments });
 }
@@ -169,20 +96,12 @@ async function handlePost(req: Request): Promise<Response> {
   `) as Array<{ id: string }>;
   if (activeRows.length > 0) return jsonError(409, 'asset_already_assigned');
 
-  let rows: Array<Record<string, unknown>>;
-  if (notes !== null) {
-    rows = (await sql`
-      INSERT INTO public.asset_assignments (client_id, asset_id, user_node_id, notes)
-      VALUES (${a.ctx.clientId}::uuid, ${assetId}::uuid, ${userNodeId}::uuid, ${notes}::text)
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  } else {
-    rows = (await sql`
-      INSERT INTO public.asset_assignments (client_id, asset_id, user_node_id)
-      VALUES (${a.ctx.clientId}::uuid, ${assetId}::uuid, ${userNodeId}::uuid)
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  }
+  // notes has a plain NULL column default, so binding null ≡ omitting the column.
+  const rows = (await sql`
+    INSERT INTO public.asset_assignments (client_id, asset_id, user_node_id, notes)
+    VALUES (${a.ctx.clientId}::uuid, ${assetId}::uuid, ${userNodeId}::uuid, ${notes}::text)
+    RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
+  `) as Array<Record<string, unknown>>;
 
   return jsonOk({ assignment: rows[0] }, { status: 201 });
 }
@@ -222,44 +141,16 @@ async function handlePatch(req: Request): Promise<Response> {
 
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null;
 
-  let rows: Array<Record<string, unknown>>;
-  if (conditionAtReturn !== null && notes !== null) {
-    rows = (await sql`
-      UPDATE public.asset_assignments
-      SET returned_at         = now(),
-          condition_at_return = ${conditionAtReturn}::text,
-          notes               = ${notes}::text
-      WHERE id = ${assignmentId}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  } else if (conditionAtReturn !== null) {
-    rows = (await sql`
-      UPDATE public.asset_assignments
-      SET returned_at         = now(),
-          condition_at_return = ${conditionAtReturn}::text,
-          notes               = NULL
-      WHERE id = ${assignmentId}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  } else if (notes !== null) {
-    rows = (await sql`
-      UPDATE public.asset_assignments
-      SET returned_at         = now(),
-          condition_at_return = NULL,
-          notes               = ${notes}::text
-      WHERE id = ${assignmentId}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  } else {
-    rows = (await sql`
-      UPDATE public.asset_assignments
-      SET returned_at         = now(),
-          condition_at_return = NULL,
-          notes               = NULL
-      WHERE id = ${assignmentId}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
-    `) as Array<Record<string, unknown>>;
-  }
+  // All four old branches set the same three columns; the only variation was
+  // null vs non-null values — bind them directly.
+  const rows = (await sql`
+    UPDATE public.asset_assignments
+    SET returned_at         = now(),
+        condition_at_return = ${conditionAtReturn}::text,
+        notes               = ${notes}::text
+    WHERE id = ${assignmentId}::uuid AND client_id = ${a.ctx.clientId}::uuid
+    RETURNING id, asset_id, user_node_id, assigned_at, returned_at, condition_at_return, notes
+  `) as Array<Record<string, unknown>>;
 
   if (rows.length === 0) return jsonError(404, 'assignment_not_found');
   return jsonOk({ assignment: rows[0] });
