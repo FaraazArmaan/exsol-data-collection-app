@@ -34,7 +34,7 @@ import { WorkspaceProductsScopeProvider } from '../modules/products/shared/scope
 import AdminProductsListPage from '../modules/products/admin/AdminProductsListPage';
 import AdminProductEditPage from '../modules/products/admin/AdminProductEditPage';
 import AdminProductCategoriesPage from '../modules/products/admin/AdminProductCategoriesPage';
-import { PosMenuMount, PosCartMount, PosSalesMount } from '../modules/pos/PosRouteMounts';
+import { PosMenuMount, PosCartMount, PosSalesMount, PosCouponsMount, PosReviewsMount, PosBundlesMount, PosTaxMount, PosStorefrontCmsMount, PosMarketplaceMount } from '../modules/pos/PosRouteMounts';
 // Lazy-loaded so the analytics bundle (incl. recharts) is a separate chunk
 // fetched only when a user opens Analytics — keeps the main bundle lean.
 const AnalyticsRouteMount = lazy(() => import('../modules/analytics/AnalyticsRouteMount'));
@@ -159,6 +159,12 @@ export const router = createBrowserRouter([
               { path: 'pos/cart', element: <PosCartMount /> },
               { path: 'pos/sales', element: <PosSalesMount /> },
               { path: 'pos/sales/:id', element: <PosSalesMount /> },
+              { path: 'pos/coupons', element: <PosCouponsMount /> },
+              { path: 'pos/reviews', element: <PosReviewsMount /> },
+              { path: 'pos/bundles', element: <PosBundlesMount /> },
+              { path: 'pos/tax', element: <PosTaxMount /> },
+              { path: 'pos/storefront', element: <PosStorefrontCmsMount /> },
+              { path: 'pos/marketplace', element: <PosMarketplaceMount /> },
               { path: 'pos/settings', element: <StorefrontSettings /> },
               { path: 'booking', element: <BookingCalendarMount /> },
               { path: 'booking/list', element: <BookingListMount /> },

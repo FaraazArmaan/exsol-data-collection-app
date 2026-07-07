@@ -6,7 +6,7 @@
 
 # API endpoints
 
-259 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+274 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -263,6 +263,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| abandoned-cart-cron.ts | `/api/abandoned-cart-cron (name-routed)` | any | public | — |
 | onboard-import.ts | `/api/onboard-import/:token` | POST | public | — |
 | onboard-public.ts | `/api/onboard-public/:token` | GET | public | — |
 | webhook-example.ts | `/api/webhook-example` | POST | public | — |
@@ -277,11 +278,20 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| pos-bundle-detail.ts | `/api/pos/bundles/:id` | any | bucket-user | `pos.sale.refund` |
+| pos-bundles.ts | `/api/pos/bundles` | any | bucket-user | `pos.sale.refund` |
+| pos-coupon-detail.ts | `/api/pos/coupons/:id` | any | bucket-user | `pos.sale.refund` |
+| pos-coupons.ts | `/api/pos/coupons` | any | bucket-user | `pos.sale.refund` |
+| pos-marketplace-feed.ts | `/api/pos/marketplace-feed` | any | bucket-user | `pos.sale.refund` |
 | pos-menu.ts | `/api/pos/menu` | any | bucket-user | `pos.menu.view` |
+| pos-review-detail.ts | `/api/pos/reviews/:id` | any | bucket-user | `pos.history.viewAll` |
+| pos-reviews.ts | `/api/pos/reviews` | any | bucket-user | `pos.history.viewAll` |
 | pos-sale-create.ts | `/api/pos/sales` | POST | bucket-user | `pos.sale.create`, `pos.sale.created` |
 | pos-sale-detail.ts | `/api/pos/sales/:id` | any | bucket-user | `pos.history.view`, `pos.history.viewAll` |
 | pos-sale-state.ts | `/api/pos/sales/:id/state` | any | bucket-user | `pos.history.view`, `pos.sale.fulfill` |
 | pos-sales-list.ts | `/api/pos/sales` | GET | bucket-user | `pos.history.view`, `pos.history.viewAll` |
+| pos-storefront-cms.ts | `/api/pos/storefront-cms` | any | bucket-user | `pos.sale.refund` |
+| pos-tax.ts | `/api/pos/tax` | any | bucket-user | `pos.sale.refund` |
 
 ## pos storefront (public)
 
@@ -289,10 +299,15 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | pub-brand-image.ts | `/api/public/brand/:slug/image/*` | GET | public | — |
 | pub-brand.ts | `/api/public/brand/:slug` | GET | public | — |
+| pub-cart-save.ts | `/api/public/cart` | POST | public | — |
+| pub-coupon-validate.ts | `/api/public/coupon-validate` | POST | public | — |
 | pub-menu.ts | `/api/public/menu/:slug` | GET | public | — |
+| pub-review-create.ts | `/api/public/reviews` | POST | public | — |
+| pub-reviews.ts | `/api/public/reviews/:slug` | GET | public | — |
 | pub-sale-create.ts | `/api/public/sales` | POST | public | `pos.sale.created` |
 | pub-sale-detail.ts | `/api/public/sales/:saleUuid` | GET | public | — |
 | pub-site.ts | `/api/public/site/:slug` | GET | public | — |
+| pub-storefront-config.ts | `/api/public/config/:slug` | GET | public | — |
 
 ## procurement
 

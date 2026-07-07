@@ -52,7 +52,10 @@ describe('StorefrontDetailsPage', () => {
     store.getState().addLine({ id: 'p1', name: 'Latte', categoryId: null, salePriceCents: 25000, thumbKey: null });
     store.getState().setCustomer({ name: 'Asha', phone: '9990001112' });
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(jsonResponse(201, { id: 'sale-xyz', status: 'pending_payment' }));
+    // mockImplementation (not mockResolvedValue) so each fetch — the config
+    // fetch on mount AND the sale POST — gets a FRESH response; a single Response
+    // body can only be read once.
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => jsonResponse(201, { id: 'sale-xyz', status: 'pending_payment' }));
 
     render(
       <MemoryRouter initialEntries={['/menu/corner-cafe/details']}>
@@ -70,7 +73,9 @@ describe('StorefrontDetailsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /place order/i }));
 
     await waitFor(() => expect(screen.getByText('RECEIPT sale-xyz')).toBeInTheDocument());
-    const body = JSON.parse((fetchSpy.mock.calls[0]![1] as RequestInit).body as string);
+    // The page also fetches /api/public/config on mount; pick the sale POST.
+    const saleCall = fetchSpy.mock.calls.find((c) => String(c[0]).includes('/api/public/sales'));
+    const body = JSON.parse((saleCall![1] as RequestInit).body as string);
     expect(body.honeypot).toBe('');
     expect(body.slug).toBe('corner-cafe');
     expect(body.idempotencyKey).toBe(sessionId);

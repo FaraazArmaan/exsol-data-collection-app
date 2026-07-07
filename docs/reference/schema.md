@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-38 tables across 110 forward-only migrations.
+45 tables across 116 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -36,6 +36,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `013_client_roles.sql`; altered in `022_client_roles_bucket_family.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `key text`, `label text`, `color text`, `fields jsonb`, `sort_order integer`, `created_at timestamptz`, `updated_at timestamptz`
+
+### `client_tax_config`
+
+- created in `128_client_tax_config.sql`
+- columns at creation: `client_id UUID`, `enabled BOOLEAN`, `rate_bps INTEGER`, `label TEXT`, `inclusive BOOLEAN`, `updated_at TIMESTAMPTZ`
 
 ### `clients`
 
@@ -171,6 +176,21 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ## platform (unmapped prefix)
 
+### `abandoned_carts`
+
+- created in `127_abandoned_carts.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `session_key TEXT`, `customer_name TEXT`, `customer_email TEXT`, `channel TEXT`, `lines JSONB`, `subtotal_cents INTEGER`, `status TEXT`, `reminded_at TIMESTAMPTZ`, `converted_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `coupon_redemptions`
+
+- created in `124_coupons.sql`
+- columns at creation: `id UUID`, `coupon_id UUID`, `sale_id UUID`, `customer_key TEXT`, `discount_cents INTEGER`, `created_at TIMESTAMPTZ`
+
+### `coupons`
+
+- created in `124_coupons.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `code TEXT`, `discount_type TEXT`, `discount_value INTEGER`, `min_order_cents INTEGER`, `max_redemptions INTEGER`, `per_customer_limit INTEGER`, `redeemed_count INTEGER`, `starts_at TIMESTAMPTZ`, `expires_at TIMESTAMPTZ`, `active BOOLEAN`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ### `hr_checklist_instance_items`
 
 - created in `120_hr_checklists.sql`
@@ -191,6 +211,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `120_hr_checklists.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `kind text`, `name text`, `is_default boolean`, `created_at timestamptz`, `updated_at timestamptz`
 
+### `storefront_cms`
+
+- created in `129_storefront_cms.sql`
+- columns at creation: `client_id UUID`, `sections JSONB`, `published BOOLEAN`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ## portfolio
 
 ### `brand_site_config`
@@ -207,6 +232,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ## products
 
+### `product_bundle_items`
+
+- created in `126_product_bundles.sql`
+- columns at creation: `id UUID`, `bundle_product_id UUID`, `component_product_id UUID`, `qty INTEGER`, `position INTEGER`, `created_at TIMESTAMPTZ`
+
 ### `product_categories`
 
 - created in `033_product_categories.sql`
@@ -216,6 +246,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `035_product_images.sql`
 - columns at creation: `id uuid`, `product_id uuid`, `blob_key text`, `sort_order int`, `created_at timestamptz`
+
+### `product_reviews`
+
+- created in `125_product_reviews.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `product_id UUID`, `kind TEXT`, `rating INTEGER`, `author_name TEXT`, `author_email TEXT`, `body TEXT`, `answer TEXT`, `status TEXT`, `created_at TIMESTAMPTZ`, `moderated_at TIMESTAMPTZ`
 
 ### `products`
 

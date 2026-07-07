@@ -64,3 +64,83 @@
   color: var(--accent);
   border: 1px solid var(--accent);
 }
+
+/* ---- Reviews & Q&A block ---- */
+.cat-rev { margin-top: 32px; }
+.cat-rev__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cat-rev__head h2 { margin: 0; font-size: 20px; color: var(--text-primary); }
+.cat-rev__summary { color: var(--text-secondary); font-size: 14px; }
+.cat-rev__stars { color: var(--accent); letter-spacing: 1px; }
+.cat-rev__cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.cat-rev__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.cat-rev__item p { margin: 6px 0 0; color: var(--text-secondary); }
+.cat-rev__meta { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
+.cat-rev__prod { color: var(--text-muted); font-weight: 400; }
+.cat-rev__qmark {
+  display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--accent); color: var(--text-on-accent); font-size: 12px; font-weight: 700;
+}
+.cat-rev__answer { border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 8px !important; }
+.cat-rev__form {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cat-rev__form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+.cat-rev__form input, .cat-rev__form select, .cat-rev__form textarea {
+  padding: 8px 10px; background: var(--bg-elevated); border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); color: var(--text-primary); font: inherit;
+}
+.cat-rev__kind { display: flex; gap: 8px; }
+.cat-rev__kind button {
+  flex: 1; padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);
+  background: var(--bg-elevated); color: var(--text-secondary); font: inherit; cursor: pointer;
+}
+.cat-rev__kind button.is-active { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); font-weight: 600; }
+.cat-rev__err { color: var(--danger); font-size: 13px; margin: 0; }
+.cat-rev__thanks { text-align: center; color: var(--text-primary); }
+.cat-rev__thanks button {
+  margin-top: 8px; padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); cursor: pointer; font: inherit;
+}
+
+/* ---- mobile (560px pattern) ----
+   The catalog rides the POS menu grid, whose only breakpoint is at 900px
+   (cart-column collapse — irrelevant here since catalogMode drops the cart).
+   Phones need their own tuning: denser grid, edge-to-edge padding, and a
+   contact CTA that stacks into full-width touch targets instead of a wrapping
+   row that leaves half-width buttons stranded. */
+@media (max-width: 560px) {
+  .cat-page {
+    padding: 8px 12px 24px;
+  }
+  .pos-menu--catalog .pos-menu__grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .cat-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .cat-cta__label {
+    text-align: center;
+  }
+  .cat-cta__actions {
+    flex-direction: column;
+  }
+  .cat-cta__btn {
+    text-align: center;
+    padding: 12px 18px;
+  }
+  .cat-rev__cols {
+    grid-template-columns: 1fr;
+  }
+}

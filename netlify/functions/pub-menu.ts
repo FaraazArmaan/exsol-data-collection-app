@@ -9,6 +9,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { resolveStorefront } from './_pub-authz';
 import { checkLimit, clientIp } from './_pub-ratelimit';
+import { loadBundles } from './_shared/bundles';
 
 export const config = { path: '/api/public/menu/:slug', method: 'GET' };
 
@@ -53,21 +54,35 @@ export default async function handler(req: Request): Promise<Response> {
     ORDER BY sort_order, name
   `) as Array<{ id: string; name: string }>;
 
+  const bundles = await loadBundles(sql, tenant.clientId, products.map((p) => p.id));
+
+  // Published storefront CMS (hero + banners), if any.
+  const cmsRows = (await sql`
+    SELECT sections FROM public.storefront_cms
+    WHERE client_id = ${tenant.clientId}::uuid AND published = true
+  `) as Array<{ sections: unknown }>;
+  const cms = cmsRows[0]?.sections ?? null;
+
   return jsonOk(
     {
       tenant: { name: tenant.name },
+      ...(cms ? { cms } : {}),
       categories: cats.map((c) => ({
         id: c.id,
         name: c.name,
         productCount: products.filter((p) => p.category_id === c.id).length,
       })),
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        categoryId: p.category_id,
-        salePriceCents: Number(p.sale_price_cents),
-        thumbKey: p.hero_image_key,
-      })),
+      products: products.map((p) => {
+        const b = bundles.get(p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          categoryId: p.category_id,
+          salePriceCents: Number(p.sale_price_cents),
+          thumbKey: p.hero_image_key,
+          ...(b ? { isBundle: true, bundleInStock: b.inStock, bundleComponents: b.components.map((c) => ({ name: c.name, qty: c.qty })) } : {}),
+        };
+      }),
     },
     { headers: { 'Cache-Control': 'public, max-age=30' } },
   );

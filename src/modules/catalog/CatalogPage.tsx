@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import MenuPage from '../pos/pages/MenuPage';
 import type { MenuResponse } from '../pos/shared/api';
 import { NotAvailableCard } from '../pos/pages/NotAvailableCard';
+import StorefrontReviews from './StorefrontReviews';
 
 // Public catalog page. Fetches the catalog once, then reuses the exact storefront
 // MenuPage grid in `catalogMode` (no cart — see MenuPage's one added prop). The
@@ -60,6 +61,8 @@ export default function CatalogPage() {
           </div>
         </div>
       )}
+
+      <StorefrontReviews slug={slug ?? ''} products={data.products.map((p) => ({ id: p.id, name: p.name }))} />
     </div>
   );
 }

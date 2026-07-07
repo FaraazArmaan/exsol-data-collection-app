@@ -22,6 +22,7 @@ export const PublicSaleCreateBody = z.object({
     }))
     .min(1)
     .max(50),
+  couponCode: z.string().trim().min(1).max(40).optional(),
 });
 
 export type PublicSaleCreateBody = z.infer<typeof PublicSaleCreateBody>;

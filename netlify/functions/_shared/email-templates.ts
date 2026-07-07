@@ -94,6 +94,8 @@ export interface StorefrontReceiptData {
   orderNo: string | number;
   lines: ReceiptLine[];
   subtotalCents: number;
+  discountCents?: number;
+  taxCents?: number;
   totalCents: number;
 }
 
@@ -103,12 +105,28 @@ export function renderStorefrontReceipt(
   const lineRows = d.lines.map((l) =>
     `<tr><td style="padding:6px 0;color:#18181b">${esc(l.productName)} <span style="color:#71717a">× ${esc(l.qty)}</span></td>` +
     `<td style="padding:6px 0;text-align:right;color:#18181b">${esc(money(l.lineTotalCents))}</td></tr>`).join('');
+  // Summary rows: subtotal always, then discount/tax only when present, then the
+  // bold total. The first summary row carries the top border so the block reads
+  // as one grouped footer under the line items.
+  const sumRow = (label: string, cents: number, opts: { top?: boolean; bold?: boolean; neg?: boolean } = {}) => {
+    const border = opts.top ? 'border-top:1px solid #e4e4e7;' : '';
+    const weight = opts.bold ? 'font-weight:700;' : '';
+    const amount = `${opts.neg ? '−' : ''}${money(cents)}`;
+    return (
+      `<tr><td style="padding:8px 0 0;${border}${weight}color:#18181b">${esc(label)}</td>` +
+      `<td style="padding:8px 0 0;${border}${weight}text-align:right;color:#18181b">${esc(amount)}</td></tr>`
+    );
+  };
+  const summary =
+    sumRow('Subtotal', d.subtotalCents, { top: true }) +
+    (d.discountCents ? sumRow('Discount', d.discountCents, { neg: true }) : '') +
+    (d.taxCents ? sumRow('Tax', d.taxCents) : '') +
+    sumRow('Total', d.totalCents, { bold: true });
   const inner =
     `<p style="margin:0 0 16px;color:#3f3f46;font-size:14px">Hi ${esc(d.customerName || 'there')}, we've received your order.</p>` +
     `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">` +
       lineRows +
-      `<tr><td style="padding:10px 0 0;border-top:1px solid #e4e4e7;font-weight:700;color:#18181b">Total</td>` +
-      `<td style="padding:10px 0 0;border-top:1px solid #e4e4e7;text-align:right;font-weight:700;color:#18181b">${esc(money(d.totalCents))}</td></tr>` +
+      summary +
     `</table>` +
     `<p style="margin:16px 0 0;color:#71717a;font-size:13px">Order #${esc(d.orderNo)}</p>`;
   return {

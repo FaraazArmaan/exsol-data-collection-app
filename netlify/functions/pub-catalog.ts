@@ -5,6 +5,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { checkLimit, clientIp } from './_pub-ratelimit';
+import { loadBundles } from './_shared/bundles';
 
 export const config = { path: '/api/public/catalog/:slug', method: 'GET' };
 
@@ -58,6 +59,8 @@ export default async function handler(req: Request): Promise<Response> {
     ORDER BY sort_order, name
   `) as Array<{ id: string; name: string }>;
 
+  const bundles = await loadBundles(sql, c.id, products.map((p) => p.id));
+
   return jsonOk(
     {
       tenant: { name: c.name, contactPhone: c.contact_phone, contactEmail: c.contact_email },
@@ -66,13 +69,17 @@ export default async function handler(req: Request): Promise<Response> {
         name: cat.name,
         productCount: products.filter((p) => p.category_id === cat.id).length,
       })),
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        categoryId: p.category_id,
-        salePriceCents: Number(p.sale_price_cents),
-        thumbKey: p.hero_image_key,
-      })),
+      products: products.map((p) => {
+        const b = bundles.get(p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          categoryId: p.category_id,
+          salePriceCents: Number(p.sale_price_cents),
+          thumbKey: p.hero_image_key,
+          ...(b ? { isBundle: true, bundleInStock: b.inStock, bundleComponents: b.components.map((c) => ({ name: c.name, qty: c.qty })) } : {}),
+        };
+      }),
     },
     { headers: { 'Cache-Control': 'public, max-age=30' } },
   );

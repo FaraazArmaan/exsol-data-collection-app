@@ -7,6 +7,11 @@ export interface MenuProduct {
   categoryId: string | null;
   salePriceCents: number;
   thumbKey: string | null;
+  // Bundle metadata — present only on storefront/catalog payloads (undefined for
+  // the staff POS menu). Drives the tile's Bundle badge + sold-out state.
+  isBundle?: boolean;
+  bundleInStock?: boolean;
+  bundleComponents?: { name: string; qty: number }[];
 }
 
 export interface CartLine {

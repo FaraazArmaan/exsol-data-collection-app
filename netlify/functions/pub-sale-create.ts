@@ -23,6 +23,9 @@ import { checkLimit, clientIp } from './_pub-ratelimit';
 import { PublicSaleCreateBody } from './_pub-validators';
 import { serializePublicSale } from './_pub-serialize';
 import { sendMail } from './_shared/mailer';
+import { evaluateCoupon, customerKey, type CouponRow } from './_shared/coupons';
+import { loadBundles } from './_shared/bundles';
+import { computeTax, type TaxConfig } from './_shared/tax';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 export const config = { path: '/api/public/sales', method: 'POST' };
@@ -95,6 +98,13 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError(400, 'product_not_visible');
   }
 
+  // Bundle stock guard — a bundle whose components can't cover the order is not
+  // sellable. Same derivation the storefront used to grey the tile out.
+  const bundles = await loadBundles(sql, clientId, productIds);
+  for (const [bundleId, info] of bundles) {
+    if (!info.inStock) return jsonError(400, 'bundle_out_of_stock', { productId: bundleId });
+  }
+
   const byId = new Map(rows.map((p) => [p.id, p]));
   let subtotal = 0;
   const lineSpecs = body.lines.map((l, idx) => {
@@ -104,7 +114,58 @@ export default async function handler(req: Request): Promise<Response> {
     subtotal += lineTotal;
     return { productId: p.id, productName: p.name, unitPriceCents: unit, qty: l.qty, lineTotalCents: lineTotal, position: idx };
   });
-  const total = subtotal; // discount/tax 0 in v2
+  // ── Coupon (optional) ──────────────────────────────────────────────────────
+  // Re-evaluated here against server prices and the live redeemed_count — the
+  // storefront preview is never trusted into a discount. The global cap is
+  // reserved with a conditional UPDATE (race-safe); the per-customer cap is a
+  // best-effort count (documented TOCTOU, acceptable for storefront promos).
+  let discount = 0;
+  let redemption: { couponId: string; key: string } | null = null;
+  if (body.couponCode) {
+    const crows = (await sql`
+      SELECT id, code, discount_type, discount_value, min_order_cents, max_redemptions,
+             per_customer_limit, redeemed_count, starts_at, expires_at, active
+      FROM public.coupons
+      WHERE client_id = ${clientId}::uuid AND lower(code) = lower(${body.couponCode})
+      LIMIT 1
+    `) as CouponRow[];
+    const coupon = crows[0];
+    if (!coupon) return jsonError(422, 'coupon_not_found');
+    const ev = evaluateCoupon(coupon, subtotal, Date.now());
+    if (!ev.ok) return jsonError(422, ev.code);
+
+    const key = customerKey(body.customer);
+    if (coupon.per_customer_limit != null) {
+      const used = (await sql`
+        SELECT COUNT(*)::int AS n FROM public.coupon_redemptions
+        WHERE coupon_id = ${coupon.id}::uuid AND customer_key = ${key}
+      `) as Array<{ n: number }>;
+      if (Number(used[0]?.n ?? 0) >= coupon.per_customer_limit) return jsonError(422, 'coupon_customer_limit');
+    }
+
+    // Reserve a redemption slot atomically — closes the global-cap race.
+    const bumped = (await sql`
+      UPDATE public.coupons SET redeemed_count = redeemed_count + 1
+      WHERE id = ${coupon.id}::uuid
+        AND active = true
+        AND (max_redemptions IS NULL OR redeemed_count < max_redemptions)
+      RETURNING id
+    `) as Array<{ id: string }>;
+    if (!bumped[0]) return jsonError(422, 'coupon_exhausted');
+
+    discount = ev.discountCents;
+    redemption = { couponId: coupon.id, key };
+  }
+  // ── Tax (optional, per-client) ─────────────────────────────────────────────
+  // Applied to the post-discount taxable amount. Exclusive tax adds to the total;
+  // inclusive tax is extracted for the line but leaves the total unchanged.
+  const taxable = subtotal - discount;
+  const taxCfg = (await sql`
+    SELECT enabled, rate_bps, label, inclusive FROM public.client_tax_config
+    WHERE client_id = ${clientId}::uuid
+  `) as TaxConfig[];
+  const tax = computeTax(taxable, taxCfg[0] ?? null);
+  const total = taxable + tax.addToTotalCents;
 
   // 7. allocate order_no + insert header (retry on 23505 race)
   let saleId: string | null = null;
@@ -119,12 +180,12 @@ export default async function handler(req: Request): Promise<Response> {
         INSERT INTO public.sales (
           bucket_id, order_no, status, channel, source,
           customer_name, customer_phone, customer_email,
-          subtotal_cents, total_cents,
+          subtotal_cents, discount_cents, tax_cents, total_cents,
           created_by_user_node, payment_ref
         )
         SELECT ${clientId}::uuid, n, 'pending_payment'::sale_status, ${body.channel}::sale_channel, 'storefront',
                ${body.customer.name}, ${body.customer.phone}, ${body.customer.email ?? null},
-               ${subtotal}, ${total},
+               ${subtotal}, ${discount}, ${tax.addToTotalCents}, ${total},
                NULL, ${IDEM_PREFIX + body.idempotencyKey}
         FROM next_no
         RETURNING id, order_no
@@ -151,6 +212,22 @@ export default async function handler(req: Request): Promise<Response> {
     `;
   }
 
+  // Record the coupon redemption against the sale (the slot was reserved above).
+  if (redemption) {
+    await sql`
+      INSERT INTO public.coupon_redemptions (coupon_id, sale_id, customer_key, discount_cents)
+      VALUES (${redemption.couponId}::uuid, ${saleId}::uuid, ${redemption.key}, ${discount})
+    `;
+  }
+
+  // Flip any persisted abandoned cart for this session to 'converted' so the
+  // cron never nudges a guest who completed the order.
+  await sql`
+    UPDATE public.abandoned_carts
+    SET status = 'converted', converted_at = now()
+    WHERE client_id = ${clientId}::uuid AND session_key = ${body.idempotencyKey} AND status <> 'converted'
+  `;
+
   // 9. audit — system actor (no user_node, no admin); kind is intentionally
   //    neither 'admin' nor 'bucket_user' so logAudit records both as NULL.
   await logAudit(sql, {
@@ -159,7 +236,7 @@ export default async function handler(req: Request): Promise<Response> {
     clientId,
     targetType: 'sale',
     targetId: saleId,
-    detail: { source: 'storefront', total_cents: total, channel: body.channel, lines: lineSpecs.length },
+    detail: { source: 'storefront', total_cents: total, discount_cents: discount, tax_cents: tax.taxCents, channel: body.channel, lines: lineSpecs.length },
   });
 
   // Storefront receipt — fresh-insert path only (idempotent replays returned at step 5).
@@ -175,6 +252,10 @@ export default async function handler(req: Request): Promise<Response> {
         unitPriceCents: l.unitPriceCents, lineTotalCents: l.lineTotalCents,
       })),
       subtotalCents: subtotal,
+      discountCents: discount || undefined,
+      // Additive tax only on the receipt (matches the stored row + total). An
+      // inclusive tax is already baked into the prices, so it isn't a line here.
+      taxCents: tax.addToTotalCents || undefined,
       totalCents: total,
     },
   });
