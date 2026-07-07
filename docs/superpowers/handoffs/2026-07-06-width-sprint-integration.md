@@ -13,14 +13,20 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by ~21 commits** (unpushed): Finance `f85227b`,
-  Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56`, Supply-Chain `99e253f` (+tabs `c14b075`),
-  Workforce `7de8219` (+nav fix `c9fc102`), HR `571b6ca` (+POS-label test fixup `c1d21de`),
-  Marketing `f490c19`, + interleaved handoff commits. Working tree clean.
-  **ALL 8 depth modules merged — depth phase complete.**
-- ✅ **CLEAN FULL SUITE: `npx vitest run` → 1708/1708 passed (286 files), 0 failures** (2026-07-07,
-  after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green. This is the
-  green gate for the whole depth phase.
+- **`origin/main` == local == `35d68e8` (PUSHED 2026-07-07).** The 8 depth modules + fixes + handoffs
+  (20 commits, `00179bd..35d68e8`) are live on GitHub → Netlify deploy triggered. Working tree clean.
+- **DEPTH PHASE IS ~62% DONE — 8 of 13 modules integrated, 5 remain (unbuilt).**
+  - **Merged & pushed (queue-1 set):** Finance `f85227b` (063–066), Inventory `d092974` (080–081),
+    Orders `17e269f` (087–091), Warehouse `30e0f56` (093–096), Supply-Chain `99e253f` (097–098)
+    (+tabs `c14b075`), Workforce `7de8219` (112–119) (+nav fix `c9fc102`), HR `571b6ca` (120)
+    (+POS-label test fixup `c1d21de`), Marketing `f490c19` (131–136).
+  - **NOT built yet (queue-2 set) — reserved migration ranges, no collision:** D1.3 Procurement (069–073),
+    D1.7 Manufacturing (074–079), D1.9 CRM (102–106), D1.11 Project Manager (108–111, 107 Timesheets
+    already live), D1.5 Ecommerce (124–130). Build each in its own worktree rebased on `35d68e8`
+    (Ecommerce depends on Orders; Project Mgr on Workforce/Timesheets — both now on main). Integrate as a
+    SECOND batch, same runbook, only after the current prod rollout is confirmed healthy.
+- ✅ **CLEAN FULL SUITE (for the 8 merged): `npx vitest run` → 1708/1708 passed (286 files), 0 failures**
+  (2026-07-07, after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -98,8 +104,10 @@ and coordinates prod deploys. It does NOT build modules.
     and `workforce.{leave,payroll,assets}.*` keys per access level (Owner has them via L1 bypass). Other
     depth products (finance/inventory/warehouse/supply-chain/workforce/marketing) already enabled on prod.
     **Before live Resend:** sanitize marketing campaign `body_html` (inherited v1 stored-XSS).
-  - **Depth phase integration COMPLETE — no depth branches remain.** (Only Payments 051 from width is
-    still design-only, awaiting Razorpay keys.)
+  - **Depth queue-1 (8 modules) merged & pushed. Queue-2 (5 modules) still to build+integrate:**
+    Procurement (069–073), Manufacturing (074–079), CRM (102–106), Project Manager (108–111),
+    Ecommerce (124–130) — see "Current state" above for build notes. (Payments 051 from width remains
+    design-only, awaiting Razorpay keys.)
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
