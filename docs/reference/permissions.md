@@ -33,7 +33,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | procurement | Procurement | products | view, create, edit, delete | vendor | ✓ (/procurement) |
 | products | Product Manager | products | view, create, edit, delete | vendor+customer | ✓ (/products) |
 | project-service | Project Service | business, customers | view, create, edit, delete | vendor | ✓ (no link) |
-| supply-chain | Supply Chain | products | view | vendor | ✓ (/supply-chain) |
+| supply-chain | Supply Chain | products | view, create, edit, delete | vendor | ✓ (/supply-chain) |
 | warehouse | Warehouse | business, products | view, create, edit, delete | vendor | ✓ (/warehouse) |
 | workforce | Workforce | employees | view, create, edit, delete | vendor | ✓ (/workforce) |
 
@@ -131,7 +131,7 @@ Each row is a module×bucket; the UI renders one toggle per verb the module decl
 
 ### supply-chain
 
-- supply-chain × products: `supply-chain.products.view`
+- supply-chain × products: `supply-chain.products.view` `supply-chain.products.create` `supply-chain.products.edit` `supply-chain.products.delete`
 
 ### warehouse
 

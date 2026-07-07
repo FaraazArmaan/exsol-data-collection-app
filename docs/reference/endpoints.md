@@ -6,7 +6,7 @@
 
 # API endpoints
 
-185 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+190 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -282,9 +282,14 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| supply-chain-brief.ts | `/api/supply-chain-brief` | GET | bucket-user | — |
+| supply-chain-co2.ts | `/api/supply-chain-co2` | any | bucket-user | `supply-chain.products.edit` |
+| supply-chain-drill.ts | `/api/supply-chain-drill` | GET | bucket-user | — |
 | supply-chain-inventory.ts | `/api/supply-chain-inventory` | GET | bucket-user | — |
 | supply-chain-manufacturing.ts | `/api/supply-chain-manufacturing` | GET | bucket-user | — |
 | supply-chain-procurement.ts | `/api/supply-chain-procurement` | GET | bucket-user | — |
+| supply-chain-risk.ts | `/api/supply-chain-risk` | GET | bucket-user | — |
+| supply-chain-suppliers.ts | `/api/supply-chain-suppliers (name-routed)` | any | bucket-user | `supply-chain.products.create`, `supply-chain.products.delete` |
 
 ## warehouse
 

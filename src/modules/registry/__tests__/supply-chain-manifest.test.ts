@@ -4,11 +4,12 @@ import { getProduct } from '../products';
 import { isValidPermissionKey } from '../../../../netlify/functions/_shared/permission-keys';
 
 describe('supply-chain registry', () => {
-  it('module registered: products bucket, view-only, vendor-side', () => {
+  it('module registered: products bucket, CRUD verbs, vendor-side', () => {
     const m = getModule('supply-chain');
     expect(m).toBeTruthy();
     expect(m!.data_buckets).toEqual(['products']);
-    expect(m!.verbs).toEqual(['view']);
+    // Depth features (alternate suppliers, CO2 factors) added write verbs.
+    expect(m!.verbs).toEqual(['view', 'create', 'edit', 'delete']);
     expect(m!.vendor_side).toBe(true);
   });
 

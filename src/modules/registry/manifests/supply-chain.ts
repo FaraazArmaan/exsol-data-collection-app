@@ -8,7 +8,7 @@ export const supplyChainManifest: ModuleManifest = {
   key: 'supply-chain',
   label: 'Supply Chain',
   data_buckets: ['products'],
-  verbs: ['view'],
+  verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
   hasDedicatedNav: true,
