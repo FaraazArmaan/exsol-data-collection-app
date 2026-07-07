@@ -13,16 +13,25 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by 2 unpushed commits** → `27c01fc` (this handoff
-  rewrite) + `f85227b` (**Finance depth, merged**). Working tree clean.
-- **Depth integration progress:** Finance depth = **merged locally + fully verified** (typecheck green,
-  `npx vitest run` 1385/1385, dark-theme confirmed via computed styles, all 5 tabs
-  Overview/Cashflow/Recurring/Approvals/AI smoke-tested in a real browser on local `netlify dev`). Migs
-  063–066 already on **dev**; NOT yet on prod. **Pending for the human:** push `main`, then the prod
-  deploy runbook below (migrate 063–066 on prod, probe the ~11 new `/api/finance/*` endpoints for the
-  Edge-404 trap, `seed:finance` on prod). Remaining depth branches to integrate (own worktrees, unpushed):
-  orders (`feat/orders-depth-iso` 087–091), warehouse (093–096), supply-chain (097–098), hr (120),
-  inventory-depth (080–081), workforce, marketing.
+- **`origin/main` == `00179bd`; local `main` is AHEAD by 4 unpushed commits** → `27c01fc` (handoff
+  rewrite) + `f85227b` (**Finance depth**) + `178eda5` (handoff) + `d092974` (**Inventory depth**).
+  Working tree clean.
+- **Depth integration progress (merged locally + fully verified, NOT pushed):**
+  1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
+     dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
+  2. **Inventory** (`d092974`, migs 080–081) — all 5 sections Dashboard/Stock/Returns/Locations/Labels +
+     all 7 features smoke-tested (lifecycle badges, moving-avg cost, cross-module Locations bridge, PDF
+     labels endpoint returns valid `%PDF-`), dark-theme confirmed. 6 new `/api/inventory/*` endpoints +
+     `inventory-list` now returns `lifecycle_state`/accepts `?state=`. docs/reference regenerated.
+  - Verification note: the full `npx vitest run` is currently flaking hard on **dev-Neon overload**
+    (`NeonDbError: fetch failed` across dozens of untouched-module files + the known `pub-menu` 429). Each
+    merged module's own suite passes in isolation (Finance 49/49-equiv, Inventory 42/42). Get one clean
+    full run before/after the human pushes if load subsides.
+  - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 on prod;
+    probe the new `/api/finance/*` and `/api/inventory/*` endpoints for the Edge-404 trap; `seed:finance`
+    + `seed:inventory` on prod. (Finance + Inventory products already enabled for papa-s-saloon on prod.)
+  - Remaining depth branches to integrate (own worktrees, unpushed): orders (`feat/orders-depth-iso`
+    087–091), warehouse (093–096), supply-chain (097–098), hr (120), workforce, marketing.
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
