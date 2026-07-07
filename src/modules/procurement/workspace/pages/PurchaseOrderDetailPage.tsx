@@ -44,8 +44,15 @@ export default function PurchaseOrderDetailPage({ slug, perms }: Props) {
     setError(null);
     setFlash(null);
     try {
-      await procurementApi.transition(id, action);
-      if (action === 'receive') setFlash('Received — inventory stock updated.');
+      const r = await procurementApi.transition(id, action);
+      const flashByStatus: Record<string, string> = {
+        received: 'Received — inventory stock updated.',
+        pending_approval: 'Submitted for approval.',
+        ordered: action === 'approve' ? 'Approved — order placed.' : 'Order placed.',
+        draft: 'Sent back to draft.',
+        cancelled: 'Cancelled.',
+      };
+      setFlash(flashByStatus[r.status] ?? null);
       setOrder(null);
       load();
     } catch (e) {
@@ -67,9 +74,11 @@ export default function PurchaseOrderDetailPage({ slug, perms }: Props) {
   }
 
   const total = items.reduce((sum, it) => sum + Number(it.unit_cost_cents) * it.qty, 0);
-  const canReceive = order && (order.status === 'draft' || order.status === 'ordered');
-  const canOrder = order && order.status === 'draft';
-  const canCancel = order && (order.status === 'draft' || order.status === 'ordered');
+  const st = order?.status;
+  const canReceive = st === 'draft' || st === 'ordered';
+  const canOrder = st === 'draft';
+  const canApprove = st === 'pending_approval';
+  const canCancel = st === 'draft' || st === 'ordered' || st === 'pending_approval';
 
   return (
     <div className="proc-shell">
@@ -102,6 +111,16 @@ export default function PurchaseOrderDetailPage({ slug, perms }: Props) {
                 <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => doAction('order')}>
                   {busy === 'order' ? '…' : 'Mark ordered'}
                 </button>
+              )}
+              {canEdit && canApprove && (
+                <>
+                  <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => doAction('approve')}>
+                    {busy === 'approve' ? '…' : 'Approve'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => doAction('reject')}>
+                    {busy === 'reject' ? '…' : 'Reject'}
+                  </button>
+                </>
               )}
               {canEdit && canReceive && (
                 <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => doAction('receive')}>

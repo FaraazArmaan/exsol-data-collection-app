@@ -6,7 +6,7 @@
 
 # API endpoints
 
-225 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+233 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -279,10 +279,18 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| procurement-grn.ts | `/api/procurement/grn` | GET, POST | bucket-user | `procurement.products.edit`, `procurement.products.view` |
+| procurement-invoices.ts | `/api/procurement/invoices` | GET, POST | bucket-user | `procurement.products.edit`, `procurement.products.view` |
+| procurement-match.ts | `/api/procurement/match` | GET, POST | bucket-user | `procurement.products.edit`, `procurement.products.view` |
 | procurement-order-detail.ts | `/api/procurement/orders/:id` | GET | bucket-user | `procurement.products.view` |
 | procurement-order-transition.ts | `/api/procurement/orders/:id/transition` | POST | bucket-user | `procurement.products.delete`, `procurement.products.edit` |
 | procurement-orders.ts | `/api/procurement/orders` | GET, POST | bucket-user | `procurement.products.create`, `procurement.products.view` |
+| procurement-prices.ts | `/api/procurement/prices` | GET, POST | bucket-user | `procurement.products.edit`, `procurement.products.view` |
 | procurement-products.ts | `/api/procurement/products` | GET | bucket-user | `procurement.products.view` |
+| procurement-settings.ts | `/api/procurement/settings` | GET, PATCH | bucket-user | `procurement.products.edit`, `procurement.products.view` |
+| procurement-spend.ts | `/api/procurement/spend` | GET | bucket-user | `procurement.products.view` |
+| procurement-supplier-contact-detail.ts | `/api/procurement/supplier-contacts/:id` | DELETE | bucket-user | `procurement.products.edit` |
+| procurement-supplier-contacts.ts | `/api/procurement/supplier-contacts` | GET, POST | bucket-user | `procurement.products.edit`, `procurement.products.view` |
 | procurement-supplier-detail.ts | `/api/procurement/suppliers/:id` | PATCH, DELETE | bucket-user | `procurement.products.delete`, `procurement.products.edit` |
 | procurement-suppliers.ts | `/api/procurement/suppliers` | GET, POST | bucket-user | `procurement.products.create`, `procurement.products.view` |
 

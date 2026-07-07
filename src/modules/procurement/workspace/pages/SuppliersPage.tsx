@@ -3,6 +3,8 @@ import { procurementApi } from '../../shared/api';
 import type { Supplier } from '../../shared/types';
 import { ProcurementTabs } from '../ProcurementTabs';
 import { SupplierModal } from '../components/SupplierModal';
+import { SupplierContactsModal } from '../components/SupplierContactsModal';
+import { SupplierPricesModal } from '../components/SupplierPricesModal';
 
 interface Props {
   slug: string;
@@ -16,6 +18,8 @@ export default function SuppliersPage({ perms }: Props) {
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [contactsTarget, setContactsTarget] = useState<Supplier | null>(null);
+  const [pricesTarget, setPricesTarget] = useState<Supplier | null>(null);
 
   const canCreate = perms.has('procurement.products.create');
   const canEdit = perms.has('procurement.products.edit');
@@ -70,7 +74,7 @@ export default function SuppliersPage({ perms }: Props) {
         <table className="proc-table">
           <thead>
             <tr>
-              <th>Name</th><th>Phone</th><th>Email</th><th>Notes</th><th aria-label="Actions" />
+              <th>Name</th><th>Phone</th><th>Email</th><th>Terms</th><th>Rating</th><th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -79,8 +83,17 @@ export default function SuppliersPage({ perms }: Props) {
                 <td>{s.name}</td>
                 <td className="proc-muted">{s.phone ?? '—'}</td>
                 <td className="proc-muted">{s.email ?? '—'}</td>
-                <td className="proc-muted">{s.notes ?? '—'}</td>
+                <td className="proc-muted">{s.payment_terms ?? '—'}</td>
+                <td>
+                  {s.rating ? (
+                    <span className="proc-rating" aria-label={`${s.rating} out of 5`}>{'★'.repeat(s.rating)}</span>
+                  ) : (
+                    <span className="proc-muted">—</span>
+                  )}
+                </td>
                 <td className="proc-row-actions">
+                  <button type="button" className="proc-link" onClick={() => setContactsTarget(s)}>Contacts</button>
+                  <button type="button" className="proc-link" onClick={() => setPricesTarget(s)}>Prices</button>
                   {canEdit && <button type="button" className="proc-link" onClick={() => setEditing(s)}>Edit</button>}
                   {canDelete && (
                     <button type="button" className="proc-link proc-link-danger" disabled={deletingId === s.id} onClick={() => remove(s)}>
@@ -96,6 +109,12 @@ export default function SuppliersPage({ perms }: Props) {
 
       {(creating || editing) && (
         <SupplierModal existing={editing} onClose={() => { setCreating(false); setEditing(null); }} onSaved={onSaved} />
+      )}
+      {contactsTarget && (
+        <SupplierContactsModal supplier={contactsTarget} canEdit={canEdit} onClose={() => setContactsTarget(null)} />
+      )}
+      {pricesTarget && (
+        <SupplierPricesModal supplier={pricesTarget} canEdit={canEdit} onClose={() => setPricesTarget(null)} />
       )}
     </div>
   );

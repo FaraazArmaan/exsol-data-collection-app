@@ -2,6 +2,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireProcurement } from './_procurement-authz';
+import { parseRating } from './procurement-suppliers';
 
 export const config = { path: '/api/procurement/suppliers/:id', method: ['PATCH', 'DELETE'] };
 
@@ -16,6 +17,8 @@ interface PatchBody {
   phone?: unknown;
   email?: unknown;
   notes?: unknown;
+  payment_terms?: unknown;
+  rating?: unknown;
 }
 
 const strOrNull = (v: unknown): string | null => {
@@ -39,13 +42,16 @@ export default async function handler(req: Request): Promise<Response> {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) return jsonError(400, 'name_required');
     if (name.length > 160) return jsonError(400, 'name_too_long');
+    const rating = parseRating(body.rating);
+    if (!rating.ok) return jsonError(400, 'invalid_rating');
 
     const sql = db();
     const rows = (await sql`
       UPDATE public.suppliers
-      SET name = ${name}, phone = ${strOrNull(body.phone)}, email = ${strOrNull(body.email)}, notes = ${strOrNull(body.notes)}
+      SET name = ${name}, phone = ${strOrNull(body.phone)}, email = ${strOrNull(body.email)},
+          notes = ${strOrNull(body.notes)}, payment_terms = ${strOrNull(body.payment_terms)}, rating = ${rating.value}
       WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid AND deleted_at IS NULL
-      RETURNING id, name, phone, email, notes
+      RETURNING id, name, phone, email, notes, payment_terms, rating
     `) as unknown[];
     if (rows.length === 0) return jsonError(404, 'not_found');
     return jsonOk({ supplier: rows[0] });

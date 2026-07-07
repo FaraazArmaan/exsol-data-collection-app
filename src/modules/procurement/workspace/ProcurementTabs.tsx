@@ -11,6 +11,8 @@ export function ProcurementTabs() {
     <nav className="proc-tabs" aria-label="Procurement sections">
       <NavLink to={`/c/${slug}/procurement`} end className={cls}>Purchase Orders</NavLink>
       <NavLink to={`/c/${slug}/procurement/suppliers`} className={cls}>Suppliers</NavLink>
+      <NavLink to={`/c/${slug}/procurement/match`} className={cls}>3-Way Match</NavLink>
+      <NavLink to={`/c/${slug}/procurement/trends`} className={cls}>Trends</NavLink>
     </nav>
   );
 }

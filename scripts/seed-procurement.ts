@@ -99,6 +99,60 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── Depth demo data (idempotent) ─────────────────────────────────────────
+  // 4. Supplier deepen: payment terms + rating + one contact.
+  await sql`UPDATE public.suppliers SET payment_terms = 'Net 30', rating = 4 WHERE client_id = ${clientId}::uuid AND name = 'Metro Beauty Supplies'`;
+  await sql`UPDATE public.suppliers SET payment_terms = 'Net 15', rating = 5 WHERE client_id = ${clientId}::uuid AND name = 'Sharp Edge Distributors'`;
+  const metro = (await sql`
+    SELECT id FROM public.suppliers WHERE client_id = ${clientId}::uuid AND name = 'Metro Beauty Supplies' AND deleted_at IS NULL LIMIT 1
+  `) as Array<{ id: string }>;
+  if (metro[0]) {
+    const hasContact = (await sql`SELECT 1 FROM public.supplier_contacts WHERE supplier_id = ${metro[0].id}::uuid LIMIT 1`) as unknown[];
+    if (hasContact.length === 0) {
+      await sql`
+        INSERT INTO public.supplier_contacts (client_id, supplier_id, name, role, phone, email)
+        VALUES (${clientId}::uuid, ${metro[0].id}::uuid, 'Priya Rao', 'Account manager', '+91 98200 33333', 'priya@metrobeauty.example')
+      `;
+    }
+    // 5. Supplier prices (a prior + a current price per product) — guard: none yet.
+    const hasPrices = (await sql`SELECT 1 FROM public.supplier_prices WHERE supplier_id = ${metro[0].id}::uuid LIMIT 1`) as unknown[];
+    if (hasPrices.length === 0) {
+      const prods = (await sql`
+        SELECT id FROM public.products WHERE client_id = ${clientId}::uuid AND type = 'physical' AND deleted_at IS NULL ORDER BY name LIMIT 3
+      `) as Array<{ id: string }>;
+      for (const p of prods) {
+        await sql`INSERT INTO public.supplier_prices (client_id, supplier_id, product_id, unit_cost_cents, effective_from) VALUES (${clientId}::uuid, ${metro[0].id}::uuid, ${p.id}::uuid, ${4800}::bigint, (current_date - interval '30 days')::date)`;
+        await sql`INSERT INTO public.supplier_prices (client_id, supplier_id, product_id, unit_cost_cents) VALUES (${clientId}::uuid, ${metro[0].id}::uuid, ${p.id}::uuid, ${5000}::bigint)`;
+      }
+    }
+  }
+
+  // 6. Approval threshold — POs over ₹2,000 require approval.
+  await sql`UPDATE public.clients SET po_approval_threshold_cents = 200000 WHERE id = ${clientId}::uuid`;
+
+  // 7. A matching GRN + invoice for the ordered PO, so the 3-way match screen has
+  //    a clean match ready to confirm.
+  const orderedPo = (await sql`
+    SELECT id FROM public.purchase_orders WHERE client_id = ${clientId}::uuid AND status = 'ordered' ORDER BY created_at LIMIT 1
+  `) as Array<{ id: string }>;
+  if (orderedPo[0]) {
+    const hasGrn = (await sql`SELECT 1 FROM public.goods_receipts WHERE purchase_order_id = ${orderedPo[0].id}::uuid LIMIT 1`) as unknown[];
+    if (hasGrn.length === 0) {
+      const items = (await sql`
+        SELECT product_id, qty, unit_cost_cents FROM public.purchase_order_items WHERE purchase_order_id = ${orderedPo[0].id}::uuid
+      `) as Array<{ product_id: string; qty: number; unit_cost_cents: string }>;
+      const grn = (await sql`
+        INSERT INTO public.goods_receipts (client_id, purchase_order_id, note) VALUES (${clientId}::uuid, ${orderedPo[0].id}::uuid, 'Full delivery') RETURNING id
+      `) as Array<{ id: string }>;
+      let total = 0;
+      for (const it of items) {
+        await sql`INSERT INTO public.goods_receipt_items (goods_receipt_id, product_id, qty_received) VALUES (${grn[0]!.id}::uuid, ${it.product_id}::uuid, ${it.qty}::int)`;
+        total += it.qty * Number(it.unit_cost_cents);
+      }
+      await sql`INSERT INTO public.supplier_invoices (client_id, purchase_order_id, invoice_number, amount_cents) VALUES (${clientId}::uuid, ${orderedPo[0].id}::uuid, 'INV-DEMO-001', ${total}::bigint)`;
+    }
+  }
+
   const counts = (await sql`
     SELECT
       (SELECT count(*)::int FROM public.suppliers        WHERE client_id = ${clientId}::uuid AND deleted_at IS NULL) AS suppliers,
@@ -109,6 +163,7 @@ async function main(): Promise<void> {
   console.log(`Seeded procurement for ${client.name} (${SLUG}):`);
   console.log(`  suppliers:       ${c.suppliers}`);
   console.log(`  purchase orders: ${c.orders} (${created} new)`);
+  console.log('  depth demo: terms/ratings + contact, supplier prices, approval threshold ₹2,000, GRN+invoice for match');
 }
 
 main().catch((e) => {

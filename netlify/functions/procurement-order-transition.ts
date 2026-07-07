@@ -1,13 +1,11 @@
 // POST /api/procurement/orders/:id/transition — advance a PO through its FSM.
-// Body: { action: 'order' | 'receive' | 'cancel' }.
-//   draft   --order-->   ordered
-//   draft   --receive--> received   (a draft may be received directly)
-//   ordered --receive--> received
-//   draft/ordered --cancel--> cancelled
-// Receiving is the money transition: for each line item it increments
-// inventory_stock and appends a stock_movements row of type 'purchase', then
-// stamps the PO received. All of that runs in one transaction so a partial
-// receive can't leave stock and PO status out of sync.
+// Body: { action: 'order' | 'approve' | 'reject' | 'receive' | 'cancel' }.
+//   draft --order--> ordered            (total < threshold, or threshold = 0)
+//   draft --order--> pending_approval    (total >= per-client threshold)
+//   pending_approval --approve--> ordered   (stamps approved_by/at)
+//   pending_approval --reject-->  draft     (clears submitted_at)
+//   draft/ordered --receive--> received  (increments inventory + 'purchase' movements)
+//   draft/ordered/pending_approval --cancel--> cancelled
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireProcurement } from './_procurement-authz';
@@ -16,17 +14,26 @@ export const config = { path: '/api/procurement/orders/:id/transition', method: 
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Action = 'order' | 'receive' | 'cancel';
-const FSM: Record<Action, { from: string[]; to: string; perm: string }> = {
-  order:   { from: ['draft'],            to: 'ordered',   perm: 'procurement.products.edit' },
-  receive: { from: ['draft', 'ordered'], to: 'received',  perm: 'procurement.products.edit' },
-  cancel:  { from: ['draft', 'ordered'], to: 'cancelled', perm: 'procurement.products.delete' },
+type Action = 'order' | 'approve' | 'reject' | 'receive' | 'cancel';
+const ACTIONS: readonly Action[] = ['order', 'approve', 'reject', 'receive', 'cancel'];
+const PERM: Record<Action, string> = {
+  order: 'procurement.products.edit',
+  approve: 'procurement.products.edit',
+  reject: 'procurement.products.edit',
+  receive: 'procurement.products.edit',
+  cancel: 'procurement.products.delete',
+};
+const FROM: Record<Action, string[]> = {
+  order: ['draft'],
+  approve: ['pending_approval'],
+  reject: ['pending_approval'],
+  receive: ['draft', 'ordered'],
+  cancel: ['draft', 'ordered', 'pending_approval'],
 };
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
-  // id is the second-to-last segment: /api/procurement/orders/:id/transition
   const segments = new URL(req.url).pathname.split('/');
   const id = segments[segments.length - 2] ?? '';
   if (!UUID_RE.test(id)) return jsonError(404, 'not_found');
@@ -38,13 +45,9 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError(400, 'invalid_json');
   }
   const action = body.action as Action;
-  if (action !== 'order' && action !== 'receive' && action !== 'cancel') {
-    return jsonError(400, 'invalid_action');
-  }
-  const rule = FSM[action];
+  if (!ACTIONS.includes(action)) return jsonError(400, 'invalid_action');
 
-  // Authorize with the verb this action needs.
-  const a = await requireProcurement(req, [rule.perm]);
+  const a = await requireProcurement(req, [PERM[action]]);
   if (!a.ok) return a.res;
 
   const sql = db();
@@ -55,14 +58,54 @@ export default async function handler(req: Request): Promise<Response> {
   `) as Array<{ id: string; status: string }>;
   const po = orders[0];
   if (!po) return jsonError(404, 'not_found');
-  if (!rule.from.includes(po.status)) return jsonError(409, 'illegal_transition', { from: po.status });
+  if (!FROM[action].includes(po.status)) return jsonError(409, 'illegal_transition', { from: po.status });
 
-  if (action !== 'receive') {
+  if (action === 'order') {
+    // Threshold-aware: over the client's PO approval threshold routes to approval.
+    const agg = (await sql`
+      SELECT coalesce(sum(qty * unit_cost_cents), 0)::bigint AS total
+      FROM public.purchase_order_items WHERE purchase_order_id = ${id}::uuid
+    `) as Array<{ total: string }>;
+    const cl = (await sql`
+      SELECT po_approval_threshold_cents FROM public.clients WHERE id = ${a.ctx.clientId}::uuid LIMIT 1
+    `) as Array<{ po_approval_threshold_cents: string }>;
+    const total = Number(agg[0]?.total ?? 0);
+    const threshold = Number(cl[0]?.po_approval_threshold_cents ?? 0);
+    if (threshold > 0 && total >= threshold) {
+      await sql`
+        UPDATE public.purchase_orders SET status = 'pending_approval'::purchase_order_status, submitted_at = now()
+        WHERE id = ${id}::uuid
+      `;
+      return jsonOk({ id, status: 'pending_approval', requires_approval: true });
+    }
     await sql`
-      UPDATE public.purchase_orders SET status = ${rule.to}::purchase_order_status
+      UPDATE public.purchase_orders SET status = 'ordered'::purchase_order_status WHERE id = ${id}::uuid
+    `;
+    return jsonOk({ id, status: 'ordered' });
+  }
+
+  if (action === 'approve') {
+    await sql`
+      UPDATE public.purchase_orders
+      SET status = 'ordered'::purchase_order_status, approved_by = ${a.ctx.userNodeId}::uuid, approved_at = now()
       WHERE id = ${id}::uuid
     `;
-    return jsonOk({ id, status: rule.to });
+    return jsonOk({ id, status: 'ordered' });
+  }
+
+  if (action === 'reject') {
+    await sql`
+      UPDATE public.purchase_orders SET status = 'draft'::purchase_order_status, submitted_at = NULL
+      WHERE id = ${id}::uuid
+    `;
+    return jsonOk({ id, status: 'draft' });
+  }
+
+  if (action === 'cancel') {
+    await sql`
+      UPDATE public.purchase_orders SET status = 'cancelled'::purchase_order_status WHERE id = ${id}::uuid
+    `;
+    return jsonOk({ id, status: 'cancelled' });
   }
 
   // receive: increment inventory_stock + write 'purchase' movements + stamp PO.

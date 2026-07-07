@@ -41,6 +41,8 @@ const AnalyticsRouteMount = lazy(() => import('../modules/analytics/AnalyticsRou
 // Lazy-loaded so the supply-chain bundle (incl. recharts) is a separate chunk,
 // fetched only when a user opens Supply Chain — mirrors Analytics.
 const SupplyChainRouteMount = lazy(() => import('../modules/supply-chain/SupplyChainRouteMount'));
+// Lazy so recharts (pulled in by the spend charts) stays out of the main bundle.
+const ProcurementSpendMount = lazy(() => import('../modules/procurement/ProcurementSpendMount'));
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
@@ -55,7 +57,7 @@ import { ManufacturingMount } from '../modules/manufacturing/ManufacturingRouteM
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
 import {
-  ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount,
+  ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount, ProcurementMatchMount,
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
@@ -192,6 +194,12 @@ export const router = createBrowserRouter([
               { path: 'procurement', element: <ProcurementOrdersMount /> },
               { path: 'procurement/suppliers', element: <ProcurementSuppliersMount /> },
               { path: 'procurement/orders/:id', element: <ProcurementOrderDetailMount /> },
+              { path: 'procurement/match', element: <ProcurementMatchMount /> },
+              { path: 'procurement/trends', element: (
+                <Suspense fallback={<p style={{ padding: 24 }}>Loading…</p>}>
+                  <ProcurementSpendMount />
+                </Suspense>
+              ) },
               { path: 'warehouse', element: <WarehouseMount /> },
               { path: 'workforce', element: <WorkforceMount /> },
               { path: 'workforce/projects', element: <WorkforceProjectsMount /> },

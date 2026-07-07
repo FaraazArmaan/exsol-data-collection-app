@@ -14,6 +14,8 @@ export function SupplierModal({ existing, onClose, onSaved }: Props) {
   const [phone, setPhone] = useState(existing?.phone ?? '');
   const [email, setEmail] = useState(existing?.email ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [paymentTerms, setPaymentTerms] = useState(existing?.payment_terms ?? '');
+  const [rating, setRating] = useState<string>(existing?.rating != null ? String(existing.rating) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +26,10 @@ export function SupplierModal({ existing, onClose, onSaved }: Props) {
     if (!valid || busy) return;
     setBusy(true);
     setError(null);
-    const payload = { name: name.trim(), phone, email, notes };
+    const payload = {
+      name: name.trim(), phone, email, notes,
+      payment_terms: paymentTerms, rating: rating === '' ? null : Number(rating),
+    };
     try {
       if (existing) await procurementApi.updateSupplier(existing.id, payload);
       else await procurementApi.createSupplier(payload);
@@ -54,6 +59,21 @@ export function SupplierModal({ existing, onClose, onSaved }: Props) {
           <label className="proc-field">
             <span>Email</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email" />
+          </label>
+          <label className="proc-field">
+            <span>Payment terms</span>
+            <input type="text" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="e.g. Net 30" aria-label="Payment terms" />
+          </label>
+          <label className="proc-field">
+            <span>Rating</span>
+            <select value={rating} onChange={(e) => setRating(e.target.value)} aria-label="Rating">
+              <option value="">Not rated</option>
+              <option value="1">1 ★</option>
+              <option value="2">2 ★★</option>
+              <option value="3">3 ★★★</option>
+              <option value="4">4 ★★★★</option>
+              <option value="5">5 ★★★★★</option>
+            </select>
           </label>
           <label className="proc-field">
             <span>Notes</span>

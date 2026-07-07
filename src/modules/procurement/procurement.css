@@ -238,3 +238,176 @@
   font: inherit;
   min-width: 0;
 }
+
+/* ── Depth: supplier deepen ──────────────────────────────────── */
+.proc-rating {
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.proc-contacts {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.proc-contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+.proc-contact-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+.proc-contact-form input {
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+.proc-contact-form .btn {
+  grid-column: 1 / -1;
+}
+@media (max-width: 560px) {
+  .proc-contact-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Depth: price manager ────────────────────────────────────── */
+.proc-subhead {
+  margin: 16px 0 8px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+.proc-price-history {
+  margin-top: 16px;
+}
+.proc-price-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+.proc-price-form h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.proc-price-form select,
+.proc-price-form input {
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 0;
+}
+.proc-price-form .btn {
+  grid-column: 1 / -1;
+}
+@media (max-width: 560px) {
+  .proc-price-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Depth: vendor approvals ─────────────────────────────────── */
+.proc-threshold {
+  margin-bottom: 16px;
+}
+.proc-threshold-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.proc-threshold-edit input {
+  width: 120px;
+  padding: 6px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+/* ── Depth: 3-way match ──────────────────────────────────────── */
+.proc-match-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.proc-mismatches {
+  margin: 0 0 16px;
+  padding-left: 18px;
+}
+.proc-match-forms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.proc-match-form {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.proc-match-form input {
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+.proc-match-grn-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.proc-match-grn-line input {
+  width: 100px;
+}
+.proc-match-confirm {
+  margin-top: 4px;
+}
+@media (max-width: 560px) {
+  .proc-match-forms {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Depth: spend trends ─────────────────────────────────────── */
+.proc-charts {
+  display: grid;
+  gap: 20px;
+}
+.proc-chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  min-width: 0;
+}

@@ -23,6 +23,7 @@ export function CreatePOModal({ onClose, onCreated }: Props) {
   const [supplierId, setSupplierId] = useState('');
   const [expectedOn, setExpectedOn] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([{ product_id: '', qty: '1', unit_cost: '' }]);
+  const [priceMap, setPriceMap] = useState<Record<string, number>>({}); // product_id → current unit_cost_cents
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +37,34 @@ export function CreatePOModal({ onClose, onCreated }: Props) {
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const addLine = () => setLines((ls) => [...ls, { product_id: '', qty: '1', unit_cost: '' }]);
   const removeLine = (i: number) => setLines((ls) => (ls.length > 1 ? ls.filter((_, j) => j !== i) : ls));
+
+  // Selecting a supplier loads its current per-product prices so lines can default.
+  const onSupplierChange = (v: string) => {
+    setSupplierId(v);
+    setPriceMap({});
+    if (v) {
+      procurementApi.listPrices(v)
+        .then((r) => {
+          const m: Record<string, number> = {};
+          for (const p of r.prices) m[p.product_id] = Number(p.unit_cost_cents);
+          setPriceMap(m);
+        })
+        .catch(() => setPriceMap({}));
+    }
+  };
+
+  // Picking a product defaults the line's unit cost from the supplier price when
+  // the cost field is still blank (never overwrites a manual entry).
+  const onLineProduct = (i: number, productId: string) => {
+    setLines((ls) => ls.map((l, j) => {
+      if (j !== i) return l;
+      const next: DraftLine = { ...l, product_id: productId };
+      if (productId && (l.unit_cost === '' || l.unit_cost === '0') && priceMap[productId] != null) {
+        next.unit_cost = (priceMap[productId] / 100).toFixed(2);
+      }
+      return next;
+    }));
+  };
 
   const parsedItems: NewPOItem[] = lines
     .filter((l) => l.product_id !== '' && Number(l.qty) > 0)
@@ -85,7 +114,7 @@ export function CreatePOModal({ onClose, onCreated }: Props) {
             <form onSubmit={submit}>
               <label className="proc-field">
                 <span>Supplier <span className="proc-req">*</span></span>
-                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} aria-label="Supplier">
+                <select value={supplierId} onChange={(e) => onSupplierChange(e.target.value)} aria-label="Supplier">
                   <option value="">Select a supplier…</option>
                   {suppliers!.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -101,7 +130,7 @@ export function CreatePOModal({ onClose, onCreated }: Props) {
                 </div>
                 {lines.map((l, i) => (
                   <div className="proc-line" key={i}>
-                    <select value={l.product_id} onChange={(e) => setLine(i, { product_id: e.target.value })} aria-label={`Product ${i + 1}`}>
+                    <select value={l.product_id} onChange={(e) => onLineProduct(i, e.target.value)} aria-label={`Product ${i + 1}`}>
                       <option value="">Select…</option>
                       {products!.map((p) => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>)}
                     </select>

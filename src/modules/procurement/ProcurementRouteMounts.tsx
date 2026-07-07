@@ -4,6 +4,7 @@ import { useUserAuth } from '../user-portal/user-auth-context';
 import PurchaseOrdersPage from './workspace/pages/PurchaseOrdersPage';
 import SuppliersPage from './workspace/pages/SuppliersPage';
 import PurchaseOrderDetailPage from './workspace/pages/PurchaseOrderDetailPage';
+import ThreeWayMatchPage from './workspace/pages/ThreeWayMatchPage';
 
 const ALL_PROCUREMENT_PERMS = [
   'procurement.products.view', 'procurement.products.create',
@@ -48,4 +49,8 @@ export const ProcurementSuppliersMount = gate(
 export const ProcurementOrderDetailMount = gate(
   'procurement.products.view',
   (slug, perms) => <PurchaseOrderDetailPage slug={slug} perms={perms} />,
+);
+export const ProcurementMatchMount = gate(
+  'procurement.products.view',
+  (slug, perms) => <ThreeWayMatchPage slug={slug} perms={perms} />,
 );

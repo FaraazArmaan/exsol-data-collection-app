@@ -8,6 +8,7 @@ export function formatMoney(cents: number | string): string {
 
 export const STATUS_LABEL: Record<POStatus, string> = {
   draft: 'Draft',
+  pending_approval: 'Pending approval',
   ordered: 'Ordered',
   received: 'Received',
   cancelled: 'Cancelled',
@@ -16,6 +17,7 @@ export const STATUS_LABEL: Record<POStatus, string> = {
 // Maps a PO status to its badge modifier class (.proc-badge-<x>).
 export const STATUS_VARIANT: Record<POStatus, string> = {
   draft: 'muted',
+  pending_approval: 'amber',
   ordered: 'amber',
   received: 'green',
   cancelled: 'red',

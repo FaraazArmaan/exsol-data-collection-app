@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementApi } from '../../shared/api';
 import type { PurchaseOrderRow } from '../../shared/types';
@@ -17,16 +17,33 @@ export default function PurchaseOrdersPage({ slug, perms }: Props) {
   const [rows, setRows] = useState<PurchaseOrderRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [threshold, setThreshold] = useState<number | null>(null);
+  const [editingThreshold, setEditingThreshold] = useState(false);
+  const [thresholdInput, setThresholdInput] = useState('');
   const canCreate = perms.has('procurement.products.create');
+  const canEdit = perms.has('procurement.products.edit');
 
   const load = useCallback(() => {
     setError(null);
     procurementApi.listOrders()
       .then((r) => setRows(r.orders))
       .catch((e) => { setRows([]); setError(e instanceof Error ? e.message : String(e)); });
+    procurementApi.getSettings().then((s) => setThreshold(s.po_approval_threshold_cents)).catch(() => setThreshold(null));
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const saveThreshold = async (e: FormEvent) => {
+    e.preventDefault();
+    const cents = Math.max(0, Math.round(Number(thresholdInput || '0') * 100));
+    try {
+      const r = await procurementApi.setSettings({ po_approval_threshold_cents: cents });
+      setThreshold(r.po_approval_threshold_cents);
+      setEditingThreshold(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const onCreated = (id: string) => { setCreating(false); nav(`/c/${slug}/procurement/orders/${id}`); };
 
@@ -39,6 +56,35 @@ export default function PurchaseOrdersPage({ slug, perms }: Props) {
         )}
       </div>
       <ProcurementTabs />
+
+      {threshold !== null && (
+        <div className="proc-threshold">
+          {editingThreshold ? (
+            <form className="proc-threshold-edit" onSubmit={saveThreshold}>
+              <span className="proc-muted">POs over ₹</span>
+              <input
+                type="number" min="0" step="0.01" value={thresholdInput}
+                onChange={(e) => setThresholdInput(e.target.value)} aria-label="Approval threshold"
+              />
+              <span className="proc-muted">require approval</span>
+              <button type="submit" className="btn btn-primary">Save</button>
+              <button type="button" className="proc-link" onClick={() => setEditingThreshold(false)}>Cancel</button>
+            </form>
+          ) : (
+            <span className="proc-muted">
+              {threshold > 0 ? `POs over ${formatMoney(threshold)} require approval. ` : 'No PO approval required. '}
+              {canEdit && (
+                <button
+                  type="button" className="proc-link"
+                  onClick={() => { setThresholdInput((threshold / 100).toString()); setEditingThreshold(true); }}
+                >
+                  Edit threshold
+                </button>
+              )}
+            </span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="proc-error" role="alert">
