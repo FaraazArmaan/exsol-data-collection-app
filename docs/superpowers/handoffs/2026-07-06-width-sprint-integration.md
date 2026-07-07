@@ -17,7 +17,7 @@ and coordinates prod deploys. It does NOT build modules.
   `exsoldatacollectionapp.netlify.app` — prod migrated (063–136), demo tenant seeded, orders+hr products
   enabled, endpoints probed healthy. Local `main` is **1 commit ahead** (`31756c8` Procurement depth,
   unpushed). Working tree clean.
-- **DEPTH PHASE IS ~77% DONE — 10 of 13 modules integrated, 3 remain (unbuilt).**
+- **DEPTH PHASE IS ~85% DONE — 11 of 13 modules integrated, 2 remain (unbuilt).**
   - **Live on prod (queue-1, 8):** Finance (063–066), Inventory (080–081), Orders (087–091), Warehouse
     (093–096), Supply-Chain (097–098), Workforce (112–119), HR (120), Marketing (131–136) — plus the
     marketing tabbed-nav fix `673a9b0` and the inventory seed qty>0 fix `4d48ca5`.
@@ -26,11 +26,17 @@ and coordinates prod deploys. It does NOT build modules.
     · D1.9 **CRM** `13d4b57` (+fix `dc2d399`, migs 102–103; 104–106 reserved-unused) — 41/41; Dashboard/
       Leads/Social tabs + PUBLIC `/c/:slug/lead` form smoke-tested; **caught & fixed an "Invalid Date" bug**
       (crm-dashboard `to_char ...OF` emitted a bare `+00` offset JS can't parse → now `...Z` UTC ISO).
-    Push both + run each module's prod runbook (migrate their ranges, `seed:procurement`/`seed:crm`, probe
-    new `/api/procurement/*` + `/api/crm/*` endpoints for the Edge-404 trap — CRM adds a PUBLIC
-    `crm-lead-submit`, rate-limited via Blobs).
-  - **NOT built yet (queue-2 remaining, 3) — reserved ranges, no collision:** D1.7 Manufacturing
-    (074–079), D1.11 Project Manager (108–111, 107 Timesheets already live), D1.5 Ecommerce (124–130).
+    · D1.11 **Project Manager** `8868591` (project-service; migs 108–111) — 153/153; all 5 ProjectDetail
+      tabs (Overview/Budget/Documents/Tasks&Risk/AI-Planner) smoke-tested incl. keyless AI-planner draft;
+      mig 108 adds nullable `project_id` FK to finance_expenses. CSS: tokenized 2 orange severity hex.
+      Dev-DB: tables pre-existed untracked (reused workforce worktree) — reconciled tracking. Minor: budget
+      renders `$` not `₹` (base_currency-not-plumbed-to-FE, a documented platform follow-up, not blocking).
+    Push all + run each module's prod runbook (migrate their ranges, `seed:procurement`/`seed:crm`
+    [+workforce reseed for project data], probe new `/api/procurement/*`, `/api/crm/*`,
+    `/api/workforce/project-*` endpoints for the Edge-404 trap — CRM adds a PUBLIC `crm-lead-submit`,
+    rate-limited via Blobs).
+  - **NOT built yet (queue-2 remaining, 2) — reserved ranges, no collision:** D1.7 Manufacturing
+    (074–079), D1.5 Ecommerce (124–130).
     Build each in its own worktree rebased on current `main` (Ecommerce depends on Orders; Project Mgr on
     Workforce/Timesheets — both live). Same runbook.
 - ✅ **CLEAN FULL SUITE (for the 8 merged): `npx vitest run` → 1708/1708 passed (286 files), 0 failures**
