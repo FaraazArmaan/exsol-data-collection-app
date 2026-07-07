@@ -13,10 +13,14 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by ~18 commits** (unpushed): Finance `f85227b`,
+- **`origin/main` == `00179bd`; local `main` is AHEAD by ~21 commits** (unpushed): Finance `f85227b`,
   Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56`, Supply-Chain `99e253f` (+tabs `c14b075`),
-  Workforce `7de8219` (+nav fix `c9fc102`), HR `571b6ca` (+POS-label test fixup `c1d21de`), + interleaved
-  handoff commits. Working tree clean. **7 depth modules merged; only `marketing` remains.**
+  Workforce `7de8219` (+nav fix `c9fc102`), HR `571b6ca` (+POS-label test fixup `c1d21de`),
+  Marketing `f490c19`, + interleaved handoff commits. Working tree clean.
+  **ALL 8 depth modules merged — depth phase complete.**
+- ✅ **CLEAN FULL SUITE: `npx vitest run` → 1708/1708 passed (286 files), 0 failures** (2026-07-07,
+  after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green. This is the
+  green gate for the whole depth phase.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -70,23 +74,32 @@ and coordinates prod deploys. It does NOT build modules.
     `storefront-nav.test.tsx` (asserted the old label); the dev-Neon-flaky full suite had masked it.
     Updated the test to the intended `Sales` label. **Lesson: run at least the touched FE test files even
     when the full suite is flaking** — a targeted `vitest run <file>` isn't subject to the DB overload.
-  - Verification note: the full `npx vitest run` intermittently flakes on **dev-Neon overload**
-    (`NeonDbError: fetch failed` across untouched-module files + the known `pub-menu` 429 / webp-thumb).
-    Cleanest full run so far was **1408/1410** (2 flakes, both documented). Each merged module's own suite
-    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72, Warehouse 64/64, Supply-Chain
-    76/76, Workforce 124/124, HR 11/11). Capture one clean full run when load subsides.
+  8. **Marketing** (`f490c19`, migs 131–136) — depth over marketing v1. 5 features smoke-tested: ROI
+     dashboard (email-match attribution, ₹4,960 attributed), Webhooks (signed endpoints + triggers +
+     events), GDPR toolbox (lookup→export/consent/erase), Social scheduler (mock-seam, 4 providers),
+     A/B+tracking. Manifest adds 4 registry navLinks (ROI/Webhooks/GDPR/Social) — all reuse the closed
+     `customers` bucket (author explicitly did NOT mint a bucket; no new perm keys). authz 412→L1→matrix.
+     16 `/api/marketing/*` endpoints + a scheduled `marketing-social-dispatch` (*/5). router auto-merged;
+     docs regenerated. **Nav note (not a defect):** marketing surfaces its depth via 5 sidebar links vs
+     the 1-link+tabs pattern most modules use — verbose but discoverable. **Carried follow-ups:** public
+     track/webhook endpoints are HMAC-only + UNRATE-LIMITED; sms/whatsapp/social are mock seams; inherited
+     v1 stored-XSS in campaign `body_html` — **sanitize before live Resend**.
   - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 + 087–091
-    + 093–096 + 097–098 + 112–119 + 120 on prod; probe the new `/api/finance/*`, `/api/inventory/*`,
-    `/api/orders/*`, `/api/warehouse/*`, `/api/supply-chain-*`, `/api/workforce/*`, `/api/hr/*` endpoints
-    for the Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` — config.method-array routing — and the
-    `:param` routes `warehouse/asn-detail/:id`, `warehouse/safety-incident/:id`,
-    `supply-chain-suppliers/:id`); run all the new `seed:*` scripts on prod (finance/inventory/orders/
-    warehouse/supply-chain/workforce/hr). **Enable the `orders` AND `hr` products** for papa-s-saloon on
-    prod (both new — invisible until enabled; their seeds enable on dev). **Grant** the new
-    `supply-chain.products.{create,edit,delete}` and `workforce.{leave,payroll,assets}.*` keys per access
-    level (Owner has them via L1 bypass). Finance/Inventory/Warehouse/Supply-Chain/Workforce products
-    already enabled on prod.
-  - Remaining depth branches to integrate (own worktrees, unpushed): **marketing** (last one).
+    + 093–096 + 097–098 + 112–119 + 120 + 131–136 on prod; probe the new `/api/finance/*`,
+    `/api/inventory/*`, `/api/orders/*`, `/api/warehouse/*`, `/api/supply-chain-*`, `/api/workforce/*`,
+    `/api/hr/*`, `/api/marketing/*` endpoints for the Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets`
+    — config.method-array routing — the `:param` routes `warehouse/asn-detail/:id`,
+    `warehouse/safety-incident/:id`, `supply-chain-suppliers/:id`, and marketing's multi-method
+    NO-config.method files: `webhooks`, `webhook-triggers`, `gdpr/consent`, `social-posts` — confirm each
+    method routes); verify the scheduled `marketing-social-dispatch` (*/5) registers. Run all the new
+    `seed:*` scripts on prod (finance/inventory/orders/warehouse/supply-chain/workforce/hr/marketing).
+    **Enable the `orders` AND `hr` products** for papa-s-saloon on prod (both new — invisible until
+    enabled; their seeds enable on dev). **Grant** the new `supply-chain.products.{create,edit,delete}`
+    and `workforce.{leave,payroll,assets}.*` keys per access level (Owner has them via L1 bypass). Other
+    depth products (finance/inventory/warehouse/supply-chain/workforce/marketing) already enabled on prod.
+    **Before live Resend:** sanitize marketing campaign `body_html` (inherited v1 stored-XSS).
+  - **Depth phase integration COMPLETE — no depth branches remain.** (Only Payments 051 from width is
+    still design-only, awaiting Razorpay keys.)
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
