@@ -39,7 +39,7 @@ export async function dispatchDue(sql: Sql, limit = 100): Promise<{ posted: numb
       RETURNING id
     `) as Array<{ id: string }>;
     if (!claimed[0]) continue;
-    (await finalize(sql, p)) === 'posted' ? posted++ : failed++;
+    if ((await finalize(sql, p)) === 'posted') posted++; else failed++;
   }
   return { posted, failed };
 }

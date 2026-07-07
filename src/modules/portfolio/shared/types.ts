@@ -12,11 +12,6 @@ export interface SiteSections {
   contact: ContactSection;
 }
 
-export interface SiteConfig {
-  sections: SiteSections;
-  published: boolean;
-}
-
 export const DEFAULT_SECTIONS: SiteSections = {
   hero: { enabled: true, tagline: '' },
   products: { enabled: true },

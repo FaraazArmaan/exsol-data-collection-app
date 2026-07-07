@@ -10,11 +10,6 @@ export interface ClientSummary {
 
 export const listClients = () => apiFetch<{ clients: ClientSummary[] }>('/api/clients');
 
-export const createClient = (name: string) =>
-  apiFetch<{ client: ClientSummary }>('/api/clients', {
-    method: 'POST', body: JSON.stringify({ name }),
-  });
-
 export const deleteClient = (id: string) =>
   apiFetch<{ ok: true }>(`/api/clients-detail?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 

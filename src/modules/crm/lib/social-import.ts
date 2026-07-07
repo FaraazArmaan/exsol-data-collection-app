@@ -13,10 +13,6 @@ export const PROVIDER_LABELS: Record<SocialProvider, string> = {
   facebook: 'Facebook Page',
 };
 
-export function isSocialProvider(x: string): x is SocialProvider {
-  return (SOCIAL_PROVIDERS as readonly string[]).includes(x);
-}
-
 /** Mock account label shown after "connecting" a provider. */
 export function mockAccountLabel(provider: SocialProvider): string {
   const labels: Record<SocialProvider, string> = {

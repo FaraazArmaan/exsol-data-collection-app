@@ -7,5 +7,3 @@ export const ALL_HR_PERMS = [
   'hr.employees.edit',
   'hr.employees.delete',
 ] as const;
-
-export type HrPermission = (typeof ALL_HR_PERMS)[number];

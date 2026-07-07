@@ -35,8 +35,6 @@ export interface DomainResponse {
   breakdowns: Breakdown[];
   generatedAt: string;
 }
-export type SalesResponse = DomainResponse;
-
 export interface OverviewResponse {
   scope: Scope;
   buckets: string[];

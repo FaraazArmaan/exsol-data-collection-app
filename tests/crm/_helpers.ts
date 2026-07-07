@@ -55,11 +55,6 @@ export async function enableCrm(clientId: string): Promise<void> {
             VALUES (${clientId}, 'crm', ${adminId}) ON CONFLICT (client_id, product_key) DO NOTHING`;
 }
 
-export async function grantCrmPerms(clientId: string, levelNumber: number, keys: readonly string[]): Promise<void> {
-  const perms: Record<string, true> = Object.fromEntries(keys.map((k) => [k, true]));
-  await sql`UPDATE public.client_levels SET permissions = ${JSON.stringify(perms)}::jsonb WHERE client_id = ${clientId} AND level_number = ${levelNumber}`;
-}
-
 export async function seedCustomerRole(clientId: string): Promise<string> {
   const r = (await sql`INSERT INTO public.client_roles (client_id, key, label, color, bucket_family)
     VALUES (${clientId}, 'customer', 'Customer', '#10b981', 'customers') RETURNING id`) as Array<{ id: string }>;

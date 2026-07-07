@@ -39,11 +39,6 @@ export const createNode = (body: CreateUserNodeBody) =>
     body: JSON.stringify(body),
   });
 
-export const getNode = (nodeId: string) =>
-  apiFetch<{ node: UserNode; children_count: number }>(
-    `/api/user-nodes-detail?id=${encodeURIComponent(nodeId)}`,
-  );
-
 export const updateNode = (
   nodeId: string,
   body: Partial<Pick<UserNode, 'display_name' | 'email' | 'phone' | 'notes' | 'fields'>>,

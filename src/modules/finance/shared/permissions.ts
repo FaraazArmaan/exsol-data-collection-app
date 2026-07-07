@@ -8,5 +8,3 @@ export const ALL_FINANCE_PERMS = [
   'finance.business.view', 'finance.business.create',
   'finance.business.edit', 'finance.business.delete',
 ] as const;
-
-export type FinancePermission = (typeof ALL_FINANCE_PERMS)[number];

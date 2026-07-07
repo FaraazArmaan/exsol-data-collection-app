@@ -10,9 +10,5 @@ function has(perms: UserPortalPermissionMatrix, key: string, lvl: number | null 
 
 export const canViewManufacturing = (p: UserPortalPermissionMatrix, lvl: number | null | undefined) =>
   has(p, 'manufacturing.products.view', lvl);
-export const canCreateManufacturing = (p: UserPortalPermissionMatrix, lvl: number | null | undefined) =>
-  has(p, 'manufacturing.products.create', lvl);
 export const canEditManufacturing = (p: UserPortalPermissionMatrix, lvl: number | null | undefined) =>
   has(p, 'manufacturing.products.edit', lvl);
-export const canDeleteManufacturing = (p: UserPortalPermissionMatrix, lvl: number | null | undefined) =>
-  has(p, 'manufacturing.products.delete', lvl);

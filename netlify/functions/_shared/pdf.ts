@@ -28,6 +28,8 @@ function winAnsiSafe(s: string): string {
     .replace(/…/g, '...')
     .replace(/[–—]/g, '-')
     // drop anything still outside the Latin-1 range StandardFonts can encode
+    // (control chars are the point of this range — tab/LF/CR are kept)
+    // eslint-disable-next-line no-control-regex
     .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
 }
 

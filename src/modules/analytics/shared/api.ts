@@ -21,10 +21,3 @@ export const fetchOverview = (p: AnalyticsParams) =>
 
 export const fetchDomain = (domain: DomainKey, p: AnalyticsParams) =>
   get<DomainResponse>(`/api/analytics-${domain}?${qs(p)}`);
-
-// Only Sales exposes an export endpoint today; others return undefined so the
-// panel omits its Export link.
-export function domainExportUrl(domain: DomainKey, p: AnalyticsParams, format: 'xlsx' | 'csv'): string | undefined {
-  if (domain !== 'sales') return undefined;
-  return `/api/analytics-sales-export?${qs(p)}&format=${format}`;
-}
