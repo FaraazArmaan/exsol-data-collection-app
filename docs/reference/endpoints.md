@@ -6,7 +6,7 @@
 
 # API endpoints
 
-247 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+259 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -200,10 +200,22 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| manufacturing-bom-cost.ts | `/api/manufacturing/bom-cost/:id` | GET | bucket-user | `manufacturing.products.view` |
 | manufacturing-bom-detail.ts | `/api/manufacturing/bom-detail/:id` | GET, PUT, DELETE | bucket-user | `manufacturing.products.delete`, `manufacturing.products.edit`, `manufacturing.products.view` |
 | manufacturing-boms.ts | `/api/manufacturing/boms` | GET, POST | bucket-user | `manufacturing.products.create`, `manufacturing.products.view` |
+| manufacturing-capacity.ts | `/api/manufacturing/capacity` | GET | bucket-user | `manufacturing.business.view` |
+| manufacturing-costs.ts | `/api/manufacturing/costs` | GET, POST | bucket-user | `manufacturing.products.edit`, `manufacturing.products.view` |
+| manufacturing-kanban.ts | `/api/manufacturing/kanban` | GET | bucket-user | `manufacturing.products.view` |
+| manufacturing-lots.ts | `/api/manufacturing/lots` | GET, POST | bucket-user | `manufacturing.products.edit`, `manufacturing.products.view` |
+| manufacturing-maintenance.ts | `/api/manufacturing/maintenance` | GET, POST | bucket-user | `manufacturing.business.create`, `manufacturing.business.view` |
 | manufacturing-order-advance.ts | `/api/manufacturing/order-advance/:id` | POST | bucket-user | `manufacturing.products.edit` |
+| manufacturing-order-board.ts | `/api/manufacturing/order-board` | POST | bucket-user | `manufacturing.products.edit` |
+| manufacturing-order-resource.ts | `/api/manufacturing/order-resource` | POST | bucket-user | `manufacturing.products.edit` |
 | manufacturing-orders.ts | `/api/manufacturing/orders` | GET, POST | bucket-user | `manufacturing.products.create`, `manufacturing.products.view` |
+| manufacturing-qc-result.ts | `/api/manufacturing/qc-result` | POST | bucket-user | `manufacturing.products.edit` |
+| manufacturing-qc.ts | `/api/manufacturing/qc` | GET, POST | bucket-user | `manufacturing.products.edit`, `manufacturing.products.view` |
+| manufacturing-resources.ts | `/api/manufacturing/resources` | GET, POST | bucket-user | `manufacturing.business.create`, `manufacturing.business.view` |
+| manufacturing-scrap.ts | `/api/manufacturing/scrap` | GET, POST | bucket-user | `manufacturing.products.edit`, `manufacturing.products.view` |
 
 ## marketing
 

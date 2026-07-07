@@ -15,9 +15,15 @@ export interface ManufacturingAuthCtx {
   perms: ReadonlySet<string>;
 }
 
+// Full grid: both manifest buckets × all four verbs. L1 Owner is all-on, so this
+// must carry the business.* keys too (maintenance/capacity gate on them) — omitting
+// them would blank the Owner relative to a permissioned subordinate. Keep in sync
+// with ALL_MANUFACTURING_PERMS in ManufacturingRouteMounts.tsx.
 export const ALL_MANUFACTURING_PERMS = [
   'manufacturing.products.view', 'manufacturing.products.create',
   'manufacturing.products.edit', 'manufacturing.products.delete',
+  'manufacturing.business.view', 'manufacturing.business.create',
+  'manufacturing.business.edit', 'manufacturing.business.delete',
 ] as const;
 
 export async function requireManufacturing(

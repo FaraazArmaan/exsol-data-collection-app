@@ -3,9 +3,14 @@ import { Navigate, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-portal/user-auth-context';
 import ManufacturingPage from './workspace/pages/ManufacturingPage';
 
+// Full grid (both buckets × all verbs). L1 Owner is all-on — must include
+// business.* so the Owner sees the Maintenance/Capacity tabs. Keep in sync with
+// ALL_MANUFACTURING_PERMS in _manufacturing-authz.ts.
 const ALL_MANUFACTURING_PERMS = [
   'manufacturing.products.view', 'manufacturing.products.create',
   'manufacturing.products.edit', 'manufacturing.products.delete',
+  'manufacturing.business.view', 'manufacturing.business.create',
+  'manufacturing.business.edit', 'manufacturing.business.delete',
 ];
 
 function useAuthBits() {
@@ -28,7 +33,11 @@ export const ManufacturingMount = (function () {
     if (loading) return null;
     if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
     if (!enabled) return <Navigate to={`/c/${slug}`} replace />;
-    if (!perms.has('manufacturing.products.view')) return <Navigate to={`/c/${slug}`} replace />;
+    // Two-bucket module: either products (BOMs/orders/…) or business (shop-floor)
+    // view is enough to reach the page; individual tabs gate themselves.
+    if (!perms.has('manufacturing.products.view') && !perms.has('manufacturing.business.view')) {
+      return <Navigate to={`/c/${slug}`} replace />;
+    }
     return <ManufacturingPage slug={slug} perms={perms} />;
   };
 })();

@@ -25,7 +25,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | finance | Finance | business | view, create, edit, delete | vendor | ✓ (/finance) |
 | hr | Human Resources | employees | view, create, edit, delete | vendor | ✓ (/hr) |
 | inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory/dashboard) |
-| manufacturing | Manufacturing | products | view, create, edit, delete | vendor | ✓ (/manufacturing) |
+| manufacturing | Manufacturing | products, business | view, create, edit, delete | vendor | ✓ (/manufacturing) |
 | marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing) |
 | orders | Order Management | business | view, create, edit, delete | vendor | ✓ (/orders) |
 | payments | Payments | customers, products | view, create, edit | vendor+customer | generic rail |
@@ -105,6 +105,7 @@ Each row is a module×bucket; the UI renders one toggle per verb the module decl
 ### manufacturing
 
 - manufacturing × products: `manufacturing.products.view` `manufacturing.products.create` `manufacturing.products.edit` `manufacturing.products.delete`
+- manufacturing × business: `manufacturing.business.view` `manufacturing.business.create` `manufacturing.business.edit` `manufacturing.business.delete`
 
 ### marketing
 

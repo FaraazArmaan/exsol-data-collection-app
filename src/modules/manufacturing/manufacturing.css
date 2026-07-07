@@ -20,3 +20,54 @@
 .mfg-btn { padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-elevated); color: var(--text-primary); cursor: pointer; }
 .mfg-btn.primary { background: var(--accent); color: var(--text-on-accent); border-color: transparent; }
 .mfg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Depth: Kanban board ─────────────────────────────────────── */
+.mfg-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.mfg-lane { flex: 1 0 220px; min-width: 220px; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; }
+.mfg-lane-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mfg-lane-count { color: var(--text-muted); font-size: 0.8rem; }
+.mfg-lane-empty { color: var(--text-muted); text-align: center; padding: 12px 0; margin: 0; }
+.mfg-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-left: 3px solid var(--border-default); border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: grab; }
+.mfg-card:active { cursor: grabbing; }
+.mfg-prio-high { border-left-color: var(--danger); }
+.mfg-prio-normal { border-left-color: var(--accent); }
+.mfg-prio-low { border-left-color: var(--text-muted); }
+.mfg-card-title { font-weight: 600; color: var(--text-primary); }
+.mfg-card-meta { display: flex; gap: 8px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+.mfg-card-due { color: var(--text-muted); }
+.mfg-card-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.mfg-prio-select { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; }
+.mfg-btn-sm { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+@media (max-width: 560px) {
+  .mfg-page { padding: 1rem; }
+  .mfg-lane { flex-basis: 80vw; }
+}
+
+/* ── Depth: BOM Designer cost rollup ─────────────────────────── */
+.mfg-comp-head { display: grid; grid-template-columns: 1fr 60px 80px 70px 32px; gap: 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 4px; }
+.mfg-comp-row { display: grid; grid-template-columns: 1fr 60px 80px 70px 32px; gap: 0.5rem; align-items: center; }
+.mfg-line-cost { color: var(--text-secondary); font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+.mfg-rollup { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle); color: var(--text-primary); text-align: right; }
+
+/* ── Depth: Quality Control ──────────────────────────────────── */
+.mfg-qc-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.mfg-qc-add input { flex: 1; }
+.mfg-qc { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+.mfg-qc-pending { background: color-mix(in srgb, var(--text-muted) 20%, transparent); color: var(--text-secondary); }
+.mfg-qc-pass { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.mfg-qc-fail { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+.mfg-qc-failform { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mfg-muted { color: var(--text-muted); }
+
+/* ── Depth: Part Tracking ────────────────────────────────────── */
+.mfg-lot-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
+.mfg-lot-form input, .mfg-lot-form select { min-width: 0; }
+.mfg-trace-search { display: inline-flex; gap: 6px; align-items: center; }
+.mfg-table code { background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px; color: var(--text-primary); font-size: 0.85rem; }
+
+/* ── Depth: Maintenance / Downtime kind pills ────────────────── */
+.mfg-kind-maintenance { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.mfg-kind-downtime { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+
+/* ── Depth: Capacity Planning ────────────────────────────────── */
+.mfg-row-over td { background: color-mix(in srgb, var(--danger) 10%, transparent); }

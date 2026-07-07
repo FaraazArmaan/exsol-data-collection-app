@@ -135,6 +135,104 @@ async function main(): Promise<void> {
     `;
   }
 
+  // 5a. BOM Designer demo: give component products a standing unit cost so the
+  //     cost rollup shows real numbers. Prefer the latest PO cost, else a stub.
+  await sql`
+    INSERT INTO public.manufacturing_product_costs (client_id, product_id, unit_cost_cents)
+    SELECT p.client_id, p.id,
+           COALESCE(
+             (SELECT poi.unit_cost_cents FROM public.purchase_order_items poi
+              JOIN public.purchase_orders po ON po.id = poi.purchase_order_id
+              WHERE poi.product_id = p.id AND po.client_id = ${clientId}::uuid
+              ORDER BY po.created_at DESC LIMIT 1),
+             150 + (abs(hashtext(p.id::text)) % 400))
+    FROM public.products p
+    WHERE p.client_id = ${clientId}::uuid AND p.sku LIKE 'MFG-%' AND p.deleted_at IS NULL
+    ON CONFLICT (client_id, product_id) DO NOTHING
+  `;
+
+  // 5b. Kanban demo: give planned orders a priority + near-term due date so the
+  //     board shows priority accents and scheduling signal out of the box.
+  await sql`
+    UPDATE public.production_orders
+    SET priority = 'high', due_on = current_date + 5
+    WHERE client_id = ${clientId}::uuid AND status = 'planned' AND priority = 'normal' AND due_on IS NULL
+  `;
+  await sql`
+    UPDATE public.production_orders
+    SET due_on = current_date + 2
+    WHERE client_id = ${clientId}::uuid AND status = 'in_progress' AND due_on IS NULL
+  `;
+
+  // 5c. QC demo: a couple of checklist items on the first order (idempotent).
+  const firstOrder = (await sql`
+    SELECT id FROM public.production_orders WHERE client_id = ${clientId}::uuid ORDER BY created_at ASC LIMIT 1
+  `) as Array<{ id: string }>;
+  if (firstOrder[0]) {
+    const haveQc = (await sql`
+      SELECT 1 FROM public.manufacturing_qc_checks WHERE production_order_id = ${firstOrder[0].id}::uuid LIMIT 1
+    `) as unknown[];
+    if (haveQc.length === 0) {
+      await sql`
+        INSERT INTO public.manufacturing_qc_checks (client_id, production_order_id, item, result)
+        VALUES (${clientId}::uuid, ${firstOrder[0].id}::uuid, 'Visual inspection', 'pass'),
+               (${clientId}::uuid, ${firstOrder[0].id}::uuid, 'Weight check', 'pending')
+      `;
+    }
+  }
+
+  // 5d. Part Tracking demo: record a component lot against the first order
+  //     (idempotent — only when the order has no lots yet).
+  if (firstOrder[0]) {
+    const haveLots = (await sql`
+      SELECT 1 FROM public.manufacturing_consumption_lots WHERE production_order_id = ${firstOrder[0].id}::uuid LIMIT 1
+    `) as unknown[];
+    if (haveLots.length === 0) {
+      await sql`
+        INSERT INTO public.manufacturing_consumption_lots (client_id, production_order_id, component_product_id, lot_ref, qty)
+        SELECT ${clientId}::uuid, ${firstOrder[0].id}::uuid, bc.component_product_id, 'LOT-2026-0042', bc.qty * 10
+        FROM public.bom_components bc
+        JOIN public.production_orders po ON po.bom_id = bc.bom_id
+        WHERE po.id = ${firstOrder[0].id}::uuid
+        LIMIT 2
+      `;
+    }
+  }
+
+  // 5e. Maintenance/downtime demo (idempotent per client).
+  const haveMaint = (await sql`
+    SELECT 1 FROM public.manufacturing_maintenance_logs WHERE client_id = ${clientId}::uuid LIMIT 1
+  `) as unknown[];
+  if (haveMaint.length === 0) {
+    await sql`
+      INSERT INTO public.manufacturing_maintenance_logs (client_id, kind, resource_label, reason, minutes, occurred_on)
+      VALUES (${clientId}::uuid, 'maintenance', 'Mixer', 'Scheduled blade service', 40, current_date - 1),
+             (${clientId}::uuid, 'downtime', 'Line 1', 'Power outage', 25, current_date)
+    `;
+  }
+
+  // 5f. Capacity demo: two work centers; schedule the active orders onto the first
+  //     with enough hours to overbook its due day (idempotent per client).
+  const haveResources = (await sql`
+    SELECT 1 FROM public.manufacturing_resources WHERE client_id = ${clientId}::uuid LIMIT 1
+  `) as unknown[];
+  if (haveResources.length === 0) {
+    const rows = (await sql`
+      INSERT INTO public.manufacturing_resources (client_id, name, hours_per_day)
+      VALUES (${clientId}::uuid, 'Assembly Line A', 8),
+             (${clientId}::uuid, 'Packing Bench', 6)
+      RETURNING id, name
+    `) as Array<{ id: string; name: string }>;
+    const lineA = rows.find((r) => r.name === 'Assembly Line A');
+    if (lineA) {
+      await sql`
+        UPDATE public.production_orders
+        SET resource_id = ${lineA.id}::uuid, estimated_hours = 5
+        WHERE client_id = ${clientId}::uuid AND status IN ('planned', 'in_progress') AND due_on IS NOT NULL
+      `;
+    }
+  }
+
   const counts = (await sql`
     SELECT
       (SELECT count(*)::int FROM public.boms             WHERE client_id = ${clientId}::uuid)                  AS boms,
