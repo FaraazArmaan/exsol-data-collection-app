@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePhone, dedupeKey } from '../lib/dedupe';
+import { normalizePhone, dedupeKey } from '../customer-dedupe';
 
 describe('normalizePhone', () => {
   it('formats a bare Indian 10-digit number to +91', () => {

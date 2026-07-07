@@ -1,5 +1,5 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless';
-import { normalizePhone } from '../../src/modules/booking/lib/dedupe';
+import { normalizePhone } from '../../src/lib/customer-dedupe';
 
 // Resolve a customers-bucket role for the tenant, creating a default one on demand.
 // Booking attaches every guest to a `bucket_family='customers'` role; rather than

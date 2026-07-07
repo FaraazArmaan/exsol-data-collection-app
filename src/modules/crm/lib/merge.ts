@@ -1,4 +1,4 @@
-import { normalizePhone } from '../../booking/lib/dedupe';
+import { normalizePhone } from '../../../lib/customer-dedupe';
 
 export type CrmSource = 'pos' | 'storefront' | 'booking';
 

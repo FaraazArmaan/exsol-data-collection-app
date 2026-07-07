@@ -1,5 +1,9 @@
 // Phone normalization + customer dedupe key. Phone is the primary person-key;
-// email is the tiebreaker (see spec §1 dedupe default).
+// email is the tiebreaker (see booking spec §1 dedupe default).
+//
+// Lives in src/lib because it is a cross-seam helper: consumed by the booking
+// customer upsert (_booking-customer-upsert.ts), the CRM merge engine
+// (crm/lib/merge.ts), and the public CRM lead path (_crm-public.ts).
 
 export function normalizePhone(raw: string, defaultCountry: '+91' = '+91'): string | null {
   if (!raw) return null;

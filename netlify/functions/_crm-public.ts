@@ -5,7 +5,7 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './_shared/db';
 import { getProduct } from '@registry/products';
-import { normalizePhone } from '../../src/modules/booking/lib/dedupe';
+import { normalizePhone } from '../../src/lib/customer-dedupe';
 
 type SQL = NeonQueryFunction<false, false>;
 
