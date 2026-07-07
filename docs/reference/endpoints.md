@@ -6,7 +6,7 @@
 
 # API endpoints
 
-274 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+275 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -17,6 +17,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | admin-client-products.ts | `/api/admin-client-products (name-routed)` | any | admin | — |
+| admin-impersonate.ts | `/api/admin-impersonate` | POST | admin | — |
 | admin-self.ts | `/api/admin-self (name-routed)` | any | admin | — |
 | admin-team-detail.ts | `/api/admin-team-detail (name-routed)` | any | admin | — |
 | admin-team.ts | `/api/admin-team (name-routed)` | any | admin | — |

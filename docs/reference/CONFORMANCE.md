@@ -75,6 +75,32 @@ CSS sweep result: **zero** violations of iron rule 9 anywhere (no `--color-*`/`-
    inline pub gate) rather than a dedicated `_<key>-authz.ts` — long-standing pattern for the
    two oldest surfaces; conforming them is a behavior-risk refactor with no current bug.
 
+## Cleanup-2 round (2026-07-08, chore/cleanup-2-iso)
+
+Structural changes (all wire-behavior-preserving, char-tested):
+
+- **E3 is now factory-backed**: 14 `_<module>-authz.ts` files are ~25-line thin wrappers over
+  `_shared/module-authz.ts` (`makeModuleAuthz`) — iron rule 2's gate order lives in ONE
+  implementation. Excluded by design: _pos (gates on PRODUCT keys), _analytics, _supply-chain
+  (custom shapes). Wire behavior pinned by
+  `tests/integration/module-authz-characterization.test.ts` (3 modules deep + all-14 412-code
+  table).
+- workforce + pos RouteMounts adopted the per-module local `gate()` (every module now conforms).
+- `normalizePhone`/`dedupeKey` moved to `src/lib/customer-dedupe.ts` (was a cross-module
+  internals import: crm → booking/lib).
+- orders' authz perm list deduped into `orders/shared/permissions.ts` (finance/hr pattern).
+
+Debt changes:
+- RESOLVED: crm→booking internals import; workforce/pos RouteMount nonconformance; orders
+  authz/shared perm-list duplication.
+- UNCHANGED: unwired shared/permissions.ts scaffolds (crm, email, inventory, marketing,
+  procurement, warehouse); payments stub; products/catalog platform auth; analytics/supply-chain
+  passthrough RouteMounts.
+- NEW (documented, deferred): `user-portal/user-auth-context` + api types are a platform seam
+  imported by 20+ modules from inside the user-portal folder — relocation to src/lib is correct
+  but maximum-churn (~30 files); needs its own solo window.
+- Full audit + metrics: docs/reference/CLEANUP-2-AUDIT.md.
+
 ## tsconfig strictness
 
 Already on: `strict`, `noUncheckedIndexedAccess`. Enabled in this sweep at zero cost (0 new

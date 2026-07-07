@@ -16,8 +16,12 @@ Work through this checklist IN ORDER, showing progress as you go:
    see other manifests). Register in `registry/modules.ts`.
 4. **ProductManifest**: entry in `registry/products-list/` carrying the module (or add it to an
    existing product). Without this the module is invisible (iron rule 4).
-5. **Server authz**: `netlify/functions/_<key>-authz.ts` copied from `_inventory-authz.ts`:
-   requireBucketUser → 412 enable-gate → `levelNumber === 1` full-perm bypass → matrix check.
+5. **Server authz**: `netlify/functions/_<key>-authz.ts` — a ~25-line thin wrapper over
+   `_shared/module-authz.ts` (copy `_inventory-authz.ts`): `makeModuleAuthz({ moduleKeys:
+   ['<key>'], notEnabledCode: '<key>_module_not_enabled', allPerms: ALL_<KEY>_PERMS })`.
+   The factory enforces requireBucketUser → 412 enable-gate → L1 full-perm bypass → matrix.
+   Add your module's 412 row to the wire-code table in
+   tests/integration/module-authz-characterization.test.ts.
 6. **Endpoints**: flat `netlify/functions/<key>-*.ts` files. Set `config.path`; if two share a
    path, BOTH set `config.method` (iron rule 5). Remember: `/api/foo/:id` routes to `foo.ts`
    by NAME.

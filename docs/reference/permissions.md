@@ -30,7 +30,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | orders | Order Management | business | view, create, edit, delete | vendor | ✓ (/orders) |
 | payments | Payments | customers, products | view, create, edit | vendor+customer | generic rail |
 | portfolio | Brand Portfolio Site | business | view, edit | vendor+customer | ✓ (/brand-site) |
-| pos | POS | — | — | vendor | ✓ (/pos/menu, /pos/sales, /pos/coupons, /pos/reviews, /pos/bundles, /pos/tax, /pos/storefront, /pos/marketplace) |
+| pos | POS | — | — | vendor | ✓ (/pos/menu, /pos/sales, /pos/coupons) |
 | procurement | Procurement | products | view, create, edit, delete | vendor | ✓ (/procurement) |
 | products | Product Manager | products | view, create, edit, delete | vendor+customer | ✓ (/products) |
 | project-service | Project Service | business, customers | view, create, edit, delete | vendor | ✓ (no link) |

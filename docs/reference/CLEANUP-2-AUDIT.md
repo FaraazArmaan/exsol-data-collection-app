@@ -143,3 +143,33 @@ user-nodes-move.ts three move cases, u-products-detail.ts setField chain (clear 
 | P3 | .claude/rules/code-style.md + CONFORMANCE/docs refresh | — | none |
 
 Projected duplication after T5+T7: ~4.8% → ~2.5-3%.
+
+## Phase-2 execution results (2026-07-08)
+
+| theme | outcome | commit |
+|---|---|---|
+| T0 tz-flaky risk test | DONE — seed now uses the handler's tenant-tz SQL day arithmetic | e3e9c71 |
+| T1 @registry regressions | DONE | c58260f |
+| T2 dead exports/types | DONE — 26 symbols deleted, 88 in-file-used kept, 2 post-baseline lint errors fixed | d017bf7 |
+| T3 customer-dedupe → src/lib | DONE — 5 importers, git-mv history preserved | c832d7b |
+| T4 files tier-map collapse | REJECTED — needs sql identifier interpolation (see §b) | (no change) |
+| T5 RouteMounts gate() | DONE — 157→86 + 119→81 lines; 2 deliberate explicit mounts | 0c08df5 |
+| T6 asset-assignments collapse | DONE — 16 characterization pins first; 274→164 lines | 0c452a8 |
+| T7 makeModuleAuthz factory | DONE — 14 thin wrappers, 18+14 characterization pins, hostile-review clean (2 RISKs fixed pre-commit: tautological pins inlined, all-14 412-code table added) | (see log) |
+| T8 shared/api factory | CUT by human at phase-1 gate | — |
+
+### Metrics before → after
+
+| metric | before | after |
+|---|---|---|
+| jscpd duplication (lines) | 4.82% (283 clones, 3631 lines) | 3.97% (240 clones, 2932 lines) |
+| production LOC removed (net) | — | ~1,350 |
+| authz skeleton copies | 14× ~88 lines | 1 factory + 14× ~25-line wrappers |
+| knip dead symbols | 27 true-dead | 0 (26 deleted, 1 kept with reason) |
+| circular deps | 0 | 0 |
+| tests | 1870 | 1938 (+16 asset pins, +32 authz pins, +20 module suites growth) |
+
+Note: suite grew from 1870 to 1904 during the round via the new characterization files; exact
+final count in the handoff. Flake note: tests/pos/pub-menu.test.ts rate-limit test timed out
+once during a degraded-DB window (~2s/query); passes in isolation and on rerun — timeout-bound
+tests are sensitive to shared-DB latency.

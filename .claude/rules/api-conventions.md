@@ -29,8 +29,10 @@ Full generated endpoint inventory: `docs/reference/endpoints.md` (`npm run docs:
 
 - `requireAdmin(req)` / `requireBucketUser(req)` / `authenticateForPermission(req, key)` in
   `_shared/permissions.ts` (throws `UnauthorizedError`/`ForbiddenError`).
-- Module authz: `_<module>-authz.ts` — enable-gate then L1 bypass; see
-  `.claude/rules/module-pattern.md`.
+- Module authz: `_<module>-authz.ts` — thin wrapper over `_shared/module-authz.ts`
+  (`makeModuleAuthz`), which owns the enable-gate → L1-bypass order; see
+  `.claude/rules/module-pattern.md`. Wire behavior pinned by
+  `tests/integration/module-authz-characterization.test.ts`.
 - Registry imports use the `@registry/*` alias (tsconfig paths; esbuild resolves it when bundling).
 
 ## Hard-won runtime facts

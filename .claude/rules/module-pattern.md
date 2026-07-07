@@ -13,13 +13,18 @@ matrix is `docs/reference/CONFORMANCE.md`; regenerate reference docs with `npm r
    (`modules: [{ module: '<key>', side: ... }]`). A ModuleManifest without a product entry is
    INVISIBLE: keys won't validate, nav won't render (iron rule 4). A module may ride an existing
    product (email rides pos + saloon-booking; project-service rides workforce).
-3. **Server authz** — `netlify/functions/_<key>-authz.ts` exporting `require<Key>(req, required)`.
-   Copy `_inventory-authz.ts`. The order is LAW (iron rule 2):
+3. **Server authz** — `netlify/functions/_<key>-authz.ts` exporting `require<Key>(req, required)`
+   as a THIN WRAPPER over `_shared/module-authz.ts`:
+   `makeModuleAuthz({ moduleKeys, notEnabledCode, allPerms })` (copy `_inventory-authz.ts`,
+   ~25 lines). The factory owns the order, which is LAW (iron rule 2):
    1. `requireBucketUser` (401 on no session)
    2. **enable-gate** — module reachable from an enabled product, else `412 <key>_module_not_enabled`
    3. **L1 Owner bypass** — `if (levelNumber === 1)` return ctx with the FULL `<key>.*` perm set
    4. matrix check for everyone else (403 on missing key)
    Strict matrix-only checks blank out the Owner's UI — this has shipped broken twice (POS, Booking).
+   Keep the per-module wrapper FILE (the seam is load-bearing: generated docs attribute gates per
+   file; module terminals own their file). pos/analytics/supply-chain have intentionally different
+   authz shapes — see the factory header before touching them.
 4. **RouteMount** — `src/modules/<key>/<Key>RouteMounts.tsx` mirroring the same order client-side:
    loading → null; no user → login redirect; module not enabled → workspace redirect; no view perm
    → workspace redirect; Owner (`level_number === 1 || == null`) gets the full perm set.
@@ -47,8 +52,9 @@ matrix is `docs/reference/CONFORMANCE.md`; regenerate reference docs with `npm r
 
 ## Known intentional deviations (don't "fix" these casually)
 
-- **analytics, supply-chain**: no 412 enable-gate in authz (permission-check only) — logged debt in
-  CONFORMANCE.md; changing it changes HTTP behavior.
+- **analytics, supply-chain**: custom authz shapes (admin+bucket dual paths / two-tier read-write)
+  — they now HAVE 412 enable-gates (fixed 2026-07-06) but do NOT use the module-authz factory;
+  their RouteMounts are thin passthroughs with section-level gating (logged in CONFORMANCE.md).
 - **products, catalog**: platform-level auth (`_shared/permissions.ts` / inline pub gate) instead of
   a dedicated authz file — oldest surfaces, working, high blast radius.
 - **payments**: registry-only stub. No dir, no authz, no routes.
