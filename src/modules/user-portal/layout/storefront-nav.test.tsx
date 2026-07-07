@@ -41,28 +41,30 @@ describe('Sidebar — Storefront settings link', () => {
   });
 });
 
-describe('Sidebar — POS Orders link', () => {
+describe('Sidebar — POS Sales link', () => {
   // POS sidebar entries are gated on the workspace having POS enabled
   // (added in the POS Phase 1 fix today). Seed enabledModules accordingly.
+  // The /pos/sales link is labelled "Sales" (renamed from "Orders" when the
+  // Order Management module took over the "Orders" label — see orders depth).
   const posEnabled = [{ key: 'pos', label: 'POS' }];
 
-  it('shows Orders (→ sale history) for a holder of pos.history.view', () => {
+  it('shows Sales (→ sale history) for a holder of pos.history.view', () => {
     renderSidebar(authValue({
       user: { id: 'u', level_number: 2 },
       permissions: { 'pos.history.view': true },
       enabledModules: posEnabled,
     }));
-    expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute('href', '/c/cafe/pos/sales');
+    expect(screen.getByRole('link', { name: 'Sales' })).toHaveAttribute('href', '/c/cafe/pos/sales');
     expect(screen.getByRole('link', { name: 'POS' })).toBeInTheDocument();
   });
 
-  it('hides Orders for a user with only pos.menu.view', () => {
+  it('hides Sales for a user with only pos.menu.view', () => {
     renderSidebar(authValue({
       user: { id: 'u', level_number: 2 },
       permissions: { 'pos.menu.view': true },
       enabledModules: posEnabled,
     }));
     expect(screen.getByRole('link', { name: 'POS' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Orders' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sales' })).not.toBeInTheDocument();
   });
 });
