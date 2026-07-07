@@ -17,7 +17,7 @@ and coordinates prod deploys. It does NOT build modules.
   `exsoldatacollectionapp.netlify.app` — prod migrated (063–136), demo tenant seeded, orders+hr products
   enabled, endpoints probed healthy. Local `main` is **1 commit ahead** (`31756c8` Procurement depth,
   unpushed). Working tree clean.
-- **DEPTH PHASE IS ~85% DONE — 11 of 13 modules integrated, 2 remain (unbuilt).**
+- **DEPTH PHASE IS ~92% DONE — 12 of 13 modules integrated, 1 remains (unbuilt): Ecommerce.**
   - **Live on prod (queue-1, 8):** Finance (063–066), Inventory (080–081), Orders (087–091), Warehouse
     (093–096), Supply-Chain (097–098), Workforce (112–119), HR (120), Marketing (131–136) — plus the
     marketing tabbed-nav fix `673a9b0` and the inventory seed qty>0 fix `4d48ca5`.
@@ -31,13 +31,17 @@ and coordinates prod deploys. It does NOT build modules.
       mig 108 adds nullable `project_id` FK to finance_expenses. CSS: tokenized 2 orange severity hex.
       Dev-DB: tables pre-existed untracked (reused workforce worktree) — reconciled tracking. Minor: budget
       renders `$` not `₹` (base_currency-not-plumbed-to-FE, a documented platform follow-up, not blocking).
+    · D1.7 **Manufacturing** `f5218e3` (migs 074–079) — 60/60; all 7 tabs (Kanban/BOMs/Orders/Quality/Part-
+      Tracking/Maintenance/Capacity) smoke-tested incl. **Kanban drag** (Planned→In-progress persisted) +
+      BOM rollup + capacity load. Manifest gained the `business` bucket (existing DATA_BUCKETS value; new
+      `manufacturing.business.*` keys; 8-key grid). 14 new functions.
     Push all + run each module's prod runbook (migrate their ranges, `seed:procurement`/`seed:crm`
-    [+workforce reseed for project data], probe new `/api/procurement/*`, `/api/crm/*`,
-    `/api/workforce/project-*` endpoints for the Edge-404 trap — CRM adds a PUBLIC `crm-lead-submit`,
-    rate-limited via Blobs).
-  - **NOT built yet (queue-2 remaining, 2) — reserved ranges, no collision:** D1.7 Manufacturing
-    (074–079), D1.5 Ecommerce (124–130).
-    Build each in its own worktree rebased on current `main` (Ecommerce depends on Orders; Project Mgr on
+    [+workforce reseed for project data]/`seed:manufacturing`, probe new `/api/procurement/*`,
+    `/api/crm/*`, `/api/workforce/project-*`, `/api/manufacturing/*` (14 routes) endpoints for the
+    Edge-404 trap — CRM adds a PUBLIC `crm-lead-submit`, rate-limited via Blobs. Manufacturing: enable the
+    `manufacturing` product per tenant if not already, and grant the new `manufacturing.business.*` keys.
+  - **NOT built yet (queue-2 remaining, 1) — reserved range, no collision:** D1.5 Ecommerce (124–130).
+    Build in its own worktree rebased on current `main` (Ecommerce depends on Orders; Project Mgr on
     Workforce/Timesheets — both live). Same runbook.
 - ✅ **CLEAN FULL SUITE (for the 8 merged): `npx vitest run` → 1708/1708 passed (286 files), 0 failures**
   (2026-07-07, after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green.
