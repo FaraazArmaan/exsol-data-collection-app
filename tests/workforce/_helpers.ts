@@ -90,6 +90,15 @@ export async function seedTimesheetEntry(
   return rows[0]!.id;
 }
 
+// Seed a project_assignment linking resource to project.
+export async function seedProjectAssignment(ctx: PosTestCtx, projectId: string, resourceId: string): Promise<void> {
+  await sql`
+    INSERT INTO public.project_assignments (project_id, resource_id)
+    VALUES (${projectId}::uuid, ${resourceId}::uuid)
+    ON CONFLICT DO NOTHING
+  `;
+}
+
 // Seed a shift (returns id).
 export async function seedShift(
   ctx: PosTestCtx,

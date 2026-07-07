@@ -6,7 +6,7 @@
 
 # API endpoints
 
-240 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+247 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -367,6 +367,13 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-payroll-rates.ts | `/api/workforce/payroll-rates` | any | bucket-user | — |
 | workforce-payroll.ts | `/api/workforce/payroll` | any | bucket-user | — |
 | workforce-project-assignments.ts | `/api/workforce/project-assignments` | any | bucket-user | `project-service.business.edit` |
+| workforce-project-budget.ts | `/api/workforce/project-budget/:id` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
+| workforce-project-docs.ts | `/api/workforce/project-docs` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
+| workforce-project-plan-apply.ts | `/api/workforce/project-plan-apply` | any | bucket-user | `project-service.business.edit` |
+| workforce-project-plan.ts | `/api/workforce/project-plan` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
+| workforce-project-risk.ts | `/api/workforce/project-risk/:id` | any | bucket-user | `project-service.business.view` |
+| workforce-project-task.ts | `/api/workforce/project-task/:id` | any | bucket-user | `project-service.business.edit` |
+| workforce-project-tasks.ts | `/api/workforce/project-tasks` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
 | workforce-project.ts | `/api/workforce/project/:id` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
 | workforce-projects.ts | `/api/workforce/projects` | any | bucket-user | `project-service.business.create`, `project-service.business.view` |
 | workforce-punch.ts | `/api/workforce/punch/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |

@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-38 tables across 100 forward-only migrations.
+38 tables across 104 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -149,7 +149,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `finance_expenses`
 
-- created in `054_finance_expenses.sql`; altered in `063_finance_expense_currency.sql`, `064_finance_recurring_templates.sql`, `065_finance_approvals.sql`
+- created in `054_finance_expenses.sql`; altered in `063_finance_expense_currency.sql`, `064_finance_recurring_templates.sql`, `065_finance_approvals.sql`, `108_project_budget.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `category TEXT`, `amount_cents BIGINT`, `note TEXT`, `incurred_on DATE`, `created_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `finance_recurring_templates`

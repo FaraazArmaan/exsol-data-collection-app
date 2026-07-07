@@ -73,6 +73,75 @@ export interface ProjectAssignment {
   assigned_at: string;
 }
 
+export interface ProjectBudget {
+  budget_cents: number | null;
+  hourly_rate_cents: number | null;
+  total_hours: number;
+  timesheet_cost_cents: number;
+  expense_cents: number;
+  total_spent_cents: number;
+  burn_pct: number | null;
+  expense_count: number;
+}
+
+export interface ProjectDoc {
+  file_id: string;
+  attached_at: string;
+  title: string;
+  type: string;
+  storage_kind: string;
+  filename: string | null;
+  mime: string | null;
+  byte_size: number | null;
+  external_url: string | null;
+  tier: string;
+  file_created_at: string;
+}
+
+export interface ProjectTask {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  assigned_to: string | null;
+  assigned_name: string | null;
+  status: 'open' | 'in_progress' | 'done';
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectRisk {
+  project_id: string;
+  project_name: string;
+  project_status: string;
+  health_score: number;
+  flags: string[];
+  overdue_count: number;
+  open_count: number;
+  total_tasks: number;
+  assignment_count: number;
+  unstaffed: boolean;
+  budget_overrun: boolean;
+  burn_pct: number | null;
+  total_hours: number;
+}
+
+export interface AiDraftTask {
+  title: string;
+  description: string | null;
+  due_date: string | null;
+}
+
+export interface AiPlan {
+  id: string;
+  project_id: string;
+  prompt_text: string;
+  draft_tasks: AiDraftTask[];
+  created_at: string;
+  fallback?: boolean;
+}
+
 export interface TimesheetEntry {
   id: string;
   resource_id: string;
@@ -318,6 +387,53 @@ export const workforceApi = {
     });
   },
 
+  getProjectBudget(id: string): Promise<{ budget: ProjectBudget }> {
+    return call<{ budget: ProjectBudget }>(`/api/workforce/project-budget/${id}`);
+  },
+
+  setProjectBudget(
+    id: string,
+    data: { budget_cents?: number | null; hourly_rate_cents?: number | null },
+  ): Promise<{ project: Project }> {
+    return call<{ project: Project }>(`/api/workforce/project-budget/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  listProjectDocs: (project_id: string) =>
+    call<{ docs: ProjectDoc[] }>(`/api/workforce/project-docs?project_id=${project_id}`),
+
+  linkProjectDoc: (project_id: string, file_id: string) =>
+    call<{ linked: boolean }>('/api/workforce/project-docs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id, file_id }),
+    }),
+
+  unlinkProjectDoc: (project_id: string, file_id: string) =>
+    call<void>('/api/workforce/project-docs', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id, file_id }),
+    }),
+
+  listProjectTasks: (project_id: string, status?: string) =>
+    call<{ tasks: ProjectTask[] }>(`/api/workforce/project-tasks?project_id=${project_id}${status ? `&status=${status}` : ''}`),
+
+  createProjectTask: (data: { project_id: string; title: string; description?: string | null; assigned_to?: string | null; due_date?: string | null; status?: string }) =>
+    call<{ task: ProjectTask }>('/api/workforce/project-tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+
+  updateProjectTask: (id: string, data: Partial<Pick<ProjectTask, 'title' | 'description' | 'assigned_to' | 'due_date' | 'status'>>) =>
+    call<{ task: ProjectTask }>(`/api/workforce/project-task/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+
+  deleteProjectTask: (id: string) =>
+    call<void>(`/api/workforce/project-task/${id}`, { method: 'DELETE' }),
+
+  getProjectRisk: (id: string) =>
+    call<{ risk: ProjectRisk }>(`/api/workforce/project-risk/${id}`),
+
   listTimesheets(params?: { resource_id?: string; from?: string; to?: string }): Promise<{ entries: TimesheetEntry[] }> {
     const q = new URLSearchParams();
     if (params?.resource_id) q.set('resource_id', params.resource_id);
@@ -538,4 +654,21 @@ export const workforceApi = {
   getEmployeeProfile(resource_id: string): Promise<EmployeeProfile> {
     return call<EmployeeProfile>(`/api/workforce/employee-profile?resource_id=${resource_id}`);
   },
+
+  generateAiPlan: (project_id: string, description: string) =>
+    call<{ plan: AiPlan }>('/api/workforce/project-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id, description }),
+    }),
+
+  listAiPlans: (project_id: string) =>
+    call<{ plans: AiPlan[] }>(`/api/workforce/project-plan?project_id=${project_id}`),
+
+  applyAiPlan: (plan_id: string, task_indices?: number[]) =>
+    call<{ applied: number }>('/api/workforce/project-plan-apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan_id, task_indices }),
+    }),
 };
