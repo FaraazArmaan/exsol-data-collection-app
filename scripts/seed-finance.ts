@@ -114,15 +114,66 @@ async function main() {
   let expenseCount = 0;
   for (const base of months) {
     for (const [category, amt, note, day] of perMonth) {
+      // Base-currency (INR) rows: amount_base_cents == amount_cents, rate 1.
       await sql`
         INSERT INTO public.finance_expenses
-          (client_id, category, amount_cents, note, incurred_on, created_by)
-        VALUES (${clientId}::uuid, ${category}, ${rupees(amt)}, ${note}, ${dayOf(base, day)}::date, ${ownerNodeId}::uuid)
+          (client_id, category, amount_cents, currency, amount_base_cents, fx_rate, note, incurred_on, created_by)
+        VALUES (${clientId}::uuid, ${category}, ${rupees(amt)}, 'INR', ${rupees(amt)}, 1, ${note}, ${dayOf(base, day)}::date, ${ownerNodeId}::uuid)
       `;
       expenseCount++;
     }
   }
-  console.log(`✓ seeded ${expenseCount} expenses across 3 months`);
+
+  // A foreign-currency purchase this month to demo the multicurrency ledger:
+  // $250.00 imported clippers at 1 USD = ₹83 → ₹20,750.00 in base.
+  const usdCents = 25000;
+  const usdRate = 83;
+  const usdBaseCents = Math.round((usdCents / 100) * usdRate * 100);
+  await sql`
+    INSERT INTO public.finance_expenses
+      (client_id, category, amount_cents, currency, amount_base_cents, fx_rate, note, incurred_on, created_by)
+    VALUES (${clientId}::uuid, 'equipment', ${usdCents}, 'USD', ${usdBaseCents}, ${usdRate},
+            'Imported clippers (USD)', ${dayOf(months[0]!, 15)}::date, ${ownerNodeId}::uuid)
+  `;
+  expenseCount++;
+  console.log(`✓ seeded ${expenseCount} expenses across 3 months (incl. 1 USD)`);
+
+  // 5b. Recurring + milestone templates (idempotent replace).
+  await sql`DELETE FROM public.finance_recurring_templates WHERE client_id = ${clientId}::uuid`;
+  const nextMonth = monthStartOffset(-1); // first of next month
+  // (category, rupees, cadence, next_run, note)
+  const templates: Array<[string, number, string, string, string]> = [
+    ['rent', 25000, 'monthly', dayOf(nextMonth, 1), 'Shop rent (auto)'],
+    ['salaries', 46000, 'monthly', dayOf(nextMonth, 2), 'Stylist wages (auto)'],
+    ['supplies', 2000, 'weekly', dayOf(nextMonth, 3), 'Weekly consumables'],
+    ['equipment', 80000, 'once', dayOf(nextMonth, 10), 'New styling chair (milestone)'],
+  ];
+  for (const [category, amt, cadence, nextRun, note] of templates) {
+    await sql`
+      INSERT INTO public.finance_recurring_templates
+        (client_id, category, amount_cents, currency, fx_rate, note, cadence, next_run, created_by)
+      VALUES (${clientId}::uuid, ${category}, ${rupees(amt)}, 'INR', 1, ${note}, ${cadence}, ${nextRun}::date, ${ownerNodeId}::uuid)
+    `;
+  }
+  console.log(`✓ seeded ${templates.length} recurring/milestone templates`);
+
+  // 5c. Approvals: set a ₹50,000 threshold + one pending expense above it.
+  const thresholdCents = rupees(50000);
+  await sql`
+    INSERT INTO public.finance_settings (client_id, approval_threshold_cents, updated_at)
+    VALUES (${clientId}::uuid, ${thresholdCents}, now())
+    ON CONFLICT (client_id) DO UPDATE
+      SET approval_threshold_cents = EXCLUDED.approval_threshold_cents, updated_at = now()
+  `;
+  const pendingCents = rupees(62000);
+  await sql`
+    INSERT INTO public.finance_expenses
+      (client_id, category, amount_cents, currency, amount_base_cents, fx_rate, note,
+       incurred_on, created_by, approval_status)
+    VALUES (${clientId}::uuid, 'equipment', ${pendingCents}, 'INR', ${pendingCents}, 1,
+            'New salon POS terminal', ${dayOf(months[0]!, 20)}::date, ${ownerNodeId}::uuid, 'pending')
+  `;
+  console.log('✓ set ₹50,000 approval threshold + 1 pending expense');
 
   // 6. Seed demo revenue only if there are no paid sales this month (idempotent).
   const thisMonth = months[0]!;

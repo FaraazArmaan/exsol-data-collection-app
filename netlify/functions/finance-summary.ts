@@ -53,13 +53,22 @@ export default async function handler(req: Request): Promise<Response> {
       AND created_at <  (${monthStart}::date + interval '1 month')
   `) as Array<{ value: string }>;
 
+  // Expenses sum on amount_base_cents so mixed-currency ledgers aggregate in the
+  // client base currency. Pending/rejected (approval workflow) are excluded —
+  // only NULL (below threshold) + 'approved' count toward the P&L.
   const expenseRows = (await sql`
-    SELECT COALESCE(SUM(amount_cents), 0)::bigint AS value
+    SELECT COALESCE(SUM(amount_base_cents), 0)::bigint AS value
     FROM public.finance_expenses
     WHERE client_id = ${clientId}::uuid
+      AND (approval_status IS NULL OR approval_status = 'approved')
       AND incurred_on >= ${monthStart}::date
       AND incurred_on <  (${monthStart}::date + interval '1 month')
   `) as Array<{ value: string }>;
+
+  const baseRows = (await sql`
+    SELECT base_currency FROM public.clients WHERE id = ${clientId}::uuid LIMIT 1
+  `) as Array<{ base_currency: string }>;
+  const base_currency = baseRows[0]?.base_currency ?? 'INR';
 
   const bySource = new Map(salesRows.map((r) => [r.key, Number(r.value)]));
   const pos = bySource.get('pos') ?? 0;
@@ -72,6 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   return jsonOk({
     month: q.month,
+    base_currency,
     revenue_cents,
     expenses_cents,
     net_cents,

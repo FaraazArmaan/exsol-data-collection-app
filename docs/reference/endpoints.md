@@ -6,7 +6,7 @@
 
 # API endpoints
 
-138 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+149 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -127,8 +127,18 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| finance-ai-insights.ts | `/api/finance/ai-insights` | GET, POST | bucket-user | `finance.business.edit`, `finance.business.view` |
+| finance-approval-decide.ts | `/api/finance/approval-decide/:id` | POST | bucket-user | `finance.business.edit` |
+| finance-approvals.ts | `/api/finance/approvals` | GET | bucket-user | `finance.business.view` |
+| finance-cashflow.ts | `/api/finance/cashflow` | GET | bucket-user | `finance.business.view` |
 | finance-expense-detail.ts | `/api/finance/expense-detail/:id` | PATCH, DELETE | bucket-user | `finance.business.delete`, `finance.business.edit` |
 | finance-expenses.ts | `/api/finance/expenses` | GET, POST | bucket-user | `finance.business.create`, `finance.business.view` |
+| finance-ocr-receipt.ts | `/api/finance/ocr-receipt` | POST | bucket-user | `finance.business.create` |
+| finance-recurring-cron.ts | `/api/finance-recurring-cron (name-routed)` | any | public | — |
+| finance-recurring-detail.ts | `/api/finance/recurring-detail/:id` | PATCH, DELETE | bucket-user | `finance.business.delete`, `finance.business.edit` |
+| finance-recurring-run.ts | `/api/finance/recurring-run` | POST | bucket-user | `finance.business.create` |
+| finance-recurring.ts | `/api/finance/recurring` | GET, POST | bucket-user | `finance.business.create`, `finance.business.view` |
+| finance-settings.ts | `/api/finance/settings` | GET, PUT | bucket-user | `finance.business.edit`, `finance.business.view` |
 | finance-summary.ts | `/api/finance/summary` | GET | bucket-user | `finance.business.view` |
 
 ## inventory
@@ -188,6 +198,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | onboard-import.ts | `/api/onboard-import/:token` | POST | public | — |
 | onboard-public.ts | `/api/onboard-public/:token` | GET | public | — |
+| webhook-example.ts | `/api/webhook-example` | POST | public | — |
 
 ## portfolio
 

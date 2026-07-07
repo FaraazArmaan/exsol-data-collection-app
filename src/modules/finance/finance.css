@@ -101,7 +101,7 @@
 .fin-bar-fill { height: 100%; border-radius: 999px; transition: width 240ms ease; min-width: 2px; }
 .fin-bar-pos { background: var(--accent); }
 .fin-bar-storefront { background: var(--success); }
-.fin-bar-booking { background: #8a9bb0; }
+.fin-bar-booking { background: color-mix(in srgb, var(--text-muted) 70%, var(--accent)); }
 .fin-bar-value { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 
 /* Empty states */
@@ -195,7 +195,210 @@
 .fin-field textarea { resize: vertical; }
 .fin-form-error { color: var(--danger); font-size: 13px; margin: 0; }
 
+/* Receipt scan (OCR) */
+.fin-scan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+.fin-scan-hint { font-size: 12px; color: var(--text-muted); }
+
+/* Amount + currency row in the expense modal */
+.fin-field-row { display: flex; gap: 10px; }
+.fin-field-amount { flex: 2; }
+.fin-field-currency { flex: 1; }
+.fin-fx-preview { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+/* Base-currency equivalent under a foreign expense amount */
+.fin-fx-sub { display: block; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Recurring / milestones */
+.fin-header-actions { display: inline-flex; gap: 8px; }
+.fin-note-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--success);
+  border-radius: var(--radius-sm);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  font-size: 14px;
+}
+.fin-row-muted { opacity: 0.6; }
+.fin-status { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; }
+.fin-status-on { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+.fin-status-off { background: var(--bg-elevated); color: var(--text-muted); }
+.fin-status-pending { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); margin-left: 6px; }
+.fin-status-rej { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+/* Approvals */
+.fin-threshold { display: flex; flex-direction: column; gap: 10px; }
+.fin-threshold p { margin: 0; }
+.fin-threshold-row { display: flex; align-items: center; gap: 8px; }
+.fin-threshold-row input {
+  width: 140px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.fin-count {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  padding: 1px 7px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+.fin-approval-list { list-style: none; margin: 0; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.fin-approval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.fin-approval-row:last-child { border-bottom: none; }
+.fin-approval-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fin-approval-amt { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.fin-approval-note { color: var(--text-secondary); font-size: 13px; }
+.fin-approval-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fin-approval-reason {
+  padding: 6px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 150px;
+}
+
+/* Tab bar */
+.fin-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+.fin-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fin-tab:hover { color: var(--text-primary); }
+.fin-tab-active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* Cashflow calendar grid */
+.fin-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 16px;
+}
+.fin-cal-weekday {
+  text-align: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+}
+.fin-cal-cell {
+  min-height: 68px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-elevated);
+}
+.fin-cal-cell-blank { border: none; background: transparent; }
+.fin-cal-cell-pos { border-left: 3px solid var(--success); }
+.fin-cal-cell-neg { border-left: 3px solid var(--danger); }
+.fin-cal-daynum { font-size: 12px; color: var(--text-muted); }
+.fin-cal-flows { display: flex; flex-direction: column; gap: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.fin-cal-in { color: var(--success); }
+.fin-cal-out { color: var(--danger); }
+.fin-cal-net-pos { color: var(--success); }
+
+/* Cashflow mobile list (shown under 560px) */
+.fin-cal-list { display: none; list-style: none; margin: 0; padding: 8px 16px 16px; }
+.fin-cal-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 14px;
+}
+.fin-cal-list-row:last-child { border-bottom: none; }
+.fin-cal-list-date { color: var(--text-secondary); }
+.fin-cal-list-amts { display: flex; gap: 12px; font-variant-numeric: tabular-nums; }
+
+/* AI insights */
+.fin-ai-body { padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+.fin-ai-top { display: flex; gap: 16px; align-items: center; }
+.fin-health {
+  flex-shrink: 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--border-strong);
+}
+.fin-health-good { border-color: var(--success); }
+.fin-health-fair { border-color: var(--accent); }
+.fin-health-poor { border-color: var(--danger); }
+.fin-health-score { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+.fin-health-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.fin-ai-narrative { margin: 0; color: var(--text-primary); font-size: 15px; line-height: 1.5; }
+
+.fin-ai-anomalies { display: flex; flex-direction: column; gap: 8px; }
+.fin-anomaly { border: 1px solid var(--border-subtle); border-left-width: 3px; border-radius: var(--radius-sm); padding: 10px 12px; }
+.fin-anomaly-info { border-left-color: var(--text-muted); }
+.fin-anomaly-warn { border-left-color: var(--accent); }
+.fin-anomaly-high { border-left-color: var(--danger); }
+.fin-anomaly-head { display: flex; align-items: center; gap: 8px; }
+.fin-anomaly-sev { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.fin-anomaly-high .fin-anomaly-sev { color: var(--danger); }
+.fin-anomaly-warn .fin-anomaly-sev { color: var(--accent); }
+.fin-anomaly-title { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+.fin-anomaly-detail { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+
+.fin-ai-facts { display: flex; gap: 24px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--border-subtle); }
+.fin-ai-facts > div { display: flex; flex-direction: column; gap: 2px; }
+.fin-ai-facts strong { font-size: 18px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.fin-ai-cats { display: flex; flex-direction: column; gap: 6px; }
+.fin-ai-cats-head { font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+.fin-ai-cat-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-secondary); }
+.fin-ai-meta { font-size: 12px; margin: 0; }
+
 @media (max-width: 640px) {
   .fin-cards { grid-template-columns: 1fr; }
   .fin-note-cell { max-width: 120px; }
+  .fin-ai-top { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .fin-cal-grid { display: none; }
+  .fin-cal-list { display: block; }
 }

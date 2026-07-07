@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-29 tables across 61 forward-only migrations.
+32 tables across 66 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -39,7 +39,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `clients`
 
-- created in `003_clients.sql`; altered in `009_clients_slug.sql`, `011_drop_template_columns.sql`, `011b_drop_schema_name.sql`, `047_booking_core.sql`
+- created in `003_clients.sql`; altered in `009_clients_slug.sql`, `011_drop_template_columns.sql`, `011b_drop_schema_name.sql`, `047_booking_core.sql`, `137_clients_base_currency.sql`
 - columns at creation: `id uuid`, `name text`, `template_key text`, `template_version_applied integer`, `schema_name text`, `created_at timestamptz`, `created_by uuid`
 
 ### `login_attempts`
@@ -130,10 +130,25 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ## finance
 
+### `finance_ai_reports`
+
+- created in `066_finance_ai_reports.sql`
+- columns at creation: `client_id UUID`, `month TEXT`, `payload JSONB`, `model TEXT`, `is_fallback BOOLEAN`, `generated_at TIMESTAMPTZ`
+
 ### `finance_expenses`
 
-- created in `054_finance_expenses.sql`
+- created in `054_finance_expenses.sql`; altered in `063_finance_expense_currency.sql`, `064_finance_recurring_templates.sql`, `065_finance_approvals.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `category TEXT`, `amount_cents BIGINT`, `note TEXT`, `incurred_on DATE`, `created_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `finance_recurring_templates`
+
+- created in `064_finance_recurring_templates.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `category TEXT`, `amount_cents BIGINT`, `currency TEXT`, `fx_rate NUMERIC(18,6)`, `note TEXT`, `cadence TEXT`, `next_run DATE`, `active BOOLEAN`, `last_materialized_on DATE`, `created_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `finance_settings`
+
+- created in `065_finance_approvals.sql`
+- columns at creation: `client_id UUID`, `approval_threshold_cents BIGINT`, `updated_at TIMESTAMPTZ`
 
 ## login (user-portal auth)
 

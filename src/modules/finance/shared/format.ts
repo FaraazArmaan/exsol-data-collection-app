@@ -1,5 +1,10 @@
-// Money + month formatting for the Finance UI. Money is integer cents rendered
-// as INR (the platform currency), matching analytics/format.ts.
+// Money + month formatting for the Finance UI. Money is integer minor units.
+// formatCents renders INR (the base for most clients); formatMoney (re-exported
+// from the shared currency util) renders any supported currency by its code.
+
+// Currency-aware formatter: formatMoney(minorUnits, 'USD') → "$12.34". Handles
+// per-currency decimals (JPY = 0). Use for foreign-currency expense amounts.
+export { formatMoney } from '../../../lib/currency';
 
 const inr0 = new Intl.NumberFormat(undefined, {
   style: 'currency', currency: 'INR', maximumFractionDigits: 0,
