@@ -123,13 +123,16 @@ async function main(): Promise<void> {
       `) as Array<{ id: string; price_cents: number; qty: number }>;
       for (const pr of prods) {
         const cost = Math.max(1, Math.round(pr.price_cents * 0.6));
+        // qty_on_hand can legitimately be 0 (coalesce only guards NULL, not 0), but
+        // purchase_order_items + purchase movements require qty > 0 — clamp to 1.
+        const qty = Math.max(1, pr.qty);
         await sql`
           INSERT INTO public.purchase_order_items (purchase_order_id, product_id, qty, unit_cost_cents)
-          VALUES (${poId}::uuid, ${pr.id}::uuid, ${pr.qty}, ${cost})
+          VALUES (${poId}::uuid, ${pr.id}::uuid, ${qty}, ${cost})
         `;
         await sql`
           INSERT INTO public.stock_movements (client_id, product_id, qty_delta, type, ref)
-          VALUES (${clientId}::uuid, ${pr.id}::uuid, ${pr.qty}, 'purchase', ${`po:${poId}`})
+          VALUES (${clientId}::uuid, ${pr.id}::uuid, ${qty}, 'purchase', ${`po:${poId}`})
         `;
       }
     }
