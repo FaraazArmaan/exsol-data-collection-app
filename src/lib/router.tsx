@@ -12,6 +12,7 @@ import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
 import AccessDashboard from '../modules/ams/pages/AccessDashboard';
+import ClientSettings from '../modules/ams/pages/ClientSettings';
 import AccessLevelDashboard from '../modules/ams/pages/AccessLevelDashboard';
 import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import AuditLog from '../modules/ams/pages/AuditLog';
@@ -242,6 +243,7 @@ export const router = createBrowserRouter([
       { path: '/audit', element: <AuditLog /> },
       { path: '/settings', element: <AdminSettings /> },
       { path: '/clients/:clientId', element: <AccessDashboard /> },
+      { path: '/clients/:clientId/settings', element: <ClientSettings /> },
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },
       { path: '/clients/:clientId/configure', element: <ConfigureStructure /> },
