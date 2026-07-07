@@ -13,9 +13,9 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by 8 module/handoff commits** (unpushed):
-  Finance `f85227b`, Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56` (+ interleaved handoff
-  commits). Working tree clean.
+- **`origin/main` == `00179bd`; local `main` is AHEAD by 10 module/handoff commits** (unpushed):
+  Finance `f85227b`, Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56`, Supply-Chain `99e253f`
+  (+ interleaved handoff commits). Working tree clean.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -36,21 +36,32 @@ and coordinates prod deploys. It does NOT build modules.
      with keyless `_shared/ai.ts` fallback "AI preview"), dark-theme confirmed. authz gate order verified
      (412→L1→matrix; Owner-bypass gap fixed on-branch). 14 new `/api/warehouse/*` endpoints. Only
      docs/reference conflicted on merge (regenerated).
+  5. **Supply-Chain** (`99e253f`, migs 097–098) — depth panels over supply-chain v1 (existing module).
+     All 5 features smoke-tested: Alternate Suppliers (link table), Risk Analysis (1 High/13 Medium —
+     single-supplier + overdue-PO), drill-downs (row-click → movements modal, `supply-chain-drill`),
+     CO₂ (editable factors + per-PO estimates + 30d trend), AI Brief (keyless `_shared/ai.ts` fallback
+     "AI preview"), dark-theme confirmed. **Manifest change:** supply-chain verbs extended to
+     view/create/edit/delete → new keys `supply-chain.products.{create,edit,delete}` (bucket×verb; grant
+     per access level for supplier/CO2 editing). 5 new `/api/supply-chain-*` endpoints. Only
+     docs/reference conflicted (regenerated). **Coordinator debt (pre-existing, NOT this branch):**
+     `generate-reference.ts` CREATE-TABLE regex is case-sensitive → `schema.md` omits lowercase-DDL
+     migrations (incl. 097/098); endpoints.md/permissions.md correct. Fix the regex when convenient.
   - Verification note: the full `npx vitest run` intermittently flakes on **dev-Neon overload**
     (`NeonDbError: fetch failed` across untouched-module files + the known `pub-menu` 429 / webp-thumb).
     Cleanest full run so far was **1408/1410** (2 flakes, both documented). Each merged module's own suite
-    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72, Warehouse 64/64). Capture one clean
-    full run when load subsides.
+    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72, Warehouse 64/64, Supply-Chain
+    76/76). Capture one clean full run when load subsides.
   - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 + 087–091
-    + 093–096 on prod; probe the new `/api/finance/*`, `/api/inventory/*`, `/api/orders/*`,
-    `/api/warehouse/*` endpoints for the Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` —
-    config.method-array routing — and the `:param` routes `warehouse/asn-detail/:id`,
-    `warehouse/safety-incident/:id`); `seed:finance` + `seed:inventory` + `seed:orders` + `seed:warehouse`
-    on prod. **Enable the `orders` product** in `client_enabled_products` for papa-s-saloon on prod (it's
-    new — invisible until enabled; seed does it on dev). Finance/Inventory/Warehouse products already
-    enabled on prod.
-  - Remaining depth branches to integrate (own worktrees, unpushed): supply-chain (097–098), hr (120),
-    workforce, marketing.
+    + 093–096 + 097–098 on prod; probe the new `/api/finance/*`, `/api/inventory/*`, `/api/orders/*`,
+    `/api/warehouse/*`, `/api/supply-chain-*` endpoints for the Edge-404 trap (esp. GET+PUT
+    `/api/orders/sla-targets` — config.method-array routing — and the `:param` routes
+    `warehouse/asn-detail/:id`, `warehouse/safety-incident/:id`, `supply-chain-suppliers/:id`);
+    `seed:finance` + `seed:inventory` + `seed:orders` + `seed:warehouse` + `seed:supply-chain` on prod.
+    **Enable the `orders` product** in `client_enabled_products` for papa-s-saloon on prod (it's new —
+    invisible until enabled; seed does it on dev). **Grant the new `supply-chain.products.{create,edit,
+    delete}` keys** per access level where supplier/CO2 editing is wanted (Owner has them via L1 bypass).
+    Finance/Inventory/Warehouse/Supply-Chain products already enabled on prod.
+  - Remaining depth branches to integrate (own worktrees, unpushed): hr (120), workforce, marketing.
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
