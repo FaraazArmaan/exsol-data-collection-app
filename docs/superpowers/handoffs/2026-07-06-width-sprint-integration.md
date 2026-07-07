@@ -13,7 +13,16 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == local == `00179bd`** (all pushed, working tree clean).
+- **`origin/main` == `00179bd`; local `main` is AHEAD by 2 unpushed commits** → `27c01fc` (this handoff
+  rewrite) + `f85227b` (**Finance depth, merged**). Working tree clean.
+- **Depth integration progress:** Finance depth = **merged locally + fully verified** (typecheck green,
+  `npx vitest run` 1385/1385, dark-theme confirmed via computed styles, all 5 tabs
+  Overview/Cashflow/Recurring/Approvals/AI smoke-tested in a real browser on local `netlify dev`). Migs
+  063–066 already on **dev**; NOT yet on prod. **Pending for the human:** push `main`, then the prod
+  deploy runbook below (migrate 063–066 on prod, probe the ~11 new `/api/finance/*` endpoints for the
+  Edge-404 trap, `seed:finance` on prod). Remaining depth branches to integrate (own worktrees, unpushed):
+  orders (`feat/orders-depth-iso` 087–091), warehouse (093–096), supply-chain (097–098), hr (120),
+  inventory-depth (080–081), workforce, marketing.
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
