@@ -13,9 +13,9 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by 4 unpushed commits** → `27c01fc` (handoff
-  rewrite) + `f85227b` (**Finance depth**) + `178eda5` (handoff) + `d092974` (**Inventory depth**).
-  Working tree clean.
+- **`origin/main` == `00179bd`; local `main` is AHEAD by 6 unpushed commits** → `27c01fc` (handoff)
+  + `f85227b` (**Finance depth**) + `178eda5` (handoff) + `d092974` (**Inventory depth**) + `17e269f`
+  (**Orders depth, new module**) + this handoff update. Working tree clean.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -23,15 +23,26 @@ and coordinates prod deploys. It does NOT build modules.
      all 7 features smoke-tested (lifecycle badges, moving-avg cost, cross-module Locations bridge, PDF
      labels endpoint returns valid `%PDF-`), dark-theme confirmed. 6 new `/api/inventory/*` endpoints +
      `inventory-list` now returns `lifecycle_state`/accepts `?state=`. docs/reference regenerated.
-  - Verification note: the full `npx vitest run` is currently flaking hard on **dev-Neon overload**
-    (`NeonDbError: fetch failed` across dozens of untouched-module files + the known `pub-menu` 429). Each
-    merged module's own suite passes in isolation (Finance 49/49-equiv, Inventory 42/42). Get one clean
-    full run before/after the human pushes if load subsides.
-  - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 on prod;
-    probe the new `/api/finance/*` and `/api/inventory/*` endpoints for the Edge-404 trap; `seed:finance`
-    + `seed:inventory` on prod. (Finance + Inventory products already enabled for papa-s-saloon on prod.)
-  - Remaining depth branches to integrate (own worktrees, unpushed): orders (`feat/orders-depth-iso`
-    087–091), warehouse (093–096), supply-chain (097–098), hr (120), workforce, marketing.
+  3. **Orders** (`17e269f`, migs 087–091) — **NEW module** riding the pos product. All 5 tabs
+     Overview/Returns&Shipments/Backorders/SLA/Fulfillments smoke-tested (refund+shipment+fulfillment
+     FSMs, pick-list/packing-slip PDFs valid `%PDF-`, SLA-targets GET renders, split/merge panels),
+     dark-theme confirmed. authz gate order verified (412→L1→matrix). 17 new `/api/orders/*` endpoints.
+     **Nav dedupe:** renamed the POS `/pos/sales` sidebar link 'Orders'→'Sales' (user decision) so the
+     new Order-Management 'Orders' link isn't a duplicate label. `router.tsx` union-merged
+     (inventory-depth routes + orders route). docs/reference regenerated.
+  - Verification note: the full `npx vitest run` intermittently flakes on **dev-Neon overload**
+    (`NeonDbError: fetch failed` across untouched-module files + the known `pub-menu` 429 / webp-thumb).
+    Cleanest full run so far was **1408/1410** (2 flakes, both documented). Each merged module's own suite
+    passes in isolation (Finance suite, Inventory 42/42, Orders 72/72). Capture one clean full run when
+    load subsides.
+  - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 + 087–091
+    on prod; probe the new `/api/finance/*`, `/api/inventory/*`, `/api/orders/*` endpoints for the
+    Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` — config.method-array routing); `seed:finance`
+    + `seed:inventory` + `seed:orders` on prod. **Enable the `orders` product** in
+    `client_enabled_products` for papa-s-saloon on prod (it's new — invisible until enabled; seed does it
+    on dev). Finance + Inventory products already enabled on prod.
+  - Remaining depth branches to integrate (own worktrees, unpushed): warehouse (093–096),
+    supply-chain (097–098), hr (120), workforce, marketing.
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
