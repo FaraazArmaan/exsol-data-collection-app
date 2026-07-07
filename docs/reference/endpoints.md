@@ -6,7 +6,7 @@
 
 # API endpoints
 
-209 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+214 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -140,6 +140,16 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | finance-recurring.ts | `/api/finance/recurring` | GET, POST | bucket-user | `finance.business.create`, `finance.business.view` |
 | finance-settings.ts | `/api/finance/settings` | GET, PUT | bucket-user | `finance.business.edit`, `finance.business.view` |
 | finance-summary.ts | `/api/finance/summary` | GET | bucket-user | `finance.business.view` |
+
+## hr
+
+| function | path | methods | auth | permission keys checked |
+|---|---|---|---|---|
+| hr-checklist-instance.ts | `/api/hr/checklist-instance` | any | bucket-user | `hr.employees.edit`, `hr.employees.view` |
+| hr-checklist-instances.ts | `/api/hr/checklist-instances` | any | bucket-user | `hr.employees.create`, `hr.employees.view` |
+| hr-checklist-templates.ts | `/api/hr/checklist-templates` | any | bucket-user | `hr.employees.edit`, `hr.employees.view` |
+| hr-dashboard.ts | `/api/hr/dashboard` | GET | bucket-user | `hr.employees.view` |
+| hr-org.ts | `/api/hr/org` | GET | bucket-user | `hr.employees.view` |
 
 ## inventory
 

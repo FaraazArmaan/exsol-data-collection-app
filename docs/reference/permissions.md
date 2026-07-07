@@ -23,6 +23,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | data-collection | Data Collection | products | view, create, edit, delete | vendor | ✓ (no link) |
 | email | Email & Notifications | customers | view | vendor | ✓ (/email) |
 | finance | Finance | business | view, create, edit, delete | vendor | ✓ (/finance) |
+| hr | Human Resources | employees | view, create, edit, delete | vendor | ✓ (/hr) |
 | inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory/dashboard) |
 | manufacturing | Manufacturing | products | view, create, edit, delete | vendor | ✓ (/manufacturing) |
 | marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing) |
@@ -53,6 +54,7 @@ A module is reachable only when an enabled product carries it (iron rule 4).
 | crm | Customer Relationship Management | crm (vendor) | — |
 | data-collection | Data Collection | data-collection (vendor) | products |
 | finance | Finance | finance (vendor) | — |
+| hr | Human Resources | hr (vendor) | — |
 | inventory | Inventory | inventory (vendor) | products |
 | manufacturing | Manufacturing | manufacturing (vendor) | products, inventory |
 | marketing | Marketing Automation | marketing (vendor) | — |
@@ -91,6 +93,10 @@ Each row is a module×bucket; the UI renders one toggle per verb the module decl
 ### finance
 
 - finance × business: `finance.business.view` `finance.business.create` `finance.business.edit` `finance.business.delete`
+
+### hr
+
+- hr × employees: `hr.employees.view` `hr.employees.create` `hr.employees.edit` `hr.employees.delete`
 
 ### inventory
 

@@ -69,6 +69,7 @@ import CatalogPage from '../modules/catalog/CatalogPage';
 import OnboardPage from '../modules/data-collection/OnboardPage';
 import BrandPortfolioPage from '../modules/portfolio/public/BrandPortfolioPage';
 import { BrandSiteMount } from '../modules/portfolio/BrandSiteRouteMounts';
+import { HrMount } from '../modules/hr/HrRouteMounts';
 
 function ShellLayout() {
   return (
@@ -200,6 +201,7 @@ export const router = createBrowserRouter([
               { path: 'workforce/training', element: <WorkforceTrainingMount /> },
               { path: 'workforce/assets', element: <WorkforceAssetsMount /> },
               { path: 'workforce/employees', element: <WorkforceEmployeeDashboardMount /> },
+              { path: 'hr', element: <HrMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

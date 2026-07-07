@@ -25,6 +25,7 @@ import { portfolioManifest } from './manifests/portfolio';
 import { supplyChainManifest } from './manifests/supply-chain';
 import { marketingManifest } from './manifests/marketing';
 import { ordersManifest } from './manifests/orders';
+import { hrManifest } from './manifests/hr';
 
 export const moduleRegistry = {
   booking: bookingManifest,
@@ -47,6 +48,7 @@ export const moduleRegistry = {
   portfolio: portfolioManifest,
   marketing: marketingManifest,
   orders: ordersManifest,
+  hr: hrManifest,
 } as const satisfies Record<string, ModuleManifest>;
 
 export type RegisteredModuleKey = keyof typeof moduleRegistry;

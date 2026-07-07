@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-32 tables across 87 forward-only migrations.
+36 tables across 88 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -156,6 +156,28 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `008_bucket_user_credentials.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `role_key text`, `bucket_user_id uuid`, `email citext`, `password_hash text`, `must_change_password boolean`, `temp_password_plain text`, `temp_password_views_left integer`, `last_login_at timestamptz`, `created_at timestamptz`, `updated_at timestamptz`, `created_by_admin uuid`
+
+## platform (unmapped prefix)
+
+### `hr_checklist_instance_items`
+
+- created in `120_hr_checklists.sql`
+- columns at creation: `id uuid`, `instance_id uuid`, `position integer`, `label text`, `description text`, `action_hint text`, `done boolean`, `done_at timestamptz`, `done_by_user_node uuid`
+
+### `hr_checklist_instances`
+
+- created in `120_hr_checklists.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `kind text`, `subject_user_node_id uuid`, `subject_name text`, `template_id uuid`, `status text`, `created_by_user_node uuid`, `created_at timestamptz`, `completed_at timestamptz`
+
+### `hr_checklist_template_items`
+
+- created in `120_hr_checklists.sql`
+- columns at creation: `id uuid`, `template_id uuid`, `position integer`, `label text`, `description text`, `action_hint text`
+
+### `hr_checklist_templates`
+
+- created in `120_hr_checklists.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `kind text`, `name text`, `is_default boolean`, `created_at timestamptz`, `updated_at timestamptz`
 
 ## portfolio
 
