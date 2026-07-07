@@ -15,7 +15,7 @@ import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { subtreeOf } from './_shared/subtree';
-import { getProduct } from '../../src/modules/registry/products';
+import { getProduct } from '@registry/products';
 
 type SQL = NeonQueryFunction<false, false>;
 import {

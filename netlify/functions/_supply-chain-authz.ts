@@ -14,7 +14,7 @@ import { db } from './_shared/db';
 import {
   requireAdmin, requireBucketUser, getLevelMatrix, UnauthorizedError,
 } from './_shared/permissions';
-import { getProduct } from '../../src/modules/registry/products';
+import { getProduct } from '@registry/products';
 
 const REQUIRED_KEY = 'supply-chain.products.view';
 

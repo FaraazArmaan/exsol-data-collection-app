@@ -65,6 +65,12 @@ AccessDashboard↔UserManageTeam (2, 216 — see NOT-DOING).
 | V3 | `files-detail.ts:123-140` PATCH tier-permission triplet → mapping loop | ~14 | low | good |
 | V4 | `files.ts:149-163` POST same tier triplet | ~10 | low | good |
 
+**V3/V4 (theme T4) REJECTED at implementation review**: the three tier branches differ in
+table AND column names; neon's tagged-template `sql` cannot parameterize identifiers, so the
+"mapping loop" would require `sql.unsafe()`/dynamic identifiers inside permission-adjacent
+code to save ~24 lines. Explicit branches are clearer and safer — readability over brevity.
+No code changed.
+
 Explicitly NOT verbosity (load-bearing asymmetries, agent-verified): login.ts dual client
 lookups, user-nodes.ts subtree branches, u-products.ts counts-vs-items filters,
 user-nodes-move.ts three move cases, u-products-detail.ts setField chain (clear as-is).
