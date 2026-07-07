@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect, useState } from 'react';
+import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import { workforceApi, type OvertimeEntry, type StaffResource } from '../../shared/api';
 import '../../workforce.css';
@@ -114,20 +115,7 @@ export default function OvertimePage({ slug, perms }: Props) {
 
   return (
     <div className="wf-page">
-      {/* Tab nav */}
-      <nav className="wf-tabs">
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce`}>Staff &amp; Schedule</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/timesheets`}>Timesheets</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/leave`}>Leave</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/punching`}>Punching</Link>
-        <span className="wf-tab-link wf-tab-active">Overtime</span>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/swaps`}>Swaps</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/payroll`}>Payroll</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/training`}>Training</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/assets`}>Assets</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/employees`}>Employees</Link>
-        <Link className="wf-tab-link" to={`/c/${slug}/workforce/projects`}>Projects</Link>
-      </nav>
+      <WorkforceNav slug={slug} active="overtime" />
 
       <div className="wf-ot-layout">
         {/* Filters */}
