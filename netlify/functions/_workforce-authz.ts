@@ -21,6 +21,12 @@ export interface WorkforceAuthCtx {
 export const ALL_WORKFORCE_PERMS = [
   'workforce.employees.view', 'workforce.employees.create',
   'workforce.employees.edit', 'workforce.employees.delete',
+  'workforce.leave.view', 'workforce.leave.create',
+  'workforce.leave.edit', 'workforce.leave.delete',
+  'workforce.payroll.view', 'workforce.payroll.create',
+  'workforce.payroll.edit', 'workforce.payroll.delete',
+  'workforce.assets.view', 'workforce.assets.create',
+  'workforce.assets.edit', 'workforce.assets.delete',
   'project-service.business.view', 'project-service.business.create',
   'project-service.business.edit', 'project-service.business.delete',
   'project-service.customers.view',

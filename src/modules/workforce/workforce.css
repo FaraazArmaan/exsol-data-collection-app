@@ -505,3 +505,334 @@
 }
 
 .wf-ts-log-form-fields button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Tab nav (link-style, used by LeaveRequestsPage) ─────────────────────── */
+.wf-tab-link {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.wf-tab-link:hover { color: var(--text-primary); }
+
+.wf-tab-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Shared button primitives ─────────────────────────────────────────────── */
+.wf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.1s;
+}
+
+.wf-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wf-btn-primary { background: var(--accent); color: var(--text-on-accent); }
+.wf-btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+.wf-btn-success {
+  background: color-mix(in srgb, var(--success) 22%, transparent);
+  color: var(--success);
+}
+.wf-btn-success:hover:not(:disabled) { background: color-mix(in srgb, var(--success) 34%, transparent); }
+
+.wf-btn-danger {
+  background: color-mix(in srgb, var(--danger) 22%, transparent);
+  color: var(--danger);
+}
+.wf-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 34%, transparent); }
+
+/* ── Shared form primitives ───────────────────────────────────────────────── */
+.wf-select,
+.wf-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.wf-textarea {
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.wf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.wf-form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wf-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem;
+}
+
+.wf-loading { color: var(--text-muted); font-size: 0.875rem; font-style: italic; }
+
+/* ── Leave Requests ───────────────────────────────────────────────────────── */
+.wf-leave-layout        { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-leave-filters       { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+.wf-leave-balances      { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.wf-leave-balance-chip  { display: flex; flex-direction: column; align-items: center;
+                           padding: 0.5rem 1rem; background: var(--bg-elevated);
+                           border: 1px solid var(--border-subtle); border-radius: 8px; }
+.wf-leave-balance-type  { font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize; }
+.wf-leave-balance-days  { font-weight: 600; color: var(--text-primary); }
+
+.wf-leave-list          { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-leave-card          { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-leave-card-header   { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-leave-resource      { font-weight: 600; color: var(--text-primary); flex: 1; }
+
+.wf-leave-type-badge    { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--bg-elevated); color: var(--text-secondary); text-transform: capitalize; }
+
+.wf-status-pending      { background: var(--bg-elevated); color: var(--text-secondary); }
+.wf-status-approved     { background: var(--success); color: var(--text-on-accent); }
+.wf-status-denied       { background: var(--danger); color: var(--text-on-accent); }
+
+.wf-leave-dates         { font-size: 0.85rem; color: var(--text-secondary); }
+.wf-leave-notes         { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+.wf-leave-actions       { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+
+.wf-leave-form-section  { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; }
+.wf-leave-form          { display: flex; flex-direction: column; gap: 1rem; }
+
+@media (max-width: 560px) {
+  .wf-leave-filters     { flex-direction: column; }
+  .wf-form-row          { flex-direction: column; }
+}
+
+/* ── Smart Punching ───────────────────────────── */
+.wf-punch-layout        { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-punch-cards         { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+.wf-punch-card          { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-punch-name          { font-weight: 600; color: var(--text-primary); }
+.wf-punch-time          { font-size: 0.85rem; color: var(--text-secondary); }
+
+.wf-badge-late          { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--bg-elevated); color: var(--text-secondary); }
+.wf-badge-ontime        { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--success); color: var(--text-on-accent); }
+.wf-badge-noshift       { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--bg-elevated); color: var(--text-muted); }
+
+.wf-punch-list          { display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-punch-date-heading  { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;
+                           letter-spacing: 0.05em; padding: 0.25rem 0; margin-top: 0.5rem;
+                           border-top: 1px solid var(--border-subtle); }
+.wf-punch-row           { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; }
+.wf-punch-row-resource  { flex: 1; color: var(--text-primary); font-size: 0.9rem; }
+.wf-punch-row-times     { font-size: 0.85rem; color: var(--text-secondary); }
+
+@media (max-width: 560px) {
+  .wf-punch-cards       { grid-template-columns: 1fr; }
+}
+
+/* ── Overtime ─────────────────────────────────── */
+.wf-ot-layout           { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-ot-filters          { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.wf-ot-list             { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-ot-card             { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-ot-card-header      { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-ot-resource         { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-ot-hours            { font-weight: 600; color: var(--accent); }
+.wf-ot-date             { font-size: 0.85rem; color: var(--text-secondary); }
+.wf-ot-reason           { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+.wf-ot-actions          { display: flex; gap: 0.5rem; }
+.wf-ot-summary          { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; }
+.wf-ot-summary-title    { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+.wf-ot-summary-rows     { display: flex; flex-direction: column; gap: 0.25rem; }
+.wf-ot-summary-row      { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-secondary); }
+.wf-ot-form-section     { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; }
+.wf-ot-form             { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Swap Board ───────────────────────────────── */
+.wf-swap-layout         { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-swap-filters        { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.wf-swap-list           { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-swap-card           { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-swap-card-header    { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-swap-resource       { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-swap-date           { font-size: 0.85rem; color: var(--text-secondary); }
+.wf-swap-notes          { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+.wf-swap-actions        { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.wf-swap-claim-row      { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.wf-swap-form-section   { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; }
+.wf-swap-form           { display: flex; flex-direction: column; gap: 1rem; }
+
+.wf-status-open         { background: var(--bg-elevated); color: var(--text-secondary); }
+.wf-status-claimed      { background: var(--bg-elevated); color: var(--accent); }
+.wf-status-cancelled    { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* ── Payroll ──────────────────────────────────── */
+.wf-payroll-layout      { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-payroll-notice      { background: var(--bg-elevated); border: 1px solid var(--accent);
+                           border-radius: 8px; padding: 0.75rem 1rem; color: var(--accent);
+                           font-size: 0.85rem; font-weight: 500; }
+.wf-payroll-cols        { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.wf-payroll-section     { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.wf-payroll-list        { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-payroll-card        { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; }
+.wf-payroll-card-header { display: flex; align-items: center; gap: 0.5rem; }
+.wf-payroll-period      { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-payroll-total       { font-weight: 600; color: var(--success); }
+.wf-payroll-detail      { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 8px; padding: 1rem; }
+.wf-payroll-table       { width: 100%; border-collapse: collapse; }
+.wf-payroll-table th    { text-align: left; color: var(--text-muted); font-size: 0.75rem;
+                           text-transform: uppercase; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-subtle); }
+.wf-payroll-table td    { padding: 0.5rem 0.75rem; color: var(--text-secondary); font-size: 0.9rem; }
+.wf-payroll-table tr:hover td { background: var(--bg-surface); }
+.wf-payroll-form        { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-status-draft        { background: var(--bg-elevated); color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .wf-payroll-cols      { grid-template-columns: 1fr; }
+}
+
+/* ── Training ─────────────────────────────────── */
+.wf-training-layout     { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-training-inner-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); margin-bottom: 1rem; }
+.wf-training-inner-tab  { padding: 0.5rem 1.25rem; font-size: 0.9rem; cursor: pointer;
+                           background: none; border: none; color: var(--text-secondary);
+                           border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.wf-training-inner-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
+.wf-course-list         { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-course-card         { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-course-header       { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-course-name         { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-course-desc         { font-size: 0.85rem; color: var(--text-muted); }
+.wf-course-expiry       { font-size: 0.8rem; color: var(--text-secondary); }
+.wf-badge-required      { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--accent); color: var(--text-on-accent); }
+.wf-badge-optional      { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--bg-elevated); color: var(--text-muted); }
+.wf-badge-valid         { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--success); color: var(--text-on-accent); }
+.wf-badge-expiring-soon { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--accent); color: var(--text-on-accent); }
+.wf-badge-expired       { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--danger); color: var(--text-on-accent); }
+.wf-completion-list     { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-completion-card     { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-completion-header   { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-completion-resource { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-completion-dates    { font-size: 0.85rem; color: var(--text-secondary); }
+.wf-training-form       { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-expiry-alert        { background: var(--danger); color: var(--text-on-accent);
+                           border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; }
+
+/* ── Assets ───────────────────────────────────── */
+.wf-assets-layout       { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-assets-inner-tabs   { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); margin-bottom: 1rem; }
+.wf-assets-inner-tab    { padding: 0.5rem 1.25rem; font-size: 0.9rem; cursor: pointer;
+                           background: none; border: none; color: var(--text-secondary);
+                           border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.wf-assets-inner-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
+.wf-asset-list          { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-asset-card          { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-asset-header        { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-asset-name          { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-asset-serial        { font-size: 0.8rem; color: var(--text-muted); }
+.wf-asset-desc          { font-size: 0.85rem; color: var(--text-muted); }
+.wf-asset-assigned-tag  { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--accent); color: var(--text-on-accent); }
+.wf-asset-actions       { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.wf-asset-form          { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-assignment-list     { display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-assignment-card     { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.wf-assignment-header   { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wf-assignment-asset    { font-weight: 600; color: var(--text-primary); flex: 1; }
+.wf-assignment-dates    { font-size: 0.85rem; color: var(--text-secondary); }
+.wf-assignment-active   { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--success); color: var(--text-on-accent); }
+.wf-return-form         { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 8px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
+.wf-badge-good          { background: var(--success); color: var(--text-on-accent); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+.wf-badge-fair          { background: var(--accent); color: var(--text-on-accent); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+.wf-badge-poor          { background: var(--danger); color: var(--text-on-accent); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+.wf-badge-retired       { background: var(--bg-elevated); color: var(--text-muted); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+
+/* ── Employee Dashboard ───────────────────────── */
+.wf-emp-layout          { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
+.wf-emp-select-row      { display: flex; gap: 0.75rem; align-items: center; }
+.wf-emp-select-label    { color: var(--text-secondary); font-size: 0.9rem; }
+.wf-emp-grid            { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.wf-emp-card            { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                           border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.wf-emp-card-title      { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;
+                           letter-spacing: 0.06em; font-weight: 600; }
+.wf-emp-stats-grid      { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.wf-emp-stat            { display: flex; flex-direction: column; gap: 0.1rem; }
+.wf-emp-stat-value      { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+.wf-emp-stat-label      { font-size: 0.75rem; color: var(--text-muted); }
+.wf-emp-on-leave        { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px;
+                           background: var(--danger); color: var(--text-on-accent); display: inline-block; }
+.wf-emp-balance-row     { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.wf-emp-balance-chip    { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+                           border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--text-secondary); }
+.wf-emp-asset-item      { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;
+                           padding: 0.25rem 0; border-top: 1px solid var(--border-subtle); }
+.wf-emp-asset-name      { flex: 1; color: var(--text-primary); }
+.wf-emp-empty           { color: var(--text-muted); text-align: center; padding: 2rem; }
+.wf-emp-loading         { color: var(--text-muted); padding: 1rem; }
+
+@media (max-width: 560px) {
+  .wf-emp-grid          { grid-template-columns: 1fr; }
+  .wf-emp-stats-grid    { grid-template-columns: 1fr 1fr 1fr; }
+}

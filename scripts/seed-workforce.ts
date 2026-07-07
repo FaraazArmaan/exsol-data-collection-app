@@ -176,10 +176,51 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── Leave: balances + demo requests ──────────────
+  const firstResourceId = resources[0]?.id;
+  if (firstResourceId) {
+    for (const [ltype, days] of [['annual', 15], ['sick', 10], ['personal', 5]] as const) {
+      const existing = (await sql`
+        SELECT id FROM public.leave_balances
+        WHERE client_id = ${clientId}::uuid AND resource_id = ${firstResourceId}::uuid AND leave_type = ${ltype}
+        LIMIT 1
+      `) as Array<{ id: string }>;
+      if (existing.length === 0) {
+        await sql`
+          INSERT INTO public.leave_balances (client_id, resource_id, leave_type, balance_days)
+          VALUES (${clientId}::uuid, ${firstResourceId}::uuid, ${ltype}, ${days})
+        `;
+        console.log(`  ✓ Leave balance: ${ltype} = ${days} days for "${resources[0]!.name}"`);
+      } else {
+        console.log(`  · Leave balance for ${ltype} already exists`);
+      }
+    }
+
+    // Two pending leave requests
+    for (const [start, end] of [['2026-08-01', '2026-08-05'], ['2026-09-15', '2026-09-16']] as const) {
+      const exists = (await sql`
+        SELECT id FROM public.leave_requests
+        WHERE client_id = ${clientId}::uuid AND resource_id = ${firstResourceId}::uuid
+          AND start_date = ${start}::date AND end_date = ${end}::date
+        LIMIT 1
+      `) as Array<{ id: string }>;
+      if (exists.length === 0) {
+        await sql`
+          INSERT INTO public.leave_requests (client_id, resource_id, leave_type, start_date, end_date, notes)
+          VALUES (${clientId}::uuid, ${firstResourceId}::uuid, 'annual', ${start}::date, ${end}::date, 'Seeded leave request')
+        `;
+        console.log(`  ✓ Leave request: ${start} → ${end} for "${resources[0]!.name}"`);
+      } else {
+        console.log(`  · Leave request ${start}→${end} already exists`);
+      }
+    }
+  }
+
   console.log('\nDone. Golden flows:');
   console.log('  1. Workforce → Staff & Schedule → see weekly shift grid per resource');
   console.log('  2. Workforce → Projects → open an active project → assign a resource');
   console.log('  3. Workforce → Timesheets → see entries for the current week');
+  console.log('  4. Workforce → Leave → see pending requests + balances for a resource');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

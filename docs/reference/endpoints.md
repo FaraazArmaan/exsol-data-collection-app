@@ -6,7 +6,7 @@
 
 # API endpoints
 
-190 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+209 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -318,12 +318,31 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| workforce-asset-assignments.ts | `/api/workforce/asset-assignments` | any | bucket-user | — |
+| workforce-asset.ts | `/api/workforce/asset/:id` | any | bucket-user | — |
+| workforce-assets.ts | `/api/workforce/assets` | any | bucket-user | — |
+| workforce-compliance.ts | `/api/workforce/compliance` | any | bucket-user | `workforce.employees.view` |
+| workforce-employee-profile.ts | `/api/workforce/employee-profile` | any | bucket-user | `workforce.employees.view` |
+| workforce-leave.ts | `/api/workforce/leave/:id` | any | bucket-user | — |
+| workforce-leaves.ts | `/api/workforce/leaves` | any | bucket-user | — |
+| workforce-overtime-id.ts | `/api/workforce/overtime/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
+| workforce-overtime.ts | `/api/workforce/overtime` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-payroll-id.ts | `/api/workforce/payroll/:id` | any | bucket-user | — |
+| workforce-payroll-rates.ts | `/api/workforce/payroll-rates` | any | bucket-user | — |
+| workforce-payroll.ts | `/api/workforce/payroll` | any | bucket-user | — |
 | workforce-project-assignments.ts | `/api/workforce/project-assignments` | any | bucket-user | `project-service.business.edit` |
 | workforce-project.ts | `/api/workforce/project/:id` | any | bucket-user | `project-service.business.edit`, `project-service.business.view` |
 | workforce-projects.ts | `/api/workforce/projects` | any | bucket-user | `project-service.business.create`, `project-service.business.view` |
+| workforce-punch.ts | `/api/workforce/punch/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
+| workforce-punches.ts | `/api/workforce/punches` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-shift.ts | `/api/workforce/shift/:id` | any | bucket-user | `workforce.employees.delete` |
 | workforce-shifts.ts | `/api/workforce/shifts` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-staff.ts | `/api/workforce/staff` | any | bucket-user | `workforce.employees.view` |
+| workforce-swap.ts | `/api/workforce/swap/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
+| workforce-swaps.ts | `/api/workforce/swaps` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-timesheet.ts | `/api/workforce/timesheet/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-timesheets.ts | `/api/workforce/timesheets` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-training-completions.ts | `/api/workforce/training-completions` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-training-course.ts | `/api/workforce/training-course/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
+| workforce-training-courses.ts | `/api/workforce/training-courses` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 

@@ -35,7 +35,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | project-service | Project Service | business, customers | view, create, edit, delete | vendor | ✓ (no link) |
 | supply-chain | Supply Chain | products | view, create, edit, delete | vendor | ✓ (/supply-chain) |
 | warehouse | Warehouse | business, products | view, create, edit, delete | vendor | ✓ (/warehouse) |
-| workforce | Workforce | employees | view, create, edit, delete | vendor | ✓ (/workforce) |
+| workforce | Workforce | employees, leave, payroll, assets | view, create, edit, delete | vendor | ✓ (/workforce) |
 
 Platform surfaces (`_platform.<surface>.<verb>`): `users`, `structure`, `settings`, `files`, `workspace` × `view`, `create`, `edit`, `delete`.
 
@@ -141,6 +141,9 @@ Each row is a module×bucket; the UI renders one toggle per verb the module decl
 ### workforce
 
 - workforce × employees: `workforce.employees.view` `workforce.employees.create` `workforce.employees.edit` `workforce.employees.delete`
+- workforce × leave: `workforce.leave.view` `workforce.leave.create` `workforce.leave.edit` `workforce.leave.delete`
+- workforce × payroll: `workforce.payroll.view` `workforce.payroll.create` `workforce.payroll.edit` `workforce.payroll.delete`
+- workforce × assets: `workforce.assets.view` `workforce.assets.create` `workforce.assets.edit` `workforce.assets.delete`
 - project-service × business: `project-service.business.view` `project-service.business.create` `project-service.business.edit` `project-service.business.delete`
 - project-service × customers: `project-service.customers.view` `project-service.customers.create` `project-service.customers.edit` `project-service.customers.delete`
 

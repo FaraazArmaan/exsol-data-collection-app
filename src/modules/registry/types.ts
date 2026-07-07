@@ -10,7 +10,7 @@
 // for Module-scoped permissions, or '_platform.<surface>.<verb>' for fixed
 // platform surfaces that don't belong to any Module.
 
-export const DATA_BUCKETS = ['business', 'employees', 'customers', 'products'] as const;
+export const DATA_BUCKETS = ['business', 'employees', 'customers', 'products', 'leave', 'payroll', 'assets'] as const;
 export type DataBucket = (typeof DATA_BUCKETS)[number];
 
 export const VERBS = ['view', 'create', 'edit', 'delete'] as const;

@@ -62,6 +62,8 @@ import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
 import { MarketingListMount, MarketingComposeMount, MarketingDetailMount } from '../modules/marketing/MarketingRouteMounts';
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount, WorkforceTimesheetsMount,
+  WorkforceLeaveMount, WorkforcePunchingMount, WorkforceOvertimeMount, WorkforceSwapMount,
+  WorkforcePayrollMount, WorkforceTrainingMount, WorkforceAssetsMount, WorkforceEmployeeDashboardMount,
 } from '../modules/workforce/WorkforceRouteMounts';
 import CatalogPage from '../modules/catalog/CatalogPage';
 import OnboardPage from '../modules/data-collection/OnboardPage';
@@ -190,6 +192,14 @@ export const router = createBrowserRouter([
               { path: 'workforce/projects', element: <WorkforceProjectsMount /> },
               { path: 'workforce/projects/:projectId', element: <WorkforceProjectDetailMount /> },
               { path: 'workforce/timesheets', element: <WorkforceTimesheetsMount /> },
+              { path: 'workforce/leave', element: <WorkforceLeaveMount /> },
+              { path: 'workforce/punching', element: <WorkforcePunchingMount /> },
+              { path: 'workforce/overtime', element: <WorkforceOvertimeMount /> },
+              { path: 'workforce/swaps', element: <WorkforceSwapMount /> },
+              { path: 'workforce/payroll', element: <WorkforcePayrollMount /> },
+              { path: 'workforce/training', element: <WorkforceTrainingMount /> },
+              { path: 'workforce/assets', element: <WorkforceAssetsMount /> },
+              { path: 'workforce/employees', element: <WorkforceEmployeeDashboardMount /> },
               { path: 'm/:moduleKey', element: <ModuleStub /> },
             ],
           },

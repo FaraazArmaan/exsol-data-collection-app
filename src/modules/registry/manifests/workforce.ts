@@ -6,7 +6,7 @@ import type { ModuleManifest } from '../types';
 export const workforceManifest: ModuleManifest = {
   key: 'workforce',
   label: 'Workforce',
-  data_buckets: ['employees'],
+  data_buckets: ['employees', 'leave', 'payroll', 'assets'],
   verbs: ['view', 'create', 'edit', 'delete'],
   vendor_side: true,
   customer_side: false,
