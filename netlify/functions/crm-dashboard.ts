@@ -54,8 +54,8 @@ export default async function handler(req: Request): Promise<Response> {
            (COALESCE(sa.n, 0) + COALESCE(ba.n, 0))::int AS txns,
            (COALESCE(sa.rev, 0) + COALESCE(ba.rev, 0))::bigint AS ltv_cents,
            to_char(
-             NULLIF(GREATEST(COALESCE(sa.last_at, 'epoch'::timestamptz), COALESCE(ba.last_at, 'epoch'::timestamptz)), 'epoch'::timestamptz),
-             'YYYY-MM-DD"T"HH24:MI:SSOF'
+             NULLIF(GREATEST(COALESCE(sa.last_at, 'epoch'::timestamptz), COALESCE(ba.last_at, 'epoch'::timestamptz)), 'epoch'::timestamptz) AT TIME ZONE 'UTC',
+             'YYYY-MM-DD"T"HH24:MI:SS"Z"'
            ) AS last_activity
     FROM cust c
     LEFT JOIN sale_agg sa ON sa.cid = c.id
