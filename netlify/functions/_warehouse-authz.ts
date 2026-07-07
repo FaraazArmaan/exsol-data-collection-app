@@ -19,10 +19,14 @@ export interface WarehouseAuthCtx {
 }
 
 // Locations live in the 'business' bucket; per-location stock in 'products'.
+// The full set (both buckets × all four verbs) — L1 Owner is all-on. products.create
+// is required by ASN create; keep this in sync with ALL_WAREHOUSE_PERMS in the
+// RouteMount so the Owner is never blanked relative to a permissioned subordinate.
 export const ALL_WAREHOUSE_PERMS = [
   'warehouse.business.view', 'warehouse.business.create',
   'warehouse.business.edit', 'warehouse.business.delete',
-  'warehouse.products.view', 'warehouse.products.edit',
+  'warehouse.products.view', 'warehouse.products.create',
+  'warehouse.products.edit', 'warehouse.products.delete',
 ] as const;
 
 export async function requireWarehouse(

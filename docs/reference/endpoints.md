@@ -6,7 +6,7 @@
 
 # API endpoints
 
-171 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+185 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -290,8 +290,22 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
+| warehouse-ai-slotting-decide.ts | `/api/warehouse/ai-slotting-decide` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-ai-slotting-generate.ts | `/api/warehouse/ai-slotting-generate` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-ai-slotting.ts | `/api/warehouse/ai-slotting` | GET | bucket-user | `warehouse.products.view` |
+| warehouse-asn-detail.ts | `/api/warehouse/asn-detail/:id` | GET | bucket-user | `warehouse.products.view` |
+| warehouse-asn-receive.ts | `/api/warehouse/asn-receive` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-asn.ts | `/api/warehouse/asn` | any | bucket-user | `warehouse.products.create`, `warehouse.products.view` |
 | warehouse-location.ts | `/api/warehouse/location/:id` | any | bucket-user | `warehouse.business.delete`, `warehouse.business.edit` |
 | warehouse-locations.ts | `/api/warehouse/locations` | any | bucket-user | `warehouse.business.create`, `warehouse.business.view` |
+| warehouse-products.ts | `/api/warehouse/products` | GET | bucket-user | `warehouse.products.view` |
+| warehouse-putaway-confirm.ts | `/api/warehouse/putaway-confirm` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-putaway-generate.ts | `/api/warehouse/putaway-generate` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-putaway.ts | `/api/warehouse/putaway` | GET | bucket-user | `warehouse.products.view` |
+| warehouse-safety-checklists.ts | `/api/warehouse/safety-checklists` | any | bucket-user | `warehouse.business.create`, `warehouse.business.view` |
+| warehouse-safety-incident.ts | `/api/warehouse/safety-incident/:id` | any | bucket-user | `warehouse.business.delete`, `warehouse.business.edit` |
+| warehouse-safety-incidents.ts | `/api/warehouse/safety-incidents` | any | bucket-user | `warehouse.business.create`, `warehouse.business.view` |
+| warehouse-safety-signoff.ts | `/api/warehouse/safety-signoff` | POST | bucket-user | `warehouse.business.edit` |
 | warehouse-stock.ts | `/api/warehouse/stock` | GET | bucket-user | `warehouse.products.view` |
 | warehouse-transfer.ts | `/api/warehouse/transfer` | POST | bucket-user | `warehouse.products.edit` |
 

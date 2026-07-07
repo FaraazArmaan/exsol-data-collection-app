@@ -197,3 +197,233 @@
   gap: 10px;
   margin-top: 4px;
 }
+
+/* Tabs */
+.wh-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.wh-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wh-tab:hover {
+  color: var(--text-primary);
+}
+.wh-tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.wh-actions-end {
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+/* Segmented status filter */
+.wh-segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.wh-segment {
+  background: var(--bg-surface);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px 14px;
+  font: inherit;
+}
+.wh-segment-active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.wh-notice {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid var(--success);
+  color: var(--success);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+/* Status pills */
+.wh-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.wh-pill-pending {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.wh-pill-received {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+.wh-pill-cancelled {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-muted);
+}
+
+/* Wide modal + multi-line editor */
+.wh-modal-wide {
+  max-width: 620px;
+}
+.wh-field-row {
+  display: flex;
+  gap: 12px;
+}
+.wh-field-row > .wh-field {
+  flex: 1;
+}
+.wh-line-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.wh-line-row > select {
+  flex: 1;
+}
+.wh-input-qty {
+  width: 90px;
+}
+
+.wh-var-short {
+  color: var(--danger);
+  font-weight: 600;
+}
+.wh-var-over {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* Panel header with an action on the right */
+.wh-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wh-panel-head .wh-panel-title {
+  margin: 0;
+}
+
+/* Severity + status chips */
+.wh-sev {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.wh-sev-low {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.wh-sev-medium {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.wh-sev-high {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+.wh-signed {
+  font-size: 0.85rem;
+}
+.wh-input[type='date'],
+textarea.wh-input {
+  font: inherit;
+}
+
+/* AI suggestion cards */
+.wh-card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wh-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.wh-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wh-card-title {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.wh-card-move {
+  color: var(--text-secondary);
+  margin: 8px 0 4px;
+  font-weight: 600;
+}
+.wh-card-rationale {
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+.wh-ai-tag {
+  color: var(--accent);
+  font-style: italic;
+}
+.wh-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .wh-field-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .wh-shell {
+    padding: 16px;
+  }
+  .wh-actions {
+    flex-wrap: wrap;
+  }
+  .wh-table th:nth-child(2),
+  .wh-table td:nth-child(2) {
+    display: none;
+  }
+}

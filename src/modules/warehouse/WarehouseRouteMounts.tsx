@@ -6,10 +6,16 @@ import WarehousePage from './workspace/pages/WarehousePage';
 // L1 Owner (or legacy null-level) is all-on — consistent with the backend
 // requireWarehouse bypass and every other gate in the codebase (Iron Rule 2).
 // The full warehouse.* set is handed down so page-level button gates render.
+// The FULL warehouse.* set (both buckets × all four verbs, matching the manifest).
+// L1 Owner is all-on, so this must include products.create/delete — depth features
+// (ASN create, etc.) gate UI on those keys, and omitting them blanks the Owner's
+// buttons while a permissioned L2 sees them (iron rule 2). Keep in sync with
+// ALL_WAREHOUSE_PERMS in _warehouse-authz.ts.
 const ALL_WAREHOUSE_PERMS = [
   'warehouse.business.view', 'warehouse.business.create',
   'warehouse.business.edit', 'warehouse.business.delete',
-  'warehouse.products.view', 'warehouse.products.edit',
+  'warehouse.products.view', 'warehouse.products.create',
+  'warehouse.products.edit', 'warehouse.products.delete',
 ];
 
 function useAuthBits() {

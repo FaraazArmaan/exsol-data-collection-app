@@ -74,3 +74,44 @@ export async function readTransferMovements(
     ORDER BY qty_delta ASC
   `) as Array<{ qty_delta: number; type: string; ref: string | null }>;
 }
+
+// Seeds a supplier + a received purchase order with one item per (product, qty),
+// so putaway/ASN tests have a real received PO to consume. Returns the PO id and
+// the created item ids (aligned with the input order).
+export async function seedReceivedPO(
+  ctx: PosTestCtx,
+  lines: Array<{ productId: string; qty: number }>,
+  status: 'received' | 'ordered' | 'draft' = 'received',
+): Promise<{ poId: string; itemIds: string[] }> {
+  const sup = (await sql`
+    INSERT INTO public.suppliers (client_id, name)
+    VALUES (${ctx.clientId}, ${randName('Supplier')})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const po = (await sql`
+    INSERT INTO public.purchase_orders (client_id, supplier_id, status, received_at)
+    VALUES (${ctx.clientId}, ${sup[0]!.id}, ${status}::purchase_order_status,
+            ${status === 'received' ? new Date().toISOString() : null})
+    RETURNING id
+  `) as Array<{ id: string }>;
+  const poId = po[0]!.id;
+  const itemIds: string[] = [];
+  for (const l of lines) {
+    const it = (await sql`
+      INSERT INTO public.purchase_order_items (purchase_order_id, product_id, qty)
+      VALUES (${poId}, ${l.productId}, ${l.qty})
+      RETURNING id
+    `) as Array<{ id: string }>;
+    itemIds.push(it[0]!.id);
+  }
+  return { poId, itemIds };
+}
+
+export async function readPutawayTasks(
+  ctx: PosTestCtx,
+): Promise<Array<{ id: string; product_id: string; qty: number; status: string; location_id: string | null }>> {
+  return (await sql`
+    SELECT id, product_id, qty, status, location_id FROM public.warehouse_putaway_tasks
+    WHERE client_id = ${ctx.clientId} ORDER BY created_at ASC
+  `) as Array<{ id: string; product_id: string; qty: number; status: string; location_id: string | null }>;
+}
