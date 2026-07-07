@@ -26,7 +26,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | hr | Human Resources | employees | view, create, edit, delete | vendor | ✓ (/hr) |
 | inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory/dashboard) |
 | manufacturing | Manufacturing | products | view, create, edit, delete | vendor | ✓ (/manufacturing) |
-| marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing) |
+| marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing, /marketing/roi, /marketing/webhooks, /marketing/gdpr, /marketing/social) |
 | orders | Order Management | business | view, create, edit, delete | vendor | ✓ (/orders) |
 | payments | Payments | customers, products | view, create, edit | vendor+customer | generic rail |
 | portfolio | Brand Portfolio Site | business | view, edit | vendor+customer | ✓ (/brand-site) |

@@ -6,7 +6,7 @@
 
 # API endpoints
 
-214 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+225 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -203,10 +203,21 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | marketing-audience-count.ts | `/api/marketing/audience-count` | GET | bucket-user | `marketing.customers.view` |
+| marketing-campaign-ab.ts | `/api/marketing/campaigns/:id/ab` | GET | bucket-user | `marketing.customers.view` |
 | marketing-campaign-create.ts | `/api/marketing/campaigns` | POST | bucket-user | `marketing.customers.create` |
 | marketing-campaign-detail.ts | `/api/marketing/campaigns/:id` | GET | bucket-user | `marketing.customers.view` |
 | marketing-campaign-send.ts | `/api/marketing/send` | POST | bucket-user | `marketing.customers.edit` |
 | marketing-campaigns-list.ts | `/api/marketing/campaigns` | GET | bucket-user | `marketing.customers.view` |
+| marketing-gdpr-consent.ts | `/api/marketing/gdpr/consent` | any | bucket-user | `marketing.customers.edit`, `marketing.customers.view` |
+| marketing-gdpr-erase.ts | `/api/marketing/gdpr/erase` | POST | bucket-user | `marketing.customers.delete` |
+| marketing-gdpr-export.ts | `/api/marketing/gdpr/export` | GET | bucket-user | `marketing.customers.view` |
+| marketing-public-track.ts | `/api/marketing/track/:kind` | GET | public | — |
+| marketing-roi.ts | `/api/marketing/roi` | GET | bucket-user | `marketing.customers.view` |
+| marketing-social-dispatch.ts | `/api/marketing-social-dispatch (name-routed)` | any | public | — |
+| marketing-social-posts.ts | `/api/marketing/social-posts` | any | bucket-user | `marketing.customers.create`, `marketing.customers.edit`, `marketing.customers.view` |
+| marketing-webhook-receive.ts | `/api/marketing/webhook/:token` | POST | public | — |
+| marketing-webhook-triggers.ts | `/api/marketing/webhook-triggers` | any | bucket-user | `marketing.customers.edit` |
+| marketing-webhooks.ts | `/api/marketing/webhooks` | any | bucket-user | `marketing.customers.edit`, `marketing.customers.view` |
 
 ## orders
 

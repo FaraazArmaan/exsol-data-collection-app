@@ -1,0 +1,217 @@
+/* Marketing module — namespaced .mkt-* styles.
+   Iron rule 9: consume ONLY the dark-theme tokens from src/lib/theme.css. Never
+   invent vars or hardcode light values (jsdom won't catch a violation — verify in
+   a real browser). */
+
+/* ---- ROI dashboard ---- */
+.mkt-roi-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.mkt-roi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.mkt-roi-card__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.mkt-roi-card__value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mkt-roi-table .mkt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mkt-roi-revenue {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ---- compose (was unstyled in v1: classes existed with no stylesheet) ---- */
+.mkt-compose {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.mkt-compose input,
+.mkt-compose select,
+.mkt-compose textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.mkt-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 12px;
+}
+
+.mkt-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.mkt-preview {
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-primary);
+  min-height: 120px;
+}
+
+/* ---- channel badge ---- */
+.mkt-channel {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ---- A/B ---- */
+.mkt-ab-toggle {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.mkt-ab-fields {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.mkt-ab-panel {
+  margin: 20px 0;
+}
+
+.mkt-ab-table .mkt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mkt-ab-winner td {
+  background: var(--bg-elevated);
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
+/* ---- webhooks ---- */
+.mkt-wh-section {
+  margin: 20px 0;
+}
+
+.mkt-inline-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.mkt-inline-form input,
+.mkt-inline-form select {
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.mkt-url {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.mkt-secret-callout {
+  padding: 14px 16px;
+  margin: 12px 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  color: var(--text-primary);
+}
+
+.mkt-secret-callout code {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* ---- GDPR erase confirm ---- */
+.mkt-erase-confirm {
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  color: var(--text-primary);
+}
+
+.mkt-erase-confirm .btn {
+  margin-right: 8px;
+}
+
+/* ---- social scheduler ---- */
+.mkt-social-compose textarea {
+  padding: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.mkt-social-content {
+  max-width: 360px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mkt-over {
+  color: var(--danger);
+}
+
+/* ---- mobile (560px pattern) ---- */
+@media (max-width: 560px) {
+  .mkt-roi-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .mkt-compose {
+    grid-template-columns: 1fr;
+  }
+  .mkt-inline-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mkt-social-content {
+    max-width: none;
+  }
+}

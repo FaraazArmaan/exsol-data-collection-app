@@ -59,7 +59,7 @@ import {
 } from '../modules/procurement/ProcurementRouteMounts';
 import { WarehouseMount } from '../modules/warehouse/WarehouseRouteMounts';
 import { CrmListMount, CrmDetailMount } from '../modules/crm/CrmRouteMounts';
-import { MarketingListMount, MarketingComposeMount, MarketingDetailMount } from '../modules/marketing/MarketingRouteMounts';
+import { MarketingListMount, MarketingComposeMount, MarketingDetailMount, MarketingRoiMount, MarketingWebhooksMount, MarketingGdprMount, MarketingSocialMount } from '../modules/marketing/MarketingRouteMounts';
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount, WorkforceTimesheetsMount,
   WorkforceLeaveMount, WorkforcePunchingMount, WorkforceOvertimeMount, WorkforceSwapMount,
@@ -170,6 +170,10 @@ export const router = createBrowserRouter([
               { path: 'crm', element: <CrmListMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },
               { path: 'marketing', element: <MarketingListMount /> },
+              { path: 'marketing/roi', element: <MarketingRoiMount /> },
+              { path: 'marketing/webhooks', element: <MarketingWebhooksMount /> },
+              { path: 'marketing/gdpr', element: <MarketingGdprMount /> },
+              { path: 'marketing/social', element: <MarketingSocialMount /> },
               { path: 'marketing/new', element: <MarketingComposeMount /> },
               { path: 'marketing/:id', element: <MarketingDetailMount /> },
               { path: 'analytics', element: (

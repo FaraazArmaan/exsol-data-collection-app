@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { marketingApi, type Campaign } from '../shared/api';
+import { marketingApi, type Campaign, CHANNEL_LABELS } from '../shared/api';
 import { dateTime } from '../format';
+import '../marketing.css';
 
 export function CampaignsListPage({ slug }: { slug: string; perms: ReadonlySet<string> }) {
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
@@ -24,11 +25,12 @@ export function CampaignsListPage({ slug }: { slug: string; perms: ReadonlySet<s
       )}
       {campaigns !== null && campaigns.length > 0 && (
         <table className="pm-table">
-          <thead><tr><th>Name</th><th>Audience</th><th>Status</th><th>Sent</th></tr></thead>
+          <thead><tr><th>Name</th><th>Channel</th><th>Audience</th><th>Status</th><th>Sent</th></tr></thead>
           <tbody>
             {campaigns.map((c) => (
               <tr key={c.id}>
                 <td><Link to={`/c/${slug}/marketing/${c.id}`}>{c.name}</Link></td>
+                <td><span className="mkt-channel">{CHANNEL_LABELS[c.channel] ?? c.channel}</span></td>
                 <td>{c.audience === 'recent_30d' ? 'Recent (30d)' : 'All'}</td>
                 <td><span className="mkt-status">{c.status}</span></td>
                 <td>{c.sent_at ? dateTime(c.sent_at) : '—'}</td>

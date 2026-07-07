@@ -4,6 +4,10 @@ import { useUserAuth } from '../user-portal/user-auth-context';
 import { CampaignsListPage } from './vendor/CampaignsListPage';
 import { CampaignComposePage } from './vendor/CampaignComposePage';
 import { CampaignDetailPage } from './vendor/CampaignDetailPage';
+import { RoiDashboardPage } from './vendor/RoiDashboardPage';
+import { WebhooksPage } from './vendor/WebhooksPage';
+import { GdprPage } from './vendor/GdprPage';
+import { SocialSchedulerPage } from './vendor/SocialSchedulerPage';
 
 const ALL_MARKETING_PERMS = [
   'marketing.customers.view', 'marketing.customers.create', 'marketing.customers.edit', 'marketing.customers.delete',
@@ -37,3 +41,7 @@ function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) =
 export const MarketingListMount = gate('marketing.customers.view', (slug, perms) => <CampaignsListPage slug={slug} perms={perms} />);
 export const MarketingComposeMount = gate('marketing.customers.create', (slug, perms) => <CampaignComposePage slug={slug} perms={perms} />);
 export const MarketingDetailMount = gate('marketing.customers.view', (slug, perms) => <CampaignDetailPage slug={slug} perms={perms} />);
+export const MarketingRoiMount = gate('marketing.customers.view', (slug) => <RoiDashboardPage slug={slug} />);
+export const MarketingWebhooksMount = gate('marketing.customers.view', (slug, perms) => <WebhooksPage slug={slug} perms={perms} />);
+export const MarketingGdprMount = gate('marketing.customers.view', (slug, perms) => <GdprPage slug={slug} perms={perms} />);
+export const MarketingSocialMount = gate('marketing.customers.view', (slug, perms) => <SocialSchedulerPage slug={slug} perms={perms} />);

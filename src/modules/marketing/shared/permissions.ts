@@ -29,3 +29,8 @@ export const canEditMarketing = (perms: UserPortalPermissionMatrix, levelNumber:
 
 export const canDeleteMarketing = (perms: UserPortalPermissionMatrix, levelNumber: number | null | undefined) =>
   has(perms, 'marketing.customers.delete', levelNumber);
+
+// ROI/analytics is a read projection over campaign data → gated on the same
+// customers.view key (DATA_BUCKETS is closed; no dedicated analytics bucket).
+export const canViewMarketingAnalytics = (perms: UserPortalPermissionMatrix, levelNumber: number | null | undefined) =>
+  has(perms, 'marketing.customers.view', levelNumber);

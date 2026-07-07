@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-36 tables across 88 forward-only migrations.
+36 tables across 94 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 

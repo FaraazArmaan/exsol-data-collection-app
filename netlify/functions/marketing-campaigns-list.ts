@@ -7,7 +7,7 @@ export default async function handler(req: Request): Promise<Response> {
   const a = await requireMarketing(req, ['marketing.customers.view']);
   if (!a.ok) return a.res;
   const rows = await db()`
-    SELECT id, name, subject, audience, status, sent_at, created_at
+    SELECT id, name, subject, audience, channel, status, sent_at, created_at
     FROM public.marketing_campaigns WHERE client_id = ${a.ctx.clientId}::uuid
     ORDER BY created_at DESC LIMIT 500
   `;

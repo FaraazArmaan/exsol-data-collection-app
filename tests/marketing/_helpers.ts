@@ -65,6 +65,53 @@ export async function seedCrmCustomer(
   return r[0]!.id;
 }
 
+/** Seed a realised storefront sale (source='storefront' ⇒ no creator node needed).
+ *  `createdAt` controls attribution-window membership; `email` is the join key. */
+export async function seedSale(
+  clientId: string,
+  opts: { email: string; totalCents: number; createdAt?: string; status?: 'paid' | 'fulfilled' | 'pending_payment' | 'cancelled' } = { email: '', totalCents: 0 },
+): Promise<string> {
+  const orderNo = Math.floor(1 + Math.random() * 2_000_000_000);
+  const status = opts.status ?? 'paid';
+  const createdAt = opts.createdAt ?? new Date().toISOString();
+  const r = (await sql`
+    INSERT INTO public.sales
+      (bucket_id, order_no, status, channel, customer_name, customer_phone, customer_email,
+       subtotal_cents, discount_cents, tax_cents, total_cents, source, created_by_user_node, created_at)
+    VALUES
+      (${clientId}::uuid, ${orderNo}, ${status}::public.sale_status, 'online'::public.sale_channel,
+       'Attr Buyer', ${'+91' + Math.floor(1000000000 + Math.random() * 8999999999)}, ${opts.email},
+       ${opts.totalCents}, 0, 0, ${opts.totalCents}, 'storefront', NULL, ${createdAt})
+    RETURNING id`) as Array<{ id: string }>;
+  return r[0]!.id;
+}
+
+/** Seed a realised booking. Creates the resource+service scaffolding the CHECK
+ *  constraints require; 'completed' status sidesteps the overlap EXCLUDE. */
+export async function seedBooking(
+  clientId: string,
+  ownerNodeId: string,
+  opts: { email: string; priceCents: number; createdAt?: string; status?: 'confirmed' | 'completed' | 'cancelled' | 'no_show' } = { email: '', priceCents: 0 },
+): Promise<string> {
+  const res = (await sql`INSERT INTO public.booking_resources (bucket_id, name) VALUES (${clientId}::uuid, ${'Chair ' + Math.random().toString(36).slice(2, 8)}) RETURNING id`) as Array<{ id: string }>;
+  const svc = (await sql`INSERT INTO public.booking_services (bucket_id, name, duration_min, price_cents) VALUES (${clientId}::uuid, ${'Cut ' + Math.random().toString(36).slice(2, 8)}, 30, ${opts.priceCents}) RETURNING id`) as Array<{ id: string }>;
+  const status = opts.status ?? 'completed';
+  const createdAt = opts.createdAt ?? new Date().toISOString();
+  // distinct far-past time range per booking; 'completed'/'cancelled' bypass the EXCLUDE guard
+  const start = new Date(1_600_000_000_000 + Math.floor(Math.random() * 1_000_000_000)).toISOString();
+  const end = new Date(new Date(start).getTime() + 30 * 60_000).toISOString();
+  const r = (await sql`
+    INSERT INTO public.bookings
+      (bucket_id, service_id, resource_id, user_node_id, time_range, status,
+       customer_name, customer_email, price_cents, created_by_user_node, created_at)
+    VALUES
+      (${clientId}::uuid, ${svc[0]!.id}::uuid, ${res[0]!.id}::uuid, ${ownerNodeId}::uuid,
+       tstzrange(${start}::timestamptz, ${end}::timestamptz), ${status}::public.booking_status,
+       'Attr Booker', ${opts.email}, ${opts.priceCents}, ${ownerNodeId}::uuid, ${createdAt})
+    RETURNING id`) as Array<{ id: string }>;
+  return r[0]!.id;
+}
+
 export function marketingRequest(ctx: MktTestCtx, method: string, path: string, body?: unknown): Request {
   return new Request(`http://localhost${path}`, {
     method, headers: { cookie: ctx.cookie, 'Content-Type': 'application/json' },
