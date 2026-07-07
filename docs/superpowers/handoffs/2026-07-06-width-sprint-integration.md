@@ -13,9 +13,10 @@ and coordinates prod deploys. It does NOT build modules.
 - Worktrees share the object DB, so sibling branches are mergeable by name from this (primary) worktree.
 
 ## Current state (as of 2026-07-07)
-- **`origin/main` == `00179bd`; local `main` is AHEAD by ~14 commits** (unpushed): Finance `f85227b`,
-  Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56`, Supply-Chain `99e253f` (+ tabbed-dashboard
-  `c14b075`), Workforce `7de8219` (+ nav fix `c9fc102`), + interleaved handoff commits. Working tree clean.
+- **`origin/main` == `00179bd`; local `main` is AHEAD by ~18 commits** (unpushed): Finance `f85227b`,
+  Inventory `d092974`, Orders `17e269f`, Warehouse `30e0f56`, Supply-Chain `99e253f` (+tabs `c14b075`),
+  Workforce `7de8219` (+nav fix `c9fc102`), HR `571b6ca` (+POS-label test fixup `c1d21de`), + interleaved
+  handoff commits. Working tree clean. **7 depth modules merged; only `marketing` remains.**
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
   1. **Finance** (`f85227b`, migs 063–066) — 5 tabs Overview/Cashflow/Recurring/Approvals/AI smoke-tested,
      dark-theme confirmed via computed styles. ~11 new `/api/finance/*` endpoints.
@@ -56,22 +57,36 @@ and coordinates prod deploys. It does NOT build modules.
      confirmed all 11 tabs reachable. **Dev-DB wrinkle:** tables pre-existed on shared dev but 112–119
      weren't in `schema_migrations` (chat applied then renumbered) → migrate 112 errored "already exists";
      reconciled the 8 tracking rows so `npm run migrate` is clean on dev. Prod unaffected (fresh apply).
+  7. **HR** (`571b6ca`, mig 120) — **NEW module** + standalone `hr` product. 4 tabs Dashboard/Org-Chart/
+     Onboarding/Offboarding smoke-tested (org tree over user_nodes, onboarding instance w/ checklist
+     items, completed offboarding), dark-theme + manifest-driven sidebar link confirmed. authz gate order
+     412→L1→matrix; reuses the `employees` bucket (`hr.employees.*`, no new DATA_BUCKETS). 5 new
+     `/api/hr/*` endpoints (reuses AMS `user-node-credential`/`user-nodes-move` for offboarding). Also
+     carried a bundled `feat(portfolio)` fix (`/site/:slug` @media ≤560px in `src/lib/components.css`).
+     Merge conflicts (package.json/router/modules.ts/products.ts) all union-resolved. Regenerated docs.
+     Fast-follow: HR dashboard's "no leave table exists yet" copy is now stale (workforce
+     `leave_requests` landed in this same integration) — could read it instead of timesheet hours.
+  - **Regression caught & fixed** (`c1d21de`): the Orders `Orders`→`Sales` POS-nav rename broke
+    `storefront-nav.test.tsx` (asserted the old label); the dev-Neon-flaky full suite had masked it.
+    Updated the test to the intended `Sales` label. **Lesson: run at least the touched FE test files even
+    when the full suite is flaking** — a targeted `vitest run <file>` isn't subject to the DB overload.
   - Verification note: the full `npx vitest run` intermittently flakes on **dev-Neon overload**
     (`NeonDbError: fetch failed` across untouched-module files + the known `pub-menu` 429 / webp-thumb).
     Cleanest full run so far was **1408/1410** (2 flakes, both documented). Each merged module's own suite
     passes in isolation (Finance suite, Inventory 42/42, Orders 72/72, Warehouse 64/64, Supply-Chain
-    76/76, Workforce 124/124). Capture one clean full run when load subsides.
+    76/76, Workforce 124/124, HR 11/11). Capture one clean full run when load subsides.
   - **Pending for the human (per prod runbook below):** push `main`; migrate 063–066 + 080–081 + 087–091
-    + 093–096 + 097–098 + 112–119 on prod; probe the new `/api/finance/*`, `/api/inventory/*`,
-    `/api/orders/*`, `/api/warehouse/*`, `/api/supply-chain-*`, `/api/workforce/*` endpoints for the
-    Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` — config.method-array routing — and the
+    + 093–096 + 097–098 + 112–119 + 120 on prod; probe the new `/api/finance/*`, `/api/inventory/*`,
+    `/api/orders/*`, `/api/warehouse/*`, `/api/supply-chain-*`, `/api/workforce/*`, `/api/hr/*` endpoints
+    for the Edge-404 trap (esp. GET+PUT `/api/orders/sla-targets` — config.method-array routing — and the
     `:param` routes `warehouse/asn-detail/:id`, `warehouse/safety-incident/:id`,
     `supply-chain-suppliers/:id`); run all the new `seed:*` scripts on prod (finance/inventory/orders/
-    warehouse/supply-chain/workforce). **Enable the `orders` product** for papa-s-saloon on prod (new —
-    invisible until enabled). **Grant** the new `supply-chain.products.{create,edit,delete}` and
-    `workforce.{leave,payroll,assets}.*` keys per access level (Owner has them via L1 bypass).
-    Finance/Inventory/Warehouse/Supply-Chain/Workforce products already enabled on prod.
-  - Remaining depth branches to integrate (own worktrees, unpushed): hr (120), marketing.
+    warehouse/supply-chain/workforce/hr). **Enable the `orders` AND `hr` products** for papa-s-saloon on
+    prod (both new — invisible until enabled; their seeds enable on dev). **Grant** the new
+    `supply-chain.products.{create,edit,delete}` and `workforce.{leave,payroll,assets}.*` keys per access
+    level (Owner has them via L1 bypass). Finance/Inventory/Warehouse/Supply-Chain/Workforce products
+    already enabled on prod.
+  - Remaining depth branches to integrate (own worktrees, unpushed): **marketing** (last one).
 - **Prod schema:** current — 62 migrations applied through **137**, none pending. (051 Payments = never
   built; that gap is expected.)
 - **Everything is LIVE on prod** (`exsoldatacollectionapp.netlify.app`): all width modules
