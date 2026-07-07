@@ -3,6 +3,7 @@ import './lib/components.css';
 import './modules/pos/pos.css';
 import './modules/files/files.css';
 import './modules/inventory/inventory.css';
+import './modules/orders/orders.css';
 import './modules/procurement/procurement.css';
 import './modules/warehouse/warehouse.css';
 import './modules/catalog/catalog.css';

@@ -15,7 +15,7 @@ const PERM: Record<FsmAction, string> = {
   refund:   'pos.sale.refund',
 };
 
-const ALLOWED_FROM: Record<FsmAction, readonly SaleStatus[]> = {
+export const ALLOWED_FROM: Record<FsmAction, readonly SaleStatus[]> = {
   markPaid: ['pending_payment'],
   fulfill:  ['paid'],
   cancel:   ['pending_payment'],

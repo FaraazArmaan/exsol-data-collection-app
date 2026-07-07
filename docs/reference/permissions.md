@@ -26,6 +26,7 @@ JSONB), edited in the Access Levels dashboard — not derivable from code.
 | inventory | Inventory | products | view, create, edit, delete | vendor | ✓ (/inventory/dashboard) |
 | manufacturing | Manufacturing | products | view, create, edit, delete | vendor | ✓ (/manufacturing) |
 | marketing | Marketing | customers | view, create, edit, delete | vendor | ✓ (/marketing) |
+| orders | Order Management | business | view, create, edit, delete | vendor | ✓ (/orders) |
 | payments | Payments | customers, products | view, create, edit | vendor+customer | generic rail |
 | portfolio | Brand Portfolio Site | business | view, edit | vendor+customer | ✓ (/brand-site) |
 | pos | POS | — | — | vendor | ✓ (/pos/menu, /pos/sales) |
@@ -55,6 +56,7 @@ A module is reachable only when an enabled product carries it (iron rule 4).
 | inventory | Inventory | inventory (vendor) | products |
 | manufacturing | Manufacturing | manufacturing (vendor) | products, inventory |
 | marketing | Marketing Automation | marketing (vendor) | — |
+| orders | Order Management | orders (vendor) | pos |
 | pos | POS | pos (vendor), email (vendor) | products |
 | procurement | Procurement | procurement (vendor) | products, inventory |
 | products | Products Management | products (both) | — |
@@ -101,6 +103,10 @@ Each row is a module×bucket; the UI renders one toggle per verb the module decl
 ### marketing
 
 - marketing × customers: `marketing.customers.view` `marketing.customers.create` `marketing.customers.edit` `marketing.customers.delete`
+
+### orders
+
+- orders × business: `orders.business.view` `orders.business.create` `orders.business.edit` `orders.business.delete`
 
 ### pos
 

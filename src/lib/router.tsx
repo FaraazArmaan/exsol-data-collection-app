@@ -50,6 +50,7 @@ import {
   InventoryListMount, InventoryDashboardMount, InventoryReturnsMount, InventoryLocationsMount,
   InventoryLabelsMount,
 } from '../modules/inventory/InventoryRouteMounts';
+import { OrdersDashboardMount } from '../modules/orders/OrdersRouteMounts';
 import { ManufacturingMount } from '../modules/manufacturing/ManufacturingRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
@@ -161,6 +162,7 @@ export const router = createBrowserRouter([
               { path: 'inventory/returns', element: <InventoryReturnsMount /> },
               { path: 'inventory/locations', element: <InventoryLocationsMount /> },
               { path: 'inventory/labels', element: <InventoryLabelsMount /> },
+              { path: 'orders', element: <OrdersDashboardMount /> },
               { path: 'manufacturing', element: <ManufacturingMount /> },
               { path: 'crm', element: <CrmListMount /> },
               { path: 'crm/:id', element: <CrmDetailMount /> },

@@ -35,3 +35,6 @@ deno.lock
 # Intentional images live in docs/images/ (a subdir — unaffected by these root-anchored globs).
 /*.png
 /*.csv
+
+# SDD scratch (ledger, briefs, reports, review packages) — never commit
+.superpowers/

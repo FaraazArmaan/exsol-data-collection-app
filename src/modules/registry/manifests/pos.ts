@@ -13,6 +13,6 @@ export const posManifest: ModuleManifest = {
   hasDedicatedNav: true,
   navLinks: [
     { path: '/pos/menu', label: 'POS', viewKeys: ['pos.menu.view', 'pos.history.view'], order: 20 },
-    { path: '/pos/sales', label: 'Orders', viewKeys: ['pos.history.view'], order: 80 },
+    { path: '/pos/sales', label: 'Sales', viewKeys: ['pos.history.view'], order: 80 },
   ],
 };

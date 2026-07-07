@@ -28,7 +28,8 @@
     "seed:data-collection": "tsx --env-file=.env scripts/seed-data-collection.ts",
     "seed:brand-portfolio": "tsx --env-file=.env scripts/seed-brand-portfolio.ts",
     "seed:supply-chain": "tsx --env-file=.env scripts/seed-supply-chain.ts",
-    "seed:marketing": "tsx --env-file=.env scripts/seed-marketing.ts"
+    "seed:marketing": "tsx --env-file=.env scripts/seed-marketing.ts",
+    "seed:orders": "tsx --env-file=.env scripts/seed-orders.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

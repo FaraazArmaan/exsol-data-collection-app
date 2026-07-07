@@ -6,7 +6,7 @@
 
 # API endpoints
 
-155 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+171 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -197,6 +197,27 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | marketing-campaign-detail.ts | `/api/marketing/campaigns/:id` | GET | bucket-user | `marketing.customers.view` |
 | marketing-campaign-send.ts | `/api/marketing/send` | POST | bucket-user | `marketing.customers.edit` |
 | marketing-campaigns-list.ts | `/api/marketing/campaigns` | GET | bucket-user | `marketing.customers.view` |
+
+## orders
+
+| function | path | methods | auth | permission keys checked |
+|---|---|---|---|---|
+| orders-backorder-fulfill.ts | `/api/orders/backorder-fulfill/:id` | POST | bucket-user | `orders.business.edit` |
+| orders-backorders.ts | `/api/orders/backorders` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-dashboard.ts | `/api/orders/dashboard` | GET | bucket-user | `orders.business.view` |
+| orders-fulfillment-advance.ts | `/api/orders/fulfillment-advance/:id` | POST | bucket-user | `orders.business.edit` |
+| orders-fulfillments.ts | `/api/orders/fulfillments` | GET | bucket-user | `orders.business.view` |
+| orders-merge.ts | `/api/orders/merge` | POST | bucket-user | `orders.business.edit` |
+| orders-packing-slip.ts | `/api/orders/packing-slip/:id` | GET | bucket-user | `orders.business.view` |
+| orders-pick-list.ts | `/api/orders/pick-list/:id` | GET | bucket-user | `orders.business.view` |
+| orders-refund-advance.ts | `/api/orders/refund-advance/:id` | POST | bucket-user | `orders.business.edit` |
+| orders-refunds.ts | `/api/orders/refunds` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-sale-lines.ts | `/api/orders/sale-lines/:saleId` | GET | bucket-user | `orders.business.view` |
+| orders-shipment-detail.ts | `/api/orders/shipment-detail/:id` | GET, PUT | bucket-user | `orders.business.edit`, `orders.business.view` |
+| orders-shipments.ts | `/api/orders/shipments` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-sla-targets.ts | `/api/orders/sla-targets` | GET, PUT | bucket-user | `orders.business.edit`, `orders.business.view` |
+| orders-sla.ts | `/api/orders/sla` | GET | bucket-user | `orders.business.view` |
+| orders-split.ts | `/api/orders/split/:saleId` | POST | bucket-user | `orders.business.edit` |
 
 ## platform
 

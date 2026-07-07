@@ -1,0 +1,280 @@
+/* Orders module — namespaced .ord-* styles. Imported once in src/main.tsx.
+   Uses the shared theme tokens (see src/lib/theme.css) so it tracks dark/light. */
+
+.ord-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.ord-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ord-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.ord-muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+.ord-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.ord-empty {
+  color: var(--text-muted);
+  padding: 32px;
+  text-align: center;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+/* KPI cards */
+.ord-kpi-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.ord-kpi-card {
+  flex: 1 1 160px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  min-width: 140px;
+}
+
+.ord-kpi-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.ord-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sections */
+.ord-section {
+  margin-bottom: 28px;
+}
+
+.ord-section-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Tables */
+.ord-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ord-table th,
+.ord-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.ord-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+.ord-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ord-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tabs */
+.ord-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border-default);
+  margin-bottom: 24px;
+}
+
+.ord-tab {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ord-tab:hover {
+  color: var(--text-primary);
+}
+
+.ord-tab.ord-tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Forms (refund + shipment create) */
+.ord-form {
+  margin-bottom: 20px;
+}
+
+.ord-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.ord-input {
+  flex: 1 1 160px;
+  min-width: 120px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.ord-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ord-form-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 6px 0 0;
+}
+
+/* Buttons */
+.ord-btn {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.ord-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ord-btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: var(--accent);
+}
+
+.ord-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.ord-btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.ord-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* State badges */
+.ord-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.ord-badge-completed,
+.ord-badge-delivered {
+  border-color: var(--success);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+
+.ord-badge-rejected,
+.ord-badge-returned {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.ord-badge-approved,
+.ord-badge-shipped {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ord-advance-msg {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  margin-bottom: 12px;
+}
+
+/* Responsive: stack KPI cards at 560px */
+@media (max-width: 560px) {
+  .ord-kpi-row {
+    flex-direction: column;
+  }
+  .ord-kpi-card {
+    flex: none;
+    width: 100%;
+  }
+}
