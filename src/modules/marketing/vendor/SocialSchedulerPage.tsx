@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { marketingApi, type SocialPost } from '../shared/api';
 import { SOCIAL_PROVIDERS, PROVIDER_LABELS, PROVIDER_MAX_CHARS, type SocialProvider } from '../lib/social';
 import { dateTime } from '../format';
+import { MarketingNav } from './MarketingNav';
 import '../marketing.css';
 
 export function SocialSchedulerPage({ slug, perms }: { slug: string; perms: ReadonlySet<string> }) {
@@ -42,10 +43,8 @@ export function SocialSchedulerPage({ slug, perms }: { slug: string; perms: Read
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 className="page-title">Social scheduler</h1>
-        <Link className="btn" to={`/c/${slug}/marketing`}>Campaigns</Link>
-      </div>
+      <h1 className="page-title">Social scheduler</h1>
+      <MarketingNav slug={slug} active="social" />
       <p className="muted">Compose and schedule posts. Providers are mock seams — posts are simulated until live keys are connected.</p>
       {error && <div className="error">{error}</div>}
 

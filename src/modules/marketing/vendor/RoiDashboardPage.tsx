@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { marketingApi, type RoiReport } from '../shared/api';
+import { MarketingNav } from './MarketingNav';
 import { formatMoney } from '../../../lib/currency';
 import { dateTime } from '../format';
 import '../marketing.css';
@@ -24,10 +25,8 @@ export function RoiDashboardPage({ slug }: { slug: string }) {
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 className="page-title">Campaign ROI</h1>
-        <Link className="btn" to={`/c/${slug}/marketing`}>Campaigns</Link>
-      </div>
+      <h1 className="page-title">Campaign ROI</h1>
+      <MarketingNav slug={slug} active="roi" />
 
       {error && <div className="error">{error}</div>}
       {!report && !error && <div className="muted">Loading…</div>}

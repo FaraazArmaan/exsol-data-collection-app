@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { marketingApi, type Campaign, CHANNEL_LABELS } from '../shared/api';
 import { dateTime } from '../format';
+import { MarketingNav } from './MarketingNav';
 import '../marketing.css';
 
 export function CampaignsListPage({ slug }: { slug: string; perms: ReadonlySet<string> }) {
@@ -18,6 +19,7 @@ export function CampaignsListPage({ slug }: { slug: string; perms: ReadonlySet<s
         <h1 className="page-title">Campaigns</h1>
         <Link className="btn" to={`/c/${slug}/marketing/new`}>New campaign</Link>
       </div>
+      <MarketingNav slug={slug} active="campaigns" />
       {error && <div className="error">{error}</div>}
       {campaigns === null && <div className="muted">Loading…</div>}
       {campaigns !== null && campaigns.length === 0 && !error && (

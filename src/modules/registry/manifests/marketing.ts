@@ -12,11 +12,9 @@ export const marketingManifest: ModuleManifest = {
   vendor_side: true,
   customer_side: false,
   hasDedicatedNav: true,
+  // Single sidebar link; the depth surfaces (Campaign ROI / Webhooks / GDPR /
+  // Social) are in-page tabs (MarketingNav), not separate sidebar entries.
   navLinks: [
     { path: '/marketing', label: 'Marketing', viewKeys: ['marketing.customers.view'], order: 70 },
-    { path: '/marketing/roi', label: 'Campaign ROI', viewKeys: ['marketing.customers.view'], order: 71 },
-    { path: '/marketing/webhooks', label: 'Webhooks', viewKeys: ['marketing.customers.view'], order: 72 },
-    { path: '/marketing/gdpr', label: 'GDPR', viewKeys: ['marketing.customers.view'], order: 73 },
-    { path: '/marketing/social', label: 'Social', viewKeys: ['marketing.customers.view'], order: 74 },
   ],
 };

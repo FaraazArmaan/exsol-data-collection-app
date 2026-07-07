@@ -3,6 +3,12 @@
    invent vars or hardcode light values (jsdom won't catch a violation — verify in
    a real browser). */
 
+/* ---- Module tab bar (Campaigns / ROI / Webhooks / GDPR / Social) ---- */
+.mkt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); margin: 8px 0 20px; overflow-x: auto; }
+.mkt-tab-link { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); cursor: pointer; padding: 10px 14px; font: inherit; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.mkt-tab-link:hover { color: var(--text-primary); }
+.mkt-tab-active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ---- ROI dashboard ---- */
 .mkt-roi-cards {
   display: grid;

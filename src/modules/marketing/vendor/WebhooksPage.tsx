@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { marketingApi, type WebhooksReport, type Campaign } from '../shared/api';
 import { dateTime } from '../format';
+import { MarketingNav } from './MarketingNav';
 import '../marketing.css';
 
 export function WebhooksPage({ slug, perms }: { slug: string; perms: ReadonlySet<string> }) {
@@ -52,10 +53,8 @@ export function WebhooksPage({ slug, perms }: { slug: string; perms: ReadonlySet
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 className="page-title">Webhooks</h1>
-        <Link className="btn" to={`/c/${slug}/marketing`}>Campaigns</Link>
-      </div>
+      <h1 className="page-title">Webhooks</h1>
+      <MarketingNav slug={slug} active="webhooks" />
       {error && <div className="error">{error}</div>}
       {!report && !error && <div className="muted">Loading…</div>}
 
