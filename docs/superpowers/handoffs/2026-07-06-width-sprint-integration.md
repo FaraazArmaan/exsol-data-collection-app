@@ -17,7 +17,8 @@ and coordinates prod deploys. It does NOT build modules.
   `exsoldatacollectionapp.netlify.app` — prod migrated (063–136), demo tenant seeded, orders+hr products
   enabled, endpoints probed healthy. Local `main` is **1 commit ahead** (`31756c8` Procurement depth,
   unpushed). Working tree clean.
-- **DEPTH PHASE IS ~92% DONE — 12 of 13 modules integrated, 1 remains (unbuilt): Ecommerce.**
+- **🎉 DEPTH PHASE COMPLETE — all 13 of 13 modules integrated.** (8 live on prod; 5 queue-2 merged
+  locally, awaiting push.)
   - **Live on prod (queue-1, 8):** Finance (063–066), Inventory (080–081), Orders (087–091), Warehouse
     (093–096), Supply-Chain (097–098), Workforce (112–119), HR (120), Marketing (131–136) — plus the
     marketing tabbed-nav fix `673a9b0` and the inventory seed qty>0 fix `4d48ca5`.
@@ -35,14 +36,17 @@ and coordinates prod deploys. It does NOT build modules.
       Tracking/Maintenance/Capacity) smoke-tested incl. **Kanban drag** (Planned→In-progress persisted) +
       BOM rollup + capacity load. Manifest gained the `business` bucket (existing DATA_BUCKETS value; new
       `manufacturing.business.*` keys; 8-key grid). 14 new functions.
-    Push all + run each module's prod runbook (migrate their ranges, `seed:procurement`/`seed:crm`
-    [+workforce reseed for project data]/`seed:manufacturing`, probe new `/api/procurement/*`,
-    `/api/crm/*`, `/api/workforce/project-*`, `/api/manufacturing/*` (14 routes) endpoints for the
-    Edge-404 trap — CRM adds a PUBLIC `crm-lead-submit`, rate-limited via Blobs. Manufacturing: enable the
-    `manufacturing` product per tenant if not already, and grant the new `manufacturing.business.*` keys.
-  - **NOT built yet (queue-2 remaining, 1) — reserved range, no collision:** D1.5 Ecommerce (124–130).
-    Build in its own worktree rebased on current `main` (Ecommerce depends on Orders; Project Mgr on
-    Workforce/Timesheets — both live). Same runbook.
+    · D1.5 **Ecommerce** `e922862` (+nav consolidation `d83730a`, migs 124–129; 130 free) — 209/209;
+      coupons/reviews/bundles/tax/storefront-CMS/marketplace ride POS on frozen pos.* keys. **Consolidated
+      the 6 POS sidebar links into one "Ecommerce" tab group** (EcommerceNav) — resolved the sidebar
+      clutter + a duplicate "Storefront" label (user decision; ERP module 12). Scheduled
+      `abandoned-cart-cron` (register on deploy). Bundled catalog 560px + storefront CMS XSS sanitize.
+    **Push the whole queue-2 batch + run each module's prod runbook** (migrate 069–072 / 102–103 /
+    108–111 / 074–079 / 124–129; `seed:procurement`/`seed:crm`/`seed:workforce`[project]/
+    `seed:manufacturing`/`seed:ecommerce`; probe new `/api/procurement/*`, `/api/crm/*`,
+    `/api/workforce/project-*`, `/api/manufacturing/*` (14), `/api/pos/*` + `/api/pub-*` (ecommerce) for the
+    Edge-404 trap — CRM adds a PUBLIC `crm-lead-submit` (Blobs rate-limit); verify the
+    `abandoned-cart-cron` schedule registers). Grant new `manufacturing.business.*` keys per access level.
 - ✅ **CLEAN FULL SUITE (for the 8 merged): `npx vitest run` → 1708/1708 passed (286 files), 0 failures**
   (2026-07-07, after all 8 merges + the storefront-nav fix; DB load had settled). typecheck + build green.
 - **Depth integration progress (merged locally + fully verified, NOT pushed):**
