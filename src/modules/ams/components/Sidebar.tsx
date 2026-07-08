@@ -29,6 +29,9 @@ export function Sidebar() {
       const body = await r.json() as { enabled_keys: string[] };
       const links: ModuleLink[] = [];
       for (const m of enabledModulesForProducts(body.enabled_keys)) {
+        // The admin console already has its own dedicated Product Manager link
+        // above — don't also list it here as a "view as client" jump.
+        if (m.key === 'products') continue;
         const path = getModule(m.key)?.navLinks?.[0]?.path;
         if (path) links.push({ key: m.key, label: m.label, path });
       }
