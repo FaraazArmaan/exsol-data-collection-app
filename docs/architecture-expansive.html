@@ -207,6 +207,21 @@ ol.clean li { margin-bottom: 8px; }
 
 footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-align: center; border-top: 1px solid var(--border); margin-top: 80px; }
 .foot-link { color: var(--accent); }
+h3.section-part { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); padding: 0 0 12px; border-bottom: 2px solid var(--accent-soft); margin: 80px 0 -40px; }
+.stack { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+.stack-row { position: relative; padding: 16px 20px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+.stack-row.lyr-client { background: linear-gradient(135deg, #eef2ff 0%, #fdf4ff 100%); border-color: #ddd6fe; }
+.stack-row.lyr-edge   { background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%); border-color: #bae6fd; }
+.stack-row.lyr-fn     { background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%); border-color: #bbf7d0; }
+.stack-row.lyr-data   { background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%); border-color: #fde68a; }
+.stack-row.lyr-extern { background: var(--surface-2); border: 1px dashed var(--border-strong); }
+.stack-row .layer-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; color: var(--ink-3); min-width: 80px; }
+.stack-row .layer-content { flex: 1; }
+.stack-row .layer-content strong { font-size: 14px; display: block; margin-bottom: 2px; }
+.stack-row .layer-content .layer-sub { font-size: 13px; color: var(--ink-2); }
+.arrow { text-align: center; color: var(--ink-3); font-size: 18px; line-height: 1; margin: -4px 0; }
+.pill-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pill-list .tag { font-size: 10.5px; }
 </style>
 </head>
 <body>
@@ -270,10 +285,13 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
   <div class="meta">Companion to architecture.html · technical but accessible</div>
 </header>
 
+<!-- ═══════════════════════════════════════════════ HLSD DIVIDER ═══════════════════════════════════════════════ -->
+<h3 class="section-part" id="hlsd">High-Level System Design</h3>
+
 <!-- ═══════════════════════════════════════════════ WHAT IS EXSOL ═══════════════════════════════════════════════ -->
 <section class="chapter" id="what">
   <div class="chapter-label">Chapter 1</div>
-  <h2>What is ExSol?</h2>
+  <h2 id="system-context">1.1 System Context — What is ExSol?</h2>
   <p>The simplest possible description, then a more honest one.</p>
 
   <div class="layered">
@@ -308,6 +326,114 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     the architecture is what's described below. (Fittingly, a literal Data Collection App has since
     shipped as one of the seven products — see Chapter 2.)
   </p>
+
+  <p>ExSol sits between end-users on the open web and a managed Postgres backend, with Netlify acting as both CDN and serverless function host. There is no separate API server, no Kubernetes cluster, no message bus — the entire backend is a flat set of HTTP-triggered functions.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Actors</h4>
+      <ul class="clean">
+        <li><strong>End-users (Owners, Staff)</strong> — log into a workspace at <code>/c/&lt;slug&gt;</code></li>
+        <li><strong>Admins</strong> — operational console at <code>/</code> (root)</li>
+        <li><strong>Public guests</strong> (POS v2) — checkout at <code>/c/&lt;slug&gt;/menu/:slug</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>External services</h4>
+      <ul class="clean">
+        <li><strong>Google OAuth</strong> — sign-in + workspace invite</li>
+        <li><strong>Netlify Blobs</strong> — image storage with thumbnail pipeline</li>
+        <li><strong>Resend</strong> — transactional email via raw fetch; <code>RESEND_API_KEY</code> env-gated with a log-only dev fallback</li>
+        <li><strong>Razorpay</strong> (held — keys pending) — payment HMAC webhook seam staged in schema</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ HLD STACK ═══════════════════════════════════════════════ -->
+<section class="chapter" id="hld-diagram">
+  <div class="chapter-label">§1.2 Architecture Diagram</div>
+  <h2>1.2 Architecture Diagram</h2>
+  <p>Request lifecycle and component ownership across the stack:</p>
+
+  <div class="stack">
+    <div class="stack-row lyr-client">
+      <div class="layer-label">Client</div>
+      <div class="layer-content">
+        <strong>Browser SPA</strong>
+        <div class="layer-sub">React 18 + Vite + React Router 7. JWT cookie carries session. Registry-driven, module-aware sidebar.</div>
+        <div class="pill-list">
+          <span class="tag">React</span><span class="tag">Vite</span><span class="tag">Zustand (POS)</span><span class="tag">RTL tests</span>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">↓ HTTPS</div>
+    <div class="stack-row lyr-edge">
+      <div class="layer-label">Edge</div>
+      <div class="layer-content">
+        <strong>Netlify CDN + Edge</strong>
+        <div class="layer-sub">Static asset cache + route resolution. <code>/api/*</code> → functions; <code>/*</code> → SPA fallback. Brotli compression, deploy alias promotion.</div>
+        <div class="pill-list"><span class="tag">CDN</span><span class="tag">Edge functions registry</span></div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stack-row lyr-fn">
+      <div class="layer-label">Functions</div>
+      <div class="layer-content">
+        <strong>Netlify Functions v2 (Node 20)</strong>
+        <div class="layer-sub">138 stateless handlers. Each declares <code>config.path</code> + optional <code>config.method</code>. Shared helpers in <code>_shared/</code> and module-scoped helpers.</div>
+        <div class="pill-list">
+          <span class="tag">argon2 (auth)</span><span class="tag">sharp (img resize)</span><span class="tag">zod (validation)</span><span class="tag">jose (JWT)</span>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">↓ Neon serverless driver</div>
+    <div class="stack-row lyr-data">
+      <div class="layer-label">Data</div>
+      <div class="layer-content">
+        <strong>Neon PostgreSQL</strong>
+        <div class="layer-sub">Separate branches for dev and prod. Sequential numbered migrations applied via <code>npm run migrate</code>. 116+ migration files across depth phase.</div>
+        <div class="pill-list"><span class="tag">JSONB for perms</span><span class="tag">pg_trgm (search)</span><span class="tag">116+ migrations</span></div>
+      </div>
+    </div>
+    <div class="arrow">↕</div>
+    <div class="stack-row lyr-extern">
+      <div class="layer-label">External</div>
+      <div class="layer-content">
+        <strong>Third-party integrations</strong>
+        <div class="layer-sub">Google OAuth (sign-in + invite) · Netlify Blobs (image CDN) · Resend (email; env-gated) · Razorpay (held)</div>
+      </div>
+    </div>
+  </div>
+  <p class="caption">Architecture is intentionally flat — no API gateway, no service mesh, no queue. Functions are the unit of deployment.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════ TECH STACK ═══════════════════════════════════════════════ -->
+<section class="chapter" id="stack">
+  <div class="chapter-label">§1.3 Tech Stack</div>
+  <h2>1.3 Tech Stack</h2>
+  <p>Pinned versions and the reason each was chosen:</p>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>UI runtime</td><td class="cell-mono">React 18 + React Router 7</td><td>Fast iteration, deep ecosystem, no SSR needed</td></tr>
+      <tr><td>Build / dev</td><td class="cell-mono">Vite 5 + TypeScript 5</td><td>~1.7s prod build, instant HMR, strict typecheck</td></tr>
+      <tr><td>State (local)</td><td class="cell-mono">React state + Zustand (POS cart only)</td><td>Component state is enough except for the cross-page POS cart</td></tr>
+      <tr><td>Edge runtime</td><td class="cell-mono">Netlify Functions v2 (Node 20)</td><td>Zero-config deploy, integrated with CDN, no Lambda config</td></tr>
+      <tr><td>Database</td><td class="cell-mono">Neon Postgres (serverless)</td><td>Branchable databases — dev/prod isolation, autoscale to zero</td></tr>
+      <tr><td>DB driver</td><td class="cell-mono">@neondatabase/serverless</td><td>HTTP-based, no connection pool concerns in serverless</td></tr>
+      <tr><td>Auth (passwords)</td><td class="cell-mono">argon2 (@node-rs/argon2)</td><td>OWASP-recommended; <code>external_node_modules</code> in netlify.toml</td></tr>
+      <tr><td>Auth (sessions)</td><td class="cell-mono">JWT via <code>jose</code></td><td>Stateless, signed with rotating <code>JWT_SIGNING_SECRET</code></td></tr>
+      <tr><td>Auth (OAuth)</td><td class="cell-mono">Google Sign-In (gsi/client)</td><td>Admin login + invite flow with auto-defaults</td></tr>
+      <tr><td>Image processing</td><td class="cell-mono">sharp</td><td>jimp lacks WebP encoder; sharp + external_node_modules</td></tr>
+      <tr><td>Validation</td><td class="cell-mono">zod</td><td>Type-inferred schemas, single source of truth at the boundary</td></tr>
+      <tr><td>Testing</td><td class="cell-mono">Vitest + React Testing Library</td><td>230 test files; full suite green post-cleanup-2</td></tr>
+      <tr><td>Lint / typecheck</td><td class="cell-mono">ESLint (flat config) + Prettier; tsc strict</td><td>Zero-cost strict flags on, remaining flags logged as measured debt</td></tr>
+      <tr><td>Email</td><td class="cell-mono">Resend (raw fetch, no SDK)</td><td>Outbox-first mailer seam; absent API key → rows recorded as <code>logged</code></td></tr>
+      <tr><td>Charts (Analytics)</td><td class="cell-mono">recharts ^3.9.1</td><td>FE-bundled; trend/bar/donut on the Analytics dashboard</td></tr>
+      <tr><td>Storage</td><td class="cell-mono">Netlify Blobs + custom thumb pipeline</td><td>240px webp lazy-gen, 30d cache</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <!-- ═══════════════════════════════════════════════ THE SEVEN PRODUCTS ═══════════════════════════════════════════════ -->
@@ -586,6 +712,119 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
     deleted. One branding implementation now skins the workspace portal, the admin preview, and the
     public storefront.
   </p>
+
+  <h3 id="cust-surfaces">1.9 Customer-Facing Surfaces &amp; URL Routing</h3>
+  <p>Workspaces serve two distinct kinds of pages: <strong>staff/owner pages</strong> (require login, gated by RBAC) and <strong>customer-facing pages</strong> (open to anonymous users — POS storefront ordering, booking widget). The URL structure differs between these surfaces, and clients have three options for how customers reach them: on the ExSol shared domain, on a branded subdomain, or on the client's own domain.</p>
+
+  <h4 style="margin-top: 28px;">Surface taxonomy</h4>
+  <table>
+    <thead><tr><th>Surface</th><th>Audience</th><th>Path</th><th>Auth</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Admin console</strong></td><td>Cross-workspace ops</td><td><code>/</code> (root)</td><td>admin session</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>Workspace portal</strong></td><td>Owners + staff</td><td><code>/c/&lt;slug&gt;/...</code></td><td>bucket-user JWT</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>POS storefront</strong> (v2)</td><td>Public guests</td><td><code>/menu/&lt;slug&gt;</code></td><td>none + IP rate-limit + honeypot</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>Booking widget</strong></td><td>Public guests</td><td><code>/book/&lt;slug&gt;/&lt;service&gt;</code></td><td>none + IP rate-limit</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>Catalog site</strong></td><td>Public browsers (no purchase)</td><td><code>/catalog/&lt;slug&gt;</code></td><td>none</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>Onboarding app</strong></td><td>New clients (pre-login)</td><td><code>/onboard/&lt;token&gt;</code></td><td>single-use expiring token</td><td><span class="tag tag-green">live</span></td></tr>
+      <tr><td><strong>Brand portfolio site</strong></td><td>Public visitors of one brand</td><td><code>/site/&lt;slug&gt;</code></td><td>none (only when <code>published</code>)</td><td><span class="tag tag-green">live</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 28px;">URL hosting patterns</h4>
+  <p>Customer-facing surfaces can be reached three ways. Each has a different operator setup cost vs branding outcome.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three URL hosting patterns">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#44403c"/>
+        </marker>
+      </defs>
+      <g>
+        <rect x="20" y="40" width="220" height="110" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+        <text x="130" y="62" text-anchor="middle" font-size="12" font-weight="700" font-family="system-ui" fill="#3730a3">A — Path-based (default)</text>
+        <text x="130" y="86" text-anchor="middle" font-size="11" font-family="ui-monospace,Menlo" fill="#1c1917">exsol.app/menu/&lt;slug&gt;</text>
+        <text x="130" y="108" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">zero setup · shared domain</text>
+        <text x="130" y="124" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">slug from path segment</text>
+        <text x="130" y="140" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">works day 1 of signup</text>
+      </g>
+      <g>
+        <rect x="280" y="40" width="220" height="110" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
+        <text x="390" y="62" text-anchor="middle" font-size="12" font-weight="700" font-family="system-ui" fill="#166534">B — Subdomain (branded)</text>
+        <text x="390" y="86" text-anchor="middle" font-size="11" font-family="ui-monospace,Menlo" fill="#1c1917">&lt;slug&gt;.exsol.app/menu</text>
+        <text x="390" y="108" text-anchor="middle" font-size="10" font-family="system-ui" fill="#15803d">one-time wildcard cert</text>
+        <text x="390" y="124" text-anchor="middle" font-size="10" font-family="system-ui" fill="#15803d">slug from Host header label</text>
+        <text x="390" y="140" text-anchor="middle" font-size="10" font-family="system-ui" fill="#15803d">workspace setting toggle</text>
+      </g>
+      <g>
+        <rect x="540" y="40" width="220" height="110" rx="10" fill="#fef3c7" stroke="#fde68a" stroke-width="1.5"/>
+        <text x="650" y="62" text-anchor="middle" font-size="12" font-weight="700" font-family="system-ui" fill="#92400e">C — Custom domain</text>
+        <text x="650" y="86" text-anchor="middle" font-size="11" font-family="ui-monospace,Menlo" fill="#1c1917">papas-saloon.com/menu</text>
+        <text x="650" y="108" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">client owns DNS</text>
+        <text x="650" y="124" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">slug via domain_aliases lookup</text>
+        <text x="650" y="140" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">Let's Encrypt auto-issue</text>
+      </g>
+      <line x1="130" y1="150" x2="320" y2="216" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <line x1="390" y1="150" x2="390" y2="216" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <line x1="650" y1="150" x2="460" y2="216" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <rect x="220" y="220" width="340" height="60" rx="10" fill="#fafaf9" stroke="#d6d3d1" stroke-width="2"/>
+      <text x="390" y="244" text-anchor="middle" font-size="13" font-weight="700" font-family="system-ui" fill="#1c1917">Workspace resolver</text>
+      <text x="390" y="263" text-anchor="middle" font-size="11" font-family="ui-monospace,Menlo" fill="#44403c">(host, path) → client_id</text>
+      <line x1="390" y1="280" x2="390" y2="316" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <rect x="180" y="320" width="420" height="46" rx="8" fill="#dcfce7" stroke="#bbf7d0"/>
+      <text x="390" y="345" text-anchor="middle" font-size="12" font-weight="600" font-family="system-ui" fill="#166534">Same auth-and-perms helper chain as staff routes</text>
+      <text x="390" y="359" text-anchor="middle" font-size="10" font-family="system-ui" fill="#15803d">(scoped by resolved client_id; guest sessions for public surfaces)</text>
+    </svg>
+  </div>
+  <p class="caption">All three patterns terminate at the same workspace-resolver helper. Host header beats path; path is the fallback.</p>
+
+  <h4 style="margin-top: 32px;">Request resolution rules</h4>
+  <pre><code><span class="com">// Pseudo — netlify/functions/_shared/resolve-workspace.ts</span>
+<span class="kw">export async function</span> <span class="fn">resolveWorkspace</span>(req: Request): Promise&lt;{ slug: string, clientId: string }&gt; {
+  <span class="kw">const</span> host = req.headers.<span class="fn">get</span>(<span class="str">'host'</span>) ?? <span class="str">''</span>;
+  <span class="kw">const</span> url  = <span class="kw">new</span> URL(req.url);
+
+  <span class="com">// 1. Custom domain? Look up alias list</span>
+  <span class="kw">if</span> (!host.<span class="fn">endsWith</span>(<span class="str">'netlify.app'</span>) &amp;&amp; !host.<span class="fn">endsWith</span>(<span class="str">'.exsol.app'</span>)) {
+    <span class="kw">const</span> [c] = <span class="kw">await</span> sql`SELECT id, slug FROM clients WHERE ${host} = ANY(domain_aliases) LIMIT 1`;
+    <span class="kw">if</span> (c) <span class="kw">return</span> { slug: c.slug, clientId: c.id };
+  }
+
+  <span class="com">// 2. Wildcard subdomain? Leftmost label = slug</span>
+  <span class="kw">const</span> subMatch = host.<span class="fn">match</span>(/<span class="str">^([a-z0-9-]+)\.exsol\.app$</span>/);
+  <span class="kw">if</span> (subMatch) <span class="kw">return</span> <span class="fn">resolveBySlug</span>(subMatch[1]);
+
+  <span class="com">// 3. Fallback: path-based — /menu/:slug, /book/:slug/:svc, /c/:slug/...</span>
+  <span class="kw">const</span> seg = url.pathname.<span class="fn">split</span>(<span class="str">'/'</span>).<span class="fn">filter</span>(Boolean);
+  <span class="kw">const</span> pathSlug = seg[0] === <span class="str">'c'</span> || seg[0] === <span class="str">'menu'</span> || seg[0] === <span class="str">'book'</span> ? seg[1] : <span class="kw">null</span>;
+  <span class="kw">if</span> (pathSlug) <span class="kw">return</span> <span class="fn">resolveBySlug</span>(pathSlug);
+
+  <span class="kw">throw new</span> <span class="fn">NotFound</span>();
+}</code></pre>
+
+  <h4 style="margin-top: 28px;">Trade-offs</h4>
+  <table>
+    <thead><tr><th>Pattern</th><th>Setup cost</th><th>Branding</th><th>SEO</th><th>When to recommend</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag tag-accent">A · Path</span></td><td>None</td><td>Low (ExSol brand visible)</td><td>Low (shared domain authority)</td><td>Trial, signup, first-touch</td></tr>
+      <tr><td><span class="tag tag-green">B · Subdomain</span></td><td>One-time platform: wildcard cert + DNS</td><td>Mid (workspace name visible)</td><td>Mid (subdomain inherits some authority)</td><td>Default for paid plans</td></tr>
+      <tr><td><span class="tag tag-amber">C · Custom domain</span></td><td>Per-client: CNAME + Netlify alias entry</td><td>High (no ExSol footprint)</td><td>High (client owns domain authority)</td><td>Higher tier; existing brand</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 28px;">Operator setup — Pattern C (custom domain)</h4>
+  <p>The end-to-end flow for a client to point their own domain at their ExSol workspace:</p>
+  <ol class="clean">
+    <li><strong>Client side:</strong> add a CNAME record at their DNS provider pointing to the Netlify domain.</li>
+    <li><strong>ExSol side:</strong> add the domain to the Netlify site's domain aliases (one-line API call or UI click).</li>
+    <li><strong>Netlify:</strong> auto-issues a Let's Encrypt cert (~minutes).</li>
+    <li><strong>Workspace:</strong> add the domain to <code>clients.domain_aliases TEXT[]</code> on the matching client row.</li>
+    <li><strong>Verify:</strong> hit the custom domain — resolver sees the host, looks up the alias, returns workspace identity, normal request flow proceeds.</li>
+  </ol>
+  <div class="callout green">
+    <div class="label">Why this works without code surgery</div>
+    The whole codebase already scopes every query by <code>client_id</code>. Adding host-based resolution is purely additive: a new helper that picks the same <code>client_id</code> we'd have got from the path, then passes it to the existing perms/data layer unchanged.
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════ FOLDER STRUCTURE ═══════════════════════════════════════════════ -->
@@ -1201,7 +1440,28 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       or rejected if it mismatches their JWT. This asymmetry is the cross-client guard.
     </p>
   </div>
+
+  <div class="grid-2" style="margin-top: 32px;">
+    <div class="card">
+      <h4>Two session kinds</h4>
+      <ul class="clean">
+        <li><span class="tag tag-accent">admin</span> — global across all clients; identified by <code>admins.id</code>; cross-client by definition.</li>
+        <li><span class="tag tag-green">bucket_user</span> — pinned to a single <code>client_id</code> in the JWT; cannot reach other clients even with a forged URL.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Cross-client guard</h4>
+      <p>
+        <code>resolveClientId(session, req)</code> checks the URL's <code>?client=&lt;uuid&gt;</code> param against the session's
+        pinned client. Bucket-user mismatch → <code>403 forbidden_cross_client</code>. Admins must explicitly pass
+        a <code>?client=</code>; bucket-users may not.
+      </p>
+    </div>
+  </div>
 </section>
+
+<!-- ═══════════════════════════════════════════════ LLSD DIVIDER ═══════════════════════════════════════════════ -->
+<h3 class="section-part" id="llsd">Low-Level System Design</h3>
 
 <!-- ═══════════════════════════════════════════════ THREE TIERS OF USERS ═══════════════════════════════════════════════ -->
 <section class="chapter" id="three-tiers">
@@ -1254,6 +1514,33 @@ footer { padding: 56px 0 28px; color: var(--ink-3); font-size: 12.5px; text-alig
       explicit permissions granted via the access-levels admin UI. This level hierarchy is what makes
       "Stylist A can only see her own bookings, Owner can see everyone's" work cleanly.
     </p>
+  </div>
+
+  <h3 id="auth-flow">2.1 Auth Flow</h3>
+  <p>Every protected endpoint goes through the same chain. The chain has two entry points (admin or bucket-user) and a clean L1-Owner fast-path that's identical across modules.</p>
+
+  <pre><code><span class="com">// netlify/functions/_shared/permissions.ts (simplified)</span>
+<span class="kw">export async function</span> <span class="fn">requirePermission</span>(req: Request, key: string): Promise&lt;Session&gt; {
+  <span class="com">// 1. Try admin session first</span>
+  <span class="kw">try</span> { <span class="kw">return</span> { kind: <span class="str">'admin'</span>, ...<span class="kw">await</span> <span class="fn">requireAdmin</span>(req) }; }
+  <span class="kw">catch</span> (e) { <span class="kw">if</span> (!(e <span class="kw">instanceof</span> UnauthorizedError)) <span class="kw">throw</span> e; }
+
+  <span class="com">// 2. Fall through to bucket-user via JWT cookie</span>
+  <span class="kw">const</span> claims = <span class="kw">await</span> <span class="fn">verifyBucketUserSession</span>(<span class="fn">readBuCookieToken</span>(req));
+  <span class="kw">const</span> { level_number, client_id } = <span class="kw">await</span> <span class="fn">sql</span>`SELECT ... FROM user_nodes WHERE id = ${claims.sub}`;
+
+  <span class="com">// 3. L1 (Primary Owner) bypasses the matrix check</span>
+  <span class="kw">if</span> (level_number === 1) <span class="kw">return</span> { kind: <span class="str">'bucket_user'</span>, level_number: 1, client_id, ... };
+
+  <span class="com">// 4. Otherwise, consult the per-level permission matrix</span>
+  <span class="kw">const</span> matrix = <span class="kw">await</span> <span class="fn">getLevelMatrix</span>(client_id, level_number);
+  <span class="kw">if</span> (!matrix[key]) <span class="kw">throw new</span> <span class="fn">ForbiddenError</span>(key);
+  <span class="kw">return</span> { kind: <span class="str">'bucket_user'</span>, level_number, client_id, ... };
+}</code></pre>
+
+  <div class="callout">
+    <div class="label">The L1-Owner bypass — why it exists</div>
+    The Owner of a workspace (L1) gets a full permission set by definition. Requiring the access-levels admin to grant every permission key to the Owner creates a chicken-and-egg problem: who sets up the permissions before anyone can use the system? The bypass is structural: every module's auth guard checks <code>level_number === 1</code> immediately after the enable-gate and returns the full perm set without consulting the matrix. This pattern has shipped broken twice (POS, Booking) when new modules omitted the bypass — it's now enforced by the <code>makeModuleAuthz</code> factory.
   </div>
 </section>
 
@@ -1586,6 +1873,163 @@ fulfilled → refunded         (action: refund)
     → pending_payment, with a cleanup cron that cancels stale bookings after 15 min. <code>payment: 'optional'</code>
     behaves like 'none' but allows post-hoc payment at the counter.
   </div>
+
+  <h3 id="booking-flow">2.5 Booking Module Flow</h3>
+  <p>
+    Booking lets clients sell time on named resources (a stylist, a chair, a meeting room) with
+    per-service rules — duration, per-weekday hours, optional payment up front. Two surfaces
+    meet at the same backend: a public customer widget that auto-registers users by phone+email,
+    and a staff calendar that manages the catalog and reads the booking grid. The core invariant
+    the design protects is <strong>no double-booking</strong>: a single resource cannot be reserved
+    for overlapping time ranges, enforced atomically by the database.
+  </p>
+
+  <h4 style="margin-top: 24px;">Customer journey (public widget)</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Booking customer journey">
+      <defs>
+        <marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#44403c"/>
+        </marker>
+      </defs>
+      <text x="14" y="50"  font-size="11" font-weight="700" font-family="system-ui" fill="#78716c">CUSTOMER</text>
+      <text x="14" y="180" font-size="11" font-weight="700" font-family="system-ui" fill="#78716c">EDGE / API</text>
+      <text x="14" y="320" font-size="11" font-weight="700" font-family="system-ui" fill="#78716c">DATABASE</text>
+      <line x1="110" y1="20" x2="800" y2="20"  stroke="#e7e5e4" stroke-width="1"/>
+      <line x1="110" y1="140" x2="800" y2="140" stroke="#e7e5e4" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="110" y1="280" x2="800" y2="280" stroke="#e7e5e4" stroke-width="1" stroke-dasharray="3,3"/>
+      <rect x="120" y="32" width="120" height="60" rx="8" fill="#eef2ff" stroke="#a5b4fc"/>
+      <text x="180" y="55" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#3730a3">1. Service</text>
+      <text x="180" y="72" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">picks "Haircut"</text>
+      <text x="180" y="84" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">from catalog</text>
+      <rect x="280" y="32" width="140" height="60" rx="8" fill="#eef2ff" stroke="#a5b4fc"/>
+      <text x="350" y="55" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#3730a3">2. Time + Resource</text>
+      <text x="350" y="72" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">Tue 3pm</text>
+      <text x="350" y="84" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">w/ "Stylist A"</text>
+      <rect x="460" y="32" width="120" height="60" rx="8" fill="#eef2ff" stroke="#a5b4fc"/>
+      <text x="520" y="55" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#3730a3">3. Details</text>
+      <text x="520" y="72" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">name, phone,</text>
+      <text x="520" y="84" text-anchor="middle" font-size="10" font-family="system-ui" fill="#4338ca">email</text>
+      <rect x="620" y="32" width="140" height="60" rx="8" fill="#fef3c7" stroke="#fde68a"/>
+      <text x="690" y="55" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#92400e">4. Pay (optional)</text>
+      <text x="690" y="72" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">if service.payment</text>
+      <text x="690" y="84" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">= 'required'</text>
+      <line x1="240" y1="62" x2="278" y2="62" stroke="#44403c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="420" y1="62" x2="458" y2="62" stroke="#44403c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="580" y1="62" x2="618" y2="62" stroke="#44403c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <rect x="120" y="160" width="180" height="100" rx="8" fill="#dcfce7" stroke="#bbf7d0"/>
+      <text x="210" y="184" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#166534">GET /api/public/book/:slug</text>
+      <text x="210" y="200" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">returns service catalog,</text>
+      <text x="210" y="212" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">resources, weekday hours</text>
+      <text x="210" y="232" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">GET /availability</text>
+      <text x="210" y="246" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">for (resource, day) → slots[]</text>
+      <rect x="340" y="160" width="220" height="100" rx="8" fill="#dcfce7" stroke="#bbf7d0"/>
+      <text x="450" y="184" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#166534">POST /api/public/bookings</text>
+      <text x="450" y="200" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">IP rate-limit + honeypot</text>
+      <text x="450" y="214" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">auto-register by phone+email</text>
+      <text x="450" y="230" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">(idempotency by client+phone+time)</text>
+      <text x="450" y="246" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">INSERT booking + GIST check</text>
+      <rect x="600" y="160" width="180" height="100" rx="8" fill="#fef3c7" stroke="#fde68a"/>
+      <text x="690" y="184" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#92400e">Razorpay (optional)</text>
+      <text x="690" y="200" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">create order, redirect,</text>
+      <text x="690" y="214" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">webhook → booking.paid_at</text>
+      <text x="690" y="234" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">status: pending_payment</text>
+      <text x="690" y="248" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">  → confirmed (on webhook)</text>
+      <line x1="180" y1="92"  x2="190" y2="158" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="520" y1="92"  x2="430" y2="158" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="690" y1="92"  x2="690" y2="158" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <rect x="120" y="300" width="180" height="86" rx="8" fill="#fef3c7" stroke="#fde68a"/>
+      <text x="210" y="324" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#92400e">services, resources,</text>
+      <text x="210" y="340" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#92400e">business_hours</text>
+      <text x="210" y="362" text-anchor="middle" font-size="10" font-family="system-ui" fill="#b45309">read-only at the customer step</text>
+      <rect x="340" y="300" width="220" height="86" rx="8" fill="#fed7aa" stroke="#fdba74"/>
+      <text x="450" y="324" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#9a3412">bookings</text>
+      <text x="450" y="340" text-anchor="middle" font-size="10" font-family="ui-monospace,Menlo" fill="#9a3412">EXCLUDE (resource_id, range)</text>
+      <text x="450" y="354" text-anchor="middle" font-size="10" font-family="ui-monospace,Menlo" fill="#9a3412">  USING GIST (&amp;&amp;)</text>
+      <text x="450" y="370" text-anchor="middle" font-size="10" font-family="system-ui" fill="#c2410c">overlap → 23P01 → 409 conflict</text>
+      <rect x="600" y="300" width="180" height="86" rx="8" fill="#dcfce7" stroke="#bbf7d0"/>
+      <text x="690" y="324" text-anchor="middle" font-size="11" font-weight="700" font-family="system-ui" fill="#166534">user_nodes</text>
+      <text x="690" y="340" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">auto-create on first booking</text>
+      <text x="690" y="354" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">key: (client_id, phone)</text>
+      <text x="690" y="370" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">level: customer (≥ 4)</text>
+      <line x1="210" y1="260" x2="210" y2="298" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="450" y1="260" x2="450" y2="298" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <line x1="690" y1="260" x2="690" y2="298" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+      <rect x="280" y="408" width="240" height="40" rx="20" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+      <text x="400" y="425" text-anchor="middle" font-size="12" font-weight="700" font-family="system-ui" fill="#166534">Booking confirmed</text>
+      <text x="400" y="440" text-anchor="middle" font-size="10" font-family="system-ui" fill="#15803d">→ confirmation email/SMS</text>
+      <line x1="450" y1="386" x2="400" y2="406" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr5)"/>
+    </svg>
+  </div>
+  <p class="caption">The customer never directly contacts the database — every step is mediated by a public API endpoint with rate limiting + honeypot.</p>
+
+  <h4 style="margin-top: 32px;">No-overbooking invariant</h4>
+  <p>
+    The hard constraint is enforced at the schema level using a PostgreSQL <strong>GIST exclusion
+    constraint</strong> rather than application-side checks. This makes it atomic — concurrent
+    requests for the same slot can't both succeed:
+  </p>
+  <pre><code><span class="com">-- bookings schema</span>
+<span class="kw">CREATE TABLE</span> bookings (
+  id           uuid <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  client_id    uuid <span class="kw">NOT NULL REFERENCES</span> clients(id),
+  resource_id  uuid <span class="kw">NOT NULL REFERENCES</span> resources(id),
+  service_id   uuid <span class="kw">NOT NULL REFERENCES</span> services(id),
+  customer_user_node_id uuid <span class="kw">REFERENCES</span> user_nodes(id),
+  time_range   tstzrange <span class="kw">NOT NULL</span>,
+  status       booking_status <span class="kw">NOT NULL DEFAULT</span> <span class="str">'pending_payment'</span>,
+  <span class="com">-- atomicity: two bookings on the same resource cannot overlap</span>
+  <span class="kw">EXCLUDE USING GIST</span> (
+    resource_id <span class="kw">WITH</span> =,
+    time_range  <span class="kw">WITH</span> &amp;&amp;
+  ) <span class="kw">WHERE</span> (status <span class="kw">IN</span> (<span class="str">'pending_payment'</span>, <span class="str">'confirmed'</span>))
+);</code></pre>
+
+  <div class="callout">
+    <div class="label">Why GIST + WHERE clause</div>
+    Cancelled or refunded bookings shouldn't block the slot — the partial index condition lets
+    only <em>active</em> bookings hold the slot. A retry after a webhook timeout (still
+    <code>pending_payment</code>) is still safe: the conflicting row IS the original, and the
+    idempotency key on (client, phone, time_range) catches the re-submission.
+  </div>
+
+  <h4 style="margin-top: 32px;">Per-service payment policy</h4>
+  <p>
+    Each service declares a payment mode that drives the FSM at booking time. Resource-time
+    holds are kept short for free services and revert to free-for-grabs if payment doesn't
+    complete in the configured window.
+  </p>
+  <table>
+    <thead><tr><th>Service mode</th><th>Initial booking status</th><th>Slot held until</th><th>Becomes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>payment: 'none'</code></td>
+        <td><code>confirmed</code></td>
+        <td>start time</td>
+        <td><code>completed</code> at end_time or staff marks no-show</td>
+      </tr>
+      <tr>
+        <td><code>payment: 'optional'</code></td>
+        <td><code>confirmed</code></td>
+        <td>start time</td>
+        <td>same as 'none'; payment can be taken at the counter</td>
+      </tr>
+      <tr>
+        <td><code>payment: 'required'</code></td>
+        <td><code>pending_payment</code></td>
+        <td>+10 min OR webhook</td>
+        <td><code>confirmed</code> on Razorpay webhook · or <code>cancelled</code> on timeout</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin-top: 28px;">Staff side (calendar surface)</h4>
+  <p>The owner / staff calendar is a workspace-portal page (under <code>/c/&lt;slug&gt;/booking</code>) gated on the standard bucket/verb permission model. Three primary views:</p>
+  <ul class="clean">
+    <li><strong>Calendar grid</strong> — week view showing all resources as columns, bookings as blocks. Drag to reschedule (staff only).</li>
+    <li><strong>Booking detail</strong> — click a block to see full customer info, payment status, notes.</li>
+    <li><strong>Service catalog</strong> — CRUD for services + resources + per-weekday hours. Changes take effect on the next booking attempt.</li>
+  </ul>
 </section>
 
 <!-- ═══════════════════════════════════════════════ AUDIT TRAIL ═══════════════════════════════════════════════ -->
@@ -1823,6 +2267,9 @@ fulfilled → refunded         (action: refund)
   <h2>API patterns</h2>
   <p>What every backend function looks like, structurally.</p>
 
+  <h3 id="api-patterns-section">2.6 API Patterns</h3>
+  <p>Every function file follows the same skeleton. Consistency at this layer makes the 138 endpoints feel like one codebase.</p>
+
   <p>
     Every Netlify Function in this repo follows the same skeleton. Once you can read one, you can read all
     138 of them. The shape is:
@@ -1865,6 +2312,18 @@ fulfilled → refunded         (action: refund)
     (<code>requirePos</code> for POS, <code>requireBooking</code> for booking) but they all share the same
     pattern: enable-gate first, then permission check, with the L1 Owner bypass after the enable-gate.
   </p>
+
+  <h4 style="margin-top: 28px;">Routing rules (Netlify Functions v2)</h4>
+  <table>
+    <thead><tr><th>Concern</th><th>Convention</th></tr></thead>
+    <tbody>
+      <tr><td>File location</td><td><code>netlify/functions/&lt;name&gt;.ts</code> — <strong>flat</strong>, no subdirectories (a subfolder becomes ONE function)</td></tr>
+      <tr><td>URL routing</td><td><code>export const config = { path: '/api/...', method?: 'GET'|'POST'|... }</code></td></tr>
+      <tr><td>Method on same path</td><td>Two functions can share <code>path</code> if each has a distinct <code>method</code>; otherwise one silently 405s in prod</td></tr>
+      <tr><td>Helpers</td><td><code>_shared/*.ts</code> (cross-module) or <code>_module-*.ts</code> (module-scoped); <code>_*</code> prefix = NOT a function (bundler skips)</td></tr>
+      <tr><td>Idempotency</td><td>POST endpoints accept an <code>idempotencyKey</code>; stored on row, dedup on conflict</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <!-- ═══════════════════════════════════════════════ THE FIVE NEWEST MODULES ═══════════════════════════════════════════════ -->
@@ -2276,6 +2735,41 @@ fulfilled → refunded         (action: refund)
     </ul>
   </div>
 
+  <h3 id="reference-layer">1.10 The Reference Layer — generated, not written</h3>
+  <p>This document explains <em>why</em> the system is shaped the way it is; the full inventories of <em>what exists right now</em> live in <code>docs/reference/</code> and are <strong>derived from the code</strong> by <code>scripts/generate-reference.ts</code> (<code>npm run docs:reference</code>).</p>
+
+  <div class="callout">
+    <div class="label">Principle — generated docs can't rot</div>
+    A hand-written endpoint table is wrong the week after it's written. These inventories are derived from the same sources the runtime uses — <code>config.path</code> exports, the registry manifests, the migration files — so the registry stays the single source of truth and the docs are a projection of it, exactly like the nav and the permission matrix (Flow C). This architecture document deliberately does <em>not</em> duplicate those tables.
+  </div>
+
+  <table>
+    <thead><tr><th>Generated file</th><th>Contents</th><th>Derived from</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cell-mono"><a href="./reference/endpoints.md">reference/endpoints.md</a></td>
+        <td>All endpoint functions: path, method, auth realm, module.</td>
+        <td><code>netlify/functions/*.ts</code> files + their <code>config</code> exports</td>
+      </tr>
+      <tr>
+        <td class="cell-mono"><a href="./reference/permissions.md">reference/permissions.md</a></td>
+        <td>Every permission key — all bucket×verb matrices per module + the frozen POS action keys.</td>
+        <td>Registry <code>ModuleManifest</code>s / <code>ProductManifest</code>s</td>
+      </tr>
+      <tr>
+        <td class="cell-mono"><a href="./reference/schema.md">reference/schema.md</a></td>
+        <td>All tables with columns, types, constraints — across all migrations.</td>
+        <td><code>db/migrations/*.sql</code></td>
+      </tr>
+      <tr>
+        <td class="cell-mono"><a href="./reference/CONFORMANCE.md">reference/CONFORMANCE.md</a></td>
+        <td>The 19-module × 6-element conformance matrix — including honestly-flagged open gaps.</td>
+        <td>Audited per module against the canonical pattern</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="caption">Per-module summaries stay in this document; complete inventories live in the reference layer and are regenerated on demand.</p>
+
   <div class="callout">
     <div class="label">The reference layer — documentation that cannot rot</div>
     <p>
@@ -2327,6 +2821,46 @@ fulfilled → refunded         (action: refund)
     <li>If the alias-not-promoted trap fires (alias URL serves the old bundle hash while per-deploy URL serves the new one), <code>restoreSiteDeploy</code> again.</li>
     <li>UI smoke on a real workspace. Verify the new feature actually works for an end user, not just that the deploy went green.</li>
   </ol>
+
+  <h3 id="deployment-topology">1.8 Deployment Topology</h3>
+  <p>Git-driven, no manual deploys, no CI-runner-managed credentials beyond Netlify env vars.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment pipeline">
+      <defs>
+        <marker id="arr-dep" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#78716c"/>
+        </marker>
+      </defs>
+      <rect x="20" y="50" width="140" height="60" rx="10" fill="#eef2ff" stroke="#a5b4fc"/>
+      <text x="90" y="78" text-anchor="middle" font-size="13" font-weight="600" font-family="system-ui" fill="#3730a3">Developer</text>
+      <text x="90" y="96" text-anchor="middle" font-size="11" font-family="system-ui" fill="#4338ca">main worktree</text>
+      <line x1="160" y1="80" x2="218" y2="80" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+      <text x="189" y="72" text-anchor="middle" font-size="10" font-family="system-ui" fill="#78716c">git push</text>
+      <rect x="220" y="50" width="140" height="60" rx="10" fill="#fef3c7" stroke="#fde68a"/>
+      <text x="290" y="78" text-anchor="middle" font-size="13" font-weight="600" font-family="system-ui" fill="#92400e">GitHub origin/main</text>
+      <text x="290" y="96" text-anchor="middle" font-size="11" font-family="system-ui" fill="#b45309">webhook trigger</text>
+      <line x1="360" y1="80" x2="418" y2="80" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+      <rect x="420" y="50" width="160" height="60" rx="10" fill="#dcfce7" stroke="#bbf7d0"/>
+      <text x="500" y="74" text-anchor="middle" font-size="13" font-weight="600" font-family="system-ui" fill="#166534">Netlify Build</text>
+      <text x="500" y="92" text-anchor="middle" font-size="11" font-family="system-ui" fill="#15803d">tsc + vite + esbuild</text>
+      <text x="500" y="104" text-anchor="middle" font-size="10" font-family="system-ui" fill="#16a34a">~30-50s</text>
+      <line x1="580" y1="80" x2="638" y2="80" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+      <rect x="640" y="50" width="120" height="60" rx="10" fill="#fdf2f8" stroke="#f9a8d4"/>
+      <text x="700" y="78" text-anchor="middle" font-size="13" font-weight="600" font-family="system-ui" fill="#9f1239">Prod (live)</text>
+      <text x="700" y="96" text-anchor="middle" font-size="11" font-family="system-ui" fill="#be123c">netlify.app</text>
+      <rect x="220" y="170" width="160" height="60" rx="10" fill="#fef9c3" stroke="#fde047"/>
+      <text x="300" y="194" text-anchor="middle" font-size="13" font-weight="600" font-family="system-ui" fill="#854d0e">Neon prod branch</text>
+      <text x="300" y="212" text-anchor="middle" font-size="11" font-family="system-ui" fill="#a16207">dawn-bird</text>
+      <text x="300" y="223" text-anchor="middle" font-size="10" font-family="system-ui" fill="#ca8a04">npm run migrate (manual)</text>
+      <line x1="120" y1="110" x2="220" y2="195" stroke="#78716c" stroke-width="1.5" marker-end="url(#arr-dep)" stroke-dasharray="3,3"/>
+      <text x="120" y="160" font-size="10" font-family="system-ui" fill="#78716c">pre-push step</text>
+      <rect x="420" y="170" width="340" height="60" rx="10" fill="#f5f5f4" stroke="#d6d3d1" stroke-dasharray="4,3"/>
+      <text x="590" y="195" text-anchor="middle" font-size="12" font-weight="600" font-family="system-ui" fill="#44403c">Post-deploy ops (sometimes needed)</text>
+      <text x="590" y="213" text-anchor="middle" font-size="11" font-family="system-ui" fill="#78716c">restoreSiteDeploy · cache-clear · health probe</text>
+    </svg>
+  </div>
+  <p class="caption">Migrations are out-of-band from code deploys (manual via <code>npm run migrate</code>); design assumes additive-first migrations safe to run before code.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════ MIGRATIONS ═══════════════════════════════════════════════ -->
@@ -2469,6 +3003,13 @@ fulfilled → refunded         (action: refund)
   <h2>Security model</h2>
   <p>What protects the data — exactly what is enforced today, and an honest register of what isn't built yet.</p>
 
+  <h3 id="security-model">2.9 Security Model</h3>
+  <p>
+    What is enforced today, verified against the code at HEAD — followed by an honest list of what is
+    planned but not built. The core stance: <strong>the token names you; the database decides what you
+    may do, per request</strong>.
+  </p>
+
   <div class="layered">
     <div class="label-human">The posture in one sentence</div>
     <p>
@@ -2481,6 +3022,8 @@ fulfilled → refunded         (action: refund)
 
     <div class="label-system">Current — the three authentication realms</div>
   </div>
+
+  <h4 style="margin-top: 24px;">Three authentication realms</h4>
 
   <table>
     <thead><tr><th>Realm</th><th>Credential</th><th>Session</th><th>Where authority actually lives</th></tr></thead>
@@ -2505,6 +3048,8 @@ fulfilled → refunded         (action: refund)
       </tr>
     </tbody>
   </table>
+
+  <h4 style="margin-top: 24px;">The enforcement chain (per request)</h4>
 
   <div class="layered">
     <div class="label-human">What happens on every protected request</div>
@@ -2542,6 +3087,8 @@ fulfilled → refunded         (action: refund)
       chapters), this decision gets revisited rather than defended.
     </p>
   </div>
+
+  <h4 style="margin-top: 24px;">Planned / known debt — not built yet</h4>
 
   <div class="layered">
     <div class="label-human">Now the other half of the audit</div>
@@ -2740,6 +3287,8 @@ fulfilled → refunded         (action: refund)
     </tbody>
   </table>
 
+  <h4 style="margin-top: 32px;">Database — the seam and the three exits</h4>
+
   <div class="layered">
     <div class="label-human">Database — the deepest dependency, three different exits</div>
     <p>
@@ -2786,6 +3335,8 @@ fulfilled → refunded         (action: refund)
     </li>
   </ul>
 
+  <h4 style="margin-top: 32px;">Auth — add providers cheaply, or outsource the layer knowingly</h4>
+
   <div class="layered">
     <div class="label-human">Auth — add a provider, or hand the whole layer away</div>
     <p>
@@ -2809,6 +3360,8 @@ fulfilled → refunded         (action: refund)
       both answers available per deployment — that optionality is the asset.
     </p>
   </div>
+
+  <h4 style="margin-top: 32px;">Hosting &amp; functions — the biggest portability asset</h4>
 
   <div class="layered">
     <div class="label-human">Hosting — the accidental masterstroke</div>
@@ -2835,6 +3388,8 @@ fulfilled → refunded         (action: refund)
     </p>
   </div>
 
+  <h4 style="margin-top: 32px;">Storage, email, payments — proven seams</h4>
+
   <div class="layered">
     <div class="label-human">Payments — designed neutral before a single rupee moves</div>
     <p>
@@ -2854,6 +3409,8 @@ fulfilled → refunded         (action: refund)
       re-architecture — because the seam was priced while it was still on paper.
     </p>
   </div>
+
+  <h4 style="margin-top: 32px;">Frontend — what would <em>not</em> port cheaply</h4>
 
   <div class="layered">
     <div class="label-human">Frontend — the one honest "wouldn't port cheaply"</div>
