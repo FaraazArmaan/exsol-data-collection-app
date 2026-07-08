@@ -51,28 +51,32 @@ export interface SupplyChainAccess {
 export async function resolveSupplyChainAccess(
   req: Request,
 ): Promise<{ ok: true; access: SupplyChainAccess } | { ok: false; res: Response }> {
-  // 1. Admin → full tenant. Admins act on a client via ?client=.
+  // 1. Bucket-user session FIRST — under admin impersonation BOTH cookies are
+  //    present and the workspace UI never passes ?client= (same priority flip
+  //    as _shared/permissions.ts requirePermission).
+  let credential: { user_node_id: string; client_id: string } | null = null;
   try {
-    await requireAdmin(req);
+    const r = await requireBucketUser(req);
+    credential = r.credential;
+  } catch (e) {
+    if (!(e instanceof UnauthorizedError)) throw e;
+    // no/stale workspace session — fall through to the admin path.
+  }
+
+  // 2. Admin → full tenant. Admins act on a client via ?client=.
+  if (!credential) {
+    try {
+      await requireAdmin(req);
+    } catch (e) {
+      if (e instanceof UnauthorizedError) return { ok: false, res: jsonError(401, 'unauthorized') };
+      throw e;
+    }
     const clientId = new URL(req.url).searchParams.get('client');
     if (!clientId) return { ok: false, res: jsonError(400, 'missing_client') };
     if (!(await supplyChainEnabled(clientId))) {
       return { ok: false, res: jsonError(412, 'supply_chain_module_not_enabled') };
     }
     return { ok: true, access: { clientId } };
-  } catch (e) {
-    if (!(e instanceof UnauthorizedError)) throw e;
-    // not admin — fall through
-  }
-
-  // 2. Bucket-user.
-  let credential: { user_node_id: string; client_id: string };
-  try {
-    const r = await requireBucketUser(req);
-    credential = r.credential;
-  } catch (e) {
-    if (e instanceof UnauthorizedError) return { ok: false, res: jsonError(401, 'unauthorized') };
-    throw e;
   }
 
   const sql = db();

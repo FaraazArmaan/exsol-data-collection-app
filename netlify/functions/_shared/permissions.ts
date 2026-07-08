@@ -110,19 +110,36 @@ export async function getLevelMatrix(clientId: string, levelNumber: number): Pro
 }
 
 export async function requirePermission(req: Request, key: string): Promise<AnySession> {
-  // Try admin session first.
+  // Bucket-user session FIRST. Under admin impersonation ("view as client",
+  // admin-impersonate.ts) the browser carries BOTH cookies; resolving
+  // admin-first turned every authenticateForPermission endpoint into
+  // missing_client (400) because the workspace UI never passes ?client=.
+  // Workspace scope wins when a valid bu_session exists; an admin who needs
+  // cross-client admin scope must not carry one (exit impersonation first).
+  // A stale/invalid bu_session falls through to the admin path — but a
+  // VALID bucket session lacking `key` stays a 403 (no silent escalation to
+  // admin scope just because an admin cookie rides along).
+  const buToken = readBuCookieToken(req);
+  if (buToken) {
+    try {
+      return await resolveBucketUserSession(buToken, key);
+    } catch (e) {
+      if (!(e instanceof UnauthorizedError)) throw e;
+      // Stale/invalid bu cookie — fall through to the admin session.
+    }
+  }
+
   try {
     const a = await requireAdmin(req);
     return { kind: 'admin', admin: { id: a.admin.id, email: a.admin.email } };
   } catch (e) {
     if (!(e instanceof UnauthorizedError)) throw e;
-    // Not an admin session — fall through.
   }
 
-  // Try bucket-user session.
-  const buToken = readBuCookieToken(req);
-  if (!buToken) throw new UnauthorizedError('no_session');
+  throw new UnauthorizedError('no_session');
+}
 
+async function resolveBucketUserSession(buToken: string, key: string): Promise<BucketUserSession> {
   let claims: BucketUserClaims;
   try {
     claims = await verifyBucketUserSession(buToken);

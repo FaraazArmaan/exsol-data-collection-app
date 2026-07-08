@@ -78,7 +78,10 @@ describe('GET /api/public/menu/:slug', () => {
     expect(res.status).toBe(404);
   });
 
-  it('429 when the per-IP limit is exceeded (limiter wired into the handler)', async () => {
+  // 61 sequential handler calls = 61+ DB round-trips; the default 20s timeout
+  // needs <330ms/query and flakes whenever the shared Neon dev branch is slow
+  // (recurred 3x on 2026-07-08). Latency-tolerant timeout; assertion unchanged.
+  it('429 when the per-IP limit is exceeded (limiter wired into the handler)', { timeout: 120_000 }, async () => {
     const { slug } = await seedStorefrontClient();
     // Freeze time so all calls share one minute bucket regardless of DB latency.
     const now = vi.spyOn(Date, 'now').mockReturnValue(1_750_000_000_000);

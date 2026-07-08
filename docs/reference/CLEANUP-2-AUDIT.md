@@ -173,3 +173,27 @@ Note: suite grew from 1870 to 1904 during the round via the new characterization
 final count in the handoff. Flake note: tests/pos/pub-menu.test.ts rate-limit test timed out
 once during a degraded-DB window (~2s/query); passes in isolation and on rerun — timeout-bound
 tests are sensitive to shared-DB latency.
+
+## Post-round addendum: impersonation missing_client fix (2026-07-08, human-approved)
+
+During manual testing, the admin "view as client" feature (admin-impersonate.ts, landed on main
+@ 075a8ac hours before this branch) showed `missing_client (400)` on Product Manager, Team,
+Storefront settings, Analytics, and the dashboard cards. Reproduced IDENTICALLY on pre-cleanup
+main (side-by-side curl against both dev servers) — **pre-existing main bug, not this round**.
+
+Root cause: impersonation carries BOTH the admin `session` cookie and the minted Owner
+`bu_session`; three resolvers tried the admin session first and then required a `?client=` the
+workspace UI never sends: `_shared/permissions.ts requirePermission` (all
+authenticateForPermission endpoints), `_analytics-authz.ts`, `_supply-chain-authz.ts`
+(read path; the write path is bucket-only). Module endpoints (`require<Module>` →
+requireBucketUser) ignored the admin cookie, which is why the feature demoed fine on POS etc.
+
+Fix (BEHAVIOR CHANGE, human-approved onto this branch): a valid workspace session now wins;
+the admin path is unchanged when no bu_session rides along; a stale bu_session falls through
+to admin; a valid bucket session lacking the key stays 403 (no silent admin escalation).
+Deliberate semantic: while impersonating, dual-tier calls are scoped to the impersonated
+workspace — cross-client admin queries require exiting impersonation (pinned in tests).
+Contract: tests/integration/impersonation-session-priority.test.ts (8 cases, written red-first:
+the 2 behavior-change cases failed on the old code, the 6 unchanged-behavior cases passed
+before AND after). Live-verified under real impersonation of Papa's Saloon on the dev server;
+admin-console endpoints (requireAdmin-direct) unaffected.

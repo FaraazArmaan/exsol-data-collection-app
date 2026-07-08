@@ -61,9 +61,27 @@ export async function resolveAnalyticsAccess(
   req: Request,
   requiredBucket?: Bucket,
 ): Promise<{ ok: true; access: AnalyticsAccess } | { ok: false; res: Response }> {
-  // 1. Admin session → full tenant, all buckets. Admins act on a client via ?client=.
+  // 1. Bucket-user session FIRST — under admin impersonation ("view as
+  //    client") BOTH cookies are present and the workspace UI never passes
+  //    ?client=; admin-first turned these calls into missing_client (400).
+  //    Same priority flip as _shared/permissions.ts requirePermission.
+  let credential: { user_node_id: string; client_id: string } | null = null;
   try {
-    await requireAdmin(req);
+    const r = await requireBucketUser(req);
+    credential = r.credential;
+  } catch (e) {
+    if (!(e instanceof UnauthorizedError)) throw e;
+    // no/stale workspace session — fall through to the admin path.
+  }
+
+  // 2. Admin session → full tenant, all buckets. Admins act on a client via ?client=.
+  if (!credential) {
+    try {
+      await requireAdmin(req);
+    } catch (e) {
+      if (e instanceof UnauthorizedError) return { ok: false, res: jsonError(401, 'unauthorized') };
+      throw e;
+    }
     const clientId = new URL(req.url).searchParams.get('client');
     if (!clientId) return { ok: false, res: jsonError(400, 'missing_client') };
     if (!(await analyticsEnabled(clientId))) {
@@ -76,19 +94,6 @@ export async function resolveAnalyticsAccess(
         buckets: new Set(ALL_BUCKETS),
       },
     };
-  } catch (e) {
-    if (!(e instanceof UnauthorizedError)) throw e;
-    // not an admin session — fall through to bucket-user
-  }
-
-  // 2. Bucket-user session.
-  let credential: { user_node_id: string; client_id: string };
-  try {
-    const r = await requireBucketUser(req);
-    credential = r.credential;
-  } catch (e) {
-    if (e instanceof UnauthorizedError) return { ok: false, res: jsonError(401, 'unauthorized') };
-    throw e;
   }
 
   const sql = db();
