@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login + AMS Industry Standard Roadmap</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0a;
+      --bg2: #141414;
+      --bg3: #1e1e1e;
+      --bg4: #2a2a2a;
+      --line: #2e2e2e;
+      --line-soft: #242424;
+      --text: #f0ede8;
+      --muted: #9a9a9a;
+      --accent: #f97316;
+      --accent-dim: rgba(249, 115, 22, 0.14);
+      --green: #4ade80;
+      --green-dim: rgba(74, 222, 128, 0.12);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.1);
+      --red: #f87171;
+      --blue: #7ab8e8;
+      --ink: #050505;
+      --shadow: none;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); }
+
+    .shell {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 0 20px 56px;
+    }
+
+    .hero {
+      margin: 0 -20px 0;
+      padding: 58px 24px 42px;
+      text-align: center;
+      background: linear-gradient(160deg, #0f0f0f 0%, #1a1209 52%, #0a0a0a 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero h1 {
+      margin: 0 auto 14px;
+      max-width: 760px;
+      font-size: clamp(30px, 5vw, 50px);
+      font-weight: 900;
+      line-height: 1.13;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 620px;
+      margin: 0 auto 24px;
+      color: var(--muted);
+      font-size: clamp(14px, 2vw, 17px);
+    }
+
+    .hero-panel,
+    .card,
+    .milestone,
+    .decision,
+    .risk-row,
+    .handoff-box,
+    .status-board,
+    .flow-card {
+      border: 1px solid var(--line);
+      background: rgba(18, 25, 35, 0.88);
+      box-shadow: var(--shadow);
+      border-radius: 14px;
+    }
+
+    .hero-panel {
+      max-width: 760px;
+      margin: 28px auto 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      align-content: start;
+      border: 0;
+      background: transparent;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 16px 0 0;
+    }
+
+    .badge,
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(249, 115, 22, 0.24);
+      background: var(--accent-dim);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      background: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .dot.green { background: var(--green); }
+    .dot.amber { background: var(--amber); }
+    .dot.red { background: var(--red); }
+    .dot.blue { background: var(--blue); }
+
+    .hero-metric {
+      display: block;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--bg3);
+      border-radius: 14px;
+      text-align: left;
+    }
+
+    .metric-num {
+      width: 42px;
+      height: 42px;
+      margin-bottom: 12px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #000;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .hero-metric strong { display: block; margin-bottom: 4px; }
+    .hero-metric span { color: var(--muted); font-size: 13px; }
+
+    .section {
+      padding: 56px 0;
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: clamp(21px, 3vw, 28px);
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .section-lead {
+      color: var(--muted);
+      max-width: 720px;
+      margin: 0 0 24px;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .grid .card:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+
+    .card {
+      padding: 18px;
+      min-height: 100%;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .card p,
+    .card li,
+    .milestone p,
+    .milestone li,
+    .risk-row p {
+      color: var(--muted);
+    }
+
+    .card ul,
+    .milestone ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      padding: 22px;
+      margin: 36px 0 0;
+      background: var(--bg2);
+      border-color: rgba(249, 115, 22, 0.22);
+    }
+
+    .decision h2 { margin-top: 0; }
+
+    .path-box {
+      display: grid;
+      gap: 10px;
+    }
+
+    code,
+    pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid var(--line-soft);
+      background: #111;
+      border-radius: 5px;
+    }
+
+    pre {
+      margin: 10px 0 0;
+      overflow: auto;
+      color: #e8e1d8;
+      background: #050505;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .flow-card {
+      overflow: hidden;
+      background: var(--bg2);
+    }
+
+    .flow-card svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .status-board {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      background: var(--line);
+    }
+
+    .status-cell {
+      background: var(--bg2);
+      padding: 13px 16px;
+      min-height: auto;
+    }
+
+    .status-cell strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .status-cell span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 0;
+      counter-reset: milestone;
+    }
+
+    .milestone {
+      position: relative;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 18px;
+      padding: 34px 0;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
+    }
+
+    .milestone:last-child { border-bottom: 0; }
+
+    .milestone-number {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      justify-items: center;
+    }
+
+    .milestone-number .num {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--accent);
+      border: 0;
+      color: #000;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .milestone h3 {
+      margin: 0 0 6px;
+      font-size: clamp(19px, 3vw, 24px);
+      font-weight: 850;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--bg2);
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      align-items: start;
+      color: var(--muted);
+    }
+
+    .box {
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--line);
+      background: #111;
+      border-radius: 6px;
+      margin-top: 2px;
+    }
+
+    .box.done {
+      background: var(--green);
+      border-color: var(--green);
+      position: relative;
+    }
+
+    .box.done::after {
+      content: "";
+      width: 9px;
+      height: 5px;
+      border-left: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      transform: rotate(-45deg);
+      position: absolute;
+      left: 5px;
+      top: 5px;
+    }
+
+    .risk-table {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .risk-row {
+      display: grid;
+      grid-template-columns: 170px 1fr 1fr;
+      gap: 14px;
+      padding: 14px 16px;
+      align-items: start;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      background: var(--bg2);
+      box-shadow: none;
+    }
+
+    .risk-row:last-child { border-bottom: 0; }
+
+    .risk-row strong {
+      color: var(--text);
+    }
+
+    .handoff-box {
+      padding: 18px;
+      background: var(--bg2);
+    }
+
+    .handoff-box textarea {
+      width: 100%;
+      min-height: 320px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #050505;
+      color: #e8e1d8;
+      padding: 14px;
+      font: 13px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-dim);
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: var(--muted);
+    }
+
+    .print-note {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .decision,
+      .grid,
+      .grid.two {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .status-board {
+        grid-template-columns: 1fr;
+      }
+
+      .milestone,
+      .risk-row {
+        grid-template-columns: 1fr;
+      }
+
+      .milestone-number {
+        justify-items: start;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+      }
+    }
+
+    @media print {
+      body { background: #fff; color: #111827; }
+      .hero-panel, .card, .milestone, .decision, .risk-row, .handoff-box, .status-board, .flow-card {
+        box-shadow: none;
+      }
+      .shell { max-width: 100%; padding: 20px; }
+      .badge, .status-pill, code, pre, textarea { border-color: #9ca3af; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="badge-row">
+          <span class="badge"><span class="dot blue"></span>Roadmap artifact</span>
+          <span class="badge"><span class="dot amber"></span>Status: not started</span>
+          <span class="badge"><span class="dot green"></span>Target: industry standard auth + AMS</span>
+        </div>
+        <h1>Login + AMS Industry Standard Roadmap</h1>
+        <p>
+          A click-by-click implementation plan for hardening ExSol's authentication,
+          workspace access, admin console, and impersonation flows. This file is the
+          living checklist for the Login+AMS terminal. It should be updated after every
+          milestone before the Main integration handoff is sent.
+        </p>
+        <div class="badge-row">
+          <span class="badge">Created: 2026-07-09</span>
+          <span class="badge">Owner terminal: Login+AMS hardening</span>
+          <span class="badge">Integration: human/Main chat pushes only</span>
+        </div>
+      </div>
+
+      <aside class="hero-panel" aria-label="Roadmap summary">
+        <div class="hero-metric">
+          <div class="metric-num">10</div>
+          <div>
+            <strong>Milestones</strong>
+            <span>From baseline audit to final full-suite handoff.</span>
+          </div>
+        </div>
+        <div class="hero-metric">
+          <div class="metric-num">4</div>
+          <div>
+            <strong>High-risk areas</strong>
+            <span>Session revocation, MFA, impersonation audit, temp-password replacement.</span>
+          </div>
+        </div>
+        <div class="hero-metric">
+          <div class="metric-num">1</div>
+          <div>
+            <strong>Worktree created</strong>
+            <span><code>ExSol-Login-AMS-Hardening-WT</code> on <code>feat/login-ams-hardening-iso</code>.</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="decision">
+      <div>
+        <h2>Worktree Decision</h2>
+        <p>
+          Do not continue Login+AMS hardening inside
+          <code>worktrees/ExSol-Login-AMS-WT</code>. That worktree is currently
+          <code>feat/hr-depth-iso</code> and should be preserved as HR/stale-branch
+          context unless we explicitly rebase or retire it later.
+        </p>
+        <p>
+          Create a new dedicated worktree from current <code>main</code> for this roadmap.
+          The branch should be isolated and terminal-owned:
+          <code>feat/login-ams-hardening-iso</code>.
+        </p>
+      </div>
+      <div class="path-box">
+        <strong>Click-by-click terminal setup</strong>
+        <pre><code>cd "/Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App"
+git status --short
+git branch --show-current
+git worktree add "worktrees/ExSol-Login-AMS-Hardening-WT" -b feat/login-ams-hardening-iso main
+cd "worktrees/ExSol-Login-AMS-Hardening-WT"
+git status --short
+git branch --show-current
+npm run typecheck
+npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test.ts tests/integration/permissions-middleware.test.ts</code></pre>
+        <div class="note">
+          If schema is needed, stop and ask the human coordinator for migration number allocation.
+          Do not invent migration numbers.
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Current System Snapshot</h2>
+      <p class="section-lead">
+        This is the baseline this roadmap starts from. The system is already stronger than
+        a basic MVP, but it still misses several controls expected in mature SaaS auth/admin.
+      </p>
+      <div class="grid">
+        <article class="card">
+          <h3>Already strong</h3>
+          <ul>
+            <li>Separate admin and workspace-user session cookies.</li>
+            <li>Argon2 password hashing with dummy verify for timing equalization.</li>
+            <li>Google sign-in is strict-binding only, no auto-provisioning.</li>
+            <li>DB-refetched permissions and L1 Owner bypass.</li>
+            <li>Cross-client and subtree authorization helpers.</li>
+            <li>Integration tests cover many auth and AMS edge cases.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Below industry bar</h3>
+          <ul>
+            <li>No MFA or WebAuthn.</li>
+            <li>No server-side session revocation.</li>
+            <li>No CSP/HSTS/frame security header block.</li>
+            <li>Temporary plaintext passwords are stored until revealed or changed.</li>
+            <li>Admin impersonation does not carry admin attribution into every downstream write.</li>
+            <li>Platform admins are not least-privilege RBAC actors yet.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Roadmap rule</h3>
+          <p>
+            Each milestone should land as one thematic commit. After each milestone:
+            update this HTML checklist, run targeted tests, run typecheck, and emit the
+            house handoff for the Main integration chat. The human integrates and pushes.
+          </p>
+          <p>
+            Code economy is mandatory: think before coding. If the clear implementation is
+            10-20 lines, do not write 30-50. Keep each change isolated to the owning surface
+            so a manual edit cannot crash an unrelated module or site section.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Security Flow Target</h2>
+      <p class="section-lead">
+        The desired endpoint behavior after the roadmap is complete. Every protected mutation
+        should pass through these layers in a predictable order.
+      </p>
+      <div class="flow-card">
+        <svg viewBox="0 0 1180 310" role="img" aria-label="Target auth and AMS security flow">
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop offset="0" stop-color="#f97316" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#fbbf24" stop-opacity="0.9"/>
+            </linearGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+          <rect width="1180" height="310" fill="#141414"/>
+          <text x="38" y="45" fill="#f0ede8" font-size="24" font-weight="800">Target request chain</text>
+          <text x="38" y="72" fill="#9a9a9a" font-size="14">Cookie request moves left to right. The database remains authority for identity, permissions, and revocation.</text>
+
+          <g filter="url(#shadow)">
+            <rect x="38" y="112" width="150" height="104" rx="8" fill="#17212d" stroke="#2a394a"/>
+            <text x="113" y="145" fill="#eef4fb" text-anchor="middle" font-size="15" font-weight="700">Origin + CSRF</text>
+            <text x="113" y="171" fill="#9fb0c2" text-anchor="middle" font-size="12">mutating endpoints</text>
+            <text x="113" y="190" fill="#9fb0c2" text-anchor="middle" font-size="12">same-site proof</text>
+
+            <rect x="220" y="112" width="150" height="104" rx="8" fill="#17212d" stroke="#2a394a"/>
+            <text x="295" y="145" fill="#eef4fb" text-anchor="middle" font-size="15" font-weight="700">JWT verify</text>
+            <text x="295" y="171" fill="#9fb0c2" text-anchor="middle" font-size="12">admin or bucket</text>
+            <text x="295" y="190" fill="#9fb0c2" text-anchor="middle" font-size="12">realm enforced</text>
+
+            <rect x="402" y="112" width="150" height="104" rx="8" fill="#17212d" stroke="#2a394a"/>
+            <text x="477" y="145" fill="#eef4fb" text-anchor="middle" font-size="15" font-weight="700">Session row</text>
+            <text x="477" y="171" fill="#9fb0c2" text-anchor="middle" font-size="12">active jti</text>
+            <text x="477" y="190" fill="#9fb0c2" text-anchor="middle" font-size="12">revocation check</text>
+
+            <rect x="584" y="112" width="150" height="104" rx="8" fill="#17212d" stroke="#2a394a"/>
+            <text x="659" y="145" fill="#eef4fb" text-anchor="middle" font-size="15" font-weight="700">MFA state</text>
+            <text x="659" y="171" fill="#9fb0c2" text-anchor="middle" font-size="12">admin required</text>
+            <text x="659" y="190" fill="#9fb0c2" text-anchor="middle" font-size="12">workspace optional</text>
+
+            <rect x="766" y="112" width="150" height="104" rx="8" fill="#17212d" stroke="#2a394a"/>
+            <text x="841" y="145" fill="#eef4fb" text-anchor="middle" font-size="15" font-weight="700">Tenant + perms</text>
+            <text x="841" y="171" fill="#9fb0c2" text-anchor="middle" font-size="12">enable gate</text>
+            <text x="841" y="190" fill="#9fb0c2" text-anchor="middle" font-size="12">matrix + subtree</text>
+
+            <rect x="948" y="112" width="190" height="104" rx="8" fill="url(#g1)" stroke="#f97316"/>
+            <text x="1043" y="145" fill="#050505" text-anchor="middle" font-size="15" font-weight="800">Audit + action</text>
+            <text x="1043" y="171" fill="#050505" text-anchor="middle" font-size="12">actor and impersonator</text>
+            <text x="1043" y="190" fill="#050505" text-anchor="middle" font-size="12">then business write</text>
+          </g>
+
+          <g stroke="#f97316" stroke-width="2" fill="none" marker-end="url(#arrow)">
+            <path d="M188 164 L220 164"/>
+            <path d="M370 164 L402 164"/>
+            <path d="M552 164 L584 164"/>
+            <path d="M734 164 L766 164"/>
+            <path d="M916 164 L948 164"/>
+          </g>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#f97316"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Milestone Status Board</h2>
+      <p class="section-lead">
+        Update these cells after each milestone. Use only: Not started, In progress,
+        Handoff ready, Integrated, Blocked.
+      </p>
+      <div class="status-board">
+        <div class="status-cell"><strong>M0 Roadmap</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M1 Baseline</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M3 Revocation</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M4 MFA</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M5 Impersonation</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M6 Invite/reset tokens</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M7 Admin RBAC</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M8 Lifecycle</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M9 Final hardening</strong><span>Not started</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Implementation Timeline</h2>
+      <p class="section-lead">
+        This is the working checklist. Every milestone has a target output, files to inspect,
+        expected tests, and a Main integration handoff point.
+      </p>
+
+      <div class="timeline">
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M0</div>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
+          </div>
+          <div>
+            <h3>Roadmap artifact</h3>
+            <p>
+              Create this living HTML roadmap, decide the worktree strategy, and make the future
+              milestone protocol explicit.
+            </p>
+            <div class="meta-row">
+              <span class="badge">No migration</span>
+              <span class="badge">Docs only</span>
+              <span class="badge">Integration risk: low</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box done"></span><span>Create standalone HTML file in <code>docs/</code>.</span></div>
+              <div class="check"><span class="box done"></span><span>Record decision to use a new Login+AMS hardening worktree.</span></div>
+              <div class="check"><span class="box done"></span><span>Record milestone update and Main handoff protocol.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M1</div>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
+          </div>
+          <div>
+            <h3>Baseline audit and new worktree</h3>
+            <p>
+              Create the dedicated worktree from current main. Build a read-only audit of every
+              Login+AMS endpoint and UI flow before editing code.
+            </p>
+            <div class="meta-row">
+              <span class="badge">No migration expected</span>
+              <span class="badge">Commit: docs/audit only</span>
+              <span class="badge">Main handoff after audit</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box done"></span><span>Create <code>worktrees/ExSol-Login-AMS-Hardening-WT</code> from <code>main</code>.</span></div>
+              <div class="check"><span class="box done"></span><span>Inventory endpoints: <code>auth-*</code>, <code>login</code>, <code>u-*</code>, <code>admin-*</code>, <code>client-*</code>, <code>user-node*</code>, <code>workspace-export</code>.</span></div>
+              <div class="check"><span class="box done"></span><span>Inventory UI flows: admin login, workspace login, access levels, team management, reset, impersonation, export.</span></div>
+              <div class="check"><span class="box done"></span><span>Write <code>docs/login-ams-hardening-audit.md</code> with risk-ranked findings.</span></div>
+              <div class="check"><span class="box done"></span><span>Run typecheck and targeted auth/AMS tests.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M2</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Security headers and CSRF/origin guard</h3>
+            <p>
+              Add response headers and a reusable same-site mutation guard. This is the cheapest
+              high-signal move toward industry standard web security.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Likely no migration</span>
+              <span class="badge">Files: netlify.toml, _shared security helper</span>
+              <span class="badge">Risk: auth-wide behavior</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add <code>[[headers]]</code> for CSP, HSTS, frame-ancestors, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.</span></div>
+              <div class="check"><span class="box"></span><span>Create <code>netlify/functions/_shared/csrf.ts</code> or equivalent origin guard.</span></div>
+              <div class="check"><span class="box"></span><span>Apply guard to cookie-authenticated mutating endpoints first: admin team, client settings, user nodes, credentials, impersonation, access levels.</span></div>
+              <div class="check"><span class="box"></span><span>Add tests for allowed same-origin POST and rejected cross-origin POST.</span></div>
+              <div class="check"><span class="box"></span><span>Browser smoke: login, team edit, access-level save, impersonation.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M3</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Server-side session revocation</h3>
+            <p>
+              Move from stateless logout-only cookies to revocable sessions. Tokens may still be JWTs,
+              but a database session row becomes the authority for active status.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration required</span>
+              <span class="badge">Ask coordinator first</span>
+              <span class="badge">Risk: high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add admin and bucket-user session tables, or a shared sessions table with realm column.</span></div>
+              <div class="check"><span class="box"></span><span>Add <code>jti</code> and realm metadata to minted JWTs.</span></div>
+              <div class="check"><span class="box"></span><span>Verify active session in <code>requireAdmin</code> and <code>requireBucketUser</code>.</span></div>
+              <div class="check"><span class="box"></span><span>Make logout revoke the current session row before clearing cookie.</span></div>
+              <div class="check"><span class="box"></span><span>Add "sign out all sessions" endpoints for admin self and workspace user account.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: revoked token fails, current session refresh works, stale/invalid behavior remains stable.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M4</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Admin MFA first, workspace MFA optional</h3>
+            <p>
+              Add MFA to the admin realm before broader workspace rollout. Prefer WebAuthn if practical;
+              TOTP plus recovery codes is acceptable if it fits the current stack faster.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration required</span>
+              <span class="badge">Admin security priority</span>
+              <span class="badge">Risk: high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Choose implementation: WebAuthn preferred, TOTP acceptable.</span></div>
+              <div class="check"><span class="box"></span><span>Add enrollment, verify challenge, disable, and recovery-code storage.</span></div>
+              <div class="check"><span class="box"></span><span>Split login into primary credential verified -> MFA challenge -> session minted.</span></div>
+              <div class="check"><span class="box"></span><span>Add bootstrap/admin policy: require MFA for platform admins after enrollment grace period.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: missing MFA cannot mint full session, recovery code one-time use, disabled MFA path audited.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M5</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Impersonation attribution hardening</h3>
+            <p>
+              Keep the useful "view as client" flow, but make every impersonated write show both
+              the workspace actor and the real platform admin who initiated impersonation.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration likely</span>
+              <span class="badge">Audit-sensitive</span>
+              <span class="badge">Risk: high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add impersonation claims or session metadata: <code>impersonated_by_admin_id</code>, started_at, client_id.</span></div>
+              <div class="check"><span class="box"></span><span>Extend audit helper and audit table if needed to store impersonator explicitly.</span></div>
+              <div class="check"><span class="box"></span><span>Require a reason for impersonation when an admin starts the flow.</span></div>
+              <div class="check"><span class="box"></span><span>Add timeout and exit behavior that revokes the impersonated session row.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: downstream module write includes impersonator metadata in audit row.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M6</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Replace plaintext temp passwords with invite/reset tokens</h3>
+            <p>
+              Remove the biggest credential-handling debt. Admins should issue expiring links,
+              not store recoverable temporary passwords.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration required</span>
+              <span class="badge">Credential data risk</span>
+              <span class="badge">Risk: high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add hashed invite/reset token table with expiry, single-use status, actor, client, user_node.</span></div>
+              <div class="check"><span class="box"></span><span>Replace <code>temp_password_plain</code> reveal flow with create-link and copy-once link UI.</span></div>
+              <div class="check"><span class="box"></span><span>Add public set-password page for valid token; unknown 404, expired/used 410.</span></div>
+              <div class="check"><span class="box"></span><span>Clear or ignore old plaintext temp password fields; destructive drop waits for a later migration.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: token one-time use, expiry, wrong client denied, old reset request compatibility.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M7</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Platform admin RBAC</h3>
+            <p>
+              Split platform operators by privilege. "Any admin can do everything" is not an
+              industry-standard model once clients and production data exist.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration required</span>
+              <span class="badge">AMS-wide</span>
+              <span class="badge">Risk: high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add admin roles: Owner, Support, Billing, Read-only, Security admin.</span></div>
+              <div class="check"><span class="box"></span><span>Gate admin management, impersonation, export, client delete, product enablement, permission edits.</span></div>
+              <div class="check"><span class="box"></span><span>Update Sidebar and page affordances to hide actions that the admin cannot perform.</span></div>
+              <div class="check"><span class="box"></span><span>Protect bootstrap/admin-owner operations from lockout.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: support cannot manage admins, read-only cannot mutate, owner can recover.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M8</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>Account lifecycle and password policy</h3>
+            <p>
+              Add disabled/locked states and stronger lifecycle metadata for both admins and
+              workspace users.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Migration likely</span>
+              <span class="badge">Auth behavior</span>
+              <span class="badge">Risk: medium-high</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add disabled, locked_until, password_changed_at, last_failed_login_at where needed.</span></div>
+              <div class="check"><span class="box"></span><span>Login rejects disabled accounts with non-enumerating error semantics.</span></div>
+              <div class="check"><span class="box"></span><span>Add admin-controlled disable/enable flows for workspace credentials.</span></div>
+              <div class="check"><span class="box"></span><span>Add password strength rules and optional breached-password seam if network/provider is approved later.</span></div>
+              <div class="check"><span class="box"></span><span>Tests: disabled cannot login, active sessions revoke on disable, audit rows written.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <div class="milestone-number">
+            <div class="num">M9</div>
+            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+          </div>
+          <div>
+            <h3>AMS least-privilege UX, docs, and final verification</h3>
+            <p>
+              Make dangerous operations visible, documented, and test-backed. Finish with full
+              verification and a browser smoke pass.
+            </p>
+            <div class="meta-row">
+              <span class="badge">Docs/reference as needed</span>
+              <span class="badge">Real browser required</span>
+              <span class="badge">Risk: medium</span>
+            </div>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>Add warnings for high-risk grants: user delete, settings edit, exports, impersonation.</span></div>
+              <div class="check"><span class="box"></span><span>Make L1 Owner bypass clear in Access Levels UI, without pretending it is editable.</span></div>
+              <div class="check"><span class="box"></span><span>Regenerate <code>docs/reference</code> if endpoints, manifests, or migrations changed.</span></div>
+              <div class="check"><span class="box"></span><span>Run <code>npm run typecheck</code> and full <code>npm test</code>.</span></div>
+              <div class="check"><span class="box"></span><span>Browser smoke: admin login, workspace login, MFA, impersonation, access levels, team, reset/invite, logout all.</span></div>
+              <div class="check"><span class="box"></span><span>Emit final Main integration handoff with migration order and risk notes.</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Risk Register</h2>
+      <p class="section-lead">
+        Keep this register live. If a risk becomes real, update the mitigation before the
+        milestone handoff.
+      </p>
+      <div class="risk-table">
+        <div class="risk-row">
+          <strong>High: session migration</strong>
+          <p>Adding revocation changes every protected request path.</p>
+          <p>Mitigate with characterization tests before refactor and staged helpers that preserve status codes.</p>
+        </div>
+        <div class="risk-row">
+          <strong>High: impersonation attribution</strong>
+          <p>Existing audit rows may only identify the impersonated Owner session.</p>
+          <p>Mitigate by extending the audit helper centrally and testing one representative downstream module write.</p>
+        </div>
+        <div class="risk-row">
+          <strong>High: MFA lockout</strong>
+          <p>Bad MFA rollout can lock out the bootstrap/admin owner.</p>
+          <p>Mitigate with recovery codes, bootstrap bypass only for enrollment recovery, and explicit tests.</p>
+        </div>
+        <div class="risk-row">
+          <strong>Medium: CSP breakage</strong>
+          <p>CSP can break Google Sign-In, inline styles, blob URLs, images, and local dev.</p>
+          <p>Mitigate with report-only locally first, then narrow production policy after browser smoke.</p>
+        </div>
+        <div class="risk-row">
+          <strong>Medium: stale HR branch</strong>
+          <p>The old Login+AMS worktree is really HR depth and predates current main cleanup.</p>
+          <p>Mitigate by creating the new hardening worktree from main and leaving HR untouched unless explicitly resumed.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Milestone Handoff Template</h2>
+      <p class="section-lead">
+        At the end of every milestone, update this HTML file, commit the milestone, then provide
+        the Main integration chat a self-contained handoff in this shape.
+      </p>
+      <div class="handoff-box">
+        <textarea readonly>Work done. &lt;one-paragraph summary of what shipped&gt;
+
+Worktree: /Users/faraaz/Desktop/Faraaz Folder/Obsidian/MyBrain/ExSol/Code/Development/ExSol Data Collection App/worktrees/ExSol-Login-AMS-Hardening-WT
+Branch: feat/login-ams-hardening-iso @ &lt;short SHA&gt;
+Migrations used: &lt;none or allocated numbers&gt;
+New/changed functions and routes:
+- &lt;list endpoint files and paths&gt;
+New/changed env vars:
+- &lt;list or none&gt;
+Docs regenerated:
+- &lt;yes/no; docs/reference if changed&gt;
+Tests run:
+- npm run typecheck
+- npm test -- &lt;targeted files&gt;
+- npm test &lt;if full suite was run&gt;
+Summary:
+- &lt;what changed&gt;
+Gotchas / review priority:
+- &lt;auth/migration/session/security risks, merge ordering, browser checks&gt;
+
+Suggested next prompt for the Main chat:
+Review and integrate the Login+AMS milestone from branch feat/login-ams-hardening-iso. Start with auth/session/security files, then AMS UI, then tests. Do not push until the human says so. After merge, run npm run typecheck, full npm test, and npm run docs:reference if endpoints/manifests/migrations changed.</textarea>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Update Log</h2>
+      <div class="grid two">
+        <article class="card">
+          <h3>2026-07-09</h3>
+          <p>
+            Roadmap created. Worktree decision recorded: leave the existing HR-oriented
+            <code>ExSol-Login-AMS-WT</code> alone and create a new Login+AMS hardening
+            worktree from current <code>main</code>.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Next update</h3>
+          <p>
+            After M1, mark the Baseline milestone as Handoff ready or Integrated, add the
+            audit document path, and record targeted tests run.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M1</h3>
+          <p>
+            Created <code>ExSol-Login-AMS-Hardening-WT</code> from current <code>main</code>,
+            carried roadmap/global-rule docs into the branch, and added
+            <code>docs/login-ams-hardening-audit.md</code>. Verification: typecheck green;
+            targeted auth/AMS suite green, 5 files and 72 tests.
+          </p>
+        </article>
+      </div>
+      <p class="print-note">
+        Maintenance rule: after each milestone, update the status board, the relevant checklist
+        boxes, the risk register if needed, and the update log before issuing the handoff.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

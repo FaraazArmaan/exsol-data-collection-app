@@ -9,6 +9,15 @@ This file covers the conventions you need to navigate and extend the repo. Detai
 `npm run typecheck` AND the FULL `npm test` suite, both green. Plus a real-browser check for
 anything with a UI — jsdom cannot catch dark-theme CSS violations or Netlify routing mistakes.
 
+## Code economy and isolation
+
+Think before coding. If a clear implementation takes 10-20 lines, do not write 30-50 lines of
+scaffolding, indirection, or branch noise. Keep changes compact, readable, typed, tested, and
+aligned with the local pattern.
+
+Keep edits isolated to the owning file, helper, module, or surface. Do not introduce broad coupling
+where a manual change in one section can crash an unrelated module, section, or public site.
+
 ## Repo layout
 
 - `src/modules/<key>/` — one folder per module; canonical shape in

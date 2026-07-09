@@ -1,10 +1,10 @@
-# ExSol — project conventions for Claude Code sessions
+# ExSol — project conventions for Codex sessions
 
-This file is the compact law. The detail lives in `.claude/rules/` ({module-pattern,
+This file is the compact law. The detail lives in `.Codex/rules/` ({module-pattern,
 api-conventions, testing, migrations}.md), the generated `docs/reference/` (endpoints,
 permissions, schema — regenerate with `npm run docs:reference`; CONFORMANCE.md tracks pattern
 debt), and CONTRIBUTING.md. Slash commands: /new-module, /handoff, /hostile-review.
-Iron rule 7 is ENFORCED: a PreToolUse hook (.claude/settings.json) blocks `git push`.
+Iron rule 7 is ENFORCED: a PreToolUse hook (.Codex/settings.json) blocks `git push`.
 
 ## Commands
 - Done = `npm run typecheck` AND the FULL vitest suite, both green. No exceptions.

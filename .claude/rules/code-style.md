@@ -5,6 +5,13 @@ to meet this bar; the worked examples cited are the reference implementations.
 
 ## Shape of logic
 
+- **Code economy is mandatory.** Think before coding. If the clear implementation is 10-20
+  lines, do not expand it into 30-50 lines of scaffolding, indirection, or branch noise. Smaller
+  is better only when it remains readable, typed, tested, and consistent with local patterns.
+- **Isolate blast radius.** Put changes in the file/module/helper that owns the concern. Avoid
+  broad shared abstractions or cross-module coupling unless they remove real 3+ copy duplication
+  and are covered by tests. A manual edit in one section must not be able to crash an unrelated
+  module or public surface.
 - **Guard clauses over nesting.** Validate → early-return, then the happy path at top level.
   Handlers follow: parse/validate (400s) → authz (handled by `require<Module>`) → ownership
   checks (404/409) → the actual work.
