@@ -48,6 +48,8 @@ interface AdminRow {
   password_hash: string | null;
   display_name: string;
   is_bootstrap: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 interface BUCredRow {
@@ -57,6 +59,8 @@ interface BUCredRow {
   email: string;
   password_hash: string;
   must_change_password: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 interface ClientRow {
@@ -92,13 +96,19 @@ export default async (req: Request, _ctx: Context) => {
 
   // Step 1: admin precedence.
   const adminRows = (await sql`
-    SELECT id, email, password_hash, display_name, is_bootstrap
+    SELECT id, email, password_hash, display_name, is_bootstrap, disabled_at, locked_until
     FROM public.admins WHERE email = ${parsed.data.email} LIMIT 1
   `) as AdminRow[];
   if (adminRows.length > 0) {
     const admin = adminRows[0]!;
     const ok = await verifyPassword(parsed.data.password, admin.password_hash);
     if (!ok) {
+      await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
+      await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+      return jsonError(401, 'unauthorized');
+    }
+    if (admin.disabled_at || (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now())) {
+      await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
       await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
       return jsonError(401, 'unauthorized');
     }
@@ -136,7 +146,8 @@ export default async (req: Request, _ctx: Context) => {
       return jsonError(401, 'unauthorized');
     }
     credRows = (await sql`
-      SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+      SELECT id, client_id, user_node_id, email, password_hash, must_change_password,
+             disabled_at, locked_until
       FROM public.user_node_credentials
       WHERE email = ${parsed.data.email} AND client_id = ${c[0]!.id}::uuid
       LIMIT 1
@@ -145,7 +156,8 @@ export default async (req: Request, _ctx: Context) => {
   } else {
     // Open lookup across ALL clients for this email.
     credRows = (await sql`
-      SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+      SELECT id, client_id, user_node_id, email, password_hash, must_change_password,
+             disabled_at, locked_until
       FROM public.user_node_credentials
       WHERE email = ${parsed.data.email}
       ORDER BY created_at
@@ -164,6 +176,11 @@ export default async (req: Request, _ctx: Context) => {
   const verified: BUCredRow[] = [];
   for (const cred of credRows) {
     if (await verifyPassword(parsed.data.password, cred.password_hash)) {
+      if (cred.disabled_at || (cred.locked_until && new Date(cred.locked_until).getTime() > Date.now())) {
+        await sql`UPDATE public.user_node_credentials SET last_failed_login_at = now() WHERE id = ${cred.id}::uuid`;
+        await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+        return jsonError(401, 'unauthorized');
+      }
       verified.push(cred);
     }
   }
@@ -249,13 +266,18 @@ async function handleGoogleLogin(
 
   // Step 1: admin precedence (admin always wins).
   const adminRows = (await sql`
-    SELECT id, email, display_name, is_bootstrap
+    SELECT id, email, display_name, is_bootstrap, disabled_at, locked_until
     FROM public.admins
     WHERE email = ${profile.email} OR google_sub = ${profile.sub}
     LIMIT 1
   `) as Array<Omit<AdminRow, 'password_hash'>>;
   if (adminRows.length > 0) {
     const admin = adminRows[0]!;
+    if (admin.disabled_at || (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now())) {
+      await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
+      await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
+      return jsonError(401, 'unauthorized');
+    }
     // First-bind only: never overwrite an existing google_sub.
     await sql`
       UPDATE public.admins
@@ -296,7 +318,7 @@ async function handleGoogleLogin(
     scopedClient = c[0]!;
     credRows = (await sql`
       SELECT id, client_id, user_node_id, email, password_hash,
-             must_change_password, google_sub
+             must_change_password, disabled_at, locked_until, google_sub
       FROM public.user_node_credentials
       WHERE client_id = ${scopedClient.id}::uuid
         AND (google_sub = ${profile.sub} OR email = ${profile.email})
@@ -305,7 +327,7 @@ async function handleGoogleLogin(
   } else {
     credRows = (await sql`
       SELECT id, client_id, user_node_id, email, password_hash,
-             must_change_password, google_sub
+             must_change_password, disabled_at, locked_until, google_sub
       FROM public.user_node_credentials
       WHERE google_sub = ${profile.sub} OR email = ${profile.email}
       ORDER BY created_at
@@ -314,6 +336,13 @@ async function handleGoogleLogin(
   }
 
   if (credRows.length === 0) {
+    await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+  const blockedCred = credRows.find((cred) =>
+    cred.disabled_at || (cred.locked_until && new Date(cred.locked_until).getTime() > Date.now()));
+  if (blockedCred) {
+    await sql`UPDATE public.user_node_credentials SET last_failed_login_at = now() WHERE id = ${blockedCred.id}::uuid`;
     await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
     return jsonError(401, 'unauthorized');
   }

@@ -16,6 +16,8 @@ export interface AdminRecord {
   display_name: string;
   is_bootstrap: boolean;
   role: AdminRole;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 export type AdminRole = 'owner' | 'support' | 'billing' | 'read_only' | 'security_admin';
@@ -42,6 +44,8 @@ export interface UserNodeCredentialRecord {
   user_node_id: string;
   email: string;
   must_change_password: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
   last_login_at: string | null;
   created_at: string;
 }
@@ -66,13 +70,17 @@ export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; 
   }
   const sql = db();
   const rows = (await sql`
-    SELECT id, email, display_name, is_bootstrap, role
+    SELECT id, email, display_name, is_bootstrap, role, disabled_at, locked_until
     FROM public.admins
     WHERE id = ${claims.sub}
     LIMIT 1
   `) as AdminRecord[];
   const admin = rows[0];
   if (!admin) throw new UnauthorizedError('admin_not_found');
+  if (admin.disabled_at) throw new UnauthorizedError('admin_disabled');
+  if (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now()) {
+    throw new UnauthorizedError('admin_locked');
+  }
   return { admin, claims };
 }
 
@@ -114,7 +122,7 @@ export async function requireBucketUser(req: Request): Promise<{
   const sql = db();
   const rows = (await sql`
     SELECT id, client_id, user_node_id, email,
-           must_change_password, last_login_at, created_at
+           must_change_password, disabled_at, locked_until, last_login_at, created_at
     FROM public.user_node_credentials
     WHERE user_node_id = ${claims.sub}::uuid
       AND client_id = ${claims.client_id}::uuid
@@ -122,6 +130,10 @@ export async function requireBucketUser(req: Request): Promise<{
   `) as UserNodeCredentialRecord[];
   const credential = rows[0];
   if (!credential) throw new UnauthorizedError('credential_not_found');
+  if (credential.disabled_at) throw new UnauthorizedError('credential_disabled');
+  if (credential.locked_until && new Date(credential.locked_until).getTime() > Date.now()) {
+    throw new UnauthorizedError('credential_locked');
+  }
   return { credential, claims };
 }
 

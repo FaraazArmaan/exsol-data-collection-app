@@ -15,6 +15,8 @@ interface AdminRow {
   email: string;
   display_name: string;
   is_bootstrap: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -63,13 +65,18 @@ export default async (req: Request, _ctx: Context) => {
   // Strict bind: only existing admins (by email OR google_sub) may sign in via Google.
   // No auto-provisioning. (Matches v1.1 strict-binding behaviour from c41247f.)
   const rows = (await sql`
-    SELECT id, email, display_name, is_bootstrap
+    SELECT id, email, display_name, is_bootstrap, disabled_at, locked_until
     FROM public.admins
     WHERE email = ${profile.email} OR google_sub = ${profile.sub}
     LIMIT 1
   `) as AdminRow[];
   const admin = rows[0];
   if (!admin) {
+    await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+  if (admin.disabled_at || (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now())) {
+    await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
     await logAttempt(sql, { email: profile.email, ip, outcome: 'failed' });
     return jsonError(401, 'unauthorized');
   }

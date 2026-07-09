@@ -26,6 +26,8 @@ interface CredentialRow {
   email: string;
   password_hash: string;
   must_change_password: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -56,7 +58,7 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const credRows = (await sql`
-    SELECT id, client_id, user_node_id, email, password_hash, must_change_password
+    SELECT id, client_id, user_node_id, email, password_hash, must_change_password, disabled_at, locked_until
     FROM public.user_node_credentials
     WHERE client_id = ${client.id}::uuid AND email = ${parsed.data.email}
     LIMIT 1
@@ -65,6 +67,12 @@ export default async (req: Request, _ctx: Context) => {
 
   const ok = await verifyPassword(parsed.data.password, credential?.password_hash ?? null);
   if (!ok || !credential) {
+    if (credential) await sql`UPDATE public.user_node_credentials SET last_failed_login_at = now() WHERE id = ${credential.id}::uuid`;
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+  if (credential.disabled_at || (credential.locked_until && new Date(credential.locked_until).getTime() > Date.now())) {
+    await sql`UPDATE public.user_node_credentials SET last_failed_login_at = now() WHERE id = ${credential.id}::uuid`;
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
     return jsonError(401, 'unauthorized');
   }

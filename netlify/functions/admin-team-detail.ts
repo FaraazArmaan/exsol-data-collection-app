@@ -3,15 +3,19 @@
 // (returns 409 `cannot_delete_self`).
 
 import type { Context } from '@netlify/functions';
+import { z } from 'zod';
 import { db } from './_shared/db';
 import { AdminCapabilityError, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { assertUuid } from './_shared/identifier';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
+import { revokeAllSessions } from './_shared/session';
+
+const PatchBody = z.object({ disabled: z.boolean() });
 
 export default async (req: Request, _ctx: Context) => {
-  if (req.method !== 'DELETE') return jsonError(405, 'method_not_allowed');
+  if (req.method !== 'DELETE' && req.method !== 'PATCH') return jsonError(405, 'method_not_allowed');
   const csrf = rejectCrossSiteMutation(req);
   if (csrf) return csrf;
 
@@ -28,10 +32,34 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, email, is_bootstrap FROM public.admins WHERE id = ${id} LIMIT 1
-  `) as { id: string; email: string; is_bootstrap: boolean }[];
+    SELECT id, email, is_bootstrap, disabled_at FROM public.admins WHERE id = ${id} LIMIT 1
+  `) as { id: string; email: string; is_bootstrap: boolean; disabled_at: string | null }[];
   const target = rows[0];
   if (!target) return jsonError(404, 'not_found');
+
+  if (req.method === 'PATCH') {
+    const parsed = PatchBody.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+    if (target.is_bootstrap) return jsonError(409, 'cannot_disable_bootstrap');
+    if (id === actor.admin.id) return jsonError(409, 'cannot_disable_self');
+    await sql`
+      UPDATE public.admins
+      SET disabled_at = CASE WHEN ${parsed.data.disabled}::boolean THEN COALESCE(disabled_at, now()) ELSE NULL END
+      WHERE id = ${id}::uuid
+    `;
+    if (parsed.data.disabled) {
+      await revokeAllSessions({ realm: 'admin', subjectId: id });
+    }
+    await logAudit(sql, {
+      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      op: parsed.data.disabled ? 'admin.disabled' : 'admin.enabled',
+      clientId: null,
+      targetType: 'admin',
+      targetId: id,
+      detail: { email: target.email },
+    });
+    return jsonOk({ ok: true, disabled: parsed.data.disabled });
+  }
 
   // Bootstrap-first ordering: when the bootstrap admin is also the actor,
   // the more specific "bootstrap" reason wins over "self" — matches the UI

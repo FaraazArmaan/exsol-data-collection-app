@@ -538,6 +538,65 @@ describe('user-node auth', () => {
     expect(expired.status).toBe(410);
   });
 
+  test('disabling a workspace credential revokes active sessions and blocks login until re-enabled', async () => {
+    const email = `un-disable-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'disable-me-1');
+    const buCookie = await bucketUserLogin(email, 'disable-me-1');
+
+    const disable = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ disabled: true }),
+      }),
+      CTX,
+    );
+    expect(disable.status).toBe(200);
+
+    const me = await uMeHandler(new Request('http://localhost/api/u-me', {
+      method: 'GET',
+      headers: { cookie: buCookie },
+    }), CTX);
+    expect(me.status).toBe(401);
+    const revoked = (await sql`
+      SELECT revoked_at FROM public.auth_sessions
+      WHERE realm = 'bucket_user'
+        AND subject_id = ${nodeId}::uuid
+        AND client_id = ${testClientId}::uuid
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { revoked_at: string | null }[];
+    expect(revoked[0]!.revoked_at).not.toBeNull();
+
+    const blockedLogin = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'disable-me-1' }),
+      }), CTX,
+    );
+    expect(blockedLogin.status).toBe(401);
+
+    const enable = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ disabled: false }),
+      }),
+      CTX,
+    );
+    expect(enable.status).toBe(200);
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+    const afterEnable = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'disable-me-1' }),
+      }), CTX,
+    );
+    expect(afterEnable.status).toBe(200);
+  });
+
   test('list user-nodes surfaces has_reset_request flag', async () => {
     const email = `un-forgot-list-${Date.now()}@example.com`;
     const nodeId = await createNodeWithLogin(email, 'list-flag-1');

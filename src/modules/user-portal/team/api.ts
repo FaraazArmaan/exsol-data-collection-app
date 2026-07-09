@@ -90,6 +90,12 @@ export const deleteCredential = (nodeId: string) =>
     { method: 'DELETE' },
   );
 
+export const setCredentialDisabled = (nodeId: string, disabled: boolean) =>
+  apiFetch<{ ok: true; disabled: boolean }>(
+    `/api/user-node-credential?node=${encodeURIComponent(nodeId)}`,
+    { method: 'PATCH', body: JSON.stringify({ disabled }) },
+  );
+
 // ─── Bulk operations ──────────────────────────────────────────────
 
 export const bulkInvite = (rows: BulkInviteRowPayload[]) =>

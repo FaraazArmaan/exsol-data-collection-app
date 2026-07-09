@@ -14,11 +14,13 @@ import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
 import { createCredentialToken, placeholderPassword } from './_shared/credential-tokens';
+import { revokeAllSessions } from './_shared/session';
 
 const ResetBody = z.union([
   z.object({ issue_link: z.literal(true) }),
   z.object({ temp_password: z.string().min(8).max(200) }),
 ]);
+const PatchBody = z.object({ disabled: z.boolean() });
 
 interface FullCredential {
   id: string;
@@ -30,6 +32,8 @@ interface FullCredential {
   last_login_at: string | null;
   has_password: boolean;
   has_google: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
   password_reset_requested_at: string | null;
 }
 
@@ -78,6 +82,7 @@ export default async (req: Request, _ctx: Context) => {
              temp_password_views_left, last_login_at,
              (password_hash IS NOT NULL) AS has_password,
              (google_sub IS NOT NULL)    AS has_google,
+             disabled_at, locked_until,
              password_reset_requested_at
       FROM public.user_node_credentials
       WHERE user_node_id = ${nodeId}::uuid LIMIT 1
@@ -91,6 +96,8 @@ export default async (req: Request, _ctx: Context) => {
         email: cred.email,
         has_password: cred.has_password,
         has_google: cred.has_google,
+        disabled_at: cred.disabled_at,
+        locked_until: cred.locked_until,
         must_change_password: cred.must_change_password,
         last_login_at: cred.last_login_at,
         password_reset_requested_at: cred.password_reset_requested_at,
@@ -132,6 +139,8 @@ export default async (req: Request, _ctx: Context) => {
       email: cred.email,
       has_password: cred.has_password,
       has_google: cred.has_google,
+      disabled_at: cred.disabled_at,
+      locked_until: cred.locked_until,
       must_change_password: cred.must_change_password,
       last_login_at: cred.last_login_at,
       password_reset_requested_at: cred.password_reset_requested_at,
@@ -222,7 +231,8 @@ export default async (req: Request, _ctx: Context) => {
               temp_password_plain = EXCLUDED.temp_password_plain,
               temp_password_views_left = 3,
               email = EXCLUDED.email,
-              password_reset_requested_at = NULL
+              password_reset_requested_at = NULL,
+              password_changed_at = now()
       `;
     } catch (e: unknown) {
       const code = (e as { code?: string })?.code;
@@ -238,6 +248,30 @@ export default async (req: Request, _ctx: Context) => {
       detail: { has_temp_password: true },
     });
     return jsonOk({ ok: true });
+  }
+
+  if (req.method === 'PATCH') {
+    const parsed = PatchBody.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+    const rows = (await sql`
+      UPDATE public.user_node_credentials
+      SET disabled_at = CASE WHEN ${parsed.data.disabled}::boolean THEN COALESCE(disabled_at, now()) ELSE NULL END
+      WHERE user_node_id = ${nodeId}::uuid
+      RETURNING id, client_id
+    `) as { id: string; client_id: string }[];
+    if (rows.length === 0) return jsonError(404, 'credential_not_found');
+    if (parsed.data.disabled) {
+      await revokeAllSessions({ realm: 'bucket_user', subjectId: nodeId, clientId: node.client_id });
+    }
+    await logAudit(sql, {
+      session,
+      op: parsed.data.disabled ? 'credential.disabled' : 'credential.enabled',
+      clientId: node.client_id,
+      targetType: 'user_node',
+      targetId: nodeId,
+      detail: {},
+    });
+    return jsonOk({ ok: true, disabled: parsed.data.disabled });
   }
 
   if (req.method === 'DELETE') {

@@ -19,6 +19,8 @@ interface AdminRow {
   password_hash: string | null;
   display_name: string;
   is_bootstrap: boolean;
+  disabled_at: string | null;
+  locked_until: string | null;
 }
 
 export default async (req: Request, _ctx: Context) => {
@@ -41,7 +43,7 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const rows = (await sql`
-    SELECT id, email, password_hash, display_name, is_bootstrap
+    SELECT id, email, password_hash, display_name, is_bootstrap, disabled_at, locked_until
     FROM public.admins
     WHERE email = ${parsed.data.email}
     LIMIT 1
@@ -55,6 +57,12 @@ export default async (req: Request, _ctx: Context) => {
   // account enumeration.
   const ok = await verifyPassword(parsed.data.password, admin?.password_hash ?? null);
   if (!ok || !admin) {
+    if (admin) await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
+    await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
+    return jsonError(401, 'unauthorized');
+  }
+  if (admin.disabled_at || (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now())) {
+    await sql`UPDATE public.admins SET last_failed_login_at = now() WHERE id = ${admin.id}::uuid`;
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
     return jsonError(401, 'unauthorized');
   }

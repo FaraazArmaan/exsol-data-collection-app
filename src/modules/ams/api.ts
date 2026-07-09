@@ -209,6 +209,8 @@ export interface UserNodeCredentialStatus {
   email?: string;
   has_password?: boolean;
   has_google?: boolean;
+  disabled_at?: string | null;
+  locked_until?: string | null;
   must_change_password?: boolean;
   last_login_at?: string | null;
   password_reset_requested_at?: string | null;
@@ -238,6 +240,12 @@ export const resetUserNodeCredential = (nodeId: string) =>
 
 export const deleteUserNodeCredential = (nodeId: string) =>
   apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
+
+export const setUserNodeCredentialDisabled = (nodeId: string, disabled: boolean) =>
+  apiFetch<{ ok: true; disabled: boolean }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ disabled }),
+  });
 
 // ─── v3: bulk operations ──────────────────────────────────────────
 

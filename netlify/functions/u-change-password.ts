@@ -50,7 +50,8 @@ export default async (req: Request, _ctx: Context) => {
     SET password_hash = ${newHash},
         must_change_password = false,
         temp_password_plain = NULL,
-        temp_password_views_left = NULL
+        temp_password_views_left = NULL,
+        password_changed_at = now()
     WHERE id = ${actor.credential.id}
   `;
 

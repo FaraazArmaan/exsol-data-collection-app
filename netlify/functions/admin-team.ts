@@ -69,8 +69,8 @@ export default async (req: Request, _ctx: Context) => {
 
     try {
       const inserted = (await sql`
-        INSERT INTO public.admins (email, display_name, password_hash, is_bootstrap, role)
-        VALUES (${parsed.data.email}, ${parsed.data.display_name}, ${passwordHash}, false, ${parsed.data.role ?? 'support'})
+        INSERT INTO public.admins (email, display_name, password_hash, is_bootstrap, role, password_changed_at)
+        VALUES (${parsed.data.email}, ${parsed.data.display_name}, ${passwordHash}, false, ${parsed.data.role ?? 'support'}, ${passwordHash ? new Date().toISOString() : null}::timestamptz)
         RETURNING id, email, display_name, is_bootstrap, role,
                   (password_hash IS NOT NULL) AS has_password,
                   (google_sub IS NOT NULL) AS has_google,

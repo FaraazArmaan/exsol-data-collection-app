@@ -282,10 +282,11 @@ async function maybeCreateCredential(
     await sql`
       INSERT INTO public.user_node_credentials (
         client_id, user_node_id, email, password_hash, must_change_password,
-        temp_password_plain, temp_password_views_left, created_by_admin, created_by_user_node
+        temp_password_plain, temp_password_views_left, password_changed_at,
+        created_by_admin, created_by_user_node
       ) VALUES (
         ${clientId}::uuid, ${node.id as string}::uuid, ${data.email},
-        ${pwdHash}, true, ${data.temp_password}, 3, ${adminId}::uuid, ${creatorUserNodeId}::uuid
+        ${pwdHash}, true, ${data.temp_password}, 3, now(), ${adminId}::uuid, ${creatorUserNodeId}::uuid
       )
     `;
   } catch (e: unknown) {

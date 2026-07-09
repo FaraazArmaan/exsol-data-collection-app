@@ -18,6 +18,7 @@ import loginHandler from '../../netlify/functions/auth-login';
 import adminTeamHandler from '../../netlify/functions/admin-team';
 import adminTeamDetailHandler from '../../netlify/functions/admin-team-detail';
 import adminSelfHandler from '../../netlify/functions/admin-self';
+import authMeHandler from '../../netlify/functions/auth-me';
 import { assertLastAudit } from '../helpers/audit';
 
 const BOOTSTRAP_EMAIL = 'admin-team-bootstrap-test@example.com';
@@ -85,10 +86,11 @@ describe('admin-team endpoints', () => {
     });
   }
 
-  function detailReq(method: 'DELETE', id: string, cookie: string): Request {
+  function detailReq(method: 'DELETE' | 'PATCH', id: string, cookie: string, body?: unknown): Request {
     return new Request(`http://localhost/api/admin-team-detail?id=${id}`, {
       method,
-      headers: { cookie },
+      headers: { 'Content-Type': 'application/json', cookie },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   }
 
@@ -263,6 +265,46 @@ describe('admin-team endpoints', () => {
       CTX,
     );
     expect(securityCreate.status).toBe(201);
+  });
+
+  test('disabling an admin revokes active sessions and blocks login', async () => {
+    const email = `admin-team-disable-${Date.now()}@example.com`;
+    const password = 'disable-pass-1';
+    createdEmails.push(email);
+    const create = await adminTeamHandler(
+      teamReq('POST', bootstrapCookie, { email, display_name: 'Disable Me', password, role: 'owner' }),
+      CTX,
+    );
+    expect(create.status).toBe(201);
+    const created = await create.json() as { admin: { id: string } };
+    const targetCookie = await loginAndGetCookie(email, password);
+
+    const disable = await adminTeamDetailHandler(detailReq('PATCH', created.admin.id, bootstrapCookie, { disabled: true }), CTX);
+    expect(disable.status).toBe(200);
+
+    const me = await authMeHandler(new Request('http://localhost/api/auth-me', {
+      method: 'GET',
+      headers: { cookie: targetCookie },
+    }), CTX);
+    expect(me.status).toBe(401);
+    const revoked = (await sql`
+      SELECT revoked_at FROM public.auth_sessions
+      WHERE realm = 'admin'
+        AND subject_id = ${created.admin.id}::uuid
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { revoked_at: string | null }[];
+    expect(revoked[0]!.revoked_at).not.toBeNull();
+
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+    const relogin = await loginHandler(loginReq(email, password), CTX);
+    expect(relogin.status).toBe(401);
+
+    const enable = await adminTeamDetailHandler(detailReq('PATCH', created.admin.id, bootstrapCookie, { disabled: false }), CTX);
+    expect(enable.status).toBe(200);
+    await sql`DELETE FROM public.login_attempts WHERE email = ${email}`;
+    const afterEnable = await loginHandler(loginReq(email, password), CTX);
+    expect(afterEnable.status).toBe(200);
   });
 
   test('PATCH admin-self updates display_name', async () => {

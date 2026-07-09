@@ -38,7 +38,8 @@ export default async (req: Request, _ctx: Context) => {
   const rows = (await sql`
     UPDATE public.admins
     SET display_name  = COALESCE(${parsed.data.display_name ?? null}::text, display_name),
-        password_hash = COALESCE(${newHash}::text, password_hash)
+        password_hash = COALESCE(${newHash}::text, password_hash),
+        password_changed_at = CASE WHEN ${newHash}::text IS NULL THEN password_changed_at ELSE now() END
     WHERE id = ${actor.admin.id}
     RETURNING id, email, display_name, is_bootstrap
   `) as { id: string; email: string; display_name: string; is_bootstrap: boolean }[];
