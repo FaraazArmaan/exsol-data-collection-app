@@ -561,9 +561,51 @@ git branch --show-current
 npm run typecheck
 npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test.ts tests/integration/permissions-middleware.test.ts</code></pre>
         <div class="note">
-          If schema is needed, stop and ask the human coordinator for migration number allocation.
-          Do not invent migration numbers.
+          If schema is needed, use the coordinator allocation recorded below. Do not invent
+          additional migration numbers.
         </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Migration Number Allocation</h2>
+      <p class="section-lead">
+        Coordinator allocation recorded 2026-07-09 from current <code>main</code>. Existing
+        migrations currently run through <code>137_clients_base_currency.sql</code>, so
+        Login+AMS hardening owns the next reserved block. Use one migration per schema-bearing
+        milestone; do not put all milestones into a single migration. If a reserved migration is
+        not needed, leave the number unused and call that out in the milestone handoff.
+      </p>
+      <div class="grid two">
+        <article class="card">
+          <h3>M3 Session revocation</h3>
+          <p><code>138_login_ams_sessions.sql</code></p>
+        </article>
+        <article class="card">
+          <h3>M4 MFA</h3>
+          <p><code>139_login_ams_mfa.sql</code></p>
+        </article>
+        <article class="card">
+          <h3>M5 Impersonation attribution</h3>
+          <p><code>140_login_ams_impersonation_audit.sql</code> if schema is needed.</p>
+        </article>
+        <article class="card">
+          <h3>M6 Invite/reset tokens</h3>
+          <p><code>141_login_ams_invite_reset_tokens.sql</code></p>
+        </article>
+        <article class="card">
+          <h3>M7 Platform admin RBAC</h3>
+          <p><code>142_login_ams_admin_rbac.sql</code></p>
+        </article>
+        <article class="card">
+          <h3>M8 Account lifecycle</h3>
+          <p><code>143_login_ams_account_lifecycle.sql</code> if schema is needed.</p>
+        </article>
+      </div>
+      <div class="note">
+        M0, M1, M2, and M9 have no dedicated migration allocation. M9 may regenerate reference
+        docs after earlier migration changes, but it should not create a new schema migration
+        unless the coordinator explicitly assigns another number.
       </div>
     </section>
 
@@ -797,8 +839,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               but a database session row becomes the authority for active status.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration required</span>
-              <span class="badge">Ask coordinator first</span>
+              <span class="badge">Migration 138 required</span>
+              <span class="badge">File: 138_login_ams_sessions.sql</span>
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
@@ -824,7 +866,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               TOTP plus recovery codes is acceptable if it fits the current stack faster.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration required</span>
+              <span class="badge">Migration 139 required</span>
+              <span class="badge">File: 139_login_ams_mfa.sql</span>
               <span class="badge">Admin security priority</span>
               <span class="badge">Risk: high</span>
             </div>
@@ -850,7 +893,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               the workspace actor and the real platform admin who initiated impersonation.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration likely</span>
+              <span class="badge">Migration 140 reserved if needed</span>
+              <span class="badge">File: 140_login_ams_impersonation_audit.sql</span>
               <span class="badge">Audit-sensitive</span>
               <span class="badge">Risk: high</span>
             </div>
@@ -876,7 +920,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               not store recoverable temporary passwords.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration required</span>
+              <span class="badge">Migration 141 required</span>
+              <span class="badge">File: 141_login_ams_invite_reset_tokens.sql</span>
               <span class="badge">Credential data risk</span>
               <span class="badge">Risk: high</span>
             </div>
@@ -902,7 +947,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               industry-standard model once clients and production data exist.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration required</span>
+              <span class="badge">Migration 142 required</span>
+              <span class="badge">File: 142_login_ams_admin_rbac.sql</span>
               <span class="badge">AMS-wide</span>
               <span class="badge">Risk: high</span>
             </div>
@@ -928,7 +974,8 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               workspace users.
             </p>
             <div class="meta-row">
-              <span class="badge">Migration likely</span>
+              <span class="badge">Migration 143 reserved if needed</span>
+              <span class="badge">File: 143_login_ams_account_lifecycle.sql</span>
               <span class="badge">Auth behavior</span>
               <span class="badge">Risk: medium-high</span>
             </div>
@@ -1074,6 +1121,14 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
             CSRF/header/auth tests green, 3 files and 18 tests; broader AMS/auth subset green,
             17 files and 182 tests; full vitest suite green, 324 files and 1936 tests. Stabilized
             one unrelated Product thumbnail delete test by seeding its cache directly.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · Migration allocation</h3>
+          <p>
+            Coordinator reserved Login+AMS migration numbers 138-143 for M3-M8:
+            sessions, MFA, impersonation audit if needed, invite/reset tokens, admin RBAC,
+            and account lifecycle if needed. M0-M2 and M9 have no dedicated migration.
           </p>
         </article>
       </div>
