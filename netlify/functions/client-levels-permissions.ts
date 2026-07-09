@@ -15,7 +15,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { AdminCapabilityError, requireAdmin, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { isValidPermissionKey } from './_shared/permission-keys';
@@ -83,6 +83,11 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'PUT') {
+    try { actor = await requireAdminCapability(req, 'permissions.manage'); } catch (e) {
+      if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      throw e;
+    }
     if (level.level_number === 1) return jsonError(409, 'primary_level_immutable');
     const parsed = PutBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());

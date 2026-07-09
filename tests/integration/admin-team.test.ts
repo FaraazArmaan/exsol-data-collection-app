@@ -67,6 +67,10 @@ beforeEach(async () => {
 
 afterAll(async () => {
   for (const email of createdEmails) {
+    await sql`
+      DELETE FROM public.audit_log
+      WHERE actor_admin IN (SELECT id FROM public.admins WHERE email = ${email})
+    `;
     await sql`DELETE FROM public.admins WHERE email = ${email}`;
   }
   // Bootstrap test admin remains — keeps subsequent runs idempotent (ON CONFLICT path).
@@ -114,9 +118,10 @@ describe('admin-team endpoints', () => {
       CTX,
     );
     expect(res.status).toBe(201);
-    const body = await res.json() as { admin: { id: string; email: string; is_bootstrap: boolean; has_password: boolean } };
+    const body = await res.json() as { admin: { id: string; email: string; is_bootstrap: boolean; role: string; has_password: boolean } };
     expect(body.admin.email).toBe(email);
     expect(body.admin.is_bootstrap).toBe(false);
+    expect(body.admin.role).toBe('support');
     expect(body.admin.has_password).toBe(true);
     await assertLastAudit(sql, {
       op: 'admin.created',
@@ -168,7 +173,7 @@ describe('admin-team endpoints', () => {
     const password = 'self-test-pw-1';
     createdEmails.push(email);
     const create = await adminTeamHandler(
-      teamReq('POST', bootstrapCookie, { email, display_name: 'Self Test', password }),
+      teamReq('POST', bootstrapCookie, { email, display_name: 'Self Test', password, role: 'owner' }),
       CTX,
     );
     expect(create.status).toBe(201);
@@ -204,6 +209,60 @@ describe('admin-team endpoints', () => {
       targetId: created.admin.id,
       clientId: null,
     });
+  });
+
+  test('support/read-only admins cannot manage admins; security admin can', async () => {
+    const supportEmail = `admin-team-support-${Date.now()}@example.com`;
+    const readOnlyEmail = `admin-team-readonly-${Date.now()}@example.com`;
+    const securityEmail = `admin-team-security-${Date.now()}@example.com`;
+    const createdBySecurity = `admin-team-security-created-${Date.now()}@example.com`;
+    createdEmails.push(supportEmail, readOnlyEmail, securityEmail, createdBySecurity);
+    const supportHash = await hashPassword('support-pass-1');
+    const readOnlyHash = await hashPassword('readonly-pass-1');
+    const securityHash = await hashPassword('security-pass-1');
+    await sql`
+      INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap, role)
+      VALUES
+        (${supportEmail}, ${supportHash}, 'Support Admin', false, 'support'),
+        (${readOnlyEmail}, ${readOnlyHash}, 'Read Only Admin', false, 'read_only'),
+        (${securityEmail}, ${securityHash}, 'Security Admin', false, 'security_admin')
+    `;
+
+    const supportCookie = await loginAndGetCookie(supportEmail, 'support-pass-1');
+    const readOnlyCookie = await loginAndGetCookie(readOnlyEmail, 'readonly-pass-1');
+    const securityCookie = await loginAndGetCookie(securityEmail, 'security-pass-1');
+
+    const supportCreate = await adminTeamHandler(
+      teamReq('POST', supportCookie, {
+        email: `blocked-support-${Date.now()}@example.com`,
+        display_name: 'Blocked',
+        password: 'blocked-pass-1',
+      }),
+      CTX,
+    );
+    expect(supportCreate.status).toBe(403);
+    expect((await supportCreate.json() as { error: { code: string } }).error.code).toBe('admin_role_forbidden');
+
+    const readOnlyCreate = await adminTeamHandler(
+      teamReq('POST', readOnlyCookie, {
+        email: `blocked-readonly-${Date.now()}@example.com`,
+        display_name: 'Blocked',
+        password: 'blocked-pass-1',
+      }),
+      CTX,
+    );
+    expect(readOnlyCreate.status).toBe(403);
+
+    const securityCreate = await adminTeamHandler(
+      teamReq('POST', securityCookie, {
+        email: createdBySecurity,
+        display_name: 'Created By Security',
+        password: 'created-security-pass-1',
+        role: 'read_only',
+      }),
+      CTX,
+    );
+    expect(securityCreate.status).toBe(201);
   });
 
   test('PATCH admin-self updates display_name', async () => {

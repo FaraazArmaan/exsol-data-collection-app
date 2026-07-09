@@ -256,6 +256,7 @@ export default function AdminSettings() {
               <tr style={{ textAlign: 'left' }}>
                 <th style={{ padding: '6px 8px' }}>Name</th>
                 <th style={{ padding: '6px 8px' }}>Email</th>
+                <th style={{ padding: '6px 8px' }}>Role</th>
                 <th style={{ padding: '6px 8px' }}>Sign-in</th>
                 <th style={{ padding: '6px 8px', width: 1 }}></th>
               </tr>
@@ -272,6 +273,7 @@ export default function AdminSettings() {
                       {m.is_bootstrap && <span className="badge" style={{ marginLeft: 6 }}>bootstrap</span>}
                     </td>
                     <td style={{ padding: '8px' }}>{m.email}</td>
+                    <td style={{ padding: '8px', fontSize: 13 }} className="muted">{m.role.replace('_', ' ')}</td>
                     <td style={{ padding: '8px', fontSize: 13 }} className="muted">
                       {[m.has_password && 'password', m.has_google && 'google'].filter(Boolean).join(' + ') || '—'}
                     </td>
@@ -293,7 +295,7 @@ export default function AdminSettings() {
                 );
               })}
               {team.length === 0 && (
-                <tr><td colSpan={4} className="muted" style={{ padding: 12 }}>No admins.</td></tr>
+                <tr><td colSpan={5} className="muted" style={{ padding: 12 }}>No admins.</td></tr>
               )}
             </tbody>
           </table>

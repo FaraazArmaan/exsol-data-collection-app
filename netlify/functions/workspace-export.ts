@@ -12,6 +12,7 @@ import { db } from './_shared/db';
 import { jsonError } from './_shared/http';
 import {
   authenticateForPermission,
+  adminHasCapability,
   resolveClientIdOrRespond,
   type AnySession,
 } from './_shared/permissions';
@@ -56,6 +57,9 @@ export default async (req: Request, _ctx: Context) => {
   const auth = await authenticateForPermission(req, '_platform.workspace.view');
   if (auth instanceof Response) return auth;
   const session = auth;
+  if (session.kind === 'admin' && !adminHasCapability(session.admin, 'workspace.export')) {
+    return jsonError(403, 'admin_role_forbidden', { capability: 'workspace.export' });
+  }
 
   const scope = resolveClientIdOrRespond(session, req);
   if (scope instanceof Response) return scope;

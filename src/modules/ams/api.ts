@@ -18,6 +18,7 @@ export interface AdminMember {
   email: string;
   display_name: string;
   is_bootstrap: boolean;
+  role: 'owner' | 'support' | 'billing' | 'read_only' | 'security_admin';
   has_password: boolean;
   has_google: boolean;
   created_at: string;

@@ -9,7 +9,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { AdminCapabilityError, requireAdmin, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
@@ -22,7 +22,7 @@ export default async (req: Request, _ctx: Context) => {
   const csrf = rejectCrossSiteMutation(req);
   if (csrf) return csrf;
 
-  let actor;
+  let actor: Awaited<ReturnType<typeof requireAdmin>>;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
@@ -48,6 +48,11 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'PUT') {
+    try { actor = await requireAdminCapability(req, 'products.manage'); } catch (e) {
+      if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      throw e;
+    }
     const parsed = PutBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
     for (const key of parsed.data.keys) {

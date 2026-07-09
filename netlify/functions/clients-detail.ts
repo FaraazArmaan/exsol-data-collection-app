@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { AdminCapabilityError, requireAdmin, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
@@ -30,6 +30,11 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method === 'GET') return jsonOk({ client });
 
   if (req.method === 'DELETE') {
+    try { actor = await requireAdminCapability(req, 'client.delete'); } catch (e) {
+      if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      throw e;
+    }
     // Cascades to client_roles, client_levels, user_nodes, etc. via FK.
     await sql`DELETE FROM public.clients WHERE id = ${id}`;
     await logAudit(sql, {

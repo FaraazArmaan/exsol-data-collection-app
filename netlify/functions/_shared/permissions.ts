@@ -15,7 +15,26 @@ export interface AdminRecord {
   email: string;
   display_name: string;
   is_bootstrap: boolean;
+  role: AdminRole;
 }
+
+export type AdminRole = 'owner' | 'support' | 'billing' | 'read_only' | 'security_admin';
+export type AdminCapability =
+  | 'admin.manage'
+  | 'admin.impersonate'
+  | 'workspace.export'
+  | 'client.delete'
+  | 'products.manage'
+  | 'permissions.manage';
+
+const ADMIN_CAPABILITIES: Record<AdminCapability, readonly AdminRole[]> = {
+  'admin.manage': ['owner', 'security_admin'],
+  'admin.impersonate': ['owner', 'support'],
+  'workspace.export': ['owner', 'support', 'security_admin'],
+  'client.delete': ['owner'],
+  'products.manage': ['owner'],
+  'permissions.manage': ['owner', 'security_admin'],
+};
 
 export interface UserNodeCredentialRecord {
   id: string;
@@ -31,6 +50,10 @@ export class UnauthorizedError extends Error {
   constructor(public readonly reason: string) { super(reason); }
 }
 
+export class AdminCapabilityError extends Error {
+  constructor(public readonly capability: AdminCapability) { super(`admin capability required: ${capability}`); }
+}
+
 export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; claims: SessionClaims }> {
   const token = readCookieToken(req);
   if (!token) throw new UnauthorizedError('no_cookie');
@@ -43,7 +66,7 @@ export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; 
   }
   const sql = db();
   const rows = (await sql`
-    SELECT id, email, display_name, is_bootstrap
+    SELECT id, email, display_name, is_bootstrap, role
     FROM public.admins
     WHERE id = ${claims.sub}
     LIMIT 1
@@ -51,6 +74,23 @@ export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; 
   const admin = rows[0];
   if (!admin) throw new UnauthorizedError('admin_not_found');
   return { admin, claims };
+}
+
+export function adminHasCapability(
+  admin: { role?: AdminRole | null; is_bootstrap?: boolean | null },
+  capability: AdminCapability,
+): boolean {
+  if (admin.is_bootstrap) return true;
+  return ADMIN_CAPABILITIES[capability].includes(admin.role ?? 'read_only');
+}
+
+export async function requireAdminCapability(
+  req: Request,
+  capability: AdminCapability,
+): Promise<{ admin: AdminRecord; claims: SessionClaims }> {
+  const actor = await requireAdmin(req);
+  if (!adminHasCapability(actor.admin, capability)) throw new AdminCapabilityError(capability);
+  return actor;
 }
 
 export async function requireBucketUser(req: Request): Promise<{
@@ -95,7 +135,7 @@ export class ForbiddenError extends Error {
 
 export interface AdminSession {
   kind: 'admin';
-  admin: { id: string; email: string };
+  admin: { id: string; email: string; role?: AdminRole; is_bootstrap?: boolean };
 }
 
 export interface BucketUserSession {
@@ -142,7 +182,15 @@ export async function requirePermission(req: Request, key: string): Promise<AnyS
 
   try {
     const a = await requireAdmin(req);
-    return { kind: 'admin', admin: { id: a.admin.id, email: a.admin.email } };
+    return {
+      kind: 'admin',
+      admin: {
+        id: a.admin.id,
+        email: a.admin.email,
+        role: a.admin.role,
+        is_bootstrap: a.admin.is_bootstrap,
+      },
+    };
   } catch (e) {
     if (!(e instanceof UnauthorizedError)) throw e;
   }

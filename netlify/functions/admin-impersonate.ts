@@ -1,7 +1,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { AdminCapabilityError, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { mintBucketUserSession, impersonationBuCookieHeader } from './_shared/session';
 import { logAudit } from './_shared/audit';
@@ -30,7 +30,8 @@ export default async (req: Request, _ctx: Context) => {
   if (csrf) return csrf;
 
   let actor;
-  try { actor = await requireAdmin(req); } catch (e) {
+  try { actor = await requireAdminCapability(req, 'admin.impersonate'); } catch (e) {
+    if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     throw e;
   }

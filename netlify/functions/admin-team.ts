@@ -9,7 +9,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import { hashPassword } from './_shared/argon';
-import { requireAdmin, UnauthorizedError } from './_shared/permissions';
+import { AdminCapabilityError, requireAdmin, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
@@ -18,6 +18,7 @@ const CreateBody = z.object({
   email: z.string().email().max(254),
   display_name: z.string().min(1).max(200),
   password: z.string().min(8).max(200).optional(),
+  role: z.enum(['owner', 'support', 'billing', 'read_only', 'security_admin']).optional(),
 });
 
 interface TeamRow {
@@ -25,6 +26,7 @@ interface TeamRow {
   email: string;
   display_name: string;
   is_bootstrap: boolean;
+  role: string;
   has_password: boolean;
   has_google: boolean;
   created_at: string;
@@ -44,7 +46,7 @@ export default async (req: Request, _ctx: Context) => {
 
   if (req.method === 'GET') {
     const rows = (await sql`
-      SELECT id, email, display_name, is_bootstrap,
+      SELECT id, email, display_name, is_bootstrap, role,
              (password_hash IS NOT NULL) AS has_password,
              (google_sub IS NOT NULL) AS has_google,
              created_at
@@ -55,6 +57,11 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'POST') {
+    try { await requireAdminCapability(req, 'admin.manage'); } catch (e) {
+      if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
+      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+      throw e;
+    }
     const parsed = CreateBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 
@@ -62,9 +69,9 @@ export default async (req: Request, _ctx: Context) => {
 
     try {
       const inserted = (await sql`
-        INSERT INTO public.admins (email, display_name, password_hash, is_bootstrap)
-        VALUES (${parsed.data.email}, ${parsed.data.display_name}, ${passwordHash}, false)
-        RETURNING id, email, display_name, is_bootstrap,
+        INSERT INTO public.admins (email, display_name, password_hash, is_bootstrap, role)
+        VALUES (${parsed.data.email}, ${parsed.data.display_name}, ${passwordHash}, false, ${parsed.data.role ?? 'support'})
+        RETURNING id, email, display_name, is_bootstrap, role,
                   (password_hash IS NOT NULL) AS has_password,
                   (google_sub IS NOT NULL) AS has_google,
                   created_at
@@ -75,7 +82,7 @@ export default async (req: Request, _ctx: Context) => {
         clientId: null,
         targetType: 'admin',
         targetId: inserted[0]!.id,
-        detail: { email: parsed.data.email, display_name: parsed.data.display_name },
+        detail: { email: parsed.data.email, display_name: parsed.data.display_name, role: parsed.data.role ?? 'support' },
       });
       return jsonOk({ admin: inserted[0] }, { status: 201 });
     } catch (e: unknown) {
