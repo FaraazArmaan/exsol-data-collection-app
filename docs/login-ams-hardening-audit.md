@@ -297,16 +297,15 @@ Commands run before handoff:
 ```sh
 npm run typecheck
 npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test.ts tests/integration/permissions-middleware.test.ts tests/integration/admin-impersonate.test.ts tests/integration/impersonation-session-priority.test.ts
+npm test
 ```
 
 Results:
 
 - `npm run typecheck`: green.
 - Targeted auth/AMS suite: 5 files passed, 72 tests passed.
+- Full vitest suite: 322 files passed, 1928 tests passed.
 - First targeted run failed because the new worktree had no local `.env`; copied the root `.env`
   into this worktree as an ignored local file.
 - Second targeted run failed under sandboxed network because Neon was unreachable; reran the exact
   command with approved network escalation and it passed.
-
-Full suite was not run for this read-only audit milestone. It is required before any
-behavior-changing milestone handoff.
