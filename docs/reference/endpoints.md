@@ -6,7 +6,7 @@
 
 # API endpoints
 
-282 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+283 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -17,17 +17,17 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | admin-client-products.ts | `/api/admin-client-products (name-routed)` | any | admin | — |
-| admin-impersonate.ts | `/api/admin-impersonate` | POST | admin | — |
+| admin-impersonate.ts | `/api/admin-impersonate` | POST | public | — |
 | admin-self.ts | `/api/admin-self (name-routed)` | any | admin | — |
-| admin-team-detail.ts | `/api/admin-team-detail (name-routed)` | any | admin | — |
+| admin-team-detail.ts | `/api/admin-team-detail (name-routed)` | any | public | — |
 | admin-team.ts | `/api/admin-team (name-routed)` | any | admin | — |
 | audit-log.ts | `/api/audit-log (name-routed)` | any | admin | — |
-| client-cardinality.ts | `/api/client-cardinality (name-routed)` | any | admin | — |
-| client-levels-detail.ts | `/api/client-levels-detail (name-routed)` | any | admin | — |
+| client-cardinality.ts | `/api/client-cardinality (name-routed)` | any | public | — |
+| client-levels-detail.ts | `/api/client-levels-detail (name-routed)` | any | public | — |
 | client-levels-permissions.ts | `/api/client-levels-permissions (name-routed)` | any | admin | — |
-| client-levels.ts | `/api/client-levels (name-routed)` | any | admin | — |
-| client-roles-detail.ts | `/api/client-roles-detail (name-routed)` | any | admin | — |
-| client-roles.ts | `/api/client-roles (name-routed)` | any | admin | — |
+| client-levels.ts | `/api/client-levels (name-routed)` | any | public | — |
+| client-roles-detail.ts | `/api/client-roles-detail (name-routed)` | any | public | — |
+| client-roles.ts | `/api/client-roles (name-routed)` | any | public | — |
 | client-settings-brand-image.ts | `/api/client-settings/brand-image` | POST | bucket-user | `_platform.settings.edit` |
 | client-settings-brand.ts | `/api/client-settings/brand` | PATCH | bucket-user | `_platform.settings.edit` |
 | client-settings-storefront.ts | `/api/client-settings/storefront` | any | bucket-user | `_platform.settings.edit` |
@@ -274,6 +274,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | abandoned-cart-cron.ts | `/api/abandoned-cart-cron (name-routed)` | any | public | — |
 | onboard-import.ts | `/api/onboard-import/:token` | POST | public | — |
 | onboard-public.ts | `/api/onboard-public/:token` | GET | public | — |
+| u-credential-token.ts | `/api/u-credential-token (name-routed)` | any | public | — |
 | webhook-example.ts | `/api/webhook-example` | POST | public | — |
 
 ## portfolio

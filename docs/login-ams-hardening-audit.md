@@ -1,6 +1,6 @@
 # Login + AMS Hardening Audit
 
-Status: M4 verified, handoff-ready
+Status: M9 verified, handoff-ready
 Branch: `feat/login-ams-hardening-iso`
 Worktree: `worktrees/ExSol-Login-AMS-Hardening-WT`
 Date: 2026-07-09
@@ -249,6 +249,114 @@ Verification:
   green, 4 files passed, 64 tests passed.
 - `npm run docs:reference`: regenerated `docs/reference/{endpoints,permissions,schema}.md`.
 - Full suite final run: `npm test` green, 324 files passed, 1940 tests passed.
+
+## M5 Verification
+
+M5 makes impersonation attributable past the initial "start impersonating" audit row.
+
+Implemented:
+
+- `db/migrations/140_login_ams_impersonation_audit.sql` with impersonation metadata on
+  `auth_sessions` and `audit_log`.
+- `admin-impersonate` now requires a reason, writes impersonation session metadata, and issues
+  one-hour bucket-user cookies.
+- Bucket-user session refresh preserves impersonation claims.
+- `logAudit()` records `impersonated_by_admin` automatically for impersonated bucket-user sessions.
+- Audit log filters/responses expose the impersonating admin.
+
+Verification:
+
+- `npm run migrate`: applied `140_login_ams_impersonation_audit`.
+- `npm run typecheck`: green.
+- `npm test -- tests/integration/admin-impersonate.test.ts tests/integration/impersonation-session-priority.test.ts tests/integration/audit-log.test.ts`:
+  green, 3 files passed, 23 tests passed.
+
+## M6 Verification
+
+M6 replaces new plaintext temporary-password issuance with expiring set-password links while
+leaving legacy temp-password fields intact for compatibility.
+
+Implemented:
+
+- `db/migrations/141_login_ams_invite_reset_tokens.sql` with hashed, single-use credential tokens.
+- `_shared/credential-tokens.ts` and public `u-credential-token.ts` validation/consume endpoint.
+- Public `/set-password/:token` route and page.
+- AMS/admin and owner-scoped team modal flows now issue copyable links instead of generated temp
+  passwords.
+- Token consumption sets the password, clears reset state, and updates `password_changed_at`.
+
+Verification:
+
+- `npm run migrate`: applied `141_login_ams_invite_reset_tokens`.
+- `npm run typecheck`: green.
+- `npm test -- tests/integration/user-node-auth.test.ts`: green, 45 tests passed at the M6 point.
+
+## M7 Verification
+
+M7 adds platform-admin least privilege for high-blast-radius AMS operations.
+
+Implemented:
+
+- `db/migrations/142_login_ams_admin_rbac.sql` with `admins.role`.
+- Admin roles/capabilities in `_shared/permissions.ts`.
+- Gates for admin management, impersonation, workspace export, client delete, product enablement,
+  and permission/structure edits.
+- New admins created through the API default to Support.
+
+Verification:
+
+- `npm run migrate`: applied `142_login_ams_admin_rbac`.
+- `npm run typecheck`: green.
+- `npm test -- tests/integration/admin-team.test.ts`: green, 12 tests passed.
+- RBAC subset
+  `npm test -- tests/integration/admin-client-products.test.ts tests/integration/client-levels-permissions.test.ts tests/integration/admin-impersonate.test.ts tests/integration/workspace-export.test.ts tests/integration/clients-lifecycle.test.ts`:
+  green, 5 files passed, 40 tests passed.
+
+## M8 Verification
+
+M8 adds first-class disabled/locked/password lifecycle metadata for platform admins and workspace
+credentials.
+
+Implemented:
+
+- `db/migrations/143_login_ams_account_lifecycle.sql` with disabled/locked/password lifecycle
+  columns and disabled-account indexes.
+- `requireAdmin()` and `requireBucketUser()` reject disabled or currently locked accounts.
+- Password and Google login paths return generic unauthorized responses for disabled/locked
+  accounts and stamp failed-login metadata.
+- Admin disable/enable revokes active admin sessions and protects bootstrap/self-disable.
+- Workspace credential disable/enable revokes active bucket-user sessions and audits the change.
+- Password changes and token consumes update `password_changed_at`.
+
+Verification:
+
+- `npm run migrate`: applied `143_login_ams_account_lifecycle`.
+- `npm run typecheck`: green.
+- `npm test -- tests/integration/admin-team.test.ts tests/integration/auth.test.ts tests/integration/user-node-auth.test.ts`:
+  green, 3 files passed, 72 tests passed.
+- `npm test -- tests/integration/user-node-auth.test.ts`: rerun after semantic cleanup, green,
+  46 tests passed.
+
+## M9 Verification
+
+M9 adds the final least-privilege UX and documentation pass.
+
+Implemented:
+
+- Permission matrix warning labels for high-risk grants such as user delete, settings edit,
+  workspace export/file read, all-sales visibility, and refund.
+- Existing Level 1 Owner full-access banner remains read-only and explicit.
+- `docs/reference/{endpoints,schema}.md` regenerated after M5-M8 endpoint/schema changes.
+
+Verification:
+
+- `npm run typecheck`: green.
+- `npm test -- src/modules/ams/components/PermissionMatrixCard.test.tsx`: green, 3 tests passed.
+- Local HTTP smoke with `npm run dev -- --port 8899`: `/login` and `/api/auth-config` returned
+  200 with the security header block present.
+- In-app browser smoke could not run because the browser plugin reported no available browser
+  backends for this session (`agent.browsers.list()` returned `[]`).
+- Full suite final run: `npm test` green, 324 files passed, 1947 tests passed.
 
 ## M3 Verification
 

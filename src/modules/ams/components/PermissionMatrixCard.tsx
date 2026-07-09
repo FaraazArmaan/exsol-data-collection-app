@@ -20,6 +20,15 @@ interface Props {
 const VERBS = ['view', 'create', 'edit', 'delete'] as const;
 type Verb = (typeof VERBS)[number];
 
+function riskNote(key: string): string | null {
+  if (key === '_platform.users.delete') return 'Can remove workspace users';
+  if (key === '_platform.settings.edit') return 'Can change workspace settings';
+  if (key === '_platform.files.view' || key === '_platform.workspace.view') return 'Can export workspace data';
+  if (key === 'pos.history.viewAll') return 'Can view sales across all users';
+  if (key === 'pos.sale.refund') return 'Can reverse payments';
+  return null;
+}
+
 function PermissionToggle({
   checked, onChange, disabled, ariaLabel,
 }: { checked: boolean; onChange: () => void; disabled?: boolean; ariaLabel: string }) {
@@ -109,15 +118,19 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
               {VERBS.map((v: Verb) => {
                 const supported = row.verbs.includes(v);
                 const key = `${row.module_key}.${row.bucket}.${v}`;
+                const warning = supported ? riskNote(key) : null;
                 return (
                   <td key={v} className="perm-cell">
                     {supported ? (
-                      <PermissionToggle
-                        checked={isOn(key)}
-                        onChange={() => toggle(key)}
-                        disabled={saving}
-                        ariaLabel={`${row.label} ${row.bucket} ${v}`}
-                      />
+                      <div className="perm-toggle-stack">
+                        <PermissionToggle
+                          checked={isOn(key)}
+                          onChange={() => toggle(key)}
+                          disabled={saving}
+                          ariaLabel={`${row.label} ${row.bucket} ${v}`}
+                        />
+                        {warning && <span className="perm-risk-note">{warning}</span>}
+                      </div>
                     ) : <span className="perm-cell-na">—</span>}
                   </td>
                 );
@@ -132,15 +145,19 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
               {VERBS.map((v: Verb) => {
                 const supported = row.verbs.includes(v);
                 const key = `_platform.${row.surface}.${v}`;
+                const warning = supported ? riskNote(key) : null;
                 return (
                   <td key={v} className="perm-cell">
                     {supported ? (
-                      <PermissionToggle
-                        checked={isOn(key)}
-                        onChange={() => toggle(key)}
-                        disabled={saving}
-                        ariaLabel={`platform ${row.surface} ${v}`}
-                      />
+                      <div className="perm-toggle-stack">
+                        <PermissionToggle
+                          checked={isOn(key)}
+                          onChange={() => toggle(key)}
+                          disabled={saving}
+                          ariaLabel={`platform ${row.surface} ${v}`}
+                        />
+                        {warning && <span className="perm-risk-note">{warning}</span>}
+                      </div>
                     ) : <span className="perm-cell-na">—</span>}
                   </td>
                 );
@@ -155,12 +172,15 @@ export function PermissionMatrixCard({ data, levelLabel, onSaved }: Props) {
                 <tr key={a.key} className="perm-row">
                   <td className="perm-resource">{a.label}</td>
                   <td className="perm-cell" colSpan={4} style={{ textAlign: 'left' }}>
-                    <PermissionToggle
-                      checked={isOn(a.key)}
-                      onChange={() => toggle(a.key)}
-                      disabled={saving}
-                      ariaLabel={a.label}
-                    />
+                    <div className="perm-action-grant">
+                      <PermissionToggle
+                        checked={isOn(a.key)}
+                        onChange={() => toggle(a.key)}
+                        disabled={saving}
+                        ariaLabel={a.label}
+                      />
+                      {riskNote(a.key) && <span className="perm-risk-note">{riskNote(a.key)}</span>}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-48 tables across 118 forward-only migrations.
+49 tables across 122 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -14,7 +14,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `admins`
 
-- created in `002_admins.sql`
+- created in `002_admins.sql`; altered in `142_login_ams_admin_rbac.sql`, `143_login_ams_account_lifecycle.sql`
 - columns at creation: `id uuid`, `email citext`, `password_hash text`, `google_sub text`, `display_name text`, `is_bootstrap boolean`, `created_at timestamptz`, `updated_at timestamptz`
 
 ### `client_cardinality_rules`
@@ -59,7 +59,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `user_node_credentials`
 
-- created in `017_user_node_credentials.sql`; altered in `018_user_node_credentials_google_sub.sql`, `019_user_node_credentials_reset_requested.sql`, `023_user_nodes_created_by_admin_nullable.sql`, `024_user_nodes_created_by_user_node.sql`
+- created in `017_user_node_credentials.sql`; altered in `018_user_node_credentials_google_sub.sql`, `019_user_node_credentials_reset_requested.sql`, `023_user_nodes_created_by_admin_nullable.sql`, `024_user_nodes_created_by_user_node.sql`, `143_login_ams_account_lifecycle.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `user_node_id uuid`, `email citext`, `password_hash text`, `must_change_password boolean`, `temp_password_plain text`, `temp_password_views_left integer`, `last_login_at timestamptz`, `created_at timestamptz`, `updated_at timestamptz`, `created_by_admin uuid`
 
 ### `user_nodes`
@@ -193,7 +193,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `auth_sessions`
 
-- created in `138_login_ams_sessions.sql`
+- created in `138_login_ams_sessions.sql`; altered in `140_login_ams_impersonation_audit.sql`
 - columns at creation: `id uuid`, `realm text`, `subject_id uuid`, `client_id uuid`, `email text`, `user_agent text`, `ip inet`, `created_at timestamptz`, `expires_at timestamptz`, `revoked_at timestamptz`
 
 ### `coupon_redemptions`
@@ -230,6 +230,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `129_storefront_cms.sql`
 - columns at creation: `client_id UUID`, `sections JSONB`, `published BOOLEAN`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `user_credential_tokens`
+
+- created in `141_login_ams_invite_reset_tokens.sql`
+- columns at creation: `id uuid`, `token_hash text`, `purpose text`, `client_id uuid`, `user_node_id uuid`, `credential_id uuid`, `email citext`, `created_by_admin uuid`, `created_by_user_node uuid`, `created_at timestamptz`, `expires_at timestamptz`, `consumed_at timestamptz`
 
 ## portfolio
 

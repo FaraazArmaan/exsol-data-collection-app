@@ -6,6 +6,13 @@ const admin: AnySession = { kind: 'admin', admin: { id: 'admin-1', email: 'a@x' 
 const bu: AnySession = {
   kind: 'bucket_user', user_node_id: 'un-1', client_id: 'c-1', level_number: 1,
 };
+const impersonatedBu: AnySession = {
+  kind: 'bucket_user',
+  user_node_id: 'un-1',
+  client_id: 'c-1',
+  level_number: 1,
+  impersonated_by_admin: 'admin-2',
+};
 
 function mockSql() {
   const calls: Array<{ strings: TemplateStringsArray; values: unknown[] }> = [];
@@ -22,10 +29,11 @@ describe('logAudit', () => {
     const { fn, calls } = mockSql();
     await logAudit(fn, { session: admin, op: 'client.created', targetType: 'client', targetId: 'c-1' });
     expect(calls.length).toBe(1);
-    // values[0] = actor_admin, values[1] = actor_user_node
+    // values[0] = actor_admin, values[1] = actor_user_node, values[2] = impersonated_by_admin
     expect(calls[0]!.values[0]).toBe('admin-1');
     expect(calls[0]!.values[1]).toBeNull();
-    expect(calls[0]!.values[2]).toBe('client.created');
+    expect(calls[0]!.values[2]).toBeNull();
+    expect(calls[0]!.values[3]).toBe('client.created');
   });
 
   test('bucket-user session writes actor_user_node and leaves actor_admin null', async () => {
@@ -33,6 +41,14 @@ describe('logAudit', () => {
     await logAudit(fn, { session: bu, op: 'user_node.created', targetType: 'user_node', targetId: 'un-2' });
     expect(calls[0]!.values[0]).toBeNull();
     expect(calls[0]!.values[1]).toBe('un-1');
+  });
+
+  test('impersonated bucket-user session writes impersonated_by_admin', async () => {
+    const { fn, calls } = mockSql();
+    await logAudit(fn, { session: impersonatedBu, op: 'user_node.created' });
+    expect(calls[0]!.values[0]).toBeNull();
+    expect(calls[0]!.values[1]).toBe('un-1');
+    expect(calls[0]!.values[2]).toBe('admin-2');
   });
 
   test('SQL throwing does not propagate; helper resolves silently', async () => {
@@ -46,8 +62,8 @@ describe('logAudit', () => {
   test('detail is JSON-stringified before insert; null when omitted', async () => {
     const { fn, calls } = mockSql();
     await logAudit(fn, { session: admin, op: 'x.y', detail: { foo: 'bar' } });
-    expect(calls[0]!.values[6]).toBe(JSON.stringify({ foo: 'bar' }));
+    expect(calls[0]!.values[7]).toBe(JSON.stringify({ foo: 'bar' }));
     await logAudit(fn, { session: admin, op: 'x.y' });
-    expect(calls[1]!.values[6]).toBeNull();
+    expect(calls[1]!.values[7]).toBeNull();
   });
 });

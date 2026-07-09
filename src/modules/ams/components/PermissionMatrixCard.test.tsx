@@ -14,7 +14,9 @@ const baseData = {
   level_number: 2,
   permissions: {} as Record<string, true>,
   module_rows: [],
-  platform_rows: [],
+  platform_rows: [
+    { surface: 'users', verbs: ['view', 'create', 'edit', 'delete'] },
+  ],
   action_groups: [
     {
       product_key: 'pos',
@@ -37,6 +39,7 @@ describe('PermissionMatrixCard — action-namespace grants', () => {
     expect(screen.getByText('POS')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Mark sale paid (cash)' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'View menu / add to cart' })).toBeInTheDocument();
+    expect(screen.getByText('Can remove workspace users')).toBeInTheDocument();
   });
 
   it('reflects already-granted actions as ON', () => {

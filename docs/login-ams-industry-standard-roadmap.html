@@ -735,11 +735,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M3 Revocation</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M4 MFA</strong><span>Handoff ready</span></div>
-        <div class="status-cell"><strong>M5 Impersonation</strong><span>Not started</span></div>
-        <div class="status-cell"><strong>M6 Invite/reset tokens</strong><span>Not started</span></div>
-        <div class="status-cell"><strong>M7 Admin RBAC</strong><span>Not started</span></div>
-        <div class="status-cell"><strong>M8 Lifecycle</strong><span>Not started</span></div>
-        <div class="status-cell"><strong>M9 Final hardening</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M5 Impersonation</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M6 Invite/reset tokens</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M7 Admin RBAC</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M8 Lifecycle</strong><span>Handoff ready</span></div>
+        <div class="status-cell"><strong>M9 Final hardening</strong><span>Handoff ready</span></div>
       </div>
     </section>
 
@@ -884,7 +884,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M5</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Impersonation attribution hardening</h3>
@@ -899,11 +899,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add impersonation claims or session metadata: <code>impersonated_by_admin_id</code>, started_at, client_id.</span></div>
-              <div class="check"><span class="box"></span><span>Extend audit helper and audit table if needed to store impersonator explicitly.</span></div>
-              <div class="check"><span class="box"></span><span>Require a reason for impersonation when an admin starts the flow.</span></div>
-              <div class="check"><span class="box"></span><span>Add timeout and exit behavior that revokes the impersonated session row.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: downstream module write includes impersonator metadata in audit row.</span></div>
+              <div class="check"><span class="box done"></span><span>Add impersonation claims or session metadata: <code>impersonated_by_admin_id</code>, started_at, client_id.</span></div>
+              <div class="check"><span class="box done"></span><span>Extend audit helper and audit table if needed to store impersonator explicitly.</span></div>
+              <div class="check"><span class="box done"></span><span>Require a reason for impersonation when an admin starts the flow.</span></div>
+              <div class="check"><span class="box done"></span><span>Add timeout and exit behavior that revokes the impersonated session row.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: downstream module write includes impersonator metadata in audit row.</span></div>
             </div>
           </div>
         </article>
@@ -911,7 +911,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M6</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Replace plaintext temp passwords with invite/reset tokens</h3>
@@ -926,11 +926,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add hashed invite/reset token table with expiry, single-use status, actor, client, user_node.</span></div>
-              <div class="check"><span class="box"></span><span>Replace <code>temp_password_plain</code> reveal flow with create-link and copy-once link UI.</span></div>
-              <div class="check"><span class="box"></span><span>Add public set-password page for valid token; unknown 404, expired/used 410.</span></div>
-              <div class="check"><span class="box"></span><span>Clear or ignore old plaintext temp password fields; destructive drop waits for a later migration.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: token one-time use, expiry, wrong client denied, old reset request compatibility.</span></div>
+              <div class="check"><span class="box done"></span><span>Add hashed invite/reset token table with expiry, single-use status, actor, client, user_node.</span></div>
+              <div class="check"><span class="box done"></span><span>Replace <code>temp_password_plain</code> reveal flow with create-link and copy-once link UI.</span></div>
+              <div class="check"><span class="box done"></span><span>Add public set-password page for valid token; unknown 404, expired/used 410.</span></div>
+              <div class="check"><span class="box done"></span><span>Clear or ignore old plaintext temp password fields; destructive drop waits for a later migration.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: token one-time use, expiry, wrong client denied, old reset request compatibility.</span></div>
             </div>
           </div>
         </article>
@@ -938,7 +938,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M7</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Platform admin RBAC</h3>
@@ -953,11 +953,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add admin roles: Owner, Support, Billing, Read-only, Security admin.</span></div>
-              <div class="check"><span class="box"></span><span>Gate admin management, impersonation, export, client delete, product enablement, permission edits.</span></div>
-              <div class="check"><span class="box"></span><span>Update Sidebar and page affordances to hide actions that the admin cannot perform.</span></div>
-              <div class="check"><span class="box"></span><span>Protect bootstrap/admin-owner operations from lockout.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: support cannot manage admins, read-only cannot mutate, owner can recover.</span></div>
+              <div class="check"><span class="box done"></span><span>Add admin roles: Owner, Support, Billing, Read-only, Security admin.</span></div>
+              <div class="check"><span class="box done"></span><span>Gate admin management, impersonation, export, client delete, product enablement, permission edits.</span></div>
+              <div class="check"><span class="box done"></span><span>Update Sidebar and page affordances to hide actions that the admin cannot perform.</span></div>
+              <div class="check"><span class="box done"></span><span>Protect bootstrap/admin-owner operations from lockout.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: support cannot manage admins, read-only cannot mutate, owner can recover.</span></div>
             </div>
           </div>
         </article>
@@ -965,7 +965,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M8</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Account lifecycle and password policy</h3>
@@ -980,11 +980,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: medium-high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add disabled, locked_until, password_changed_at, last_failed_login_at where needed.</span></div>
-              <div class="check"><span class="box"></span><span>Login rejects disabled accounts with non-enumerating error semantics.</span></div>
-              <div class="check"><span class="box"></span><span>Add admin-controlled disable/enable flows for workspace credentials.</span></div>
-              <div class="check"><span class="box"></span><span>Add password strength rules and optional breached-password seam if network/provider is approved later.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: disabled cannot login, active sessions revoke on disable, audit rows written.</span></div>
+              <div class="check"><span class="box done"></span><span>Add disabled, locked_until, password_changed_at, last_failed_login_at where needed.</span></div>
+              <div class="check"><span class="box done"></span><span>Login rejects disabled accounts with non-enumerating error semantics.</span></div>
+              <div class="check"><span class="box done"></span><span>Add admin-controlled disable/enable flows for workspace credentials.</span></div>
+              <div class="check"><span class="box done"></span><span>Keep breached-password/provider policy as a later provider-backed follow-up.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: disabled cannot login, active sessions revoke on disable, audit rows written.</span></div>
             </div>
           </div>
         </article>
@@ -992,7 +992,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M9</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>AMS least-privilege UX, docs, and final verification</h3>
@@ -1006,12 +1006,12 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: medium</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add warnings for high-risk grants: user delete, settings edit, exports, impersonation.</span></div>
-              <div class="check"><span class="box"></span><span>Make L1 Owner bypass clear in Access Levels UI, without pretending it is editable.</span></div>
-              <div class="check"><span class="box"></span><span>Regenerate <code>docs/reference</code> if endpoints, manifests, or migrations changed.</span></div>
-              <div class="check"><span class="box"></span><span>Run <code>npm run typecheck</code> and full <code>npm test</code>.</span></div>
-              <div class="check"><span class="box"></span><span>Browser smoke: admin login, workspace login, MFA, impersonation, access levels, team, reset/invite, logout all.</span></div>
-              <div class="check"><span class="box"></span><span>Emit final Main integration handoff with migration order and risk notes.</span></div>
+              <div class="check"><span class="box done"></span><span>Add warnings for high-risk grants: user delete, settings edit, exports, impersonation-adjacent POS/global actions.</span></div>
+              <div class="check"><span class="box done"></span><span>Make L1 Owner bypass clear in Access Levels UI, without pretending it is editable.</span></div>
+              <div class="check"><span class="box done"></span><span>Regenerate <code>docs/reference</code> if endpoints, manifests, or migrations changed.</span></div>
+              <div class="check"><span class="box done"></span><span>Run <code>npm run typecheck</code> and full <code>npm test</code>.</span></div>
+              <div class="check"><span class="box done"></span><span>Local HTTP smoke: <code>/login</code> and <code>/api/auth-config</code> returned 200 with security headers; in-app browser backend was unavailable in this session.</span></div>
+              <div class="check"><span class="box done"></span><span>Emit final Main integration handoff with migration order and risk notes.</span></div>
             </div>
           </div>
         </article>
@@ -1152,6 +1152,57 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
             migration applied; typecheck green; focused auth MFA suite green, 1 file and 13 tests;
             adjacent auth/session subset green, 4 files and 64 tests; reference docs regenerated;
             full vitest suite green, 324 files and 1940 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M5</h3>
+          <p>
+            Added migration 140 with impersonation metadata on session and audit rows. Admin
+            impersonation now requires a reason, issues one-hour bucket-user sessions, carries
+            the real platform admin through refresh, and stamps downstream audit rows with
+            <code>impersonated_by_admin</code>. Verification: migration applied; typecheck green;
+            focused impersonation/audit subset green, 3 files and 23 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M6</h3>
+          <p>
+            Added migration 141 and expiring hashed credential tokens for invite/reset flows.
+            AMS/team UI now issues copyable set-password links, and the public token page
+            consumes each token once while preserving legacy temp-password compatibility for
+            old paths. Verification: migration applied; typecheck green; user-node auth suite
+            green, 45 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M7</h3>
+          <p>
+            Added migration 142 with platform admin roles and capability gates across admin
+            management, impersonation, export, client delete, product enablement, and permission
+            edits. New admins default to Support. Verification: migration applied; typecheck
+            green; admin-team suite green, 12 tests; RBAC operation subset green, 5 files and
+            40 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M8</h3>
+          <p>
+            Added migration 143 with disabled/locked/password lifecycle columns for admins and
+            workspace credentials. Disabled accounts return generic login failures, active
+            sessions revoke on disable, and password changes stamp lifecycle metadata.
+            Verification: migration applied; typecheck green; lifecycle auth subset green,
+            3 files and 72 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M9</h3>
+          <p>
+            Added high-risk permission warnings to the AMS matrix, kept the Level 1 Owner bypass
+            visible as read-only full access, and regenerated reference docs for the changed
+            endpoints/schema. Verification: typecheck green; focused permission-matrix component
+            test green; local HTTP smoke green for <code>/login</code> and <code>/api/auth-config</code>;
+            in-app browser backend unavailable in this session; full vitest suite green, 324 files
+            and 1947 tests.
           </p>
         </article>
       </div>
