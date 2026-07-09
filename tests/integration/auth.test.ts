@@ -32,7 +32,7 @@ import mfaEnrollHandler from '../../netlify/functions/auth-mfa-enroll';
 import mfaConfirmHandler from '../../netlify/functions/auth-mfa-confirm';
 import mfaChallengeHandler from '../../netlify/functions/auth-mfa-challenge';
 import mfaDisableHandler from '../../netlify/functions/auth-mfa-disable';
-import { totpCode } from '../../netlify/functions/_shared/mfa';
+import { generateTotpSecret, totpCode } from '../../netlify/functions/_shared/mfa';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -156,7 +156,11 @@ beforeEach(async () => {
 
   // Reset google_sub to NULL so Google-bind tests start cleanly.
   await sql`
-    UPDATE public.admins SET google_sub = NULL WHERE email = ${TEST_EMAIL}
+    UPDATE public.admins
+    SET google_sub = NULL,
+        disabled_at = NULL,
+        locked_until = NULL
+    WHERE email = ${TEST_EMAIL}
   `;
   await sql`
     DELETE FROM public.admin_mfa_challenges
@@ -328,6 +332,36 @@ describe('auth integration', () => {
     const afterDisable = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
     expect(afterDisable.status).toBe(200);
     expect(afterDisable.headers.get('set-cookie')).toContain('session=');
+  }, 60_000);
+
+  it('admin MFA challenge cannot mint a session after the admin is disabled', async () => {
+    const adminRows = (await sql`
+      SELECT id FROM public.admins WHERE email = ${TEST_EMAIL} LIMIT 1
+    `) as { id: string }[];
+    const secret = generateTotpSecret();
+    await sql`
+      INSERT INTO public.admin_mfa (admin_id, totp_secret, enabled_at, recovery_code_hashes)
+      VALUES (${adminRows[0]!.id}::uuid, ${secret}, now(), '[]'::jsonb)
+    `;
+
+    const gated = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    expect(gated.status).toBe(200);
+    const gatedBody = await gated.json() as { mfa_required: true; challenge_id: string };
+
+    await sql`
+      UPDATE public.admins
+      SET disabled_at = now()
+      WHERE email = ${TEST_EMAIL}
+    `;
+
+    const complete = await mfaChallengeHandler(
+      mfaChallengeReq({ challenge_id: gatedBody.challenge_id, code: totpCode(secret) }),
+      CTX,
+    );
+    expect(complete.status).toBe(401);
+    expect(complete.headers.get('set-cookie')).toBeNull();
+
+    await sql`UPDATE public.admins SET disabled_at = NULL WHERE email = ${TEST_EMAIL}`;
   }, 60_000);
 
   // ── Test 2: login rejects wrong password ─────────────────────────────────
