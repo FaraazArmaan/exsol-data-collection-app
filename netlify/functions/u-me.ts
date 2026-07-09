@@ -6,6 +6,7 @@ import type { Context } from '@netlify/functions';
 import { db } from './_shared/db';
 import {
   buCookieHeader, mintBucketUserSession, shouldRefreshBucketUser,
+  impersonationBuCookieHeader,
   revokeSession,
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
@@ -70,9 +71,15 @@ export default async (req: Request, _ctx: Context) => {
       sub: actor.claims.sub,
       email: actor.claims.email,
       client_id: actor.claims.client_id,
+    }, {
+      impersonatedByAdmin: actor.claims.impersonated_by_admin,
+      impersonationStartedAt: actor.claims.impersonation_started_at,
+      impersonationReason: actor.claims.impersonation_reason,
     });
     await revokeSession(actor.claims.jti);
-    headers['Set-Cookie'] = buCookieHeader(fresh);
+    headers['Set-Cookie'] = actor.claims.impersonated_by_admin
+      ? impersonationBuCookieHeader(fresh)
+      : buCookieHeader(fresh);
   }
 
   return jsonOk({

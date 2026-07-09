@@ -1,18 +1,24 @@
 import type { Context } from '@netlify/functions';
+import { z } from 'zod';
 import { db } from './_shared/db';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
-import { assertUuid } from './_shared/identifier';
-import { mintBucketUserSession, buCookieHeader } from './_shared/session';
+import { mintBucketUserSession, impersonationBuCookieHeader } from './_shared/session';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
 
-// POST /api/admin-impersonate  body { clientId }
+const Body = z.object({
+  clientId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(500),
+});
+
+// POST /api/admin-impersonate  body { clientId, reason }
 //
 // Admin-only "view as client". Mints a workspace (bucket-user) session for the
 // client's L1 Owner node and sets the bu_session cookie — so the admin can open
 // /c/:slug/<module> with full Owner access (read-write; writes attribute to the
-// Owner node, per the chosen model). Every entry is audit-logged.
+// Owner node, per the chosen model). Every entry is audit-logged and the
+// downstream bucket-user session carries the real admin for audit attribution.
 //
 // The FE sets a separate, non-HttpOnly imp_ctx cookie (client name) to drive the
 // "viewing as admin" banner, and clears it + bu_session (via u-logout) on exit.
@@ -29,9 +35,9 @@ export default async (req: Request, _ctx: Context) => {
     throw e;
   }
 
-  const b = (await req.json().catch(() => ({}))) as { clientId?: string };
-  if (!b.clientId) return jsonError(400, 'validation_failed', 'clientId required');
-  try { assertUuid(b.clientId, 'clientId'); } catch { return jsonError(400, 'validation_failed', 'clientId must be uuid'); }
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+  const b = parsed.data;
 
   const sql = db();
   const clientRows = (await sql`
@@ -54,9 +60,16 @@ export default async (req: Request, _ctx: Context) => {
   if (!owner) return jsonError(409, 'no_owner_node', 'client has no L1 Owner node to impersonate');
 
   const email = owner.email ?? `admin-impersonation@${client.slug}.exsol`;
+  const startedAt = new Date().toISOString();
   const token = await mintBucketUserSession(
     { sub: owner.node_id, email, client_id: client.id },
-    { userAgent: req.headers.get('user-agent') },
+    {
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      userAgent: req.headers.get('user-agent'),
+      impersonatedByAdmin: actor.admin.id,
+      impersonationStartedAt: startedAt,
+      impersonationReason: b.reason,
+    },
   );
 
   await logAudit(sql, {
@@ -65,11 +78,11 @@ export default async (req: Request, _ctx: Context) => {
     clientId: client.id,
     targetType: 'client',
     targetId: client.id,
-    detail: { as_user_node: owner.node_id, client_slug: client.slug },
+    detail: { as_user_node: owner.node_id, client_slug: client.slug, reason: b.reason, started_at: startedAt },
   });
 
   return jsonOk(
-    { slug: client.slug, name: client.name },
-    { headers: { 'Set-Cookie': buCookieHeader(token) } },
+    { slug: client.slug, name: client.name, impersonation_started_at: startedAt },
+    { headers: { 'Set-Cookie': impersonationBuCookieHeader(token) } },
   );
 };

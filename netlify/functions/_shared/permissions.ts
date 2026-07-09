@@ -103,6 +103,9 @@ export interface BucketUserSession {
   user_node_id: string;
   client_id: string;
   level_number: number;
+  impersonated_by_admin?: string;
+  impersonation_started_at?: string;
+  impersonation_reason?: string;
 }
 
 export type AnySession = AdminSession | BucketUserSession;
@@ -174,12 +177,28 @@ async function resolveBucketUserSession(buToken: string, key: string): Promise<B
 
   // L1 (Primary) bypasses the matrix check.
   if (levelNumber === 1) {
-    return { kind: 'bucket_user', user_node_id: claims.sub, client_id: clientId, level_number: 1 };
+    return bucketSessionFromClaims(claims, clientId, 1);
   }
 
   const matrix = await getLevelMatrix(clientId, levelNumber);
   if (!matrix[key]) throw new ForbiddenError(key);
-  return { kind: 'bucket_user', user_node_id: claims.sub, client_id: clientId, level_number: levelNumber };
+  return bucketSessionFromClaims(claims, clientId, levelNumber);
+}
+
+function bucketSessionFromClaims(
+  claims: BucketUserClaims,
+  clientId: string,
+  levelNumber: number,
+): BucketUserSession {
+  return {
+    kind: 'bucket_user',
+    user_node_id: claims.sub,
+    client_id: clientId,
+    level_number: levelNumber,
+    impersonated_by_admin: claims.impersonated_by_admin,
+    impersonation_started_at: claims.impersonation_started_at,
+    impersonation_reason: claims.impersonation_reason,
+  };
 }
 
 // ---------------------------------------------------------------------------

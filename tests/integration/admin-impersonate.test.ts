@@ -12,6 +12,7 @@ import clientRolesHandler from '../../netlify/functions/client-roles';
 import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import impersonateHandler from '../../netlify/functions/admin-impersonate';
+import uProductsHandler from '../../netlify/functions/u-products';
 
 const CTX = {} as Context;
 const ADMIN_EMAIL = `imp-admin-${Date.now()}@example.com`;
@@ -68,7 +69,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const id of createdClients) await sql`DELETE FROM public.clients WHERE id = ${id}::uuid`;
+  for (const id of createdClients) {
+    await sql`DELETE FROM public.audit_log WHERE client_id = ${id}::uuid`;
+    await sql`DELETE FROM public.clients WHERE id = ${id}::uuid`;
+  }
 });
 
 function impersonate(cookie: string | null, body: unknown) {
@@ -86,31 +90,86 @@ describe('admin-impersonate — view as client', () => {
   });
 
   test('mints an Owner bucket-user session + returns the slug', async () => {
-    const r = await impersonate(adminCookie, { clientId });
+    const r = await impersonate(adminCookie, { clientId, reason: 'support investigation' });
     expect(r.status).toBe(200);
-    const body = (await r.json()) as { slug: string };
+    const body = (await r.json()) as { slug: string; impersonation_started_at: string };
     expect(body.slug).toBe(clientSlug);
+    expect(body.impersonation_started_at).toBeTruthy();
 
     // The Set-Cookie is a valid bu_session whose subject is the client's Owner node.
     const setCookie = r.headers.get('set-cookie')!;
     expect(setCookie).toContain('bu_session=');
+    expect(setCookie).toContain('Max-Age=3600');
     const token = setCookie.split('bu_session=')[1]!.split(';')[0]!;
     const claims = await verifyBucketUserSession(token);
     expect(claims.sub).toBe(ownerNodeId);
     expect(claims.client_id).toBe(clientId);
     expect(claims.kind).toBe('bucket_user');
+    expect(claims.impersonated_by_admin).toBeTruthy();
+    expect(claims.impersonation_reason).toBe('support investigation');
+
+    const rows = (await sql`
+      SELECT impersonated_by_admin, impersonation_reason
+      FROM public.auth_sessions
+      WHERE id = ${claims.jti}::uuid
+      LIMIT 1
+    `) as { impersonated_by_admin: string | null; impersonation_reason: string | null }[];
+    expect(rows[0]!.impersonated_by_admin).toBe(claims.impersonated_by_admin);
+    expect(rows[0]!.impersonation_reason).toBe('support investigation');
   });
 
   test('audit-logs the impersonation (op admin.impersonate)', async () => {
-    await impersonate(adminCookie, { clientId });
+    await impersonate(adminCookie, { clientId, reason: 'support investigation' });
     const rows = (await sql`
-      SELECT op FROM public.audit_log WHERE op = 'admin.impersonate' AND client_id = ${clientId}::uuid LIMIT 1
-    `) as { op: string }[];
+      SELECT op, detail FROM public.audit_log WHERE op = 'admin.impersonate' AND client_id = ${clientId}::uuid LIMIT 1
+    `) as { op: string; detail: { reason?: string } }[];
     expect(rows.length).toBe(1);
+    expect(rows[0]!.detail.reason).toBe('support investigation');
+  });
+
+  test('downstream impersonated writes audit both the Owner node and initiating admin', async () => {
+    const imp = await impersonate(adminCookie, { clientId, reason: 'create product on behalf of client' });
+    const setCookie = imp.headers.get('set-cookie')!.split(';')[0]!;
+    const token = setCookie.split('bu_session=')[1]!;
+    const claims = await verifyBucketUserSession(token);
+
+    const create = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: `${adminCookie}; ${setCookie}` },
+      body: JSON.stringify({
+        type: 'physical',
+        name: `Impersonated Product ${Date.now()}`,
+        price_cents: 1299,
+        sku: `IMP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        stock_qty: 3,
+        unit: 'pcs',
+      }),
+    }), CTX);
+    expect(create.status).toBe(201);
+    const product = await create.json() as { id: string };
+
+    const rows = (await sql`
+      SELECT actor_admin, actor_user_node, impersonated_by_admin
+      FROM public.audit_log
+      WHERE op = 'products.created'
+        AND target_id = ${product.id}
+      LIMIT 1
+    `) as { actor_admin: string | null; actor_user_node: string | null; impersonated_by_admin: string | null }[];
+    expect(rows[0]!.actor_admin).toBeNull();
+    expect(rows[0]!.actor_user_node).toBe(ownerNodeId);
+    expect(rows[0]!.impersonated_by_admin).toBe(claims.impersonated_by_admin);
   });
 
   test('404 for an unknown client', async () => {
-    const r = await impersonate(adminCookie, { clientId: '00000000-0000-0000-0000-000000000000' });
+    const r = await impersonate(adminCookie, {
+      clientId: '00000000-0000-0000-0000-000000000000',
+      reason: 'support investigation',
+    });
     expect(r.status).toBe(404);
+  });
+
+  test('400 when reason is missing', async () => {
+    const r = await impersonate(adminCookie, { clientId });
+    expect(r.status).toBe(400);
   });
 });

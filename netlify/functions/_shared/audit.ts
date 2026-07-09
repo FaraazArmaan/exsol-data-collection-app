@@ -23,13 +23,16 @@ export async function logAudit(
 ): Promise<void> {
   const actorAdmin = args.session.kind === 'admin' ? args.session.admin.id : null;
   const actorUserNode = args.session.kind === 'bucket_user' ? args.session.user_node_id : null;
+  const impersonatedByAdmin = args.session.kind === 'bucket_user'
+    ? (args.session.impersonated_by_admin ?? null)
+    : null;
   const detailJson = args.detail ? JSON.stringify(args.detail) : null;
   try {
     await sql`
       INSERT INTO public.audit_log
-        (actor_admin, actor_user_node, op, client_id, target_type, target_id, detail)
+        (actor_admin, actor_user_node, impersonated_by_admin, op, client_id, target_type, target_id, detail)
       VALUES
-        (${actorAdmin}, ${actorUserNode}, ${args.op},
+        (${actorAdmin}, ${actorUserNode}, ${impersonatedByAdmin}, ${args.op},
          ${args.clientId ?? null}, ${args.targetType ?? null}, ${args.targetId ?? null},
          ${detailJson})
     `;

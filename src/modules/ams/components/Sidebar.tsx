@@ -50,7 +50,7 @@ export function Sidebar() {
       const r = await fetch('/api/admin-impersonate', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId }),
+        body: JSON.stringify({ clientId, reason: `View ${mod.label} as client owner` }),
       });
       if (!r.ok) { setImpErr(true); setImpersonating(null); return; }
       const { slug, name } = await r.json() as { slug: string; name: string };

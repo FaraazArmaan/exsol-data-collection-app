@@ -96,6 +96,7 @@ export function readCookieToken(req: Request): string | null {
 // ---------------------------------------------------------------------------
 
 const BU_TTL_SECONDS = 24 * 60 * 60;
+const BU_IMPERSONATION_TTL_SECONDS = 60 * 60;
 const BU_REFRESH_THRESHOLD_SECONDS = 12 * 60 * 60;
 const BU_COOKIE = 'bu_session';
 
@@ -105,6 +106,9 @@ export interface BucketUserClaims {
   kind: 'bucket_user';
   realm: 'bucket_user';
   client_id: string;
+  impersonated_by_admin?: string;
+  impersonation_started_at?: string;
+  impersonation_reason?: string;
   jti: string;
   iat: number;
   exp: number;
@@ -112,16 +116,26 @@ export interface BucketUserClaims {
 
 export async function mintBucketUserSession(input: {
   sub: string; email: string; client_id: string;
-}, opts: MintOptions = {}): Promise<string> {
+}, opts: MintOptions & {
+  impersonatedByAdmin?: string | null;
+  impersonationStartedAt?: string | null;
+  impersonationReason?: string | null;
+} = {}): Promise<string> {
   const jti = randomUUID();
   const nowSec = Math.floor(Date.now() / 1000);
-  const expSec = nowSec + BU_TTL_SECONDS;
-  const token = await new SignJWT({
+  const isImpersonated = Boolean(opts.impersonatedByAdmin);
+  const expSec = nowSec + (isImpersonated ? BU_IMPERSONATION_TTL_SECONDS : BU_TTL_SECONDS);
+  const impersonationStartedAt = opts.impersonationStartedAt ?? (isImpersonated ? new Date(nowSec * 1000).toISOString() : null);
+  const tokenClaims: Record<string, string> = {
     email: input.email,
     kind: 'bucket_user',
     realm: 'bucket_user',
     client_id: input.client_id,
-  })
+  };
+  if (opts.impersonatedByAdmin) tokenClaims.impersonated_by_admin = opts.impersonatedByAdmin;
+  if (impersonationStartedAt) tokenClaims.impersonation_started_at = impersonationStartedAt;
+  if (opts.impersonationReason) tokenClaims.impersonation_reason = opts.impersonationReason;
+  const token = await new SignJWT(tokenClaims)
     .setProtectedHeader({ alg: ALG })
     .setSubject(input.sub)
     .setJti(jti)
@@ -138,6 +152,9 @@ export async function mintBucketUserSession(input: {
       expiresAt: new Date(expSec * 1000),
       ip: opts.ip ?? null,
       userAgent: opts.userAgent ?? null,
+      impersonatedByAdmin: opts.impersonatedByAdmin ?? null,
+      impersonationStartedAt,
+      impersonationReason: opts.impersonationReason ?? null,
     });
   }
   return token;
@@ -151,7 +168,10 @@ export async function verifyBucketUserSession(token: string): Promise<BucketUser
     payload.kind !== 'bucket_user' ||
     payload.realm !== 'bucket_user' ||
     typeof payload.jti !== 'string' ||
-    typeof payload.client_id !== 'string'
+    typeof payload.client_id !== 'string' ||
+    (payload.impersonated_by_admin !== undefined && typeof payload.impersonated_by_admin !== 'string') ||
+    (payload.impersonation_started_at !== undefined && typeof payload.impersonation_started_at !== 'string') ||
+    (payload.impersonation_reason !== undefined && typeof payload.impersonation_reason !== 'string')
   ) {
     throw new Error('invalid claims');
   }
@@ -162,9 +182,13 @@ export function shouldRefreshBucketUser(claims: BucketUserClaims, nowSec = Math.
   return claims.exp - nowSec < BU_REFRESH_THRESHOLD_SECONDS;
 }
 
-export function buCookieHeader(token: string): string {
+export function buCookieHeader(token: string, maxAgeSeconds = BU_TTL_SECONDS): string {
   const secure = env().COOKIE_SECURE ? '; Secure' : '';
-  return `${BU_COOKIE}=${token}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${BU_TTL_SECONDS}`;
+  return `${BU_COOKIE}=${token}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
+}
+
+export function impersonationBuCookieHeader(token: string): string {
+  return buCookieHeader(token, BU_IMPERSONATION_TTL_SECONDS);
 }
 
 export function clearBuCookieHeader(): string {
@@ -239,10 +263,21 @@ async function insertSession(input: {
   expiresAt: Date;
   ip: string | null;
   userAgent: string | null;
+  impersonatedByAdmin?: string | null;
+  impersonationStartedAt?: string | null;
+  impersonationReason?: string | null;
 }): Promise<void> {
   const sql = db();
   await sql`
-    INSERT INTO public.auth_sessions (id, realm, subject_id, client_id, email, expires_at, ip, user_agent)
-    VALUES (${input.id}::uuid, ${input.realm}, ${input.subjectId}::uuid, ${input.clientId}::uuid, ${input.email}, ${input.expiresAt.toISOString()}::timestamptz, ${input.ip}::inet, ${input.userAgent})
+    INSERT INTO public.auth_sessions (
+      id, realm, subject_id, client_id, email, expires_at, ip, user_agent,
+      impersonated_by_admin, impersonation_started_at, impersonation_reason
+    )
+    VALUES (
+      ${input.id}::uuid, ${input.realm}, ${input.subjectId}::uuid, ${input.clientId}::uuid,
+      ${input.email}, ${input.expiresAt.toISOString()}::timestamptz, ${input.ip}::inet, ${input.userAgent},
+      ${input.impersonatedByAdmin ?? null}::uuid, ${input.impersonationStartedAt ?? null}::timestamptz,
+      ${input.impersonationReason ?? null}
+    )
   `;
 }
