@@ -5,12 +5,16 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const PatchBody = z.object({
   label: z.string().min(1).max(100).optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');

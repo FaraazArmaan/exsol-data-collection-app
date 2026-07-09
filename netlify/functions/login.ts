@@ -25,6 +25,7 @@ import {
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 // Body is one of two shapes — password OR Google ID token. Zod union.
 const PasswordBody = z.object({
@@ -67,6 +68,8 @@ const MAX_CREDS_TO_VERIFY = 5;  // safety cap on argon2 verifies per request
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 

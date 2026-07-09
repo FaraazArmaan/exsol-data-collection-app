@@ -17,6 +17,7 @@ import {
 import { jsonError, jsonOk } from './_shared/http';
 import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const RowSchema = z.object({
   display_name: z.string().min(1).max(200),
@@ -35,6 +36,8 @@ interface RowError { row_index: number; errors: string[] }
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   const auth = await authenticateForPermission(req, '_platform.users.create');
   if (auth instanceof Response) return auth;

@@ -8,6 +8,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { authenticateForPermission, resolveClientIdOrRespond } from './_shared/permissions';
 import { logAudit } from './_shared/audit';
 import { isAllowedBrandKey, keyBelongsToClient } from './_shared/brand';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export const config = { path: '/api/client-settings/brand', method: 'PATCH' };
 
@@ -29,6 +30,8 @@ const Body = z.object({
 
 export default async (req: Request, _ctx?: Context) => {
   if (req.method !== 'PATCH') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const auth = await authenticateForPermission(req, '_platform.settings.edit');
   if (auth instanceof Response) return auth;
   const scope = resolveClientIdOrRespond(auth, req);

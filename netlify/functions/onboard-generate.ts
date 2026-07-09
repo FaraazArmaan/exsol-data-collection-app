@@ -5,11 +5,14 @@ import { jsonOk } from './_shared/http';
 import { db } from './_shared/db';
 import { requireDataCollection } from './_data-collection-authz';
 import { randomUUID } from 'node:crypto';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export const config = { path: '/api/onboard-generate', method: 'POST' };
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const a = await requireDataCollection(req, ['data-collection.products.create']);
   if (!a.ok) return a.res;
 

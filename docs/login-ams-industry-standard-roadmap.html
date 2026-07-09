@@ -690,7 +690,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
       <div class="status-board">
         <div class="status-cell"><strong>M0 Roadmap</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M1 Baseline</strong><span>Handoff ready</span></div>
-        <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M3 Revocation</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M4 MFA</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M5 Impersonation</strong><span>Not started</span></div>
@@ -762,7 +762,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M2</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Security headers and CSRF/origin guard</h3>
@@ -776,11 +776,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: auth-wide behavior</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add <code>[[headers]]</code> for CSP, HSTS, frame-ancestors, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.</span></div>
-              <div class="check"><span class="box"></span><span>Create <code>netlify/functions/_shared/csrf.ts</code> or equivalent origin guard.</span></div>
-              <div class="check"><span class="box"></span><span>Apply guard to cookie-authenticated mutating endpoints first: admin team, client settings, user nodes, credentials, impersonation, access levels.</span></div>
-              <div class="check"><span class="box"></span><span>Add tests for allowed same-origin POST and rejected cross-origin POST.</span></div>
-              <div class="check"><span class="box"></span><span>Browser smoke: login, team edit, access-level save, impersonation.</span></div>
+              <div class="check"><span class="box done"></span><span>Add <code>[[headers]]</code> for CSP, HSTS, frame-ancestors, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.</span></div>
+              <div class="check"><span class="box done"></span><span>Create <code>netlify/functions/_shared/csrf.ts</code> or equivalent origin guard.</span></div>
+              <div class="check"><span class="box done"></span><span>Apply guard to cookie-authenticated mutating endpoints first: admin team, client settings, user nodes, credentials, impersonation, access levels.</span></div>
+              <div class="check"><span class="box done"></span><span>Add tests for allowed same-origin POST and rejected cross-origin POST.</span></div>
+              <div class="check"><span class="box done"></span><span>Review CSP allowances for login, Google Sign-In, image blobs, and app assets before full-suite handoff.</span></div>
             </div>
           </div>
         </article>
@@ -1052,8 +1052,8 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
         <article class="card">
           <h3>Next update</h3>
           <p>
-            After M1, mark the Baseline milestone as Handoff ready or Integrated, add the
-            audit document path, and record targeted tests run.
+            After M2 integration, mark Headers + CSRF as Integrated and record any Main-chat
+            browser smoke notes for login, access-level save, team edit, and impersonation.
           </p>
         </article>
         <article class="card">
@@ -1064,6 +1064,16 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
             <code>docs/login-ams-hardening-audit.md</code>. Verification: typecheck green;
             targeted auth/AMS suite green, 5 files and 72 tests; full vitest suite green,
             322 files and 1928 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M2</h3>
+          <p>
+            Added Netlify security headers and a reusable same-origin mutation guard, then
+            wired it into Login+AMS unsafe endpoints. Verification: typecheck green; focused
+            CSRF/header/auth tests green, 3 files and 18 tests; broader AMS/auth subset green,
+            17 files and 182 tests; full vitest suite green, 324 files and 1936 tests. Stabilized
+            one unrelated Product thumbnail delete test by seeding its cache directly.
           </p>
         </article>
       </div>

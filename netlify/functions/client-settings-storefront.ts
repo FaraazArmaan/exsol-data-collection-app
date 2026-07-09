@@ -15,6 +15,7 @@ import { logAudit } from './_shared/audit';
 import {
   authenticateForPermission, resolveClientIdOrRespond,
 } from './_shared/permissions';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export const config = { path: '/api/client-settings/storefront' };
 
@@ -29,6 +30,8 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET' && req.method !== 'PATCH') {
     return jsonError(405, 'method_not_allowed');
   }
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   const auth = await authenticateForPermission(req, '_platform.settings.edit');
   if (auth instanceof Response) return auth;

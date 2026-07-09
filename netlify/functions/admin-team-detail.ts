@@ -8,9 +8,12 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { assertUuid } from './_shared/identifier';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'DELETE') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {

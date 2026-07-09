@@ -11,6 +11,7 @@ import {
   brandStore, brandKey, heroKey, sniffImageMime,
   BRAND_ALLOWED_MIME, MAX_BRAND_BYTES, type BrandKind, type StableBrandKind,
 } from './_shared/brand';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export const config = { path: '/api/client-settings/brand-image', method: 'POST' };
 
@@ -21,6 +22,8 @@ function isBrandKind(v: unknown): v is BrandKind {
 
 export default async (req: Request, _ctx?: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const auth = await authenticateForPermission(req, '_platform.settings.edit');
   if (auth instanceof Response) return auth;
   const scope = resolveClientIdOrRespond(auth, req);

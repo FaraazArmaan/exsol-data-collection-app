@@ -6,6 +6,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
 import { defaultPermissionsForLevel } from './_shared/level-permissions';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const CreateBody = z.object({
   level_number: z.number().int().positive(),
@@ -14,6 +15,8 @@ const CreateBody = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');

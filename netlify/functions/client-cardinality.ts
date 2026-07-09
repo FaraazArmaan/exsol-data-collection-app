@@ -5,6 +5,7 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const RuleSchema = z.object({
   parent_role_id: z.string().uuid().nullable(),
@@ -18,6 +19,8 @@ const PutBody = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'PUT') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');

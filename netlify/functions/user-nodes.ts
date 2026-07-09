@@ -12,6 +12,7 @@ import { hashPassword } from './_shared/argon';
 import { getCardinalityCap } from './_shared/user-tree';
 import { subtreeOf } from './_shared/subtree';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const CreateBody = z.object({
   role_id: z.string().uuid(),
@@ -27,6 +28,9 @@ const CreateBody = z.object({
 });
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   let session: AnySession;
 
   if (req.method === 'GET') {

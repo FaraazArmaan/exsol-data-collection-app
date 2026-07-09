@@ -14,10 +14,14 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
 import { allProducts, getProduct } from '@registry/products';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const PutBody = z.object({ keys: z.array(z.string().min(1).max(80)).max(64) });
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');

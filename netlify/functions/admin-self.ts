@@ -7,6 +7,7 @@ import { db } from './_shared/db';
 import { hashPassword } from './_shared/argon';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   display_name: z.string().min(1).max(200).optional(),
@@ -17,6 +18,8 @@ const Body = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'PATCH') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {

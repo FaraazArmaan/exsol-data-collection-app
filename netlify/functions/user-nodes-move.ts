@@ -7,6 +7,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { cycleCheck, getCardinalityCap } from './_shared/user-tree';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   parent_id: z.string().uuid().nullable(),
@@ -15,6 +16,8 @@ const Body = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const auth = await authenticateForPermission(req, '_platform.users.edit');
   if (auth instanceof Response) return auth;
   const session = auth;

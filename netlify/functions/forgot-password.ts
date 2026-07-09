@@ -20,6 +20,7 @@ import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
 import { jsonError, jsonOk } from './_shared/http';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   email: z.string().email().max(254),
@@ -30,6 +31,8 @@ const COOLDOWN_SECONDS = 5 * 60;
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 

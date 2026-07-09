@@ -12,6 +12,7 @@ import { verifyPassword } from './_shared/argon';
 import { mintBucketUserSession, buCookieHeader } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   email: z.string().email(),
@@ -29,6 +30,8 @@ interface CredentialRow {
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   const slug = new URL(req.url).searchParams.get('client');
   if (!slug) return jsonError(400, 'validation_failed', 'client query param required');

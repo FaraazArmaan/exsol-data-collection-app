@@ -17,6 +17,7 @@ import {
 import { subtreeOf } from './_shared/subtree';
 import { jsonError, jsonOk } from './_shared/http';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   node_ids: z.array(z.string().uuid()),
@@ -27,6 +28,8 @@ interface TargetError { node_id: string; reason: string }
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   const auth = await authenticateForPermission(req, '_platform.users.edit');
   if (auth instanceof Response) return auth;

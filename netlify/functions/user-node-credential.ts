@@ -12,6 +12,7 @@ import { authenticateForPermission, authorizeClientScope, authorizeSubtreeScope 
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const ResetBody = z.object({ temp_password: z.string().min(8).max(200) });
 
@@ -29,6 +30,9 @@ interface FullCredential {
 }
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   const auth = await authenticateForPermission(req, '_platform.users.edit');
   if (auth instanceof Response) return auth;
   const session = auth;

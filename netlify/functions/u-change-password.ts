@@ -12,6 +12,7 @@ import { db } from './_shared/db';
 import { hashPassword, verifyPassword } from './_shared/argon';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   current_password: z.string().min(1),
@@ -20,6 +21,8 @@ const Body = z.object({
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireBucketUser(req); } catch (e) {

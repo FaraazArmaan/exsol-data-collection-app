@@ -16,11 +16,14 @@ import { db } from './_shared/db';
 import { verifyGoogleIdToken } from './_shared/google-verifier';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({ idToken: z.string().min(10) });
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireBucketUser(req); } catch (e) {

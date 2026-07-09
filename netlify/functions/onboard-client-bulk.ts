@@ -23,6 +23,7 @@ import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
 import { defaultPermissionsForLevel } from './_shared/level-permissions';
 import { getProduct } from '@registry/products';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 // ----- Validation (Zod) -----
 
@@ -73,6 +74,8 @@ function genTempPassword(): string {
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {

@@ -19,6 +19,7 @@ import { deriveSlug } from './_shared/identifier';
 import { hashPassword } from './_shared/argon';
 import { logAudit } from './_shared/audit';
 import { defaultPermissionsForLevel } from './_shared/level-permissions';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const RoleSchema = z.object({
   key: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(50),
@@ -62,6 +63,8 @@ function err(status: number, code: string, section: Section, extra?: Record<stri
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {

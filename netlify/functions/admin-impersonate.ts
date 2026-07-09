@@ -5,6 +5,7 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { mintBucketUserSession, buCookieHeader } from './_shared/session';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 // POST /api/admin-impersonate  body { clientId }
 //
@@ -18,6 +19,10 @@ import { logAudit } from './_shared/audit';
 export const config = { path: '/api/admin-impersonate', method: 'POST' };
 
 export default async (req: Request, _ctx: Context) => {
+  if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   let actor;
   try { actor = await requireAdmin(req); } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');

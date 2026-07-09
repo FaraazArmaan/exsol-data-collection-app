@@ -7,6 +7,7 @@ import {
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const PatchBody = z.object({
   display_name: z.string().min(1).max(200).optional(),
@@ -17,6 +18,9 @@ const PatchBody = z.object({
 }).refine((d) => Object.keys(d).length > 0, { message: 'at_least_one_field_required' });
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   const url = new URL(req.url);
   const id = url.searchParams.get('id');
   if (!id) return jsonError(400, 'validation_failed', 'id required');

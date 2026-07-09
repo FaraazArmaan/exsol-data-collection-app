@@ -5,6 +5,7 @@ import { verifyPassword } from './_shared/argon';
 import { mintSession, cookieHeader } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const Body = z.object({
   email: z.string().email(),
@@ -21,6 +22,8 @@ interface AdminRow {
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
 

@@ -146,6 +146,20 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('auth integration', () => {
+  it('auth-login rejects cross-site POST before credential handling', async () => {
+    const res = await loginHandler(new Request('https://app.example.test/api/auth-login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        origin: 'https://evil.example.test',
+      },
+      body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
+    }), CTX);
+
+    expect(res.status).toBe(403);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('csrf_origin_mismatch');
+  });
 
   // ── Test 1: login → me → logout happy path ────────────────────────────────
   it('login → me → logout (happy path)', async () => {

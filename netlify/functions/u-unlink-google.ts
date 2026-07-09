@@ -9,9 +9,12 @@ import type { Context } from '@netlify/functions';
 import { db } from './_shared/db';
 import { requireBucketUser, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
 
   let actor;
   try { actor = await requireBucketUser(req); } catch (e) {

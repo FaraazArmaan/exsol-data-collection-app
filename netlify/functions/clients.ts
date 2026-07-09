@@ -5,6 +5,7 @@ import { requireAdmin, UnauthorizedError } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { deriveSlug } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
+import { rejectCrossSiteMutation } from './_shared/csrf';
 
 const CreateBody = z.object({
   name: z.string().min(1).max(200),
@@ -18,6 +19,9 @@ interface ClientRow {
 }
 
 export default async (req: Request, _ctx: Context) => {
+  const csrf = rejectCrossSiteMutation(req);
+  if (csrf) return csrf;
+
   let actor;
   try {
     actor = await requireAdmin(req);

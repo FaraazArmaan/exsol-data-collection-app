@@ -216,6 +216,38 @@ Session revocation should not overcomplicate the JWT shape:
 - Logout should revoke the current row and clear the cookie.
 - `sign out all` should revoke by subject/realm/client as appropriate.
 
+## M2 Verification
+
+M2 adds Netlify-wide security headers and a scoped same-origin guard for Login+AMS unsafe
+methods. The guard is intentionally wired into owned handlers instead of the shared permission
+middleware so Product/File/module endpoints do not receive an unreviewed behavior change.
+
+Implemented:
+
+- `netlify.toml` `[[headers]]` block for CSP, HSTS, frame-ancestors, nosniff,
+  referrer policy, and permissions policy.
+- `netlify/functions/_shared/csrf.ts` with unsafe-method origin checks.
+- Guard wiring for Login/session mutation endpoints, AMS admin/team/client structure endpoints,
+  client settings, user-node/team mutation endpoints, credential reset/delete, impersonation,
+  onboarding, and onboarding-link generation.
+- Unit coverage for same-origin, cross-origin, forwarded host/proto, and production-style missing
+  Origin behavior.
+- Header coverage for the Netlify security header block and Google Sign-In CSP allowance.
+- Integration coverage proving `auth-login` rejects a cross-site POST with
+  `csrf_origin_mismatch`.
+
+Verification:
+
+- `npm run typecheck`: green.
+- `npm test -- tests/unit/csrf.test.ts tests/unit/netlify-security-headers.test.ts tests/integration/auth.test.ts`:
+  3 files passed, 18 tests passed.
+- Broader AMS/auth subset: 17 files, 182 tests; first run had one transient
+  `user-nodes-crud` timeout, and rerunning that file passed 33/33.
+- Full suite final run: `npm test` green, 324 files passed, 1936 tests passed.
+- Test isolation note: `tests/integration/u-products-image-thumb.test.ts` now seeds the cached
+  thumbnail directly in the delete-cleanup test, so full-suite verification no longer depends on
+  an unrelated `sharp` resize/cache-warm path.
+
 ## M5 Design Notes
 
 Impersonation should become explicit session state:

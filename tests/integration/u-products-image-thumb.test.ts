@@ -323,12 +323,9 @@ describe('u-products-image DELETE — clears cached thumbnail', () => {
   test('DELETE on an image also removes its cached thumb', async () => {
     const p = await makeProduct();
     const img = await uploadImage(p.id);
-    // Warm the cache.
-    await uProductsImageThumbHandler(
-      new Request(`http://localhost/api/u-products-image-thumb/${img.id}`, { headers: { cookie: buCookie } }),
-      CTX,
-    );
-    expect(thumbStore.has(`thumb/${img.blob_key}.webp`)).toBe(true);
+    const thumbKey = `thumb/${img.blob_key}.webp`;
+    thumbStore.set(thumbKey, new ArrayBuffer(1));
+    expect(thumbStore.has(thumbKey)).toBe(true);
 
     // DELETE the image.
     const r = await uProductsImageHandler(
@@ -337,6 +334,6 @@ describe('u-products-image DELETE — clears cached thumbnail', () => {
     );
     expect(r.status).toBe(204);
 
-    expect(thumbStore.has(`thumb/${img.blob_key}.webp`)).toBe(false);
+    expect(thumbStore.has(thumbKey)).toBe(false);
   });
 });
