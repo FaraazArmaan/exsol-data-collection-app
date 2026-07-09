@@ -23,6 +23,11 @@ export interface AdminMember {
   created_at: string;
 }
 
+export interface AdminMfaStatus {
+  enabled: boolean;
+  recovery_codes_remaining: number;
+}
+
 export const listAdminTeam = () =>
   apiFetch<{ admins: AdminMember[] }>('/api/admin-team');
 
@@ -39,6 +44,24 @@ export const updateAdminSelf = (body: { display_name?: string; password?: string
     '/api/admin-self',
     { method: 'PATCH', body: JSON.stringify(body) },
   );
+
+export const getAdminMfaStatus = () =>
+  apiFetch<AdminMfaStatus>('/api/auth-mfa-status');
+
+export const startAdminMfaEnroll = () =>
+  apiFetch<{ secret: string; otpauth_url: string }>('/api/auth-mfa-enroll', { method: 'POST' });
+
+export const confirmAdminMfaEnroll = (code: string) =>
+  apiFetch<{ enabled: true; recovery_codes: string[] }>('/api/auth-mfa-confirm', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+
+export const disableAdminMfa = (body: { code?: string; recovery_code?: string }) =>
+  apiFetch<{ enabled: false }>('/api/auth-mfa-disable', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 
 // ─── v3: client structure ───────────────────────────────────────────
 

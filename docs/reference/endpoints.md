@@ -6,7 +6,7 @@
 
 # API endpoints
 
-277 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+282 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -183,6 +183,11 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | auth-logout-all.ts | `/api/auth-logout-all (name-routed)` | any | admin | — |
 | auth-logout.ts | `/api/auth-logout (name-routed)` | any | public | — |
 | auth-me.ts | `/api/auth-me (name-routed)` | any | admin | — |
+| auth-mfa-challenge.ts | `/api/auth-mfa-challenge (name-routed)` | any | public | — |
+| auth-mfa-confirm.ts | `/api/auth-mfa-confirm (name-routed)` | any | admin | — |
+| auth-mfa-disable.ts | `/api/auth-mfa-disable (name-routed)` | any | admin | — |
+| auth-mfa-enroll.ts | `/api/auth-mfa-enroll (name-routed)` | any | admin | — |
+| auth-mfa-status.ts | `/api/auth-mfa-status (name-routed)` | any | admin | — |
 | forgot-password.ts | `/api/forgot-password (name-routed)` | any | public | — |
 | login.ts | `/api/login (name-routed)` | any | public | — |
 

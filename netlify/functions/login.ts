@@ -26,6 +26,7 @@ import {
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
+import { adminMfaEnabled, createAdminMfaChallenge } from './_shared/mfa';
 
 // Body is one of two shapes — password OR Google ID token. Zod union.
 const PasswordBody = z.object({
@@ -79,7 +80,7 @@ export default async (req: Request, _ctx: Context) => {
   // Google flow: branch off here. Different rate-limit handling (IP-first
   // because email isn't known until we verify the token).
   if (isGoogleBody(parsed.data)) {
-    return await handleGoogleLogin(sql, ip, parsed.data);
+    return await handleGoogleLogin(sql, ip, req.headers.get('user-agent'), parsed.data);
   }
 
   const limit = await checkRateLimit(sql, { email: parsed.data.email, ip });
@@ -102,12 +103,21 @@ export default async (req: Request, _ctx: Context) => {
       return jsonError(401, 'unauthorized');
     }
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
+    const adminBody = { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap };
+    if (await adminMfaEnabled(sql, admin.id)) {
+      const challengeId = await createAdminMfaChallenge(sql, {
+        adminId: admin.id,
+        ip,
+        userAgent: req.headers.get('user-agent'),
+      });
+      return jsonOk({ kind: 'mfa_required', challenge_id: challengeId, admin: adminBody });
+    }
     const token = await mintSession(
       { sub: admin.id, email: admin.email },
       { ip, userAgent: req.headers.get('user-agent') },
     );
     return jsonOk(
-      { kind: 'admin', admin: { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap } },
+      { kind: 'admin', admin: adminBody },
       { headers: { 'Set-Cookie': cookieHeader(token) } },
     );
   }
@@ -210,6 +220,7 @@ export default async (req: Request, _ctx: Context) => {
 async function handleGoogleLogin(
   sql: ReturnType<typeof db>,
   ip: string | null,
+  userAgent: string | null,
   body: z.infer<typeof GoogleBody>,
 ): Promise<Response> {
   // IP-only rate-limit BEFORE the Google RPC (same defense as auth-google.ts).
@@ -252,9 +263,17 @@ async function handleGoogleLogin(
        WHERE id = ${admin.id} AND google_sub IS NULL
     `;
     await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });
+    if (await adminMfaEnabled(sql, admin.id)) {
+      const challengeId = await createAdminMfaChallenge(sql, {
+        adminId: admin.id,
+        ip,
+        userAgent,
+      });
+      return jsonOk({ kind: 'mfa_required', challenge_id: challengeId, admin });
+    }
     const token = await mintSession(
       { sub: admin.id, email: admin.email },
-      { ip, userAgent: null },
+      { ip, userAgent },
     );
     return jsonOk(
       { kind: 'admin', admin },

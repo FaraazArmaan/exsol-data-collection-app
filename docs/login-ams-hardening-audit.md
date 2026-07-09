@@ -1,6 +1,6 @@
 # Login + AMS Hardening Audit
 
-Status: M3 verified, handoff-ready
+Status: M4 verified, handoff-ready
 Branch: `feat/login-ams-hardening-iso`
 Worktree: `worktrees/ExSol-Login-AMS-Hardening-WT`
 Date: 2026-07-09
@@ -59,11 +59,17 @@ well-tested, and handoff-oriented.
 | Function | Path | Auth today | Notes |
 |---|---|---|---|
 | `auth-config.ts` | `/api/auth-config` | public | Exposes Google OAuth client id. |
-| `auth-login.ts` | `/api/auth-login` | public | Admin password login, rate-limited, dummy hash timing protection. |
-| `auth-google.ts` | `/api/auth-google` | public | Admin Google login, strict binding, no auto-provisioning. |
+| `auth-login.ts` | `/api/auth-login` | public | Admin password login, rate-limited, dummy hash timing protection, MFA challenge for enrolled admins. |
+| `auth-google.ts` | `/api/auth-google` | public | Admin Google login, strict binding, no auto-provisioning, MFA challenge for enrolled admins. |
+| `auth-mfa-enroll.ts` | `/api/auth-mfa-enroll` | admin | Starts admin TOTP enrollment; returns setup secret/URI. |
+| `auth-mfa-confirm.ts` | `/api/auth-mfa-confirm` | admin | Confirms TOTP enrollment and returns one-time recovery codes. |
+| `auth-mfa-challenge.ts` | `/api/auth-mfa-challenge` | public | Completes enrolled-admin MFA challenge before full session minting. |
+| `auth-mfa-disable.ts` | `/api/auth-mfa-disable` | admin | Disables MFA after TOTP or recovery-code verification and writes audit row. |
+| `auth-mfa-status.ts` | `/api/auth-mfa-status` | admin | Reports admin MFA enabled state and recovery-code count. |
 | `auth-me.ts` | `/api/auth-me` | admin | Refreshes admin JWT near expiry. |
-| `auth-logout.ts` | `/api/auth-logout` | public | Clears cookie only; no server revocation. |
-| `login.ts` | `/api/login` | public | Unified admin/workspace login with admin precedence and workspace choice flow. |
+| `auth-logout.ts` | `/api/auth-logout` | public | Revokes current admin session row and clears cookie. |
+| `auth-logout-all.ts` | `/api/auth-logout-all` | admin | Revokes all active admin sessions for the current admin. |
+| `login.ts` | `/api/login` | public | Unified admin/workspace login with admin precedence, MFA challenge for enrolled admins, and workspace choice flow. |
 | `forgot-password.ts` | `/api/forgot-password` | public | Admin-mediated workspace reset request; no self-serve token flow. |
 
 ### Login/workspace session
@@ -73,7 +79,8 @@ well-tested, and handoff-oriented.
 | `u-client-by-slug.ts` | `/api/u-client-by-slug` | public | Client lookup for workspace login. |
 | `u-login.ts` | `/api/u-login` | public | Workspace password login scoped by client slug. |
 | `u-me.ts` | `/api/u-me` | bucket-user | Returns identity, permissions, enabled modules; refreshes cookie. |
-| `u-logout.ts` | `/api/u-logout` | public | Clears cookie only; no server revocation. |
+| `u-logout.ts` | `/api/u-logout` | public | Revokes current workspace session row and clears cookie. |
+| `u-logout-all.ts` | `/api/u-logout-all` | bucket-user | Revokes all active workspace sessions for the current user/client. |
 | `u-change-password.ts` | `/api/u-change-password` | bucket-user | Clears `must_change_password` and plaintext temp password fields. |
 | `u-link-google.ts` | `/api/u-link-google` | bucket-user | First-bind Google identity; email must match credential. |
 | `u-unlink-google.ts` | `/api/u-unlink-google` | bucket-user | Refuses unlink if Google is the only credential. |
@@ -168,7 +175,6 @@ Coverage gaps to fill before behavior changes:
 
 - CSRF/origin rejection tests for representative mutating endpoints.
 - Session revocation tests at both helper and endpoint levels.
-- MFA login-state tests before and after session minting.
 - Impersonated downstream write audit tests, not only `admin.impersonate`.
 - Invite/reset token lifecycle tests.
 - Admin RBAC denial tests for each sensitive operation group.
@@ -215,6 +221,34 @@ Session revocation should not overcomplicate the JWT shape:
 - `requireAdmin` and `requireBucketUser` should verify JWT first, then active session row.
 - Logout should revoke the current row and clear the cookie.
 - `sign out all` should revoke by subject/realm/client as appropriate.
+
+## M4 Verification
+
+M4 adds admin-first TOTP MFA without locking out non-enrolled admins during rollout. Enrolled
+admins must complete a second factor before an admin session cookie is minted.
+
+Implemented:
+
+- `db/migrations/139_login_ams_mfa.sql` with `admin_mfa` and short-lived
+  `admin_mfa_challenges`.
+- Compact TOTP/recovery-code helper in `netlify/functions/_shared/mfa.ts`.
+- New MFA endpoints for status, enrollment, confirmation, challenge completion, and disable.
+- Admin password, admin Google, and unified login paths now return an MFA challenge instead of a
+  session cookie when the admin has MFA enabled.
+- Login UI MFA challenge screen with authenticator-code and recovery-code modes.
+- AMS Settings MFA panel for setup, confirmation, recovery-code display, status, and disable.
+- Reference docs regenerated for the new endpoints and schema tables.
+
+Verification:
+
+- `npm run migrate`: applied `139_login_ams_mfa`.
+- `npm run typecheck`: green.
+- `npm test -- tests/integration/auth.test.ts`: green, 1 file passed, 13 tests passed.
+- Adjacent auth/session subset
+  `npm test -- tests/integration/user-node-auth.test.ts tests/integration/permissions-middleware.test.ts tests/integration/admin-impersonate.test.ts tests/integration/impersonation-session-priority.test.ts`:
+  green, 4 files passed, 64 tests passed.
+- `npm run docs:reference`: regenerated `docs/reference/{endpoints,permissions,schema}.md`.
+- Full suite final run: `npm test` green, 324 files passed, 1940 tests passed.
 
 ## M3 Verification
 
@@ -316,9 +350,10 @@ M3:
 
 M4:
 
-- `db/migrations/<allocated>_mfa.sql`
+- `db/migrations/139_login_ams_mfa.sql`
+- `netlify/functions/_shared/mfa.ts`
 - `netlify/functions/auth-login.ts`, `auth-google.ts`, `login.ts`
-- New `auth-mfa-*` endpoints or a compact equivalent.
+- New `auth-mfa-*` endpoints.
 - Admin settings UI.
 
 M5:
@@ -346,11 +381,10 @@ M7/M8:
 
 ## Open Questions For Human Coordinator
 
-1. Migration numbers for M3, M4, M5, M6, M7, and M8.
-2. MFA preference: WebAuthn-first or TOTP-first.
-3. Whether CSP should be report-only in production for one deploy before enforcement.
-4. Whether platform support admins should be allowed to impersonate by default.
-5. Whether invite/reset emails are in scope now or token-link generation remains copy/manual.
+1. Whether platform support admins should be allowed to impersonate by default.
+2. Whether invite/reset emails are in scope now or token-link generation remains copy/manual.
+3. When to move from enrolled-admin MFA enforcement to org-wide admin MFA requirement.
+4. Whether WebAuthn should be added later as a stronger second-factor option.
 
 ## M1 Verification
 

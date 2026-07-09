@@ -2,7 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../lib/auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
-import { unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
+import { completeAdminMfa, unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,6 +21,9 @@ export default function LoginPage() {
 
   // Picker state — only populated when server responds with kind:'choice'.
   const [pickerClients, setPickerClients] = useState<Array<{ id: string; slug: string; name: string }> | null>(null);
+  const [mfaChallenge, setMfaChallenge] = useState<{ id: string; email: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [useRecovery, setUseRecovery] = useState(false);
   // When a picker is shown after a Google-flow attempt, we need the original
   // ID token to re-POST with `client: <slug>`. Held in state across the
   // picker interaction so the user doesn't re-prompt Google.
@@ -44,6 +47,12 @@ export default function LoginPage() {
     if (data.kind === 'admin') {
       await refreshAdminAuth();
       navigate('/', { replace: true });
+      return;
+    }
+    if (data.kind === 'mfa_required') {
+      setMfaChallenge({ id: data.challenge_id, email: data.admin.email });
+      setMfaCode('');
+      setUseRecovery(false);
       return;
     }
     if (data.kind === 'bucket_user') {
@@ -114,6 +123,23 @@ export default function LoginPage() {
     setForgotMode('sent');
   }
 
+  async function onMfaSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!mfaChallenge || !mfaCode.trim()) return;
+    setError(null);
+    setSubmitting(true);
+    const r = await completeAdminMfa(mfaChallenge.id, useRecovery
+      ? { recovery_code: mfaCode.trim() }
+      : { code: mfaCode.trim() });
+    setSubmitting(false);
+    if (!r.ok) {
+      setError('Invalid verification code.');
+      return;
+    }
+    await refreshAdminAuth();
+    navigate('/', { replace: true });
+  }
+
   if (forgotMode === 'sent') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -182,6 +208,50 @@ export default function LoginPage() {
             ))}
           </ul>
           <button className="btn btn-ghost" onClick={cancelPicker} style={{ marginTop: 8 }}>← Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mfaChallenge) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" style={{ width: 'min(420px, 92vw)' }}>
+          <h1 style={{ marginBottom: 4 }}>Verification code</h1>
+          <p className="muted" style={{ marginTop: 0 }}>Enter the code for <strong>{mfaChallenge.email}</strong>.</p>
+          <form onSubmit={onMfaSubmit}>
+            <label>{useRecovery ? 'Recovery code' : 'Authenticator code'}
+              <input
+                type="text"
+                autoFocus
+                required
+                inputMode={useRecovery ? 'text' : 'numeric'}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Verifying…' : 'Verify'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={submitting}
+                onClick={() => { setUseRecovery((v) => !v); setMfaCode(''); setError(null); }}
+              >
+                {useRecovery ? 'Use app code' : 'Use recovery code'}
+              </button>
+            </div>
+          </form>
+          <button
+            className="btn btn-ghost"
+            onClick={() => { setMfaChallenge(null); setPassword(''); setError(null); }}
+            style={{ marginTop: 8 }}
+          >
+            ← Back
+          </button>
         </div>
       </div>
     );

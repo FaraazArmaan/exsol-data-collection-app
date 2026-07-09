@@ -28,6 +28,11 @@ import meHandler from '../../netlify/functions/auth-me';
 import logoutHandler from '../../netlify/functions/auth-logout';
 import logoutAllHandler from '../../netlify/functions/auth-logout-all';
 import googleHandler from '../../netlify/functions/auth-google';
+import mfaEnrollHandler from '../../netlify/functions/auth-mfa-enroll';
+import mfaConfirmHandler from '../../netlify/functions/auth-mfa-confirm';
+import mfaChallengeHandler from '../../netlify/functions/auth-mfa-challenge';
+import mfaDisableHandler from '../../netlify/functions/auth-mfa-disable';
+import { totpCode } from '../../netlify/functions/_shared/mfa';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,6 +90,22 @@ function googleReq(idToken: string, ip?: string): Request {
   });
 }
 
+function authedPost(path: string, cookieToken: string, body: unknown): Request {
+  return new Request(`http://localhost${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: `session=${cookieToken}` },
+    body: JSON.stringify(body),
+  });
+}
+
+function mfaChallengeReq(body: unknown): Request {
+  return new Request('http://localhost/api/auth-mfa-challenge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 /** Extract the bare session=<token> pair from a Set-Cookie header value. */
 function extractSessionCookie(setCookie: string): string {
   return setCookie.split(';')[0]!; // e.g. "session=eyJ..."
@@ -137,10 +158,34 @@ beforeEach(async () => {
   await sql`
     UPDATE public.admins SET google_sub = NULL WHERE email = ${TEST_EMAIL}
   `;
+  await sql`
+    DELETE FROM public.admin_mfa_challenges
+    WHERE admin_id IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
+  await sql`
+    DELETE FROM public.admin_mfa
+    WHERE admin_id IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
+  await sql`
+    DELETE FROM public.audit_log
+    WHERE actor_admin IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
   await sql`DELETE FROM public.auth_sessions WHERE email = ${TEST_EMAIL}`;
 });
 
 afterAll(async () => {
+  await sql`
+    DELETE FROM public.admin_mfa_challenges
+    WHERE admin_id IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
+  await sql`
+    DELETE FROM public.admin_mfa
+    WHERE admin_id IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
+  await sql`
+    DELETE FROM public.audit_log
+    WHERE actor_admin IN (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+  `;
   await sql`DELETE FROM public.admins WHERE email = ${TEST_EMAIL}`;
   await sql`DELETE FROM public.auth_sessions WHERE email = ${TEST_EMAIL}`;
   await sql`
@@ -216,6 +261,74 @@ describe('auth integration', () => {
     expect((await meHandler(meReq(firstToken), CTX)).status).toBe(401);
     expect((await meHandler(meReq(secondToken), CTX)).status).toBe(401);
   });
+
+  it('admin MFA enrollment forces challenge before minting a session; recovery code is one-time; disable is audited', async () => {
+    const loginRes = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    expect(loginRes.status).toBe(200);
+    const setupToken = extractToken(loginRes.headers.get('set-cookie')!);
+
+    const enroll = await mfaEnrollHandler(authedPost('/api/auth-mfa-enroll', setupToken, {}), CTX);
+    expect(enroll.status).toBe(200);
+    const enrollBody = await enroll.json() as { secret: string; otpauth_url: string };
+    expect(enrollBody.otpauth_url).toContain('otpauth://totp/');
+
+    const confirm = await mfaConfirmHandler(
+      authedPost('/api/auth-mfa-confirm', setupToken, { code: totpCode(enrollBody.secret) }),
+      CTX,
+    );
+    expect(confirm.status).toBe(200);
+    const confirmBody = await confirm.json() as { recovery_codes: string[] };
+    expect(confirmBody.recovery_codes).toHaveLength(10);
+
+    const gated = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    expect(gated.status).toBe(200);
+    expect(gated.headers.get('set-cookie')).toBeNull();
+    const gatedBody = await gated.json() as { mfa_required: true; challenge_id: string };
+    expect(gatedBody.mfa_required).toBe(true);
+
+    const complete = await mfaChallengeHandler(
+      mfaChallengeReq({ challenge_id: gatedBody.challenge_id, code: totpCode(enrollBody.secret) }),
+      CTX,
+    );
+    expect(complete.status).toBe(200);
+    const mfaToken = extractToken(complete.headers.get('set-cookie')!);
+    expect((await meHandler(meReq(mfaToken), CTX)).status).toBe(200);
+
+    const recoveryLogin = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    const recoveryChallenge = await recoveryLogin.json() as { challenge_id: string };
+    const recovery = await mfaChallengeHandler(
+      mfaChallengeReq({ challenge_id: recoveryChallenge.challenge_id, recovery_code: confirmBody.recovery_codes[0] }),
+      CTX,
+    );
+    expect(recovery.status).toBe(200);
+
+    const reuseLogin = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    const reuseChallenge = await reuseLogin.json() as { challenge_id: string };
+    const reuse = await mfaChallengeHandler(
+      mfaChallengeReq({ challenge_id: reuseChallenge.challenge_id, recovery_code: confirmBody.recovery_codes[0] }),
+      CTX,
+    );
+    expect(reuse.status).toBe(401);
+
+    const disable = await mfaDisableHandler(
+      authedPost('/api/auth-mfa-disable', mfaToken, { code: totpCode(enrollBody.secret) }),
+      CTX,
+    );
+    expect(disable.status).toBe(200);
+
+    const auditRows = await sql`
+      SELECT op FROM public.audit_log
+      WHERE actor_admin = (SELECT id FROM public.admins WHERE email = ${TEST_EMAIL})
+        AND op = 'admin.mfa_disabled'
+      ORDER BY occurred_at DESC
+      LIMIT 1
+    ` as { op: string }[];
+    expect(auditRows[0]?.op).toBe('admin.mfa_disabled');
+
+    const afterDisable = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    expect(afterDisable.status).toBe(200);
+    expect(afterDisable.headers.get('set-cookie')).toContain('session=');
+  }, 60_000);
 
   // ── Test 2: login rejects wrong password ─────────────────────────────────
   it('login rejects wrong password → 401', async () => {

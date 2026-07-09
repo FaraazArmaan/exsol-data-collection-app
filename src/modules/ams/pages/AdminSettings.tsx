@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../../lib/auth-context';
 import {
   listAdminTeam, deleteAdmin, updateAdminSelf,
+  getAdminMfaStatus, startAdminMfaEnroll, confirmAdminMfaEnroll, disableAdminMfa,
+  type AdminMfaStatus,
   type AdminMember,
 } from '../api';
 import { AddAdminModal } from '../components/AddAdminModal';
@@ -20,7 +22,23 @@ export default function AdminSettings() {
   const [selfMsg, setSelfMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [selfSubmitting, setSelfSubmitting] = useState(false);
 
+  const [mfaStatus, setMfaStatus] = useState<AdminMfaStatus | null>(null);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [mfaOtpUrl, setMfaOtpUrl] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaRecoveryCodes, setMfaRecoveryCodes] = useState<string[] | null>(null);
+  const [mfaMsg, setMfaMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+
   useEffect(() => { setDisplayName(admin?.display_name ?? ''); }, [admin?.display_name]);
+
+  async function loadMfaStatus() {
+    setMfaLoading(true);
+    const r = await getAdminMfaStatus();
+    setMfaLoading(false);
+    if (r.ok) setMfaStatus(r.data);
+  }
 
   async function loadTeam() {
     setTeamLoading(true);
@@ -31,7 +49,7 @@ export default function AdminSettings() {
     setTeam(r.data.admins);
   }
 
-  useEffect(() => { void loadTeam(); }, []);
+  useEffect(() => { void loadTeam(); void loadMfaStatus(); }, []);
 
   async function handleSelfSubmit(e: FormEvent) {
     e.preventDefault();
@@ -78,6 +96,57 @@ export default function AdminSettings() {
     await loadTeam();
   }
 
+  async function handleStartMfa() {
+    setMfaMsg(null);
+    setMfaSubmitting(true);
+    const r = await startAdminMfaEnroll();
+    setMfaSubmitting(false);
+    if (!r.ok) {
+      setMfaMsg({ kind: 'err', text: `Failed to start MFA setup (${r.error.code}).` });
+      return;
+    }
+    setMfaSecret(r.data.secret);
+    setMfaOtpUrl(r.data.otpauth_url);
+    setMfaRecoveryCodes(null);
+    setMfaCode('');
+  }
+
+  async function handleConfirmMfa(e: FormEvent) {
+    e.preventDefault();
+    if (!mfaCode.trim()) return;
+    setMfaMsg(null);
+    setMfaSubmitting(true);
+    const r = await confirmAdminMfaEnroll(mfaCode.trim());
+    setMfaSubmitting(false);
+    if (!r.ok) {
+      setMfaMsg({ kind: 'err', text: 'Invalid verification code.' });
+      return;
+    }
+    setMfaStatus({ enabled: true, recovery_codes_remaining: r.data.recovery_codes.length });
+    setMfaRecoveryCodes(r.data.recovery_codes);
+    setMfaSecret(null);
+    setMfaOtpUrl(null);
+    setMfaCode('');
+    setMfaMsg({ kind: 'ok', text: 'MFA is enabled.' });
+  }
+
+  async function handleDisableMfa(e: FormEvent) {
+    e.preventDefault();
+    if (!mfaCode.trim()) return;
+    setMfaMsg(null);
+    setMfaSubmitting(true);
+    const r = await disableAdminMfa({ code: mfaCode.trim() });
+    setMfaSubmitting(false);
+    if (!r.ok) {
+      setMfaMsg({ kind: 'err', text: 'Invalid verification code.' });
+      return;
+    }
+    setMfaStatus({ enabled: false, recovery_codes_remaining: 0 });
+    setMfaCode('');
+    setMfaRecoveryCodes(null);
+    setMfaMsg({ kind: 'ok', text: 'MFA is disabled.' });
+  }
+
   return (
     <section>
       <h1>Settings</h1>
@@ -116,6 +185,62 @@ export default function AdminSettings() {
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Multi-factor authentication</h3>
+        {mfaLoading && <p className="muted">Loading…</p>}
+        {!mfaLoading && !mfaStatus?.enabled && !mfaSecret && (
+          <>
+            <p className="muted">Protect your admin account with a 6-digit authenticator app code.</p>
+            <button className="btn btn-primary" onClick={handleStartMfa} disabled={mfaSubmitting}>
+              {mfaSubmitting ? 'Starting…' : 'Set up MFA'}
+            </button>
+          </>
+        )}
+        {mfaSecret && (
+          <form onSubmit={handleConfirmMfa}>
+            <p className="muted">Add this setup key to your authenticator app, then enter the current code.</p>
+            <label>Setup key
+              <input readOnly value={mfaSecret} onFocus={(e) => e.currentTarget.select()} />
+            </label>
+            {mfaOtpUrl && (
+              <p className="muted" style={{ wordBreak: 'break-all', fontSize: 12 }}>
+                {mfaOtpUrl}
+              </p>
+            )}
+            <label>Authenticator code
+              <input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" />
+            </label>
+            <button className="btn btn-primary" disabled={mfaSubmitting || !mfaCode.trim()}>
+              {mfaSubmitting ? 'Verifying…' : 'Enable MFA'}
+            </button>
+          </form>
+        )}
+        {!mfaLoading && mfaStatus?.enabled && !mfaSecret && (
+          <form onSubmit={handleDisableMfa}>
+            <p className="muted">
+              MFA is enabled. Recovery codes remaining: {mfaStatus.recovery_codes_remaining}.
+            </p>
+            <label>Authenticator code
+              <input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" />
+            </label>
+            <button className="btn btn-ghost" disabled={mfaSubmitting || !mfaCode.trim()}>
+              {mfaSubmitting ? 'Disabling…' : 'Disable MFA'}
+            </button>
+          </form>
+        )}
+        {mfaRecoveryCodes && (
+          <div style={{ marginTop: 12 }}>
+            <p className="muted">Save these recovery codes now. They will not be shown again.</p>
+            <pre style={{ whiteSpace: 'pre-wrap' }}>{mfaRecoveryCodes.join('\n')}</pre>
+          </div>
+        )}
+        {mfaMsg && (
+          <p className={mfaMsg.kind === 'ok' ? 'muted' : 'error'} style={{ marginTop: 8 }}>
+            {mfaMsg.text}
+          </p>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>

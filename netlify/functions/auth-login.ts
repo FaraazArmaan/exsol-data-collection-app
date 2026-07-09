@@ -6,6 +6,7 @@ import { mintSession, cookieHeader } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { checkRateLimit, logAttempt, extractIp } from './_shared/rate-limit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
+import { adminMfaEnabled, createAdminMfaChallenge } from './_shared/mfa';
 
 const Body = z.object({
   email: z.string().email(),
@@ -59,12 +60,21 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
+  const adminBody = { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap };
+  if (await adminMfaEnabled(sql, admin.id)) {
+    const challengeId = await createAdminMfaChallenge(sql, {
+      adminId: admin.id,
+      ip,
+      userAgent: req.headers.get('user-agent'),
+    });
+    return jsonOk({ mfa_required: true, challenge_id: challengeId, admin: adminBody });
+  }
   const token = await mintSession(
     { sub: admin.id, email: admin.email },
     { ip, userAgent: req.headers.get('user-agent') },
   );
   return jsonOk(
-    { admin: { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap } },
+    { admin: adminBody },
     { headers: { 'Set-Cookie': cookieHeader(token) } },
   );
 };

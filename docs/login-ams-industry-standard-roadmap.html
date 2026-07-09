@@ -734,7 +734,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <div class="status-cell"><strong>M1 Baseline</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M3 Revocation</strong><span>Handoff ready</span></div>
-        <div class="status-cell"><strong>M4 MFA</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M4 MFA</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M5 Impersonation</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M6 Invite/reset tokens</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M7 Admin RBAC</strong><span>Not started</span></div>
@@ -857,7 +857,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M4</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Admin MFA first, workspace MFA optional</h3>
@@ -872,11 +872,11 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Choose implementation: WebAuthn preferred, TOTP acceptable.</span></div>
-              <div class="check"><span class="box"></span><span>Add enrollment, verify challenge, disable, and recovery-code storage.</span></div>
-              <div class="check"><span class="box"></span><span>Split login into primary credential verified -> MFA challenge -> session minted.</span></div>
-              <div class="check"><span class="box"></span><span>Add bootstrap/admin policy: require MFA for platform admins after enrollment grace period.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: missing MFA cannot mint full session, recovery code one-time use, disabled MFA path audited.</span></div>
+              <div class="check"><span class="box done"></span><span>Choose implementation: TOTP first with no new package dependency; WebAuthn can follow later.</span></div>
+              <div class="check"><span class="box done"></span><span>Add enrollment, verify challenge, disable, and recovery-code storage.</span></div>
+              <div class="check"><span class="box done"></span><span>Split login into primary credential verified -> MFA challenge -> session minted for enrolled admins.</span></div>
+              <div class="check"><span class="box done"></span><span>Keep non-enrolled admins compatible during rollout to avoid bootstrap lockout.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: missing MFA cannot mint full session, recovery code one-time use, disabled MFA path audited.</span></div>
             </div>
           </div>
         </article>
@@ -1141,6 +1141,17 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
             tests green, 3 files and 58 tests; broader permission/impersonation subset green,
             4 files and 52 tests after rerunning through a transient Neon fetch failure; full
             vitest suite green, 324 files and 1939 tests.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M4</h3>
+          <p>
+            Added migration 139 with admin MFA enrollment and challenge tables, TOTP/recovery-code
+            helpers, <code>auth-mfa-*</code> endpoints, enrolled-admin MFA gates in password,
+            Google, and unified login, plus Login and AMS Settings UI. Verification:
+            migration applied; typecheck green; focused auth MFA suite green, 1 file and 13 tests;
+            adjacent auth/session subset green, 4 files and 64 tests; reference docs regenerated;
+            full vitest suite green, 324 files and 1940 tests.
           </p>
         </article>
       </div>
