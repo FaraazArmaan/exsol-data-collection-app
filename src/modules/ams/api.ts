@@ -215,6 +215,13 @@ export interface UserNodeCredentialStatus {
   temp_password_views_left?: number | null;
 }
 
+export interface UserNodeCredentialResetLink {
+  ok: true;
+  set_password_url: string;
+  expires_at: string;
+  purpose: 'invite' | 'reset';
+}
+
 export const getUserNodeCredential = (nodeId: string) =>
   apiFetch<UserNodeCredentialStatus>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`);
 
@@ -223,9 +230,9 @@ export const getUserNodeCredential = (nodeId: string) =>
 export const peekUserNodeCredential = (nodeId: string) =>
   apiFetch<UserNodeCredentialStatus>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}&peek=1`);
 
-export const resetUserNodeCredential = (nodeId: string, temp_password: string) =>
-  apiFetch<{ ok: true }>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, {
-    method: 'POST', body: JSON.stringify({ temp_password }),
+export const resetUserNodeCredential = (nodeId: string) =>
+  apiFetch<UserNodeCredentialResetLink>(`/api/user-node-credential?node=${encodeURIComponent(nodeId)}`, {
+    method: 'POST', body: JSON.stringify({ issue_link: true }),
   });
 
 export const deleteUserNodeCredential = (nodeId: string) =>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import type { ClientRole, ClientLevel, UserNode, UserNodeCredentialStatus } from '../../ams/api';
-import { generateTempPassword } from '../../../lib/random-password';
 import type { TeamMemberApi, TeamMemberCopy, TeamMemberCaps } from './types';
 
 interface Props {
@@ -75,7 +74,7 @@ export function EditUserModal({
 
   // After a Reset password success, hold the newly-issued temp pwd inline
   // so the user can copy it without re-opening LoginManageModal.
-  const [resetResult, setResetResult] = useState<null | { tempPassword: string; email: string }>(null);
+  const [resetResult, setResetResult] = useState<null | { url: string; email: string; expiresAt: string }>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -190,9 +189,8 @@ export function EditUserModal({
 
   async function handleResetPassword() {
     setError(null);
-    const tempPw = generateTempPassword();
     setSubmitting(true);
-    const r = await api.resetCredential(node.id, tempPw);
+    const r = await api.resetCredential(node.id);
     setSubmitting(false);
     setConfirmingReset(false);
     if (!r.ok) {
@@ -201,8 +199,12 @@ export function EditUserModal({
         : `Failed (${r.error.code}).`);
       return;
     }
-    setResetResult({ tempPassword: tempPw, email: status?.email ?? node.email ?? '' });
-    // Re-peek so the panel reflects the now-set password and cleared last_login.
+    setResetResult({
+      url: r.data.set_password_url,
+      email: status?.email ?? node.email ?? '',
+      expiresAt: r.data.expires_at,
+    });
+    // Re-peek so the panel reflects the now-issued reset link and cleared reset request.
     const s = await api.peekCredential(node.id);
     if (s.ok) setStatus(s.data);
   }
@@ -210,11 +212,11 @@ export function EditUserModal({
   async function handleCopyPassword() {
     if (!resetResult) return;
     try {
-      await navigator.clipboard.writeText(resetResult.tempPassword);
+      await navigator.clipboard.writeText(resetResult.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard may be blocked (insecure context / permissions). Password is
+      // Clipboard may be blocked (insecure context / permissions). Link is
       // still visible in the readonly input — caller can select-and-copy manually.
     }
   }
@@ -373,7 +375,7 @@ export function EditUserModal({
                     </span>
                     <br />
                     <span className="muted" style={{ fontSize: 11 }}>
-                      Issue a new temp password below and share it out-of-band.
+                      Issue a set-password link below and share it out-of-band.
                     </span>
                   </div>
                 )}
@@ -388,14 +390,14 @@ export function EditUserModal({
                 {resetResult ? (
                   <div style={{ marginTop: 10, padding: 10, background: 'var(--surface-2, rgba(255,255,255,0.04))', borderRadius: 6 }}>
                     <p className="muted" style={{ margin: '0 0 6px', fontSize: 11 }}>
-                      New temp password — share with {resetResult.email || 'the user'}. They'll be prompted to change it on first sign-in.
+                      Set-password link — share with {resetResult.email || 'the user'}. It expires {new Date(resetResult.expiresAt).toLocaleString()}.
                     </p>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <input
                         type="text"
                         readOnly
-                        value={resetResult.tempPassword}
-                        style={{ fontFamily: 'monospace', flex: 1 }}
+                        value={resetResult.url}
+                        style={{ flex: 1 }}
                         onFocus={(e) => e.currentTarget.select()}
                       />
                       <button type="button" className="btn btn-ghost" onClick={handleCopyPassword}>
@@ -406,7 +408,7 @@ export function EditUserModal({
                   </div>
                 ) : confirmingReset ? (
                   <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, flexWrap: 'wrap' }}>
-                    <span>Replace existing password with a new temp one?</span>
+                    <span>Issue a new set-password link?</span>
                     <button
                       type="button"
                       className="btn btn-ghost"
@@ -427,9 +429,9 @@ export function EditUserModal({
                     style={{ marginTop: 10, fontSize: 12 }}
                     onClick={() => setConfirmingReset(true)}
                     disabled={submitting || !status.email}
-                    title={!status.email ? 'Add an email to the user first' : 'Issue a new temp password'}
+                    title={!status.email ? 'Add an email to the user first' : 'Issue a new set-password link'}
                   >
-                    Reset password
+                    Issue reset link
                   </button>
                 )}
               </>

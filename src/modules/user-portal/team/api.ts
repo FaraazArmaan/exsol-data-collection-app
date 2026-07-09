@@ -78,10 +78,10 @@ export const peekCredential = (nodeId: string) =>
     `/api/user-node-credential?node=${encodeURIComponent(nodeId)}&peek=1`,
   );
 
-export const resetCredential = (nodeId: string, temp_password: string) =>
-  apiFetch<{ ok: true }>(
+export const resetCredential = (nodeId: string) =>
+  apiFetch<import('../../ams/api').UserNodeCredentialResetLink>(
     `/api/user-node-credential?node=${encodeURIComponent(nodeId)}`,
-    { method: 'POST', body: JSON.stringify({ temp_password }) },
+    { method: 'POST', body: JSON.stringify({ issue_link: true }) },
   );
 
 export const deleteCredential = (nodeId: string) =>

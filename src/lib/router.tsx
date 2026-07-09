@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
+import SetPasswordPage from '../modules/login/pages/SetPasswordPage';
 import StorefrontLayout from '../modules/pos/pages/StorefrontLayout';
 import StorefrontMenuPage from '../modules/pos/pages/StorefrontMenuPage';
 import StorefrontCartPage from '../modules/pos/pages/StorefrontCartPage';
@@ -93,6 +94,7 @@ function RequireAdmin() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/set-password/:token', element: <SetPasswordPage /> },
   // Public storefront — unauthenticated, mounted OUTSIDE /c/:slug (no portal
   // shell, no auth). See POS v2 storefront design §3.3. The StorefrontLayout
   // wraps all four steps in one shared BrandShell (brand fetched once for the

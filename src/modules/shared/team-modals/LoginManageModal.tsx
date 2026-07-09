@@ -3,7 +3,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { UserNode } from '../../ams/api';
 import type { UserNodeCredentialStatus } from '../../ams/api';
-import { generateTempPassword } from '../../../lib/random-password';
 import type { TeamMemberApi, TeamMemberCopy } from './types';
 
 interface Props {
@@ -18,10 +17,9 @@ interface Props {
 export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChanged }: Props) {
   const [status, setStatus] = useState<UserNodeCredentialStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tempPassword, setTempPassword] = useState(() => generateTempPassword());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [justSet, setJustSet] = useState<string | null>(null);
+  const [issuedLink, setIssuedLink] = useState<{ url: string; expiresAt: string } | null>(null);
 
   async function load() {
     setLoading(true); setError(null);
@@ -39,9 +37,8 @@ export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChang
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!hasEmail) { setError('Add an email to the user first.'); return; }
-    if (tempPassword.length < 8) { setError('Temp password must be ≥ 8 chars.'); return; }
     setSubmitting(true);
-    const r = await api.resetCredential(node.id, tempPassword);
+    const r = await api.resetCredential(node.id);
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'email_already_has_login_in_this_client'
@@ -49,7 +46,7 @@ export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChang
         : `Failed (${r.error.code})`);
       return;
     }
-    setJustSet(tempPassword);
+    setIssuedLink({ url: r.data.set_password_url, expiresAt: r.data.expires_at });
     onChanged();
     await load();
   }
@@ -61,7 +58,7 @@ export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChang
     setSubmitting(false);
     if (!r.ok) { setError(`Failed (${r.error.code})`); return; }
     onChanged();
-    setJustSet(null);
+    setIssuedLink(null);
     await load();
   }
 
@@ -90,57 +87,41 @@ export function LoginManageModal({ api, copy, node, clientSlug, onClose, onChang
                 </p>
                 <Reveal label="Login URL" value={loginUrl} />
                 <Reveal label="Email" value={status.email ?? node.email ?? ''} />
-                {justSet ? (
-                  <Reveal label="Temp password (just set)" value={justSet} mono />
+                {issuedLink ? (
+                  <>
+                    <Reveal label="Set-password link" value={issuedLink.url} />
+                    <p className="muted" style={{ fontSize: 11 }}>Expires {new Date(issuedLink.expiresAt).toLocaleString()}.</p>
+                  </>
                 ) : status.temp_password_plain ? (
                   <>
-                    <Reveal label="Temp password" value={status.temp_password_plain} mono />
-                    <p className="muted" style={{ fontSize: 11 }}>Views remaining: {status.temp_password_views_left}.</p>
+                    <Reveal label="Legacy temp password" value={status.temp_password_plain} mono />
+                    <p className="muted" style={{ fontSize: 11 }}>Legacy views remaining: {status.temp_password_views_left}.</p>
                   </>
                 ) : (
-                  <p className="muted" style={{ fontSize: 12 }}>Temp password no longer viewable.</p>
+                  <p className="muted" style={{ fontSize: 12 }}>No active password link is currently visible.</p>
                 )}
                 <form onSubmit={handleSave} style={{ marginTop: 12 }}>
-                  <label>New temp password
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <input
-                        type="text"
-                        value={tempPassword}
-                        minLength={8}
-                        onChange={(e) => setTempPassword(e.target.value)}
-                        style={{ flex: 1, fontFamily: 'var(--font-mono)' }}
-                      />
-                      <button type="button" className="btn btn-ghost" onClick={() => setTempPassword(generateTempPassword())}>Regen</button>
-                    </div>
-                  </label>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
                     <button type="button" className="btn btn-ghost" onClick={handleRemove} disabled={submitting}>Remove login</button>
-                    <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? '…' : 'Reset password'}</button>
+                    <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? '…' : 'Issue set-password link'}</button>
                   </div>
                 </form>
               </>
             ) : (
               <form onSubmit={handleSave}>
                 <p className="muted" style={{ marginTop: 0 }}>
-                  {hasEmail ? 'No login yet. Set a temp password to create one.' : 'Add an email to the user first.'}
+                  {hasEmail ? 'No login yet. Issue a set-password link to create one.' : 'Add an email to the user first.'}
                 </p>
                 <Reveal label="Login URL" value={loginUrl} />
                 <Reveal label="Email" value={node.email ?? '—'} />
-                <label>Temp password
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input
-                      type="text"
-                      value={tempPassword}
-                      minLength={8}
-                      onChange={(e) => setTempPassword(e.target.value)}
-                      disabled={!hasEmail}
-                      style={{ flex: 1, fontFamily: 'var(--font-mono)' }}
-                    />
-                    <button type="button" className="btn btn-ghost" disabled={!hasEmail} onClick={() => setTempPassword(generateTempPassword())}>Regen</button>
-                  </div>
-                </label>
+                {issuedLink && (
+                  <>
+                    <Reveal label="Set-password link" value={issuedLink.url} />
+                    <p className="muted" style={{ fontSize: 11 }}>Expires {new Date(issuedLink.expiresAt).toLocaleString()}.</p>
+                  </>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button type="submit" className="btn btn-primary" disabled={submitting || !hasEmail}>{submitting ? '…' : 'Create login'}</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting || !hasEmail}>{submitting ? '…' : 'Issue set-password link'}</button>
                 </div>
               </form>
             )}

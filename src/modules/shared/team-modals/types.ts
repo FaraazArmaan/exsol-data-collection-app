@@ -16,6 +16,7 @@ import type {
   CreateUserNodeBody,
   UserNode,
   UserNodeCredentialStatus,
+  UserNodeCredentialResetLink,
 } from '../../ams/api';
 import type { ReactNode } from 'react';
 
@@ -61,8 +62,7 @@ export interface TeamMemberApi {
   peekCredential: (nodeId: string) => Promise<ApiResult<UserNodeCredentialStatus>>;
   resetCredential: (
     nodeId: string,
-    temp_password: string,
-  ) => Promise<ApiResult<{ ok: true }>>;
+  ) => Promise<ApiResult<UserNodeCredentialResetLink>>;
   deleteCredential: (nodeId: string) => Promise<ApiResult<{ ok: true }>>;
   bulkInvite: (
     rows: BulkInviteRow[],

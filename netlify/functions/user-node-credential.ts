@@ -13,8 +13,12 @@ import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
+import { createCredentialToken, placeholderPassword } from './_shared/credential-tokens';
 
-const ResetBody = z.object({ temp_password: z.string().min(8).max(200) });
+const ResetBody = z.union([
+  z.object({ issue_link: z.literal(true) }),
+  z.object({ temp_password: z.string().min(8).max(200) }),
+]);
 
 interface FullCredential {
   id: string;
@@ -140,6 +144,67 @@ export default async (req: Request, _ctx: Context) => {
     if (!node.email) return jsonError(400, 'user_node_email_missing');
     const parsed = ResetBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
+
+    if ('issue_link' in parsed.data) {
+      const existing = (await sql`
+        SELECT id FROM public.user_node_credentials
+        WHERE user_node_id = ${nodeId}::uuid
+        LIMIT 1
+      `) as { id: string }[];
+      const hadCredential = existing.length > 0;
+      const placeholderHash = await hashPassword(placeholderPassword());
+      let credentialId: string;
+
+      try {
+        const rows = (await sql`
+          INSERT INTO public.user_node_credentials (
+            client_id, user_node_id, email, password_hash, must_change_password,
+            temp_password_plain, temp_password_views_left, created_by_admin, created_by_user_node
+          ) VALUES (
+            ${node.client_id}::uuid, ${nodeId}::uuid, ${node.email},
+            ${placeholderHash}, true, NULL, NULL, ${adminId}::uuid, ${creatorUserNodeId}::uuid
+          )
+          ON CONFLICT (user_node_id) DO UPDATE
+            SET email = EXCLUDED.email,
+                must_change_password = true,
+                temp_password_plain = NULL,
+                temp_password_views_left = NULL,
+                password_reset_requested_at = NULL
+          RETURNING id
+        `) as { id: string }[];
+        credentialId = rows[0]!.id;
+      } catch (e: unknown) {
+        const code = (e as { code?: string })?.code;
+        if (code === '23505') return jsonError(409, 'email_already_has_login_in_this_client');
+        throw e;
+      }
+
+      const issued = await createCredentialToken(sql, {
+        clientId: node.client_id,
+        userNodeId: nodeId,
+        credentialId,
+        email: node.email,
+        purpose: hadCredential ? 'reset' : 'invite',
+        createdByAdmin: adminId,
+        createdByUserNode: creatorUserNodeId,
+      });
+      const setPasswordUrl = new URL(`/set-password/${issued.token}`, req.url).toString();
+      await logAudit(sql, {
+        session,
+        op: hadCredential ? 'credential.reset_link_issued' : 'credential.invite_link_issued',
+        clientId: node.client_id,
+        targetType: 'user_node',
+        targetId: nodeId,
+        detail: { expires_at: issued.expiresAt },
+      });
+      return jsonOk({
+        ok: true,
+        set_password_url: setPasswordUrl,
+        expires_at: issued.expiresAt,
+        purpose: hadCredential ? 'reset' : 'invite',
+      });
+    }
+
     const pwdHash = await hashPassword(parsed.data.temp_password);
 
     try {

@@ -23,7 +23,9 @@ import uChangePasswordHandler from '../../netlify/functions/u-change-password';
 import authMeHandler from '../../netlify/functions/auth-me';
 import loginUnifiedHandler from '../../netlify/functions/login';
 import forgotPasswordHandler from '../../netlify/functions/forgot-password';
+import credentialTokenHandler from '../../netlify/functions/u-credential-token';
 import adminClientProductsHandler from '../../netlify/functions/admin-client-products';
+import { hashCredentialToken } from '../../netlify/functions/_shared/credential-tokens';
 import { assertLastAudit } from '../helpers/audit';
 
 const ADMIN_EMAIL = 'user-node-auth-test@example.com';
@@ -442,6 +444,98 @@ describe('user-node auth', () => {
       SELECT password_reset_requested_at FROM public.user_node_credentials WHERE user_node_id = ${nodeId}
     `) as { password_reset_requested_at: Date | null }[];
     expect(after[0]!.password_reset_requested_at).toBeNull();
+  });
+
+  test('credential set-password token is single-use, clears reset flag, and replaces password', async () => {
+    const email = `un-token-reset-${Date.now()}@example.com`;
+    const nodeId = await createNodeWithLogin(email, 'token-old-pass-1');
+
+    await forgotPasswordHandler(
+      new Request('http://localhost/api/forgot-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }), CTX,
+    );
+
+    const issue = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ issue_link: true }),
+      }), CTX,
+    );
+    expect(issue.status).toBe(200);
+    const issued = await issue.json() as {
+      set_password_url: string;
+      expires_at: string;
+      purpose: 'invite' | 'reset';
+    };
+    expect(issued.purpose).toBe('reset');
+    expect(issued.set_password_url).toContain('/set-password/');
+    const token = issued.set_password_url.split('/set-password/')[1]!;
+
+    const afterIssue = (await sql`
+      SELECT password_reset_requested_at, temp_password_plain
+      FROM public.user_node_credentials
+      WHERE user_node_id = ${nodeId}::uuid
+    `) as { password_reset_requested_at: Date | null; temp_password_plain: string | null }[];
+    expect(afterIssue[0]!.password_reset_requested_at).toBeNull();
+    expect(afterIssue[0]!.temp_password_plain).toBeNull();
+
+    const validate = await credentialTokenHandler(
+      new Request(`http://localhost/api/u-credential-token?token=${encodeURIComponent(token)}`, { method: 'GET' }),
+      CTX,
+    );
+    expect(validate.status).toBe(200);
+    const validationBody = await validate.json() as { email: string; client: { slug: string } };
+    expect(validationBody.email).toBe(email);
+    expect(validationBody.client.slug).toBe(testClientSlug);
+
+    const consume = await credentialTokenHandler(
+      new Request('http://localhost/api/u-credential-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: 'token-new-pass-1' }),
+      }),
+      CTX,
+    );
+    expect(consume.status).toBe(200);
+
+    const login = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'token-new-pass-1' }),
+      }), CTX,
+    );
+    expect(login.status).toBe(200);
+    const loginBody = await login.json() as { user: { must_change_password: boolean } };
+    expect(loginBody.user.must_change_password).toBe(false);
+
+    const reuse = await credentialTokenHandler(
+      new Request('http://localhost/api/u-credential-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: 'token-new-pass-2' }),
+      }),
+      CTX,
+    );
+    expect(reuse.status).toBe(410);
+
+    const expiredIssue = await userNodeCredentialHandler(
+      new Request(`http://localhost/api/user-node-credential?node=${nodeId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+        body: JSON.stringify({ issue_link: true }),
+      }), CTX,
+    );
+    const expiredBody = await expiredIssue.json() as { set_password_url: string };
+    const expiredToken = expiredBody.set_password_url.split('/set-password/')[1]!;
+    await sql`
+      UPDATE public.user_credential_tokens
+      SET expires_at = now() - interval '1 minute'
+      WHERE token_hash = ${hashCredentialToken(expiredToken)}
+    `;
+    const expired = await credentialTokenHandler(
+      new Request(`http://localhost/api/u-credential-token?token=${encodeURIComponent(expiredToken)}`, { method: 'GET' }),
+      CTX,
+    );
+    expect(expired.status).toBe(410);
   });
 
   test('list user-nodes surfaces has_reset_request flag', async () => {
