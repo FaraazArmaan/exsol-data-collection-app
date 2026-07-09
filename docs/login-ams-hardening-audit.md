@@ -1,6 +1,6 @@
 # Login + AMS Hardening Audit
 
-Status: M1 verified, handoff-ready
+Status: M3 verified, handoff-ready
 Branch: `feat/login-ams-hardening-iso`
 Worktree: `worktrees/ExSol-Login-AMS-Hardening-WT`
 Date: 2026-07-09
@@ -216,6 +216,36 @@ Session revocation should not overcomplicate the JWT shape:
 - Logout should revoke the current row and clear the cookie.
 - `sign out all` should revoke by subject/realm/client as appropriate.
 
+## M3 Verification
+
+M3 adds server-side revocation for admin and workspace-user sessions. JWTs remain the browser
+transport, but each token now carries a `jti` and realm metadata, and every protected request must
+match an active `auth_sessions` row.
+
+Implemented:
+
+- `db/migrations/138_login_ams_sessions.sql` with shared `auth_sessions` rows for admin and
+  bucket-user realms.
+- Session row creation from `mintSession()` and `mintBucketUserSession()`, with IP/user-agent
+  metadata when login handlers have it.
+- Active session checks in `requireAdmin()`, `requireBucketUser()`, and the bucket-user branch of
+  `requirePermission()`.
+- Current-session revocation in `auth-logout.ts` and `u-logout.ts`.
+- New `auth-logout-all.ts` and `u-logout-all.ts` endpoints for subject-scoped revocation.
+- Reference docs regenerated for the new endpoints and schema table.
+
+Verification:
+
+- `npm run migrate`: applied `138_login_ams_sessions`.
+- `npm run typecheck`: green.
+- `npm test -- tests/unit/session.test.ts tests/integration/auth.test.ts tests/integration/user-node-auth.test.ts`:
+  3 files passed, 58 tests passed.
+- `npm test -- tests/integration/permissions-middleware.test.ts tests/integration/admin-impersonate.test.ts tests/integration/impersonation-session-priority.test.ts tests/integration/module-authz-characterization.test.ts`:
+  first run hit two transient Neon `fetch failed` errors; escalated rerun passed, 4 files and 52
+  tests.
+- `npm run docs:reference`: regenerated `docs/reference/{endpoints,permissions,schema}.md`.
+- Full suite final run: `npm test` green, 324 files passed, 1939 tests passed.
+
 ## M2 Verification
 
 M2 adds Netlify-wide security headers and a scoped same-origin guard for Login+AMS unsafe
@@ -278,10 +308,10 @@ M2:
 
 M3:
 
-- `db/migrations/<allocated>_sessions.sql`
+- `db/migrations/138_login_ams_sessions.sql`
 - `netlify/functions/_shared/session.ts`
 - `netlify/functions/_shared/permissions.ts`
-- `auth-logout.ts`, `u-logout.ts`, `auth-me.ts`, `u-me.ts`
+- `auth-logout.ts`, `u-logout.ts`, `auth-logout-all.ts`, `u-logout-all.ts`, `auth-me.ts`, `u-me.ts`
 - Session tests.
 
 M4:

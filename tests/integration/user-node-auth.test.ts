@@ -16,6 +16,8 @@ import userNodesDetailHandler from '../../netlify/functions/user-nodes-detail';
 import userNodeCredentialHandler from '../../netlify/functions/user-node-credential';
 import uClientBySlugHandler from '../../netlify/functions/u-client-by-slug';
 import uLoginHandler from '../../netlify/functions/u-login';
+import uLogoutHandler from '../../netlify/functions/u-logout';
+import uLogoutAllHandler from '../../netlify/functions/u-logout-all';
 import uMeHandler from '../../netlify/functions/u-me';
 import uChangePasswordHandler from '../../netlify/functions/u-change-password';
 import authMeHandler from '../../netlify/functions/auth-me';
@@ -59,6 +61,17 @@ async function createNodeWithLogin(email: string, tempPassword: string): Promise
   );
   if (r.status !== 201) throw new Error(`create+login failed: ${r.status} ${await r.text()}`);
   return (await r.json() as { node: { id: string } }).node.id;
+}
+
+async function bucketUserLogin(email: string, password: string): Promise<string> {
+  const r = await uLoginHandler(
+    new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }), CTX,
+  );
+  if (r.status !== 200) throw new Error(`u-login failed: ${r.status}`);
+  return r.headers.get('set-cookie')!.split(';')[0]!;
 }
 
 beforeAll(async () => {
@@ -144,6 +157,56 @@ describe('user-node auth', () => {
     expect(r.headers.get('set-cookie')).toContain('bu_session=');
     const body = await r.json() as { user: { must_change_password: boolean } };
     expect(body.user.must_change_password).toBe(true);
+  });
+
+  test('u-logout revokes the current bucket-user session', async () => {
+    const email = `un-logout-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'logout-pass-1');
+    const login = await uLoginHandler(
+      new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'logout-pass-1' }),
+      }), CTX,
+    );
+    expect(login.status).toBe(200);
+    const buCookie = login.headers.get('set-cookie')!.split(';')[0]!;
+
+    const logout = await uLogoutHandler(
+      new Request('http://localhost/api/u-logout', {
+        method: 'POST',
+        headers: { cookie: buCookie },
+      }), CTX,
+    );
+    expect(logout.status).toBe(200);
+    expect(logout.headers.get('set-cookie')).toContain('Max-Age=0');
+
+    const me = await uMeHandler(new Request('http://localhost/api/u-me', {
+      headers: { cookie: buCookie },
+    }), CTX);
+    expect(me.status).toBe(401);
+  });
+
+  test('u-logout-all revokes all bucket-user sessions for the user in this client', async () => {
+    const email = `un-logout-all-${Date.now()}@example.com`;
+    await createNodeWithLogin(email, 'logout-all-pass-1');
+    const firstCookie = await bucketUserLogin(email, 'logout-all-pass-1');
+    const secondCookie = await bucketUserLogin(email, 'logout-all-pass-1');
+
+    const logoutAll = await uLogoutAllHandler(
+      new Request('http://localhost/api/u-logout-all', {
+        method: 'POST',
+        headers: { cookie: firstCookie },
+      }), CTX,
+    );
+    expect(logoutAll.status).toBe(200);
+    expect(logoutAll.headers.get('set-cookie')).toContain('Max-Age=0');
+
+    expect((await uMeHandler(new Request('http://localhost/api/u-me', {
+      headers: { cookie: firstCookie },
+    }), CTX)).status).toBe(401);
+    expect((await uMeHandler(new Request('http://localhost/api/u-me', {
+      headers: { cookie: secondCookie },
+    }), CTX)).status).toBe(401);
   });
 
   test('u-login wrong password → 401', async () => {

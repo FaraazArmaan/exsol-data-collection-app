@@ -76,7 +76,7 @@ export default async (req: Request, _ctx: Context) => {
     sub: credential.user_node_id,
     email: credential.email,
     client_id: client.id,
-  });
+  }, { ip, userAgent: req.headers.get('user-agent') });
 
   return jsonOk(
     {

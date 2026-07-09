@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-45 tables across 116 forward-only migrations.
+46 tables across 117 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -180,6 +180,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `127_abandoned_carts.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `session_key TEXT`, `customer_name TEXT`, `customer_email TEXT`, `channel TEXT`, `lines JSONB`, `subtotal_cents INTEGER`, `status TEXT`, `reminded_at TIMESTAMPTZ`, `converted_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `auth_sessions`
+
+- created in `138_login_ams_sessions.sql`
+- columns at creation: `id uuid`, `realm text`, `subject_id uuid`, `client_id uuid`, `email text`, `user_agent text`, `ip inet`, `created_at timestamptz`, `expires_at timestamptz`, `revoked_at timestamptz`
 
 ### `coupon_redemptions`
 

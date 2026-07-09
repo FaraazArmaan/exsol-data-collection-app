@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { requireAdmin, UnauthorizedError } from './_shared/permissions';
-import { cookieHeader, mintSession, shouldRefresh } from './_shared/session';
+import { cookieHeader, mintSession, revokeSession, shouldRefresh } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 
 export default async (req: Request, _ctx: Context) => {
@@ -10,6 +10,7 @@ export default async (req: Request, _ctx: Context) => {
     const headers: Record<string, string> = {};
     if (shouldRefresh(claims)) {
       const fresh = await mintSession({ sub: admin.id, email: admin.email });
+      await revokeSession(claims.jti);
       headers['Set-Cookie'] = cookieHeader(fresh);
     }
     return jsonOk({ admin }, { headers });

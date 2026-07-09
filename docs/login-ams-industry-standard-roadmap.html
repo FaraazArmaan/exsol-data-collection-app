@@ -733,7 +733,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <div class="status-cell"><strong>M0 Roadmap</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M1 Baseline</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M2 Headers + CSRF</strong><span>Handoff ready</span></div>
-        <div class="status-cell"><strong>M3 Revocation</strong><span>Not started</span></div>
+        <div class="status-cell"><strong>M3 Revocation</strong><span>Handoff ready</span></div>
         <div class="status-cell"><strong>M4 MFA</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M5 Impersonation</strong><span>Not started</span></div>
         <div class="status-cell"><strong>M6 Invite/reset tokens</strong><span>Not started</span></div>
@@ -830,7 +830,7 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
         <article class="milestone">
           <div class="milestone-number">
             <div class="num">M3</div>
-            <span class="status-pill"><span class="dot amber"></span>Not started</span>
+            <span class="status-pill"><span class="dot green"></span>Handoff ready</span>
           </div>
           <div>
             <h3>Server-side session revocation</h3>
@@ -844,12 +844,12 @@ npm test -- tests/integration/auth.test.ts tests/integration/user-node-auth.test
               <span class="badge">Risk: high</span>
             </div>
             <div class="checklist">
-              <div class="check"><span class="box"></span><span>Add admin and bucket-user session tables, or a shared sessions table with realm column.</span></div>
-              <div class="check"><span class="box"></span><span>Add <code>jti</code> and realm metadata to minted JWTs.</span></div>
-              <div class="check"><span class="box"></span><span>Verify active session in <code>requireAdmin</code> and <code>requireBucketUser</code>.</span></div>
-              <div class="check"><span class="box"></span><span>Make logout revoke the current session row before clearing cookie.</span></div>
-              <div class="check"><span class="box"></span><span>Add "sign out all sessions" endpoints for admin self and workspace user account.</span></div>
-              <div class="check"><span class="box"></span><span>Tests: revoked token fails, current session refresh works, stale/invalid behavior remains stable.</span></div>
+              <div class="check"><span class="box done"></span><span>Add admin and bucket-user session tables, or a shared sessions table with realm column.</span></div>
+              <div class="check"><span class="box done"></span><span>Add <code>jti</code> and realm metadata to minted JWTs.</span></div>
+              <div class="check"><span class="box done"></span><span>Verify active session in <code>requireAdmin</code> and <code>requireBucketUser</code>.</span></div>
+              <div class="check"><span class="box done"></span><span>Make logout revoke the current session row before clearing cookie.</span></div>
+              <div class="check"><span class="box done"></span><span>Add "sign out all sessions" endpoints for admin self and workspace user account.</span></div>
+              <div class="check"><span class="box done"></span><span>Tests: revoked token fails, current session refresh works, stale/invalid behavior remains stable.</span></div>
             </div>
           </div>
         </article>
@@ -1129,6 +1129,18 @@ Review and integrate the Login+AMS milestone from branch feat/login-ams-hardenin
             Coordinator reserved Login+AMS migration numbers 138-143 for M3-M8:
             sessions, MFA, impersonation audit if needed, invite/reset tokens, admin RBAC,
             and account lifecycle if needed. M0-M2 and M9 have no dedicated migration.
+          </p>
+        </article>
+        <article class="card">
+          <h3>2026-07-09 · M3</h3>
+          <p>
+            Added migration 138 with a shared <code>auth_sessions</code> table, persisted
+            <code>jti</code>-backed admin and bucket-user sessions, active-session checks in the shared
+            auth helpers, current-session logout revocation, and admin/workspace logout-all
+            endpoints. Verification: migration applied; typecheck green; focused revocation/auth
+            tests green, 3 files and 58 tests; broader permission/impersonation subset green,
+            4 files and 52 tests after rerunning through a transient Neon fetch failure; full
+            vitest suite green, 324 files and 1939 tests.
           </p>
         </article>
       </div>

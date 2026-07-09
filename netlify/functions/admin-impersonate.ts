@@ -54,7 +54,10 @@ export default async (req: Request, _ctx: Context) => {
   if (!owner) return jsonError(409, 'no_owner_node', 'client has no L1 Owner node to impersonate');
 
   const email = owner.email ?? `admin-impersonation@${client.slug}.exsol`;
-  const token = await mintBucketUserSession({ sub: owner.node_id, email, client_id: client.id });
+  const token = await mintBucketUserSession(
+    { sub: owner.node_id, email, client_id: client.id },
+    { userAgent: req.headers.get('user-agent') },
+  );
 
   await logAudit(sql, {
     session: { kind: 'admin', admin: { id: actor.admin.id, email: actor.claims.email } },

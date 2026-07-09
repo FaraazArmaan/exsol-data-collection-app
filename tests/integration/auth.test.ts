@@ -26,6 +26,7 @@ import { verifyGoogleIdToken } from '../../netlify/functions/_shared/google-veri
 import loginHandler from '../../netlify/functions/auth-login';
 import meHandler from '../../netlify/functions/auth-me';
 import logoutHandler from '../../netlify/functions/auth-logout';
+import logoutAllHandler from '../../netlify/functions/auth-logout-all';
 import googleHandler from '../../netlify/functions/auth-google';
 
 // ---------------------------------------------------------------------------
@@ -61,6 +62,13 @@ function meReq(cookieToken: string): Request {
 
 function logoutReq(cookieToken: string): Request {
   return new Request('http://localhost/api/auth-logout', {
+    method: 'POST',
+    headers: { cookie: `session=${cookieToken}` },
+  });
+}
+
+function logoutAllReq(cookieToken: string): Request {
+  return new Request('http://localhost/api/auth-logout-all', {
     method: 'POST',
     headers: { cookie: `session=${cookieToken}` },
   });
@@ -129,10 +137,12 @@ beforeEach(async () => {
   await sql`
     UPDATE public.admins SET google_sub = NULL WHERE email = ${TEST_EMAIL}
   `;
+  await sql`DELETE FROM public.auth_sessions WHERE email = ${TEST_EMAIL}`;
 });
 
 afterAll(async () => {
   await sql`DELETE FROM public.admins WHERE email = ${TEST_EMAIL}`;
+  await sql`DELETE FROM public.auth_sessions WHERE email = ${TEST_EMAIL}`;
   await sql`
     DELETE FROM public.login_attempts
     WHERE email = ${TEST_EMAIL}
@@ -186,6 +196,25 @@ describe('auth integration', () => {
     const setCookieLogout = logoutRes.headers.get('set-cookie');
     expect(setCookieLogout).toBeTruthy();
     expect(setCookieLogout!).toContain('Max-Age=0');
+
+    const meAfterLogout = await meHandler(meReq(token), CTX);
+    expect(meAfterLogout.status).toBe(401);
+  });
+
+  it('logout-all revokes every active admin session for the current admin', async () => {
+    const first = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    const second = await loginHandler(loginReq(TEST_EMAIL, TEST_PASSWORD), CTX);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    const firstToken = extractToken(first.headers.get('set-cookie')!);
+    const secondToken = extractToken(second.headers.get('set-cookie')!);
+
+    const logoutAllRes = await logoutAllHandler(logoutAllReq(firstToken), CTX);
+    expect(logoutAllRes.status).toBe(200);
+    expect(logoutAllRes.headers.get('set-cookie')).toContain('Max-Age=0');
+
+    expect((await meHandler(meReq(firstToken), CTX)).status).toBe(401);
+    expect((await meHandler(meReq(secondToken), CTX)).status).toBe(401);
   });
 
   // ── Test 2: login rejects wrong password ─────────────────────────────────

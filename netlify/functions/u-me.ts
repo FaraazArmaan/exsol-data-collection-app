@@ -6,6 +6,7 @@ import type { Context } from '@netlify/functions';
 import { db } from './_shared/db';
 import {
   buCookieHeader, mintBucketUserSession, shouldRefreshBucketUser,
+  revokeSession,
 } from './_shared/session';
 import { jsonError, jsonOk } from './_shared/http';
 import { requireBucketUser, UnauthorizedError, getLevelMatrix } from './_shared/permissions';
@@ -70,6 +71,7 @@ export default async (req: Request, _ctx: Context) => {
       email: actor.claims.email,
       client_id: actor.claims.client_id,
     });
+    await revokeSession(actor.claims.jti);
     headers['Set-Cookie'] = buCookieHeader(fresh);
   }
 

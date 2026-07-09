@@ -10,13 +10,13 @@ beforeAll(() => {
 
 describe('session', () => {
   it('mints and verifies a token', async () => {
-    const token = await mintSession({ sub: 'admin-1', email: 'a@b.com' });
+    const token = await mintSession({ sub: 'admin-1', email: 'a@b.com' }, { persist: false });
     const claims = await verifySession(token);
     expect(claims.sub).toBe('admin-1');
     expect(claims.email).toBe('a@b.com');
   });
   it('rejects a tampered token', async () => {
-    const token = await mintSession({ sub: 'admin-1', email: 'a@b.com' });
+    const token = await mintSession({ sub: 'admin-1', email: 'a@b.com' }, { persist: false });
     const tampered = token.slice(0, -2) + 'xx';
     await expect(verifySession(tampered)).rejects.toThrow();
   });

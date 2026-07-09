@@ -4,6 +4,7 @@ import { jsonError } from './http';
 import {
   readCookieToken, verifySession, type SessionClaims,
   readBuCookieToken, verifyBucketUserSession, type BucketUserClaims,
+  assertActiveSession,
 } from './session';
 import { subtreeOf } from './subtree';
 
@@ -36,6 +37,7 @@ export async function requireAdmin(req: Request): Promise<{ admin: AdminRecord; 
   let claims: SessionClaims;
   try {
     claims = await verifySession(token);
+    await assertActiveSession({ jti: claims.jti, realm: 'admin', sub: claims.sub });
   } catch {
     throw new UnauthorizedError('invalid_token');
   }
@@ -60,6 +62,12 @@ export async function requireBucketUser(req: Request): Promise<{
   let claims: BucketUserClaims;
   try {
     claims = await verifyBucketUserSession(token);
+    await assertActiveSession({
+      jti: claims.jti,
+      realm: 'bucket_user',
+      sub: claims.sub,
+      client_id: claims.client_id,
+    });
   } catch {
     throw new UnauthorizedError('invalid_token');
   }
@@ -143,6 +151,12 @@ async function resolveBucketUserSession(buToken: string, key: string): Promise<B
   let claims: BucketUserClaims;
   try {
     claims = await verifyBucketUserSession(buToken);
+    await assertActiveSession({
+      jti: claims.jti,
+      realm: 'bucket_user',
+      sub: claims.sub,
+      client_id: claims.client_id,
+    });
   } catch {
     throw new UnauthorizedError('invalid_token');
   }

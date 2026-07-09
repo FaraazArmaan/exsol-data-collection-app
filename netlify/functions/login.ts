@@ -102,7 +102,10 @@ export default async (req: Request, _ctx: Context) => {
       return jsonError(401, 'unauthorized');
     }
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'success' });
-    const token = await mintSession({ sub: admin.id, email: admin.email });
+    const token = await mintSession(
+      { sub: admin.id, email: admin.email },
+      { ip, userAgent: req.headers.get('user-agent') },
+    );
     return jsonOk(
       { kind: 'admin', admin: { id: admin.id, email: admin.email, display_name: admin.display_name, is_bootstrap: admin.is_bootstrap } },
       { headers: { 'Set-Cookie': cookieHeader(token) } },
@@ -170,7 +173,7 @@ export default async (req: Request, _ctx: Context) => {
     await sql`UPDATE public.user_node_credentials SET last_login_at = now() WHERE id = ${cred.id}`;
     const token = await mintBucketUserSession({
       sub: cred.user_node_id, email: cred.email, client_id: cred.client_id,
-    });
+    }, { ip, userAgent: req.headers.get('user-agent') });
     return jsonOk(
       {
         kind: 'bucket_user',
@@ -249,7 +252,10 @@ async function handleGoogleLogin(
        WHERE id = ${admin.id} AND google_sub IS NULL
     `;
     await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });
-    const token = await mintSession({ sub: admin.id, email: admin.email });
+    const token = await mintSession(
+      { sub: admin.id, email: admin.email },
+      { ip, userAgent: null },
+    );
     return jsonOk(
       { kind: 'admin', admin },
       { headers: { 'Set-Cookie': cookieHeader(token) } },
@@ -309,7 +315,7 @@ async function handleGoogleLogin(
     `) as ClientRow[])[0]!;
     const token = await mintBucketUserSession({
       sub: cred.user_node_id, email: cred.email, client_id: cred.client_id,
-    });
+    }, { ip, userAgent: null });
     return jsonOk(
       {
         kind: 'bucket_user',

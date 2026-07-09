@@ -6,7 +6,7 @@
 
 # API endpoints
 
-275 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+277 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -180,6 +180,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | auth-config.ts | `/api/auth-config (name-routed)` | any | public | — |
 | auth-google.ts | `/api/auth-google (name-routed)` | any | public | — |
 | auth-login.ts | `/api/auth-login (name-routed)` | any | public | — |
+| auth-logout-all.ts | `/api/auth-logout-all (name-routed)` | any | admin | — |
 | auth-logout.ts | `/api/auth-logout (name-routed)` | any | public | — |
 | auth-me.ts | `/api/auth-me (name-routed)` | any | admin | — |
 | forgot-password.ts | `/api/forgot-password (name-routed)` | any | public | — |
@@ -193,6 +194,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | u-client-by-slug.ts | `/api/u-client-by-slug (name-routed)` | any | public | — |
 | u-link-google.ts | `/api/u-link-google (name-routed)` | any | bucket-user | — |
 | u-login.ts | `/api/u-login (name-routed)` | any | public | — |
+| u-logout-all.ts | `/api/u-logout-all (name-routed)` | any | bucket-user | — |
 | u-logout.ts | `/api/u-logout (name-routed)` | any | public | — |
 | u-me.ts | `/api/u-me (name-routed)` | any | bucket-user | — |
 | u-unlink-google.ts | `/api/u-unlink-google (name-routed)` | any | bucket-user | — |

@@ -85,7 +85,10 @@ export default async (req: Request, _ctx: Context) => {
   `;
 
   await logAttempt(sql, { email: profile.email, ip, outcome: 'success' });
-  const token = await mintSession({ sub: admin.id, email: admin.email });
+  const token = await mintSession(
+    { sub: admin.id, email: admin.email },
+    { ip, userAgent: req.headers.get('user-agent') },
+  );
   return jsonOk(
     { admin },
     { headers: { 'Set-Cookie': cookieHeader(token) } },
