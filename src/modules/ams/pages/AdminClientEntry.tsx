@@ -13,6 +13,7 @@ interface ImpersonateResponse {
   name: string;
   as_display_name: string;
   mode: 'admin_full_access' | 'user';
+  impersonation_started_at: string;
 }
 
 export default function AdminClientEntry() {
@@ -22,6 +23,7 @@ export default function AdminClientEntry() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!clientId) return;
@@ -53,12 +55,18 @@ export default function AdminClientEntry() {
   }, [clientId]);
 
   const sortedNodes = useMemo(
-    () => [...nodes].sort((a, b) => {
+    () => [...nodes].filter((n) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [n.display_name, n.email, n.phone]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q));
+    }).sort((a, b) => {
       const la = a.level_number ?? 999;
       const lb = b.level_number ?? 999;
       return la - lb || a.display_name.localeCompare(b.display_name);
     }),
-    [nodes],
+    [nodes, query],
   );
 
   async function enter(userNode?: UserNode) {
@@ -84,6 +92,7 @@ export default function AdminClientEntry() {
       const body = await r.json() as ImpersonateResponse;
       document.cookie = `imp_ctx=${encodeURIComponent(body.name)}; Path=/; SameSite=Lax; Max-Age=${24 * 60 * 60}`;
       document.cookie = `imp_actor=${encodeURIComponent(body.mode === 'admin_full_access' ? 'admin' : body.as_display_name)}; Path=/; SameSite=Lax; Max-Age=${24 * 60 * 60}`;
+      document.cookie = `imp_started=${encodeURIComponent(body.impersonation_started_at)}; Path=/; SameSite=Lax; Max-Age=${24 * 60 * 60}`;
       window.location.href = `/c/${body.slug}`;
     } catch {
       setError('Could not enter workspace.');
@@ -95,20 +104,29 @@ export default function AdminClientEntry() {
   if (loading) return <p className="muted">Loading…</p>;
   if (!client) return <p className="error">{error ?? 'Client not found.'}</p>;
 
+  const levelsCount = new Set(nodes.map((n) => n.level_number).filter((v) => v !== null)).size;
+
   return (
-    <section className="page" style={{ maxWidth: 900 }}>
-      <header className="page-header" style={{ marginBottom: 18 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>{client.name}</h1>
-        <p className="muted" style={{ margin: '4px 0 0' }}>Choose how to enter this workspace.</p>
+    <section className="admin-entry">
+      <header className="admin-entry__header">
+        <div>
+          <p className="admin-entry__eyebrow">Workspace access</p>
+          <h1 className="page-title">{client.name}</h1>
+          <p className="muted" style={{ margin: '4px 0 0' }}>{client.slug}</p>
+        </div>
+        <div className="admin-entry__stats" aria-label="Workspace summary">
+          <div><strong>{nodes.length}</strong><span>users</span></div>
+          <div><strong>{levelsCount}</strong><span>levels</span></div>
+        </div>
       </header>
 
       {error && <p className="error">{error}</p>}
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 6px' }}>Admin / Full access</h3>
-        <p className="muted" style={{ margin: '0 0 12px' }}>
-          Open the normal client dashboard with full workspace privileges.
-        </p>
+      <div className="admin-entry__admin-panel">
+        <div>
+          <div className="admin-entry__row-title">Admin / Full access</div>
+          <div className="admin-entry__row-sub">All modules and workspace settings</div>
+        </div>
         <button
           type="button"
           className="btn btn-primary"
@@ -119,24 +137,39 @@ export default function AdminClientEntry() {
         </button>
       </div>
 
-      <div className="card">
-        <h3 style={{ margin: '0 0 12px' }}>Impersonate user</h3>
+      <div className="admin-entry__users-panel">
+        <div className="admin-entry__users-head">
+          <div>
+            <h2>Impersonate user</h2>
+            <p className="muted">{sortedNodes.length} available</p>
+          </div>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users"
+            aria-label="Search users"
+            className="admin-entry__search"
+          />
+        </div>
         {sortedNodes.length === 0 && <p className="muted">No users in this workspace.</p>}
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div className="admin-entry__user-list">
           {sortedNodes.map((n) => (
             <button
               key={n.id}
               type="button"
-              className="btn btn-secondary"
+              className="admin-entry__user-row"
               disabled={opening !== null}
               onClick={() => { void enter(n); }}
-              style={{ justifyContent: 'space-between' }}
             >
-              <span>{n.display_name}</span>
-              <span className="muted">
-                {n.level_number === null ? 'Unassigned' : `Level ${n.level_number}`}
-                {n.email ? ` · ${n.email}` : ''}
+              <span className="admin-entry__avatar" aria-hidden>{n.display_name.slice(0, 1).toUpperCase()}</span>
+              <span className="admin-entry__identity">
+                <span className="admin-entry__row-title">{n.display_name}</span>
+                <span className="admin-entry__row-sub">{n.email ?? n.phone ?? 'No login credential'}</span>
               </span>
+              <span className="admin-entry__level-chip">
+                {n.level_number === null ? 'Unassigned' : `Level ${n.level_number}`}
+              </span>
+              <span className="admin-entry__arrow" aria-hidden>→</span>
             </button>
           ))}
         </div>

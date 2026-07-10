@@ -7,11 +7,13 @@ import { neon } from '@neondatabase/serverless';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 import { verifyBucketUserSession } from '../../netlify/functions/_shared/session';
 import loginHandler from '../../netlify/functions/auth-login';
+import authMeHandler from '../../netlify/functions/auth-me';
 import clientsHandler from '../../netlify/functions/clients';
 import clientRolesHandler from '../../netlify/functions/client-roles';
 import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import impersonateHandler from '../../netlify/functions/admin-impersonate';
+import impersonationExitHandler from '../../netlify/functions/admin-impersonation-exit';
 import uProductsHandler from '../../netlify/functions/u-products';
 import uMeHandler from '../../netlify/functions/u-me';
 
@@ -95,6 +97,13 @@ function impersonate(cookie: string | null, body: unknown) {
   }), CTX);
 }
 
+function exitImpersonation(cookie: string) {
+  return impersonationExitHandler(new Request('http://localhost/api/admin-impersonation-exit', {
+    method: 'POST',
+    headers: { cookie },
+  }), CTX);
+}
+
 describe('admin-impersonate — view as client', () => {
   test('401 without an admin session', async () => {
     const r = await impersonate(null, { clientId });
@@ -172,6 +181,37 @@ describe('admin-impersonate — view as client', () => {
     expect(rows.length).toBe(1);
     expect(rows[0]!.detail.mode).toBe('admin_full_access');
     expect(rows[0]!.detail.reason).toBe('support investigation');
+  });
+
+  test('exit revokes only the workspace session and audit-logs duration', async () => {
+    const imp = await impersonate(adminCookie, { clientId, reason: 'support duration audit' });
+    const buCookie = imp.headers.get('set-cookie')!.split(';')[0]!;
+
+    const exit = await exitImpersonation(`${adminCookie}; ${buCookie}`);
+    expect(exit.status).toBe(200);
+    expect(exit.headers.get('set-cookie')).toContain('bu_session=');
+    expect(exit.headers.get('set-cookie')).toContain('Max-Age=0');
+    const body = await exit.json() as { redirect_to: string };
+    expect(body.redirect_to).toBe('/');
+
+    const adminMe = await authMeHandler(new Request('http://localhost/api/auth-me', {
+      method: 'GET',
+      headers: { cookie: adminCookie },
+    }), CTX);
+    expect(adminMe.status).toBe(200);
+
+    const rows = (await sql`
+      SELECT actor_user_node, impersonated_by_admin, detail
+      FROM public.audit_log
+      WHERE op = 'admin.impersonation_ended'
+        AND client_id = ${clientId}::uuid
+      ORDER BY occurred_at DESC
+      LIMIT 1
+    `) as { actor_user_node: string | null; impersonated_by_admin: string | null; detail: { duration_seconds?: number } }[];
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.actor_user_node).toBe(ownerNodeId);
+    expect(rows[0]!.impersonated_by_admin).toBeTruthy();
+    expect(typeof rows[0]!.detail.duration_seconds).toBe('number');
   });
 
   test('downstream impersonated writes audit both the Owner node and initiating admin', async () => {
