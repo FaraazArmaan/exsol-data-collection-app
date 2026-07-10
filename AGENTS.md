@@ -4,7 +4,8 @@ This file is the compact law. The detail lives in `.Codex/rules/` ({module-patte
 api-conventions, testing, migrations}.md), the generated `docs/reference/` (endpoints,
 permissions, schema — regenerate with `npm run docs:reference`; CONFORMANCE.md tracks pattern
 debt), and CONTRIBUTING.md. Slash commands: /new-module, /handoff, /hostile-review.
-Iron rule 7 is ENFORCED: a PreToolUse hook (.Codex/settings.json) blocks `git push`.
+Iron rule 7 is ENFORCED: a PreToolUse hook blocks `git push` unless the human explicitly
+asked the agent to push.
 
 ## Commands
 - Done = `npm run typecheck` AND the FULL vitest suite, both green. No exceptions.
@@ -37,7 +38,7 @@ Iron rule 7 is ENFORCED: a PreToolUse hook (.Codex/settings.json) blocks `git pu
    config.method.
 6. Tests share one persistent dev DB (no teardown): randomize unique-constrained literals;
    mock `getStore()` in EVERY test file whose handler touches Blobs.
-7. NEVER `git push` — commit locally; the human pushes via the Main integration chat.
+7. Never `git push` from an agent session unless the human explicitly asked the agent to push.
 8. Run `git branch --show-current` before your first commit — confirm you're in your own
    feat/<module>-iso worktree.
 9. Module CSS MUST consume the dark-theme tokens from `src/lib/theme.css`
