@@ -24,7 +24,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | audit-log.ts | `/api/audit-log (name-routed)` | any | admin | — |
 | client-cardinality.ts | `/api/client-cardinality (name-routed)` | any | public | — |
 | client-levels-detail.ts | `/api/client-levels-detail (name-routed)` | any | public | — |
-| client-levels-permissions.ts | `/api/client-levels-permissions (name-routed)` | any | admin | — |
+| client-levels-permissions.ts | `/api/client-levels-permissions (name-routed)` | any | bucket-user | `_platform.users.view` |
 | client-levels.ts | `/api/client-levels (name-routed)` | any | public | — |
 | client-roles-detail.ts | `/api/client-roles-detail (name-routed)` | any | public | — |
 | client-roles.ts | `/api/client-roles (name-routed)` | any | public | — |

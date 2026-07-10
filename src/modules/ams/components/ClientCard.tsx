@@ -27,7 +27,7 @@ export function ClientCard({ client, onDeleted }: Props) {
         <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>{client.slug}</span>
       </header>
       <div style={{ display: 'flex', gap: 8 }}>
-        <Link to={`/clients/${client.id}`} className="btn btn-secondary">open →</Link>
+        <Link to={`/clients/${client.id}`} className="btn btn-secondary">enter →</Link>
         <button className="btn btn-danger" onClick={handleDelete} disabled={busy}>
           {busy ? 'Deleting…' : 'Delete'}
         </button>

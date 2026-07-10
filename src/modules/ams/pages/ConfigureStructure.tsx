@@ -4,17 +4,23 @@ import { RoleEditor } from '../components/RoleEditor';
 import { LevelEditor } from '../components/LevelEditor';
 import { CardinalityEditor } from '../components/CardinalityEditor';
 
-export default function ConfigureStructure() {
-  const { clientId } = useParams<{ clientId: string }>();
+interface Props {
+  clientId?: string;
+  backTo?: string;
+}
+
+export default function ConfigureStructure({ clientId: clientIdProp, backTo }: Props = {}) {
+  const { clientId: routeClientId } = useParams<{ clientId: string }>();
+  const clientId = clientIdProp ?? routeClientId;
   if (!clientId) return <p className="error">Invalid URL.</p>;
   return (
     <ClientStructureProvider clientId={clientId}>
-      <ConfigureInner clientId={clientId} />
+      <ConfigureInner clientId={clientId} backTo={backTo} />
     </ClientStructureProvider>
   );
 }
 
-function ConfigureInner({ clientId }: { clientId: string }) {
+function ConfigureInner({ clientId, backTo }: { clientId: string; backTo?: string }) {
   const { structure, loading, error, refresh } = useClientStructure();
 
   return (
@@ -24,7 +30,7 @@ function ConfigureInner({ clientId }: { clientId: string }) {
           <h1 style={{ margin: 0 }}>Configure structure</h1>
           <p className="muted" style={{ marginTop: 4, fontSize: 13 }}>Define roles, levels, and per-parent limits.</p>
         </div>
-        <Link to={`/clients/${clientId}`} className="btn btn-secondary">← Access dashboard</Link>
+        <Link to={backTo ?? `/clients/${clientId}`} className="btn btn-secondary">← Back</Link>
       </header>
 
       {loading && <p className="muted">Loading…</p>}

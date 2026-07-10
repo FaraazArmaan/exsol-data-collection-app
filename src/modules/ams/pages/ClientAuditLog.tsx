@@ -7,10 +7,16 @@ import { AuditDetailDrawer } from '../components/audit/AuditDetailDrawer';
 
 const DEFAULT_PAGE_SIZE = 50;
 
-export default function ClientAuditLog() {
+interface Props {
+  clientId?: string;
+  backTo?: string;
+}
+
+export default function ClientAuditLog({ clientId: clientIdProp, backTo }: Props = {}) {
   // NB: hooks must run unconditionally — the empty-clientId early return lives
   // AFTER the hook block (rules-of-hooks; the route always provides clientId).
-  const { clientId } = useParams<{ clientId: string }>();
+  const { clientId: routeClientId } = useParams<{ clientId: string }>();
+  const clientId = clientIdProp ?? routeClientId;
 
   function makeDefault(): AuditLogFilter {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -46,7 +52,7 @@ export default function ClientAuditLog() {
     <div style={{ maxWidth: 1200 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Workspace audit</h1>
-        <Link to={`/clients/${clientId}`} className="btn btn-ghost">← back to dashboard</Link>
+        <Link to={backTo ?? `/clients/${clientId}`} className="btn btn-ghost">← back</Link>
       </header>
       <AuditFilters value={draft} onChange={setDraft} onApply={apply} hiddenClientId={clientId} />
       <AuditTable

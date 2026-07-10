@@ -10,15 +10,15 @@ import { rejectCrossSiteMutation } from './_shared/csrf';
 const Body = z.object({
   clientId: z.string().uuid(),
   reason: z.string().trim().min(3).max(500),
+  userNodeId: z.string().uuid().optional(),
 });
 
 // POST /api/admin-impersonate  body { clientId, reason }
 //
 // Admin-only "view as client". Mints a workspace (bucket-user) session for the
-// client's L1 Owner node and sets the bu_session cookie — so the admin can open
-// /c/:slug/<module> with full Owner access (read-write; writes attribute to the
-// Owner node, per the chosen model). Every entry is audit-logged and the
-// downstream bucket-user session carries the real admin for audit attribution.
+// selected user node. If no userNodeId is supplied, uses the client's L1 Owner
+// node as the Admin / Full access surrogate. Every entry is audit-logged and
+// the downstream bucket-user session carries the real admin for audit attribution.
 //
 // The FE sets a separate, non-HttpOnly imp_ctx cookie (client name) to drive the
 // "viewing as admin" banner, and clears it + bu_session (via u-logout) on exit.
@@ -47,23 +47,31 @@ export default async (req: Request, _ctx: Context) => {
   const client = clientRows[0];
   if (!client) return jsonError(404, 'client_not_found');
 
-  // L1 Owner node. Prefer one that has a login credential (its email becomes the
-  // session's display claim); fall back to any Owner node with a synthetic email.
-  const ownerRows = (await sql`
-    SELECT n.id AS node_id, cr.email AS email
+  const targetRows = b.userNodeId
+    ? (await sql`
+      SELECT n.id AS node_id, n.display_name, n.level_number, COALESCE(cr.email, n.email) AS email
+      FROM public.user_nodes n
+      LEFT JOIN public.user_node_credentials cr ON cr.user_node_id = n.id
+      WHERE n.client_id = ${client.id}::uuid AND n.id = ${b.userNodeId}::uuid
+      LIMIT 1
+    `)
+    : (await sql`
+    SELECT n.id AS node_id, n.display_name, n.level_number, COALESCE(cr.email, n.email) AS email
     FROM public.user_nodes n
     LEFT JOIN public.user_node_credentials cr ON cr.user_node_id = n.id
     WHERE n.client_id = ${client.id}::uuid AND n.level_number = 1
     ORDER BY (cr.email IS NULL) ASC, n.created_at ASC
     LIMIT 1
-  `) as { node_id: string; email: string | null }[];
-  const owner = ownerRows[0];
-  if (!owner) return jsonError(409, 'no_owner_node', 'client has no L1 Owner node to impersonate');
+  `);
+  const target = (targetRows as { node_id: string; display_name: string; level_number: number | null; email: string | null }[])[0];
+  if (!target) return b.userNodeId
+    ? jsonError(404, 'user_node_not_found')
+    : jsonError(409, 'no_owner_node', 'client has no L1 Owner node to impersonate');
 
-  const email = owner.email ?? `admin-impersonation@${client.slug}.exsol`;
+  const email = target.email ?? `admin-impersonation@${client.slug}.exsol`;
   const startedAt = new Date().toISOString();
   const token = await mintBucketUserSession(
-    { sub: owner.node_id, email, client_id: client.id },
+    { sub: target.node_id, email, client_id: client.id },
     {
       ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
       userAgent: req.headers.get('user-agent'),
@@ -79,11 +87,25 @@ export default async (req: Request, _ctx: Context) => {
     clientId: client.id,
     targetType: 'client',
     targetId: client.id,
-    detail: { as_user_node: owner.node_id, client_slug: client.slug, reason: b.reason, started_at: startedAt },
+    detail: {
+      as_user_node: target.node_id,
+      as_level_number: target.level_number,
+      mode: b.userNodeId ? 'user' : 'admin_full_access',
+      client_slug: client.slug,
+      reason: b.reason,
+      started_at: startedAt,
+    },
   });
 
   return jsonOk(
-    { slug: client.slug, name: client.name, impersonation_started_at: startedAt },
+    {
+      slug: client.slug,
+      name: client.name,
+      impersonation_started_at: startedAt,
+      as_user_node: target.node_id,
+      as_display_name: target.display_name,
+      mode: b.userNodeId ? 'user' : 'admin_full_access',
+    },
     { headers: { 'Set-Cookie': impersonationBuCookieHeader(token) } },
   );
 };

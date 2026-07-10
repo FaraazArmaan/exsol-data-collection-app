@@ -13,6 +13,7 @@ import clientLevelsHandler from '../../netlify/functions/client-levels';
 import userNodesHandler from '../../netlify/functions/user-nodes';
 import impersonateHandler from '../../netlify/functions/admin-impersonate';
 import uProductsHandler from '../../netlify/functions/u-products';
+import uMeHandler from '../../netlify/functions/u-me';
 
 const CTX = {} as Context;
 const ADMIN_EMAIL = `imp-admin-${Date.now()}@example.com`;
@@ -23,6 +24,8 @@ let adminCookie: string;
 let clientId: string;
 let clientSlug: string;
 let ownerNodeId: string;
+let childNodeId: string;
+let roleId: string;
 const createdClients: string[] = [];
 
 async function adminLogin(): Promise<string> {
@@ -55,10 +58,14 @@ beforeAll(async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
     body: JSON.stringify({ key: 'owner', label: 'Owner', color: '#3b82f6' }),
   }), CTX);
-  const roleId = ((await rr.json()) as { role: { id: string } }).role.id;
+  roleId = ((await rr.json()) as { role: { id: string } }).role.id;
   await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${clientId}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
     body: JSON.stringify({ level_number: 1, allowed_role_ids: [roleId] }),
+  }), CTX);
+  await clientLevelsHandler(new Request(`http://localhost/api/client-levels?client=${clientId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ level_number: 2, allowed_role_ids: [roleId] }),
   }), CTX);
   const email = `imp-owner-${Date.now()}@example.com`;
   const un = await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
@@ -66,6 +73,11 @@ beforeAll(async () => {
     body: JSON.stringify({ role_id: roleId, level_number: 1, parent_id: null, display_name: 'Owner', email, create_login: true, temp_password: 'imp-owner-pw-1' }),
   }), CTX);
   ownerNodeId = ((await un.json()) as { node: { id: string } }).node.id;
+  const child = await userNodesHandler(new Request(`http://localhost/api/user-nodes?client=${clientId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ role_id: roleId, level_number: 2, parent_id: ownerNodeId, display_name: 'No Login Child', email: `no-login-${Date.now()}@example.com` }),
+  }), CTX);
+  childNodeId = ((await child.json()) as { node: { id: string } }).node.id;
 });
 
 afterAll(async () => {
@@ -118,12 +130,47 @@ describe('admin-impersonate — view as client', () => {
     expect(rows[0]!.impersonation_reason).toBe('support investigation');
   });
 
+  test('can impersonate a selected user node without login credentials', async () => {
+    const r = await impersonate(adminCookie, {
+      clientId,
+      userNodeId: childNodeId,
+      reason: 'support investigation as selected user',
+    });
+    expect(r.status).toBe(200);
+    const body = (await r.json()) as { slug: string; mode: string; as_display_name: string };
+    expect(body.slug).toBe(clientSlug);
+    expect(body.mode).toBe('user');
+    expect(body.as_display_name).toBe('No Login Child');
+
+    const setCookie = r.headers.get('set-cookie')!.split(';')[0]!;
+    const token = setCookie.split('bu_session=')[1]!;
+    const claims = await verifyBucketUserSession(token);
+    expect(claims.sub).toBe(childNodeId);
+
+    const me = await uMeHandler(new Request('http://localhost/api/u-me', {
+      method: 'GET',
+      headers: { cookie: `${adminCookie}; ${setCookie}` },
+    }), CTX);
+    expect(me.status).toBe(200);
+    const meBody = await me.json() as { user: { id: string; display_name: string; level_number: number } };
+    expect(meBody.user.id).toBe(childNodeId);
+    expect(meBody.user.display_name).toBe('No Login Child');
+    expect(meBody.user.level_number).toBe(2);
+  });
+
   test('audit-logs the impersonation (op admin.impersonate)', async () => {
     await impersonate(adminCookie, { clientId, reason: 'support investigation' });
     const rows = (await sql`
-      SELECT op, detail FROM public.audit_log WHERE op = 'admin.impersonate' AND client_id = ${clientId}::uuid LIMIT 1
-    `) as { op: string; detail: { reason?: string } }[];
+      SELECT op, detail
+      FROM public.audit_log
+      WHERE op = 'admin.impersonate'
+        AND client_id = ${clientId}::uuid
+        AND detail->>'reason' = 'support investigation'
+      ORDER BY occurred_at DESC
+      LIMIT 1
+    `) as { op: string; detail: { mode?: string; reason?: string } }[];
     expect(rows.length).toBe(1);
+    expect(rows[0]!.detail.mode).toBe('admin_full_access');
     expect(rows[0]!.detail.reason).toBe('support investigation');
   });
 

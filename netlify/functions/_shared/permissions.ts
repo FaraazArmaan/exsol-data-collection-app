@@ -129,6 +129,22 @@ export async function requireBucketUser(req: Request): Promise<{
     LIMIT 1
   `) as UserNodeCredentialRecord[];
   const credential = rows[0];
+  if (!credential && claims.impersonated_by_admin) {
+    return {
+      credential: {
+        id: '00000000-0000-0000-0000-000000000000',
+        client_id: claims.client_id,
+        user_node_id: claims.sub,
+        email: claims.email,
+        must_change_password: false,
+        disabled_at: null,
+        locked_until: null,
+        last_login_at: null,
+        created_at: new Date(0).toISOString(),
+      },
+      claims,
+    };
+  }
   if (!credential) throw new UnauthorizedError('credential_not_found');
   if (credential.disabled_at) throw new UnauthorizedError('credential_disabled');
   if (credential.locked_until && new Date(credential.locked_until).getTime() > Date.now()) {
@@ -344,6 +360,39 @@ export async function authenticateForPermission(
   } catch (e) {
     if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
     if (e instanceof ForbiddenError) return jsonError(403, 'forbidden');
+    throw e;
+  }
+}
+
+export async function authenticateForAdminCapabilityOrOwner(
+  req: Request,
+  capability: AdminCapability,
+): Promise<AnySession | Response> {
+  const buToken = readBuCookieToken(req);
+  if (buToken) {
+    try {
+      const session = await resolveBucketUserSession(buToken, '_platform.users.view');
+      if (session.level_number === 1) return session;
+      return jsonError(403, 'forbidden');
+    } catch (e) {
+      if (!(e instanceof UnauthorizedError)) throw e;
+    }
+  }
+
+  try {
+    const a = await requireAdminCapability(req, capability);
+    return {
+      kind: 'admin',
+      admin: {
+        id: a.admin.id,
+        email: a.admin.email,
+        role: a.admin.role,
+        is_bootstrap: a.admin.is_bootstrap,
+      },
+    };
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
+    if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
     throw e;
   }
 }

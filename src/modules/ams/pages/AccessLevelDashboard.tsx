@@ -12,17 +12,23 @@ import { PermissionMatrixCard } from '../components/PermissionMatrixCard';
 
 const DEFAULT_LABELS = ['Primary', 'Secondary', 'Tertiary', 'Quaternary', 'Quinary', 'Senary', 'Septenary'];
 
-export default function AccessLevelDashboard() {
-  const { clientId } = useParams<{ clientId: string }>();
+interface Props {
+  clientId?: string;
+  backTo?: string;
+}
+
+export default function AccessLevelDashboard({ clientId: clientIdProp, backTo }: Props = {}) {
+  const { clientId: routeClientId } = useParams<{ clientId: string }>();
+  const clientId = clientIdProp ?? routeClientId;
   if (!clientId) return <p className="error">Invalid URL.</p>;
   return (
     <ClientStructureProvider clientId={clientId}>
-      <Inner clientId={clientId} />
+      <Inner clientId={clientId} backTo={backTo} />
     </ClientStructureProvider>
   );
 }
 
-function Inner({ clientId }: { clientId: string }) {
+function Inner({ clientId, backTo }: { clientId: string; backTo?: string }) {
   const { structure, loading: structLoading } = useClientStructure();
   const [perLevel, setPerLevel] = useState<Record<string, LevelPermissionsResponse>>({});
   const [loading, setLoading] = useState(true);
@@ -55,7 +61,7 @@ function Inner({ clientId }: { clientId: string }) {
             Configure what each Level can do. Primary (Level 1) always has full access.
           </p>
         </div>
-        <Link to={`/clients/${clientId}`} className="btn btn-secondary">← Back</Link>
+        <Link to={backTo ?? `/clients/${clientId}`} className="btn btn-secondary">← Back</Link>
       </header>
 
       {structure.levels.map((lvl) => {

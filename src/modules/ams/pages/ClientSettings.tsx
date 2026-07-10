@@ -8,8 +8,13 @@ import AdminWorkspaceBrandingCard from '../../branding/AdminWorkspaceBrandingCar
 // sections — module enablement (Products), backup export, and branding — that
 // previously sat at the bottom of the Access Dashboard. Reached via the client
 // sidebar's Settings link (/clients/:clientId/settings).
-export default function ClientSettings() {
-  const { clientId } = useParams<{ clientId: string }>();
+interface Props {
+  clientId?: string;
+}
+
+export default function ClientSettings({ clientId: clientIdProp }: Props = {}) {
+  const { clientId: routeClientId } = useParams<{ clientId: string }>();
+  const clientId = clientIdProp ?? routeClientId;
   const [clientSlug, setClientSlug] = useState('');
 
   useEffect(() => {

@@ -11,15 +11,14 @@ import StorefrontReceiptPage from '../modules/pos/pages/StorefrontReceiptPage';
 import StorefrontSettings from '../modules/pos/pages/StorefrontSettings';
 import { Sidebar } from '../modules/ams/components/Sidebar';
 import AdminDashboard from '../modules/ams/pages/AdminDashboard';
+import AdminClientEntry from '../modules/ams/pages/AdminClientEntry';
 import AdminSettings from '../modules/ams/pages/AdminSettings';
-import AccessDashboard from '../modules/ams/pages/AccessDashboard';
 import ClientSettings from '../modules/ams/pages/ClientSettings';
 import AccessLevelDashboard from '../modules/ams/pages/AccessLevelDashboard';
 import ConfigureStructure from '../modules/ams/pages/ConfigureStructure';
 import AuditLog from '../modules/ams/pages/AuditLog';
 import ClientAuditLog from '../modules/ams/pages/ClientAuditLog';
 import FilesPage from '../modules/ams/pages/FilesPage';
-import UserLogin from '../modules/user-portal/pages/UserLogin';
 import UserChangePassword from '../modules/user-portal/pages/UserChangePassword';
 import UserAccount from '../modules/user-portal/pages/UserAccount';
 import UserDashboardHome from '../modules/user-portal/pages/UserDashboardHome';
@@ -27,6 +26,7 @@ import ModuleStub from '../modules/user-portal/pages/ModuleStub';
 import UserManageTeam from '../modules/user-portal/pages/UserManageTeam';
 import { UserPortalLayout, RequireBucketUser } from '../modules/user-portal/UserPortalRoutes';
 import { UserDashboardLayout } from '../modules/user-portal/layout/UserDashboardLayout';
+import { useUserAuth } from '../modules/user-portal/user-auth-context';
 import AdminFilesPage from '../modules/files/admin/AdminFilesPage';
 import WorkspaceFilesPage from '../modules/files/workspace/WorkspaceFilesPage';
 import ProductsListPage from '../modules/products/workspace/pages/ProductsListPage';
@@ -92,6 +92,36 @@ function RequireAdmin() {
   return <ShellLayout />;
 }
 
+function WorkspaceAccessLevels() {
+  const { client } = useUserAuth();
+  if (!client) return null;
+  return <AccessLevelDashboard clientId={client.id} backTo={`/c/${client.slug}/team`} />;
+}
+
+function WorkspaceConfigureStructure() {
+  const { client } = useUserAuth();
+  if (!client) return null;
+  return <ConfigureStructure clientId={client.id} backTo={`/c/${client.slug}/team`} />;
+}
+
+function WorkspaceAuditLog() {
+  const { client } = useUserAuth();
+  if (!client) return null;
+  return <ClientAuditLog clientId={client.id} backTo={`/c/${client.slug}/team`} />;
+}
+
+function WorkspaceAdminAuditLog() {
+  const { client } = useUserAuth();
+  if (!client) return null;
+  return <ClientAuditLog clientId={client.id} backTo={`/c/${client.slug}`} />;
+}
+
+function WorkspaceAdminSettings() {
+  const { client } = useUserAuth();
+  if (!client) return null;
+  return <ClientSettings clientId={client.id} />;
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/set-password/:token', element: <SetPasswordPage /> },
@@ -125,7 +155,7 @@ export const router = createBrowserRouter([
     path: '/c/:slug',
     element: <UserPortalLayout />,
     children: [
-      { path: 'login', element: <UserLogin /> },
+      { path: 'login', element: <Navigate to="/login" replace /> },
       // Anonymous booking storefront — sibling of login, OUTSIDE the auth gate.
       { path: 'book', element: <BookingStorefront /> },
       { path: 'book/manage/:token', element: <ManageBooking /> },
@@ -143,6 +173,11 @@ export const router = createBrowserRouter([
               { index: true, element: <UserDashboardHome /> },
               { path: 'account', element: <UserAccount /> },
               { path: 'team', element: <UserManageTeam /> },
+              { path: 'team/access-levels', element: <WorkspaceAccessLevels /> },
+              { path: 'team/audit', element: <WorkspaceAuditLog /> },
+              { path: 'team/configure', element: <WorkspaceConfigureStructure /> },
+              { path: 'admin/audit', element: <WorkspaceAdminAuditLog /> },
+              { path: 'admin/settings', element: <WorkspaceAdminSettings /> },
               { path: 'file-manager', element: <WorkspaceFilesPage /> },
               {
                 element: (
@@ -244,7 +279,7 @@ export const router = createBrowserRouter([
       { path: '/files', element: <FilesPage /> },
       { path: '/audit', element: <AuditLog /> },
       { path: '/settings', element: <AdminSettings /> },
-      { path: '/clients/:clientId', element: <AccessDashboard /> },
+      { path: '/clients/:clientId', element: <AdminClientEntry /> },
       { path: '/clients/:clientId/settings', element: <ClientSettings /> },
       { path: '/clients/:clientId/audit', element: <ClientAuditLog /> },
       { path: '/clients/:clientId/access-levels', element: <AccessLevelDashboard /> },

@@ -1,7 +1,6 @@
 // Owner-facing Manage Team page. Mirrors src/modules/ams/pages/AccessDashboard.tsx
-// but trimmed for the bucket-user surface:
+// for the bucket-user surface:
 //
-//   - Drops the "Access levels" / "Configure" header links (admin-only routes).
 //   - Drops <ClientProductsSection> (admin product-toggling UI).
 //   - Sources clientId/slug from useUserAuth() + useParams(), NOT from a URL
 //     :clientId param — owners reach this page via /c/:slug/team and the
@@ -16,7 +15,7 @@
 // the API call swaps to the owner-scoped moveNode(nodeId, parent, level).
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { useUserAuth } from '../user-auth-context';
 import {
@@ -53,8 +52,9 @@ export default function UserManageTeam() {
   const [loginChip, setLoginChip] = useState<UserNode | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
 
-  // Per-level "narrowed parent" so the next level row filters to one parent's
-  // children. Same behaviour as the admin dashboard.
+  // Per-level "narrowed parent" used only by drag/drop target selection.
+  // Primary chip clicks open edit; they do not narrow rows, matching the admin
+  // AccessDashboard behavior.
   const [narrowed, setNarrowed] = useState<Record<number, string | null>>({});
 
   // 5px activation distance — without it dnd-kit's PointerSensor swallows the
@@ -104,20 +104,12 @@ export default function UserManageTeam() {
     if (levelNumber === 1) return all;
     const parentLevel = levelNumber - 1;
     const parentId = narrowed[parentLevel];
-    if (parentId === null || parentId === undefined) {
-      const parentList = nodesByLevel.get(parentLevel) ?? [];
-      const firstParent = parentList[0];
-      if (!firstParent) return [];
-      return all.filter((n) => n.parent_id === firstParent.id);
-    }
+    if (parentId === null || parentId === undefined) return all;
     return all.filter((n) => n.parent_id === parentId);
   }
 
   function handleChipClick(n: UserNode) {
     setEditingChip(n);
-    if (n.level_number !== null) {
-      setNarrowed({ ...narrowed, [n.level_number]: n.id });
-    }
   }
 
   // ── handleDragEnd: copied verbatim from AccessDashboard.tsx, only the
@@ -181,6 +173,7 @@ export default function UserManageTeam() {
   if (!structure) return null;
 
   const hasStructure = structure.roles.length > 0 && structure.levels.length > 0;
+  const isOwner = user.level_number == null || user.level_number === 1;
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
@@ -195,6 +188,13 @@ export default function UserManageTeam() {
           <div style={{ display: 'flex', gap: 6 }}>
             {!selectMode && (
               <>
+                {isOwner && (
+                  <>
+                    <Link to={`/c/${slug}/team/access-levels`} className="btn btn-secondary">Access levels</Link>
+                    <Link to={`/c/${slug}/team/audit`} className="btn btn-secondary">Audit</Link>
+                    <Link to={`/c/${slug}/team/configure`} className="btn btn-secondary">Configure</Link>
+                  </>
+                )}
                 <button className="btn btn-secondary" disabled={!hasStructure} onClick={() => setShowBulkInvite(true)}>
                   Bulk invite
                 </button>
@@ -227,7 +227,7 @@ export default function UserManageTeam() {
         {structure.levels.map((l) => {
           const parentLevel = l.level_number - 1;
           const parentId = narrowed[parentLevel];
-          const parentNode = parentId ? nodes.find((n) => n.id === parentId) : (nodesByLevel.get(parentLevel) ?? [])[0];
+          const parentNode = parentId ? nodes.find((n) => n.id === parentId) : null;
           const subtitle = l.level_number > 1 && parentNode ? `under ${parentNode.display_name}` : undefined;
           return (
             <TeamLevelBox

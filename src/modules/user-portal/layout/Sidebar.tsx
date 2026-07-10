@@ -3,10 +3,16 @@ import { allModules } from '@registry/modules';
 import { useNavItems } from '../nav/useNavItems';
 import { useUserAuth } from '../user-auth-context';
 
+function isAdminFullAccessEntry(): boolean {
+  const m = document.cookie.split(/;\s*/).find((c) => c.startsWith('imp_actor='));
+  return m ? decodeURIComponent(m.slice('imp_actor='.length)) === 'admin' : false;
+}
+
 export function Sidebar() {
   const { slug } = useParams<{ slug: string }>();
   const items = useNavItems();
   const { user, permissions, enabledModules } = useUserAuth();
+  const showAdminSettings = isAdminFullAccessEntry();
   if (!slug) return null;
 
   const isOwner = !!user && (user.level_number == null || user.level_number === 1);
@@ -66,6 +72,14 @@ export function Sidebar() {
             <div className="nav-group-header">Workspace</div>
             {canManageTeam && <NavLink to={`/c/${slug}/team`}>Team</NavLink>}
             {canEditSettings && <NavLink to={`/c/${slug}/pos/settings`}>Storefront</NavLink>}
+          </>
+        )}
+
+        {showAdminSettings && (
+          <>
+            <div className="nav-group-header">Admin Settings</div>
+            <NavLink to={`/c/${slug}/admin/audit`}>Audit</NavLink>
+            <NavLink to={`/c/${slug}/admin/settings`}>Settings</NavLink>
           </>
         )}
 

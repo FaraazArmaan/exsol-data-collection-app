@@ -8,21 +8,28 @@ function readImpCtx(): string | null {
   return m ? decodeURIComponent(m.slice('imp_ctx='.length)) : null;
 }
 
+function readImpActor(): string {
+  const m = document.cookie.split(/;\s*/).find((c) => c.startsWith('imp_actor='));
+  return m ? decodeURIComponent(m.slice('imp_actor='.length)) : 'admin';
+}
+
 export function ImpersonationBanner() {
   const [ctx] = useState(readImpCtx);
+  const [actor] = useState(readImpActor);
   const [exiting, setExiting] = useState(false);
   if (!ctx) return null;
 
   async function exit() {
     setExiting(true);
     document.cookie = 'imp_ctx=; Path=/; Max-Age=0; SameSite=Lax';
+    document.cookie = 'imp_actor=; Path=/; Max-Age=0; SameSite=Lax';
     try { await fetch('/api/u-logout', { method: 'POST', credentials: 'same-origin' }); } catch { /* clear + leave anyway */ }
     window.location.href = '/';
   }
 
   return (
     <div className="imp-banner" role="status">
-      <span>Viewing <strong>{ctx}</strong> as admin — changes you make are saved to this workspace.</span>
+      <span>Viewing <strong>{ctx}</strong> as {actor} — changes you make are saved to this workspace.</span>
       <button type="button" className="imp-banner__exit" onClick={() => void exit()} disabled={exiting}>
         {exiting ? 'Exiting…' : 'Exit to admin'}
       </button>

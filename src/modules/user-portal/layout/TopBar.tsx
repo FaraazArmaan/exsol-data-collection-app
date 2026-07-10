@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useUserAuth } from '../user-auth-context';
 
 export function TopBar() {
-  const { slug } = useParams<{ slug: string }>();
   const { user, client, signOut } = useUserAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,8 +30,10 @@ export function TopBar() {
 
   async function handleSignOut() {
     setMenuOpen(false);
+    document.cookie = 'imp_ctx=; Path=/; Max-Age=0; SameSite=Lax';
+    document.cookie = 'imp_actor=; Path=/; Max-Age=0; SameSite=Lax';
     await signOut();
-    navigate(`/c/${slug}/login`, { replace: true });
+    navigate('/login', { replace: true });
   }
 
   return (
@@ -54,7 +55,7 @@ export function TopBar() {
         {menuOpen && (
           <div className="dropdown-menu">
             <Link
-              to={`/c/${slug}/account`}
+              to={`/c/${client.slug}/account`}
               className="dropdown-item"
               onClick={() => setMenuOpen(false)}
             >

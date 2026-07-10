@@ -1,7 +1,7 @@
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { AdminCapabilityError, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
+import { authenticateForAdminCapabilityOrOwner } from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { logAudit } from './_shared/audit';
@@ -17,16 +17,13 @@ export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
   const csrf = rejectCrossSiteMutation(req);
   if (csrf) return csrf;
-  let actor;
-  try { actor = await requireAdminCapability(req, 'permissions.manage'); } catch (e) {
-    if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
+  const actor = await authenticateForAdminCapabilityOrOwner(req, 'permissions.manage');
+  if (actor instanceof Response) return actor;
 
   const clientId = new URL(req.url).searchParams.get('client');
   if (!clientId) return jsonError(400, 'validation_failed', 'client required');
   try { assertUuid(clientId, 'client'); } catch { return jsonError(400, 'validation_failed', 'client must be uuid'); }
+  if (actor.kind === 'bucket_user' && actor.client_id !== clientId) return jsonError(403, 'forbidden_cross_client');
 
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -49,7 +46,7 @@ export default async (req: Request, _ctx: Context) => {
       RETURNING id, client_id, level_number, label, permissions, created_at
     `) as Array<{ id: string }>;
     await logAudit(sql, {
-      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      session: actor,
       op: 'level.created',
       clientId,
       targetType: 'level',

@@ -9,13 +9,15 @@
 //   → replaces the whole matrix; validates every key.
 //
 // L1 (Primary) is conceptually always all-on and rejects PUT with 409.
-// Auth: admin only for now. Phase C migrates this to requirePermission
-// once the middleware exists.
 
 import type { Context } from '@netlify/functions';
 import { z } from 'zod';
 import { db } from './_shared/db';
-import { AdminCapabilityError, requireAdmin, requireAdminCapability, UnauthorizedError } from './_shared/permissions';
+import {
+  authenticateForAdminCapabilityOrOwner,
+  authenticateForPermission,
+  authorizeClientScope,
+} from './_shared/permissions';
 import { jsonError, jsonOk } from './_shared/http';
 import { assertUuid } from './_shared/identifier';
 import { isValidPermissionKey } from './_shared/permission-keys';
@@ -36,11 +38,8 @@ export default async (req: Request, _ctx: Context) => {
   const csrf = rejectCrossSiteMutation(req);
   if (csrf) return csrf;
 
-  let actor;
-  try { actor = await requireAdmin(req); } catch (e) {
-    if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-    throw e;
-  }
+  const viewer = await authenticateForPermission(req, '_platform.users.view');
+  if (viewer instanceof Response) return viewer;
 
   const url = new URL(req.url);
   const levelId = url.searchParams.get('id');
@@ -54,6 +53,8 @@ export default async (req: Request, _ctx: Context) => {
   `) as LevelRow[];
   if (levels.length === 0) return jsonError(404, 'level_not_found');
   const level = levels[0]!;
+  const scope = authorizeClientScope(viewer, level.client_id);
+  if ('error' in scope) return jsonError(403, scope.error);
 
   const enabledRows = (await sql`
     SELECT product_key FROM public.client_enabled_products
@@ -83,11 +84,10 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   if (req.method === 'PUT') {
-    try { actor = await requireAdminCapability(req, 'permissions.manage'); } catch (e) {
-      if (e instanceof AdminCapabilityError) return jsonError(403, 'admin_role_forbidden', { capability: e.capability });
-      if (e instanceof UnauthorizedError) return jsonError(401, 'unauthorized');
-      throw e;
-    }
+    const actor = await authenticateForAdminCapabilityOrOwner(req, 'permissions.manage');
+    if (actor instanceof Response) return actor;
+    const writeScope = authorizeClientScope(actor, level.client_id);
+    if ('error' in writeScope) return jsonError(403, writeScope.error);
     if (level.level_number === 1) return jsonError(409, 'primary_level_immutable');
     const parsed = PutBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
@@ -102,7 +102,7 @@ export default async (req: Request, _ctx: Context) => {
       WHERE id = ${levelId}::uuid
     `;
     await logAudit(sql, {
-      session: { kind: 'admin', admin: { id: actor.admin.id, email: '' } },
+      session: actor,
       op: 'permissions.updated',
       clientId: level.client_id,
       targetType: 'level',

@@ -11,7 +11,7 @@ export function UserPortalLayout() {
   );
 }
 
-// Gate: requires a logged-in bucket user. Redirects to /c/:slug/login otherwise.
+// Gate: requires a logged-in bucket user. Redirects to the universal login otherwise.
 // Also enforces the "must_change_password → /change-password" flow.
 export function RequireBucketUser() {
   const { user, loading } = useUserAuth();
@@ -19,7 +19,7 @@ export function RequireBucketUser() {
   const location = useLocation();
 
   if (loading) return <p style={{ padding: 24 }}>Loading…</p>;
-  if (!user) return <Navigate to={`/c/${slug}/login`} replace />;
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
 
   // Block any path other than /change-password until the user has reset their
   // temp password. The change-password page itself is allowed through.
