@@ -39,8 +39,11 @@ asked the agent to push.
 6. Tests share one persistent dev DB (no teardown): randomize unique-constrained literals;
    mock `getStore()` in EVERY test file whose handler touches Blobs.
 7. Never `git push` from an agent session unless the human explicitly asked the agent to push.
-   After any successful push, report what was pushed: remote/branch, old..new range,
-   commits, migrations, docs/reference changes, verification status, and any deploy notes.
+   Before pushing deployable code, identify whether the outgoing range contains migrations;
+   if it does, confirm the intended target database, run/status `npm run migrate` against
+   that target, and do not expose the database URL. After any successful push, report what
+   was pushed: remote/branch, old..new range, commits, migrations, docs/reference changes,
+   migration result, verification status, and any deploy notes.
 8. Run `git branch --show-current` before your first commit — confirm you're in your own
    feat/<module>-iso worktree.
 9. Module CSS MUST consume the dark-theme tokens from `src/lib/theme.css`
