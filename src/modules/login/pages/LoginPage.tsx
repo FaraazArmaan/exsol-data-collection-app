@@ -4,6 +4,17 @@ import { useAuth } from '../../../lib/auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
 import { completeAdminMfa, unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
 
+const LOGIN_TIMEOUT_MS = 30_000;
+
+function makeAbortController() {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
+  return {
+    controller,
+    clear: () => window.clearTimeout(timeout),
+  };
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { refresh: refreshAdminAuth } = useAuth();
@@ -32,15 +43,22 @@ export default function LoginPage() {
   async function attempt(emailVal: string, passwordVal: string, clientSlug?: string) {
     setError(null);
     setSubmitting(true);
-    const r = await unifiedLogin(emailVal, passwordVal, clientSlug);
-    setSubmitting(false);
-    if (!r.ok) {
-      setError(r.error.code === 'too_many_attempts'
-        ? 'Too many attempts. Try again in a few minutes.'
-        : 'Invalid email or password.');
-      return;
+    const { controller, clear } = makeAbortController();
+    try {
+      const r = await unifiedLogin(emailVal, passwordVal, clientSlug, controller.signal);
+      if (!r.ok) {
+        setError(r.error.code === 'too_many_attempts'
+          ? 'Too many attempts. Try again in a few minutes.'
+          : r.error.code === 'request_timeout'
+            ? 'Login timed out. Try again.'
+            : 'Invalid email or password.');
+        return;
+      }
+      await handleSuccess(r.data);
+    } finally {
+      clear();
+      setSubmitting(false);
     }
-    await handleSuccess(r.data);
   }
 
   async function handleSuccess(data: UnifiedLoginResponse) {
@@ -73,15 +91,22 @@ export default function LoginPage() {
   async function attemptGoogle(idToken: string, clientSlug?: string) {
     setError(null);
     setSubmitting(true);
-    const r = await unifiedGoogleLogin(idToken, clientSlug);
-    setSubmitting(false);
-    if (!r.ok) {
-      setError(r.error.code === 'too_many_attempts'
-        ? 'Too many attempts. Try again in a few minutes.'
-        : "We couldn't find a matching account for that Google identity.");
-      return;
+    const { controller, clear } = makeAbortController();
+    try {
+      const r = await unifiedGoogleLogin(idToken, clientSlug, controller.signal);
+      if (!r.ok) {
+        setError(r.error.code === 'too_many_attempts'
+          ? 'Too many attempts. Try again in a few minutes.'
+          : r.error.code === 'request_timeout'
+            ? 'Login timed out. Try again.'
+            : "We couldn't find a matching account for that Google identity.");
+        return;
+      }
+      await handleSuccess(r.data);
+    } finally {
+      clear();
+      setSubmitting(false);
     }
-    await handleSuccess(r.data);
   }
 
   // Stable handler reference so the Google button doesn't re-render the
@@ -115,12 +140,17 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email.trim()) return;
     setForgotSubmitting(true);
-    // We don't pass `client` here — there's no client slug context on the
-    // main sign-in page. Server will flip the flag on every credential row
-    // matching this email across clients. Same response either way.
-    await forgotPassword(email.trim());
-    setForgotSubmitting(false);
-    setForgotMode('sent');
+    const { controller, clear } = makeAbortController();
+    try {
+      // We don't pass `client` here — there's no client slug context on the
+      // main sign-in page. Server will flip the flag on every credential row
+      // matching this email across clients. Same response either way.
+      await forgotPassword(email.trim(), undefined, controller.signal);
+      setForgotMode('sent');
+    } finally {
+      clear();
+      setForgotSubmitting(false);
+    }
   }
 
   async function onMfaSubmit(e: FormEvent) {
@@ -128,16 +158,23 @@ export default function LoginPage() {
     if (!mfaChallenge || !mfaCode.trim()) return;
     setError(null);
     setSubmitting(true);
-    const r = await completeAdminMfa(mfaChallenge.id, useRecovery
-      ? { recovery_code: mfaCode.trim() }
-      : { code: mfaCode.trim() });
-    setSubmitting(false);
-    if (!r.ok) {
-      setError('Invalid verification code.');
-      return;
+    const { controller, clear } = makeAbortController();
+    try {
+      const r = await completeAdminMfa(mfaChallenge.id, useRecovery
+        ? { recovery_code: mfaCode.trim() }
+        : { code: mfaCode.trim() }, controller.signal);
+      if (!r.ok) {
+        setError(r.error.code === 'request_timeout'
+          ? 'Verification timed out. Try again.'
+          : 'Invalid verification code.');
+        return;
+      }
+      await refreshAdminAuth();
+      navigate('/', { replace: true });
+    } finally {
+      clear();
+      setSubmitting(false);
     }
-    await refreshAdminAuth();
-    navigate('/', { replace: true });
   }
 
   if (forgotMode === 'sent') {
