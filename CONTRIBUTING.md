@@ -69,7 +69,12 @@ file AND the RouteMount AND any UI gate.
 - Work in your own worktree on a `feat/<topic>-iso` branch; run `git branch --show-current`
   before your first commit (iron rule 8).
 - Small commits, one theme per commit.
-- NEVER `git push` (iron rule 7 — enforced by a PreToolUse hook in `.claude/settings.json`);
-  the human pushes via the Main integration chat. No PRs — Netlify deploy previews burn credits.
+- Never `git push` from an agent session unless the human explicitly asked the agent to push
+  (iron rule 7 — enforced by a PreToolUse hook). Before pushing deployable code, check whether
+  the outgoing range contains migrations; if it does, confirm the target database and run/status
+  `npm run migrate` against that target without exposing the database URL. After a successful
+  push, report the remote/branch, old..new range, commits, migrations, docs/reference changes,
+  migration result, verification status, and deploy notes. No PRs — Netlify deploy previews burn
+  credits.
 - If your change touches endpoints, manifests, or migrations, rerun `npm run docs:reference`
   and commit the regenerated docs.
