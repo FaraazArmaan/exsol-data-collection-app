@@ -1,6 +1,6 @@
 // /api/workforce/staff — GET
-// Lists booking_resources with their linked user_nodes (name + role label).
-// Used as the staff directory and to populate resource pickers on shift / project forms.
+// Lists operational booking_resources with their linked employee Team user.
+// Used to populate resource pickers on shift / project forms.
 import { jsonOk } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
@@ -17,8 +17,8 @@ export default async function handler(req: Request): Promise<Response> {
   if (!a.ok) return a.res;
 
   const sql = db();
-  // Each booking_resource is a named slot (room/staff); user_nodes are team members.
-  // We join user_nodes via client_id and also pull the role label via client_roles.
+  // Each booking_resource is a named operational slot. Team users are linked
+  // only through workforce_employee_profiles, not by sharing a client_id.
   const resources = (await sql`
     SELECT
       br.id,
@@ -41,8 +41,10 @@ export default async function handler(req: Request): Promise<Response> {
         '[]'::json
       ) AS team_members
     FROM public.booking_resources br
+    LEFT JOIN public.workforce_employee_profiles p
+      ON p.client_id = br.bucket_id AND p.resource_id = br.id
     LEFT JOIN public.user_nodes un
-      ON un.client_id = br.bucket_id
+      ON un.client_id = br.bucket_id AND un.id = p.user_node_id
     LEFT JOIN public.client_roles cr
       ON cr.id = un.role_id
     LEFT JOIN public.client_levels cl

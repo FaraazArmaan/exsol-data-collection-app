@@ -31,18 +31,62 @@ async function handlePost(req: Request): Promise<Response> {
   const body = await readJson(req);
   if (body instanceof Response) return body;
 
-  const resourceId = stringField(body, 'resource_id');
-  if (!resourceId) return jsonError(400, 'resource_id_required');
-  if (!(await resourceExists(a.ctx.clientId, resourceId))) return jsonError(404, 'resource_not_found');
-
   const legalName = stringField(body, 'legal_name');
   if (!legalName) return jsonError(400, 'legal_name_required');
   const userNodeId = optionalUuidField(body, 'user_node_id');
   if (userNodeId instanceof Response) return userNodeId;
   const managerUserNodeId = optionalUuidField(body, 'manager_user_node_id');
   if (managerUserNodeId instanceof Response) return managerUserNodeId;
+  const sql = db();
 
-  const rows = await db()`
+  if (userNodeId) {
+    const rows = await sql`
+      SELECT id
+      FROM public.user_nodes
+      WHERE id = ${userNodeId}::uuid
+        AND client_id = ${a.ctx.clientId}::uuid
+      LIMIT 1
+    ` as Array<{ id: string }>;
+    if (rows.length === 0) return jsonError(404, 'user_node_not_found');
+  }
+  if (managerUserNodeId) {
+    const rows = await sql`
+      SELECT id
+      FROM public.user_nodes
+      WHERE id = ${managerUserNodeId}::uuid
+        AND client_id = ${a.ctx.clientId}::uuid
+      LIMIT 1
+    ` as Array<{ id: string }>;
+    if (rows.length === 0) return jsonError(404, 'manager_user_node_not_found');
+  }
+
+  let resourceId = stringField(body, 'resource_id');
+  if (resourceId) {
+    if (!(await resourceExists(a.ctx.clientId, resourceId))) return jsonError(404, 'resource_not_found');
+  } else if (userNodeId) {
+    const existing = await sql`
+      SELECT resource_id
+      FROM public.workforce_employee_profiles
+      WHERE client_id = ${a.ctx.clientId}::uuid
+        AND user_node_id = ${userNodeId}::uuid
+      ORDER BY updated_at DESC
+      LIMIT 1
+    ` as Array<{ resource_id: string }>;
+    if (existing[0]?.resource_id) {
+      resourceId = existing[0].resource_id;
+    } else {
+      const created = await sql`
+        INSERT INTO public.booking_resources (bucket_id, name)
+        VALUES (${a.ctx.clientId}::uuid, ${legalName}::text)
+        RETURNING id
+      ` as Array<{ id: string }>;
+      resourceId = created[0]!.id;
+    }
+  } else {
+    return jsonError(400, 'resource_or_user_node_required');
+  }
+
+  const rows = await sql`
     INSERT INTO public.workforce_employee_profiles (
       client_id, resource_id, user_node_id, employee_number, legal_name, preferred_name,
       employment_status, employment_type, job_title, department, hire_date, termination_date,

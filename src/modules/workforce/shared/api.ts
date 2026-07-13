@@ -366,6 +366,37 @@ export interface EmployeeMasterProfile {
   updated_at: string;
 }
 
+export interface EmployeeDirectoryEntry {
+  user_node_id: string | null;
+  display_name: string;
+  email: string | null;
+  level_number: number | null;
+  level_label: string | null;
+  role_label: string | null;
+  has_login: boolean;
+  login_disabled: boolean;
+  profile_id: string | null;
+  profile_client_id: string | null;
+  resource_id: string | null;
+  resource_name: string | null;
+  employee_number: string | null;
+  legal_name: string | null;
+  preferred_name: string | null;
+  employment_status: EmploymentStatus | null;
+  employment_type: EmploymentType | null;
+  job_title: string | null;
+  department: string | null;
+  hire_date: string | null;
+  termination_date: string | null;
+  manager_user_node_id: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
+  emergency_contact: Record<string, unknown> | null;
+  custom_fields: Record<string, unknown> | null;
+  profile_created_at: string | null;
+  profile_updated_at: string | null;
+}
+
 export interface SchedulePlanRow {
   resource_id: string;
   resource_name: string;
@@ -913,8 +944,12 @@ export const workforceApi = {
     return call<{ profiles: EmployeeMasterProfile[] }>(`/api/workforce/employee-master${q}`);
   },
 
+  listEmployeesDirectory(): Promise<{ employees: EmployeeDirectoryEntry[] }> {
+    return call<{ employees: EmployeeDirectoryEntry[] }>('/api/workforce/employees-directory');
+  },
+
   saveEmployeeMaster(data: {
-    resource_id: string;
+    resource_id?: string | null;
     user_node_id?: string | null;
     employee_number?: string | null;
     legal_name: string;

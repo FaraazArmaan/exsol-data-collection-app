@@ -6,7 +6,7 @@
 
 # API endpoints
 
-303 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+304 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -398,6 +398,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-compliance.ts | `/api/workforce/compliance` | any | bucket-user | `workforce.employees.view` |
 | workforce-employee-master.ts | `/api/workforce/employee-master` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-employee-profile.ts | `/api/workforce/employee-profile` | any | bucket-user | `workforce.employees.view` |
+| workforce-employees-directory.ts | `/api/workforce/employees-directory` | any | bucket-user | `workforce.employees.view` |
 | workforce-leave-accrual.ts | `/api/workforce/leave-accrual` | any | bucket-user | — |
 | workforce-leave.ts | `/api/workforce/leave/:id` | any | bucket-user | — |
 | workforce-leaves.ts | `/api/workforce/leaves` | any | bucket-user | — |

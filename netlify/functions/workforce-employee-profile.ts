@@ -47,10 +47,13 @@ async function handleGet(req: Request): Promise<Response> {
   ] = await Promise.all([
     // 1. Resource info
     sql`
-      SELECT id, name FROM public.booking_resources
-      WHERE id = ${resourceId}::uuid AND bucket_id = ${clientId}::uuid
+      SELECT br.id, br.name, p.user_node_id
+      FROM public.booking_resources br
+      LEFT JOIN public.workforce_employee_profiles p
+        ON p.client_id = br.bucket_id AND p.resource_id = br.id
+      WHERE br.id = ${resourceId}::uuid AND br.bucket_id = ${clientId}::uuid
       LIMIT 1
-    ` as unknown as Promise<Array<{ id: string; name: string }>>,
+    ` as unknown as Promise<Array<{ id: string; name: string; user_node_id: string | null }>>,
 
     // 2. Total scheduled shifts for this resource
     sql`
@@ -147,7 +150,7 @@ async function handleGet(req: Request): Promise<Response> {
   const resource = resourceRows[0]!;
 
   // Assets: only fetch if we have a user_node_id.
-  const userNodeId = userNodeRows[0]?.user_node_id ?? null;
+  const userNodeId = resource.user_node_id ?? userNodeRows[0]?.user_node_id ?? null;
   let assetItems: Array<{ id: string; asset_name: string; condition: string; assigned_at: string }> = [];
   if (userNodeId) {
     const assetRows = (await sql`

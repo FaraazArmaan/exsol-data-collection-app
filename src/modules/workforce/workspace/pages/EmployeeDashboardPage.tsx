@@ -3,15 +3,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import {
   workforceApi,
+  type EmployeeDirectoryEntry,
   type EmployeeMasterProfile,
   type EmployeeProfile,
   type EmploymentStatus,
   type EmploymentType,
-  type StaffResource,
+  type TeamMember,
 } from '../../shared/api';
 import {
   findTeamMember,
-  teamMembersFromResources,
   TeamEmployeePicker,
   TeamStatusCard,
 } from '../components/TeamBridge';
@@ -92,11 +92,61 @@ function textFromRecord(record: Record<string, unknown> | null | undefined, key:
   return typeof value === 'string' ? value : '';
 }
 
-function formFromProfile(profile: EmployeeMasterProfile | null, resource: StaffResource | undefined): MasterForm {
+function employeeKey(employee: EmployeeDirectoryEntry): string {
+  return employee.user_node_id ? `team:${employee.user_node_id}` : `profile:${employee.profile_id ?? employee.resource_id}`;
+}
+
+function teamMemberFromEmployee(employee: EmployeeDirectoryEntry): TeamMember | null {
+  if (!employee.user_node_id) return null;
+  return {
+    id: employee.user_node_id,
+    display_name: employee.display_name,
+    email: employee.email,
+    level_number: employee.level_number,
+    level_label: employee.level_label,
+    role_label: employee.role_label,
+    has_login: employee.has_login,
+    login_disabled: employee.login_disabled,
+  };
+}
+
+function profileFromEmployee(employee: EmployeeDirectoryEntry | undefined): EmployeeMasterProfile | null {
+  if (!employee?.profile_id || !employee.resource_id || !employee.legal_name || !employee.employment_status || !employee.employment_type) {
+    return null;
+  }
+  return {
+    id: employee.profile_id,
+    client_id: employee.profile_client_id ?? '',
+    resource_id: employee.resource_id,
+    resource_name: employee.resource_name ?? undefined,
+    user_node_id: employee.user_node_id,
+    employee_number: employee.employee_number,
+    legal_name: employee.legal_name,
+    preferred_name: employee.preferred_name,
+    employment_status: employee.employment_status,
+    employment_type: employee.employment_type,
+    job_title: employee.job_title,
+    department: employee.department,
+    hire_date: employee.hire_date,
+    termination_date: employee.termination_date,
+    manager_user_node_id: employee.manager_user_node_id,
+    primary_email: employee.primary_email,
+    primary_phone: employee.primary_phone,
+    emergency_contact: employee.emergency_contact ?? {},
+    custom_fields: employee.custom_fields ?? {},
+    created_at: employee.profile_created_at ?? '',
+    updated_at: employee.profile_updated_at ?? '',
+  };
+}
+
+function formFromEmployee(employee: EmployeeDirectoryEntry | undefined): MasterForm {
+  const profile = profileFromEmployee(employee);
   if (!profile) {
     return {
       ...blankForm,
-      legal_name: resource?.name ?? '',
+      user_node_id: employee?.user_node_id ?? '',
+      legal_name: employee?.display_name ?? '',
+      primary_email: employee?.email ?? '',
     };
   }
   return {
@@ -138,9 +188,8 @@ function completeness(master: EmployeeMasterProfile | null): { done: number; tot
 }
 
 export default function EmployeeDashboardPage({ slug, perms }: Props) {
-  const [staff, setStaff] = useState<StaffResource[]>([]);
-  const [masters, setMasters] = useState<EmployeeMasterProfile[]>([]);
-  const [selectedResourceId, setSelectedResourceId] = useState('');
+  const [employees, setEmployees] = useState<EmployeeDirectoryEntry[]>([]);
+  const [selectedEmployeeKey, setSelectedEmployeeKey] = useState('');
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [form, setForm] = useState<MasterForm>(blankForm);
   const [loading, setLoading] = useState(false);
@@ -149,33 +198,33 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
   const [formError, setFormError] = useState('');
 
   const canSave = perms.has('workforce.employees.create');
-  const teamMembers = useMemo(() => teamMembersFromResources(staff), [staff]);
-  const selectedResource = staff.find(s => s.id === selectedResourceId);
-  const selectedMaster = masters.find(m => m.resource_id === selectedResourceId) ?? null;
-  const selectedTeamMember = findTeamMember(staff, selectedMaster?.user_node_id ?? form.user_node_id);
-  const managerMember = findTeamMember(staff, selectedMaster?.manager_user_node_id ?? form.manager_user_node_id);
+  const teamMembers = useMemo(
+    () => employees.map(teamMemberFromEmployee).filter((member): member is TeamMember => !!member),
+    [employees],
+  );
+  const selectedEmployee = employees.find(item => employeeKey(item) === selectedEmployeeKey);
+  const selectedMaster = profileFromEmployee(selectedEmployee);
+  const selectedResourceId = selectedEmployee?.resource_id ?? '';
+  const selectedTeamMember = teamMembers.find(member => member.id === (selectedMaster?.user_node_id ?? form.user_node_id)) ?? null;
+  const managerMember = teamMembers.find(member => member.id === (selectedMaster?.manager_user_node_id ?? form.manager_user_node_id)) ?? null;
   const completion = completeness(selectedMaster);
 
-  async function loadMasterProfiles() {
-    const data = await workforceApi.listEmployeeMaster();
-    setMasters(data.profiles);
+  async function loadEmployeesDirectory() {
+    const data = await workforceApi.listEmployeesDirectory();
+    setEmployees(data.employees);
   }
 
   useEffect(() => {
-    Promise.all([
-      workforceApi.listStaff(),
-      workforceApi.listEmployeeMaster(),
-    ]).then(([staffData, masterData]) => {
-      setStaff(staffData.resources);
-      setMasters(masterData.profiles);
+    workforceApi.listEmployeesDirectory().then(data => {
+      setEmployees(data.employees);
     }).catch(() => {
       setError('Failed to load employee directory.');
     });
   }, []);
 
   useEffect(() => {
-    setForm(formFromProfile(selectedMaster, selectedResource));
-  }, [selectedMaster, selectedResource]);
+    setForm(formFromEmployee(selectedEmployee));
+  }, [selectedEmployee]);
 
   useEffect(() => {
     if (!selectedResourceId) {
@@ -198,7 +247,7 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedResourceId) return;
+    if (!selectedEmployee) return;
     if (!form.legal_name.trim()) {
       setFormError('Legal name is required.');
       return;
@@ -207,8 +256,8 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
     setFormError('');
     try {
       await workforceApi.saveEmployeeMaster({
-        resource_id: selectedResourceId,
-        user_node_id: form.user_node_id || null,
+        resource_id: selectedEmployee.resource_id || null,
+        user_node_id: form.user_node_id || selectedEmployee.user_node_id || null,
         employee_number: form.employee_number || null,
         legal_name: form.legal_name.trim(),
         preferred_name: form.preferred_name || null,
@@ -228,7 +277,7 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
         },
         custom_fields: {},
       });
-      await loadMasterProfiles();
+      await loadEmployeesDirectory();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Failed to save employee profile.');
     } finally {
@@ -246,25 +295,29 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
           <p>Employee 360 records extend Team identity with employment, readiness, and operational context.</p>
         </div>
         <div className="wf-emp-select-row">
-          <span className="wf-emp-select-label">Staff member</span>
+          <span className="wf-emp-select-label">Employee</span>
           <select
             className="wf-select"
-            value={selectedResourceId}
-            onChange={e => setSelectedResourceId(e.target.value)}
+            value={selectedEmployeeKey}
+            onChange={e => setSelectedEmployeeKey(e.target.value)}
           >
-            <option value="">Select staff...</option>
-            {staff.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+            <option value="">Select employee...</option>
+            {employees.map(employee => (
+              <option key={employeeKey(employee)} value={employeeKey(employee)}>
+                {employee.legal_name ?? employee.display_name}
+                {!employee.profile_id ? ' - needs profile' : ''}
+                {!employee.user_node_id && employee.resource_name ? ` - unlinked profile (${employee.resource_name})` : ''}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {!selectedResourceId && (
-        <div className="wf-emp-empty">Select a staff member to view or complete their employee profile.</div>
+      {!selectedEmployeeKey && (
+        <div className="wf-emp-empty">Select a Team user to view or complete their employee profile.</div>
       )}
 
-      {selectedResourceId && (
+      {selectedEmployee && (
         <div className="wf-emp-layout">
           {error && <div className="wf-error">{error}</div>}
 
@@ -395,8 +448,11 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
             </form>
           </section>
 
-          {loading && <div className="wf-emp-loading">Loading operational profile...</div>}
-          {!loading && !error && profile && (
+          {selectedResourceId && loading && <div className="wf-emp-loading">Loading operational profile...</div>}
+          {!selectedResourceId && (
+            <div className="wf-emp-empty">Save this employee profile to create their operational Workforce resource.</div>
+          )}
+          {selectedResourceId && !loading && !error && profile && (
             <div className="wf-emp-grid">
               <div className="wf-emp-card">
                 <div className="wf-emp-card-title">This Week</div>
