@@ -179,7 +179,10 @@ export async function verifyBucketUserSession(token: string): Promise<BucketUser
 }
 
 export function shouldRefreshBucketUser(claims: BucketUserClaims, nowSec = Math.floor(Date.now() / 1000)): boolean {
-  return claims.exp - nowSec < BU_REFRESH_THRESHOLD_SECONDS;
+  const threshold = claims.impersonated_by_admin
+    ? Math.floor(BU_IMPERSONATION_TTL_SECONDS / 2)
+    : BU_REFRESH_THRESHOLD_SECONDS;
+  return claims.exp - nowSec < threshold;
 }
 
 export function buCookieHeader(token: string, maxAgeSeconds = BU_TTL_SECONDS): string {

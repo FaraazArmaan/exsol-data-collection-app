@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../lib/auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
 import { completeAdminMfa, unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
@@ -17,7 +17,10 @@ function makeAbortController() {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refresh: refreshAdminAuth } = useAuth();
+  const nextPath = searchParams.get('next');
+  const nextWorkspaceSlug = nextPath?.match(/^\/c\/([^/]+)/)?.[1];
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +48,7 @@ export default function LoginPage() {
     setSubmitting(true);
     const { controller, clear } = makeAbortController();
     try {
-      const r = await unifiedLogin(emailVal, passwordVal, clientSlug, controller.signal);
+      const r = await unifiedLogin(emailVal, passwordVal, clientSlug ?? nextWorkspaceSlug, controller.signal);
       if (!r.ok) {
         setError(r.error.code === 'too_many_attempts'
           ? 'Too many attempts. Try again in a few minutes.'
@@ -75,7 +78,8 @@ export default function LoginPage() {
     }
     if (data.kind === 'bucket_user') {
       const slug = data.client.slug;
-      const dest = data.user.must_change_password ? `/c/${slug}/change-password` : `/c/${slug}/`;
+      const workspaceNext = nextPath?.startsWith(`/c/${slug}`) ? nextPath : null;
+      const dest = data.user.must_change_password ? `/c/${slug}/change-password` : (workspaceNext ?? `/c/${slug}/`);
       navigate(dest, { replace: true });
       return;
     }
@@ -93,7 +97,7 @@ export default function LoginPage() {
     setSubmitting(true);
     const { controller, clear } = makeAbortController();
     try {
-      const r = await unifiedGoogleLogin(idToken, clientSlug, controller.signal);
+      const r = await unifiedGoogleLogin(idToken, clientSlug ?? nextWorkspaceSlug, controller.signal);
       if (!r.ok) {
         setError(r.error.code === 'too_many_attempts'
           ? 'Too many attempts. Try again in a few minutes.'

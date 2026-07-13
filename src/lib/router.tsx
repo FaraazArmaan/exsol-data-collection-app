@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
 import SetPasswordPage from '../modules/login/pages/SetPasswordPage';
@@ -92,6 +92,12 @@ function RequireAdmin() {
   return <ShellLayout />;
 }
 
+function WorkspaceLoginRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  const next = slug ? `/c/${slug}` : '/';
+  return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
+}
+
 function WorkspaceAccessLevels() {
   const { client } = useUserAuth();
   if (!client) return null;
@@ -155,7 +161,7 @@ export const router = createBrowserRouter([
     path: '/c/:slug',
     element: <UserPortalLayout />,
     children: [
-      { path: 'login', element: <Navigate to="/login" replace /> },
+      { path: 'login', element: <WorkspaceLoginRedirect /> },
       // Anonymous booking storefront — sibling of login, OUTSIDE the auth gate.
       { path: 'book', element: <BookingStorefront /> },
       { path: 'book/manage/:token', element: <ManageBooking /> },

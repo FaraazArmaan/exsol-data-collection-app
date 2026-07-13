@@ -32,6 +32,12 @@ const ADMIN_EMAIL = 'user-node-auth-test@example.com';
 const ADMIN_PASSWORD = 'user-node-auth-pw';
 const CTX = {} as Context;
 
+function allSetCookies(response: Response): string {
+  const headersWithCookies = response.headers as Headers & { getSetCookie?: () => string[] };
+  const cookies = headersWithCookies.getSetCookie?.();
+  return cookies && cookies.length > 0 ? cookies.join('\n') : (response.headers.get('set-cookie') ?? '');
+}
+
 let sql: ReturnType<typeof neon>;
 let cookie: string;
 let testClientId: string;
@@ -65,6 +71,21 @@ async function createNodeWithLogin(email: string, tempPassword: string): Promise
   return (await r.json() as { node: { id: string } }).node.id;
 }
 
+async function createOwnerNodeWithoutLogin(displayName = 'Workspace Owner'): Promise<string> {
+  const r = await userNodesHandler(
+    new Request(`http://localhost/api/user-nodes?client=${testClientId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie },
+      body: JSON.stringify({
+        role_id: roleId, level_number: 1, parent_id: null,
+        display_name: displayName, email: null,
+        create_login: false,
+      }),
+    }), CTX,
+  );
+  if (r.status !== 201) throw new Error(`create owner node failed: ${r.status} ${await r.text()}`);
+  return (await r.json() as { node: { id: string } }).node.id;
+}
+
 async function bucketUserLogin(email: string, password: string): Promise<string> {
   const r = await uLoginHandler(
     new Request(`http://localhost/api/u-login?client=${testClientSlug}`, {
@@ -80,9 +101,10 @@ beforeAll(async () => {
   sql = neon(process.env.DATABASE_URL!);
   const h = await hashPassword(ADMIN_PASSWORD);
   await sql`
-    INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
-    VALUES (${ADMIN_EMAIL}, ${h}, 'UN Auth Admin', false)
+    INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap, role, disabled_at, locked_until)
+    VALUES (${ADMIN_EMAIL}, ${h}, 'UN Auth Admin', false, 'owner', NULL, NULL)
     ON CONFLICT (email) DO UPDATE SET password_hash = ${h}, display_name = 'UN Auth Admin'
+      , is_bootstrap = false, role = 'owner', disabled_at = NULL, locked_until = NULL
   `;
 });
 
@@ -831,6 +853,48 @@ describe('user-node auth', () => {
     await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
   });
 
+  test('unified login: client-scoped password login prefers bucket-user over admin collision', async () => {
+    const collidingEmail = `unified-scoped-collide-${Date.now()}@example.com`;
+    const tempHash = await hashPassword('admin-other-pass');
+    await sql`
+      INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+      VALUES (${collidingEmail}, ${tempHash}, 'Scoped Collide Admin', false)
+    `;
+    await createNodeWithLogin(collidingEmail, 'bucket-scoped-pass');
+
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: collidingEmail, password: 'bucket-scoped-pass', client: testClientSlug }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+    const body = await r.json() as { kind: string; client: { slug: string } };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.client.slug).toBe(testClientSlug);
+
+    await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
+  });
+
+  test('unified login: client-scoped admin password login enters workspace', async () => {
+    await createOwnerNodeWithoutLogin('Admin Workspace Owner');
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD, client: testClientSlug }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const setCookie = allSetCookies(r);
+    expect(setCookie).toContain('session=');
+    expect(setCookie).toContain('bu_session=');
+    const body = await r.json() as { kind: string; client: { slug: string }; impersonation_started_at?: string };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.client.slug).toBe(testClientSlug);
+    expect(body.impersonation_started_at).toBeTruthy();
+  });
+
   // ── Google flow on unified /api/login ────────────────────────────────
 
   test('Google login: bucket-user with matching email gets bu_session + first-binds google_sub', async () => {
@@ -904,6 +968,62 @@ describe('user-node auth', () => {
     expect(body.kind).toBe('admin');
     expect(r.headers.get('set-cookie') ?? '').toContain('session=');
     // Clear the google_sub we just first-bound so the test admin row is reusable.
+    await sql`UPDATE public.admins SET google_sub = NULL WHERE email = ${ADMIN_EMAIL}`;
+  });
+
+  test('Google login: client-scoped login prefers bucket-user over admin collision', async () => {
+    const collidingEmail = `g-scoped-collide-${Date.now()}@example.com`;
+    const tempHash = await hashPassword('google-admin-other-pass');
+    await sql`
+      INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
+      VALUES (${collidingEmail}, ${tempHash}, 'Google Scoped Collide Admin', false)
+    `;
+    const nodeId = await createNodeWithLogin(collidingEmail, 'google-bucket-pass');
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: `g-scoped-sub-${Date.now()}`,
+      email: collidingEmail,
+      emailVerified: true,
+      name: 'Scoped Google User',
+    });
+
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token', client: testClientSlug }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie') ?? '').toContain('bu_session=');
+    const body = await r.json() as { kind: string; user?: { id: string }; client: { slug: string } };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.user?.id).toBe(nodeId);
+    expect(body.client.slug).toBe(testClientSlug);
+
+    await sql`DELETE FROM public.admins WHERE email = ${collidingEmail}`;
+  });
+
+  test('Google login: client-scoped admin login enters workspace', async () => {
+    await createOwnerNodeWithoutLogin('Google Admin Workspace Owner');
+    (verifyGoogleIdToken as any).mockResolvedValueOnce({
+      sub: 'g-sub-admin-client-scope',
+      email: ADMIN_EMAIL,
+      emailVerified: true,
+      name: 'Admin',
+    });
+    const r = await loginUnifiedHandler(
+      new Request('http://localhost/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'fake-token', client: testClientSlug }),
+      }), CTX,
+    );
+    expect(r.status).toBe(200);
+    const setCookie = allSetCookies(r);
+    expect(setCookie).toContain('session=');
+    expect(setCookie).toContain('bu_session=');
+    const body = await r.json() as { kind: string; client: { slug: string }; impersonation_started_at?: string };
+    expect(body.kind).toBe('bucket_user');
+    expect(body.client.slug).toBe(testClientSlug);
+    expect(body.impersonation_started_at).toBeTruthy();
     await sql`UPDATE public.admins SET google_sub = NULL WHERE email = ${ADMIN_EMAIL}`;
   });
 
