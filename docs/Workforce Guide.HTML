@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Workforce Guide</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111111;
+        --panel: #1b1b1b;
+        --panel-2: #242424;
+        --line: #343434;
+        --text: #f0eee9;
+        --muted: #aaa59d;
+        --soft: #7f7a72;
+        --accent: #e9e2d7;
+        --good: #9fca9d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 56px 0 80px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+        gap: 32px;
+        align-items: end;
+        padding-bottom: 36px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .eyebrow,
+      .kicker {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.12;
+      }
+
+      h1 {
+        max-width: 800px;
+        font-size: clamp(38px, 7vw, 84px);
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: clamp(28px, 4vw, 46px);
+      }
+
+      h3 {
+        font-size: 21px;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .lead {
+        margin-top: 18px;
+        max-width: 760px;
+        font-size: 18px;
+      }
+
+      .meta-card {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 22px;
+      }
+
+      .meta-card strong {
+        color: var(--text);
+      }
+
+      .toc {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 28px 0 0;
+      }
+
+      .toc a,
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .intro-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin: 34px 0 10px;
+      }
+
+      .principle {
+        min-height: 164px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 22px;
+      }
+
+      .principle h3 {
+        margin-bottom: 12px;
+      }
+
+      .section {
+        margin-top: 54px;
+        padding-top: 46px;
+        border-top: 1px solid var(--line);
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+        align-items: start;
+        margin-bottom: 22px;
+      }
+
+      .section-head p {
+        max-width: 780px;
+        margin-top: 10px;
+        font-size: 17px;
+      }
+
+      .screen {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .screen img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .detail-card {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 22px;
+      }
+
+      .detail-card h3 {
+        margin-bottom: 14px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+
+      li + li {
+        margin-top: 8px;
+      }
+
+      li strong {
+        color: var(--text);
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .flow-step {
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .flow-step span {
+        display: block;
+        color: var(--good);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .flow-step p {
+        margin-top: 8px;
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      .note {
+        margin-top: 18px;
+        border-left: 3px solid var(--accent);
+        background: var(--panel);
+        padding: 16px 18px;
+        color: var(--muted);
+      }
+
+      .note strong {
+        color: var(--text);
+      }
+
+      footer {
+        margin-top: 56px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+        color: var(--soft);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .page {
+          width: min(100% - 28px, 1180px);
+          padding-top: 32px;
+        }
+
+        .hero,
+        .intro-grid,
+        .section-head,
+        .details,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">ExSol Workforce Module</p>
+          <h1>Workforce Guide</h1>
+          <p class="lead">
+            This guide explains each Workforce system in implementation order: identity first,
+            then scheduling, time, leave, payroll readiness, compliance operations, and project
+            work. The screenshots are from the local Papa's Saloon workspace.
+          </p>
+          <nav class="toc" aria-label="Guide sections">
+            <a href="#employees">Employees</a>
+            <a href="#schedule">Staff &amp; Schedule</a>
+            <a href="#punching">Punching</a>
+            <a href="#timesheets">Timesheets</a>
+            <a href="#leave">Leave</a>
+            <a href="#overtime">Overtime</a>
+            <a href="#swaps">Swaps</a>
+            <a href="#payroll">Payroll</a>
+            <a href="#training">Training</a>
+            <a href="#assets">Assets</a>
+            <a href="#projects">Projects</a>
+          </nav>
+        </div>
+        <aside class="meta-card">
+          <p class="kicker">Core rule</p>
+          <p>
+            <strong>Workforce extends Team.</strong> People are added and access-controlled in
+            Team. Workforce adds employment, time, schedule, payroll, training, and asset records
+            on top of those Team users.
+          </p>
+        </aside>
+      </header>
+
+      <section class="intro-grid" aria-label="How Workforce fits together">
+        <article class="principle">
+          <h3>Team is the source of identity</h3>
+          <p>
+            Workforce should not create a separate universe of users. Employee profiles, rates,
+            leave, punch cards, and assignments are attached to Team users wherever possible.
+          </p>
+        </article>
+        <article class="principle">
+          <h3>Work locations are Workforce-owned</h3>
+          <p>
+            Clock-in geofencing uses Workforce work locations. These are intentionally separate
+            from warehouse or booking locations because they control attendance policy.
+          </p>
+        </article>
+        <article class="principle">
+          <h3>Managers operate from exceptions</h3>
+          <p>
+            The module is designed around warnings, pending corrections, open requests, expiring
+            training, and missing coverage so managers can review what needs action.
+          </p>
+        </article>
+      </section>
+
+      <section class="section" id="employees">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Foundation</p>
+            <h2>Employees</h2>
+            <p>
+              The Employees tab is the employee master profile. It connects Team identity to
+              Workforce-specific employment data so every other system has a reliable staff record.
+            </p>
+          </div>
+          <span class="tag">Team-linked profile</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/employees.png" alt="Employees tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Employee selector:</strong> chooses a Team user or existing employee profile to view.</li>
+              <li><strong>Profile workspace:</strong> shows or completes employment details for the selected person.</li>
+              <li><strong>Operational context:</strong> provides the staff identity used by scheduling, punching, payroll, training, and asset assignment.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Add the person in Team and give them the right access level.</li>
+              <li>Open Workforce Employees and complete their active employee profile.</li>
+              <li>Use that profile across shifts, punch records, leave, rates, courses, and assets.</li>
+            </ul>
+          </article>
+        </div>
+        <p class="note">
+          <strong>Why this is first:</strong> every other Workforce system depends on a real staff
+          identity. If a Team user is not linked to an active employee profile, dashboard clock-in
+          and employee-specific actions should be blocked.
+        </p>
+      </section>
+
+      <section class="section" id="schedule">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Planning</p>
+            <h2>Staff &amp; Schedule</h2>
+            <p>
+              This tab plans weekly coverage and applies compliance rules before shifts are treated
+              as usable operational schedules.
+            </p>
+          </div>
+          <span class="tag">Schedule compliance</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/schedule.png" alt="Staff and Schedule tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Planner date:</strong> sets the schedule week or planning date being reviewed.</li>
+              <li><strong>Compliance Planner:</strong> summarizes covered resources, scheduled hours, daily limit risks, and open findings.</li>
+              <li><strong>Active Rule Template:</strong> defines daily maximum hours, weekly maximum hours, and required break rules.</li>
+              <li><strong>Staff rows:</strong> show each employee's week and provide the entry point for adding shifts.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Select the planning date.</li>
+              <li>Confirm or edit the active compliance rule template.</li>
+              <li>Add shifts for each employee and review warnings before publishing.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="punching">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Live time capture</p>
+            <h2>Punching</h2>
+            <p>
+              Punching handles clock-in, clock-out, breaks, geofenced work locations, live status,
+              correction requests, and the audit ledger for time events.
+            </p>
+          </div>
+          <span class="tag">Geolocked attendance</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/punching.png" alt="Punching tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Staff filter:</strong> narrows the view to all staff or one employee.</li>
+              <li><strong>Status metrics:</strong> track clocked-in employees, late arrivals, absences, and pending corrections.</li>
+              <li><strong>Work Locations:</strong> configures allowed clock-in locations with latitude, longitude, radius, and accuracy limits.</li>
+              <li><strong>Employee punch cards:</strong> show each employee's current status and manager-assisted clock action.</li>
+              <li><strong>Time Ledger:</strong> records the audit trail of punch events.</li>
+              <li><strong>Correction Queue:</strong> lists requested fixes that need review.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Create at least one Workforce work location.</li>
+              <li>Employees clock in from their dashboard when they are inside an allowed geofence.</li>
+              <li>Managers review missing punches, corrections, and exception states from this tab.</li>
+            </ul>
+          </article>
+        </div>
+        <p class="note">
+          <strong>Important:</strong> these locations are not warehouse locations. They exist for
+          attendance control, so owners and managers can define where a person is allowed to start
+          work.
+        </p>
+      </section>
+
+      <section class="section" id="timesheets">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Manual time records</p>
+            <h2>Timesheets</h2>
+            <p>
+              Timesheets provide a week-based view of time entries and a controlled way to log
+              manual work periods when a punch record is not enough.
+            </p>
+          </div>
+          <span class="tag">Weekly ledger</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/timesheets.png" alt="Timesheets tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Week controls:</strong> move between timesheet weeks.</li>
+              <li><strong>Entries list:</strong> shows logged work periods for the selected week.</li>
+              <li><strong>Log entry form:</strong> records staff member, date, start time, end time, and optional notes.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Open the correct week.</li>
+              <li>Select the employee and enter the work period.</li>
+              <li>Use notes for manager context, exception reasons, or payroll review comments.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="leave">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Absence management</p>
+            <h2>Leave</h2>
+            <p>
+              Leave captures employee requests, status filtering, and manager review. It keeps
+              absence requests visible next to staffing and payroll readiness.
+            </p>
+          </div>
+          <span class="tag">Requests and approvals</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/leave.png" alt="Leave tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Staff filter:</strong> limits requests to one employee or all employees.</li>
+              <li><strong>Status filter:</strong> separates pending, approved, rejected, or all requests.</li>
+              <li><strong>Apply for Leave:</strong> records the staff member, leave type, start date, end date, and notes.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Employee or manager submits a leave request.</li>
+              <li>Manager filters pending requests and approves or rejects them.</li>
+              <li>Approved leave becomes part of staffing and payroll context.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="overtime">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Exception pay review</p>
+            <h2>Overtime</h2>
+            <p>
+              Overtime tracks extra hours and threshold checks so managers can review out-of-policy
+              or pay-impacting work before payroll totals are finalized.
+            </p>
+          </div>
+          <span class="tag">Threshold review</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/overtime.png" alt="Overtime tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Staff and status filters:</strong> focus the overtime list by employee and approval state.</li>
+              <li><strong>Week start and OT threshold:</strong> define the period and the hour threshold being evaluated.</li>
+              <li><strong>Log Overtime:</strong> records employee, date, hours, and optional reason.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Set the week and threshold.</li>
+              <li>Review calculated or logged overtime entries.</li>
+              <li>Approve, reject, or annotate overtime before payroll reporting.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="swaps">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Schedule changes</p>
+            <h2>Swaps</h2>
+            <p>
+              The Swap Board lets employees offer shifts and managers review whether schedule
+              changes preserve coverage, eligibility, and compliance.
+            </p>
+          </div>
+          <span class="tag">Coverage-safe changes</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/swaps.png" alt="Swaps tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Swap metrics:</strong> summarize open offers, approvals waiting, approved swaps, and active resources.</li>
+              <li><strong>Status filter:</strong> narrows the board to the relevant swap state.</li>
+              <li><strong>Offer a Swap:</strong> records the shift, date, and optional notes for a proposed change.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Employee offers a shift for swap.</li>
+              <li>Eligible staff claim or respond to the offer.</li>
+              <li>Manager approves only if coverage and compliance remain acceptable.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="payroll">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Payroll readiness</p>
+            <h2>Payroll</h2>
+            <p>
+              Payroll is a tracking and export readiness area. It stores rates, periods, and
+              approved totals, but does not execute payment.
+            </p>
+          </div>
+          <span class="tag">Tracking only</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/payroll.png" alt="Payroll tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Tracking notice:</strong> clarifies that actual payment processing happens outside this module.</li>
+              <li><strong>Payroll Periods:</strong> creates and reviews start/end windows for payroll calculation.</li>
+              <li><strong>Hourly Rates:</strong> stores employee rate, effective date, and notes for audit context.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Create a payroll period.</li>
+              <li>Set or update employee hourly rates.</li>
+              <li>Use approved time, overtime, and leave context to prepare payroll exports or reports.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="training">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Compliance operations</p>
+            <h2>Training</h2>
+            <p>
+              Training manages course definitions, completions, and compliance status so staff
+              readiness is visible before work is assigned.
+            </p>
+          </div>
+          <span class="tag">Courses and expiry</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/training.png" alt="Training tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Courses:</strong> creates training items with optional expiry windows.</li>
+              <li><strong>Completions:</strong> records which employees have completed which courses.</li>
+              <li><strong>Compliance:</strong> highlights missing, expired, or soon-to-expire requirements.</li>
+              <li><strong>Required course:</strong> marks a course as mandatory for compliance tracking.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Create required courses for the role or workplace.</li>
+              <li>Log completions for each employee.</li>
+              <li>Review compliance before scheduling sensitive work.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="assets">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Equipment control</p>
+            <h2>Assets</h2>
+            <p>
+              Assets tracks company-owned items, employee assignments, condition, and maintenance
+              so equipment accountability sits next to employee operations.
+            </p>
+          </div>
+          <span class="tag">Assignments and condition</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/assets.png" alt="Assets tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Assets:</strong> creates and filters asset records.</li>
+              <li><strong>Assignments:</strong> links assets to employees and return state.</li>
+              <li><strong>Maintenance:</strong> records upkeep, repair, or inspection activity.</li>
+              <li><strong>Add Asset:</strong> captures name, serial number, condition, and description.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Create an asset with serial and condition details.</li>
+              <li>Assign it to a Team-linked employee.</li>
+              <li>Track returns, condition changes, and maintenance events.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="projects">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Work execution</p>
+            <h2>Projects</h2>
+            <p>
+              Projects connects workforce capacity to project work, budgets, documents, tasks,
+              risk, and AI-generated planning drafts.
+            </p>
+          </div>
+          <span class="tag">Project operations</span>
+        </div>
+        <figure class="screen">
+          <img src="workforce-guide-assets/projects.png" alt="Projects tab in the Workforce module">
+        </figure>
+        <div class="details">
+          <article class="detail-card">
+            <h3>What the sections do</h3>
+            <ul>
+              <li><strong>Overview:</strong> shows project summary and operating context.</li>
+              <li><strong>Budget:</strong> tracks financial planning for project work.</li>
+              <li><strong>Documents:</strong> stores project-related references.</li>
+              <li><strong>Tasks &amp; Risk:</strong> records tasks, due dates, and project health score.</li>
+              <li><strong>AI Planner:</strong> creates a draft task plan from a plain-language project description.</li>
+            </ul>
+          </article>
+          <article class="detail-card">
+            <h3>Typical workflow</h3>
+            <ul>
+              <li>Create or open a project.</li>
+              <li>Add budget, documents, and task/risk details.</li>
+              <li>Use the AI Planner for a first draft, then review before execution.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-label="Implementation flow">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">End-to-end flow</p>
+            <h2>How the systems fit together</h2>
+            <p>
+              The module works best when setup follows the dependency chain instead of the tab
+              order. Start with people, then policies, then time capture, then payroll and
+              compliance.
+            </p>
+          </div>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <span>Step 1</span>
+            <p>Add users in Team and complete Workforce employee profiles.</p>
+          </div>
+          <div class="flow-step">
+            <span>Step 2</span>
+            <p>Configure schedules, compliance rules, and work locations.</p>
+          </div>
+          <div class="flow-step">
+            <span>Step 3</span>
+            <p>Capture time through dashboard punching, corrections, and timesheets.</p>
+          </div>
+          <div class="flow-step">
+            <span>Step 4</span>
+            <p>Review leave, overtime, payroll readiness, training, assets, and projects.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        Generated from local Workforce screenshots on 13 July 2026. This document is a static
+        guide for understanding the current module screens and their intended operating model.
+      </footer>
+    </main>
+  </body>
+</html>
