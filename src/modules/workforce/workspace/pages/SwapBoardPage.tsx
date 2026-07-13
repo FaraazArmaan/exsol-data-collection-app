@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
-import { Link } from 'react-router-dom';
 import { workforceApi, type ShiftSwap, type Shift, type StaffResource } from '../../shared/api';
 import '../../workforce.css';
 
@@ -12,6 +11,19 @@ const STATUS_LABELS: Record<string, string> = {
   denied: 'Denied',
   cancelled: 'Cancelled',
 };
+
+function weekdayFromDate(dateIso: string): number {
+  return new Date(`${dateIso}T12:00:00`).getDay();
+}
+
+function minutes(time: string): number {
+  const [hour, minute] = time.slice(0, 5).split(':').map(Number);
+  return (hour ?? 0) * 60 + (minute ?? 0);
+}
+
+function overlaps(a: Shift, b: Shift): boolean {
+  return a.weekday === b.weekday && minutes(a.start_time) < minutes(b.end_time) && minutes(b.start_time) < minutes(a.end_time);
+}
 
 interface Props {
   slug: string;
@@ -107,11 +119,46 @@ export default function SwapBoardPage({ slug, perms }: Props) {
     return `${shift.resource_name ?? shift.resource_id} | ${day} ${shift.start_time}–${shift.end_time}`;
   }
 
+  function shiftForSwap(swap: ShiftSwap): Shift | undefined {
+    return shifts.find(shift => shift.id === swap.offering_shift_id);
+  }
+
+  function eligibleStaff(swap: ShiftSwap): Array<{ resource: StaffResource; conflict: boolean }> {
+    const offeredShift = shiftForSwap(swap);
+    const swapWeekday = weekdayFromDate(swap.offering_date);
+    return staff
+      .filter(resource => resource.id !== swap.offering_resource_id && resource.active)
+      .map(resource => {
+        const resourceShifts = shifts.filter(shift => shift.resource_id === resource.id && shift.weekday === swapWeekday);
+        const conflict = offeredShift ? resourceShifts.some(shift => overlaps(shift, { ...offeredShift, weekday: swapWeekday })) : resourceShifts.length > 0;
+        return { resource, conflict };
+      })
+      .sort((a, b) => Number(a.conflict) - Number(b.conflict) || a.resource.name.localeCompare(b.resource.name));
+  }
+
+  const openCount = swaps?.filter(s => s.status === 'open').length ?? 0;
+  const claimedCount = swaps?.filter(s => s.status === 'claimed').length ?? 0;
+  const approvalCount = swaps?.filter(s => s.status === 'approved').length ?? 0;
+
   return (
     <div className="wf-page">
       <WorkforceNav slug={slug} active="swaps" />
 
       <div className="wf-swap-layout">
+        <div className="wf-page-heading">
+          <div>
+            <h1>Swap Board</h1>
+            <p>Review offered shifts, eligible claimers, coverage risk, and manager approval state before schedule changes are accepted.</p>
+          </div>
+        </div>
+
+        <section className="wf-attendance-board">
+          <div className="wf-board-stat"><strong>{openCount}</strong><span>Open offers</span></div>
+          <div className="wf-board-stat"><strong>{claimedCount}</strong><span>Awaiting approval</span></div>
+          <div className="wf-board-stat"><strong>{approvalCount}</strong><span>Approved swaps</span></div>
+          <div className="wf-board-stat"><strong>{staff.filter(s => s.active).length}</strong><span>Active resources</span></div>
+        </section>
+
         {/* Status filter */}
         <div className="wf-swap-filters">
           <select
@@ -139,77 +186,114 @@ export default function SwapBoardPage({ slug, perms }: Props) {
         {/* Swap list */}
         {swaps !== null && swaps.length > 0 && (
           <div className="wf-swap-list">
-            {swaps.map(s => (
-              <div key={s.id} className="wf-swap-card">
-                <div className="wf-swap-card-header">
-                  <span className="wf-swap-resource">
-                    {s.offering_resource_name ?? s.offering_resource_id}
-                  </span>
-                  <span className="wf-swap-date">{s.offering_date}</span>
-                  <span className={`wf-status-badge wf-status-${s.status}`}>
-                    {STATUS_LABELS[s.status] ?? s.status}
-                  </span>
-                </div>
-
-                {s.claimed_by_resource_name && (
-                  <div className="wf-swap-date">
-                    Claimed by: {s.claimed_by_resource_name}
+            {swaps.map(s => {
+              const offeredShift = shiftForSwap(s);
+              const eligible = eligibleStaff(s);
+              const selected = eligible.find(row => row.resource.id === claimResource[s.id]);
+              const safeCount = eligible.filter(row => !row.conflict).length;
+              return (
+                <div key={s.id} className="wf-swap-card">
+                  <div className="wf-swap-card-header">
+                    <span className="wf-swap-resource">
+                      {s.offering_resource_name ?? s.offering_resource_id}
+                    </span>
+                    <span className="wf-swap-date">{s.offering_date}</span>
+                    <span className={`wf-status-badge wf-status-${s.status}`}>
+                      {STATUS_LABELS[s.status] ?? s.status}
+                    </span>
                   </div>
-                )}
 
-                {s.notes && <div className="wf-swap-notes">{s.notes}</div>}
+                  <div className="wf-swap-preview-grid">
+                    <div>
+                      <span>Offered shift</span>
+                      <strong>{offeredShift ? shiftLabel(offeredShift) : s.offering_shift_id.slice(0, 8)}</strong>
+                    </div>
+                    <div>
+                      <span>Eligible staff</span>
+                      <strong>{safeCount}/{eligible.length} clear</strong>
+                    </div>
+                    <div>
+                      <span>Coverage risk</span>
+                      <strong>{safeCount === 0 && s.status === 'open' ? 'Needs review' : 'Preview ready'}</strong>
+                    </div>
+                  </div>
 
-                <div className="wf-swap-actions">
-                  {/* Claim: open swaps, show resource selector + claim button */}
-                  {s.status === 'open' && (
-                    <div className="wf-swap-claim-row">
-                      <select
-                        className="wf-select"
-                        style={{ maxWidth: 180 }}
-                        value={claimResource[s.id] ?? ''}
-                        onChange={e =>
-                          setClaimResource(prev => ({ ...prev, [s.id]: e.target.value }))
-                        }
-                      >
-                        <option value="">Select claimer…</option>
-                        {staff.map(r => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                      <button
-                        className="wf-btn wf-btn-primary"
-                        disabled={!claimResource[s.id]}
-                        onClick={() => handleClaim(s.id)}
-                      >
-                        Claim
-                      </button>
+                  {s.claimed_by_resource_name && (
+                    <div className="wf-swap-date">
+                      Claimed by: {s.claimed_by_resource_name}
                     </div>
                   )}
 
-                  {/* Manager: approve / deny for claimed swaps */}
-                  {canHandle && s.status === 'claimed' && (
-                    <>
-                      <button
-                        className="wf-btn wf-btn-success"
-                        onClick={() => handleAction(s.id, 'approve')}
-                      >Approve</button>
-                      <button
-                        className="wf-btn wf-btn-danger"
-                        onClick={() => handleAction(s.id, 'deny')}
-                      >Deny</button>
-                    </>
+                  {s.notes && <div className="wf-swap-notes">{s.notes}</div>}
+
+                  <div className="wf-swap-eligible-row">
+                    {eligible.slice(0, 5).map(row => (
+                      <span key={row.resource.id} className={row.conflict ? 'wf-swap-chip warn' : 'wf-swap-chip ok'}>
+                        {row.resource.name}{row.conflict ? ' conflict' : ' clear'}
+                      </span>
+                    ))}
+                  </div>
+
+                  {selected && (
+                    <div className={selected.conflict ? 'wf-swap-impact warn' : 'wf-swap-impact ok'}>
+                      {selected.resource.name}: {selected.conflict ? 'has an overlapping shift on this date' : 'has no overlapping shift in the weekly plan'}
+                    </div>
                   )}
 
-                  {/* Cancel: open or claimed */}
-                  {(s.status === 'open' || s.status === 'claimed') && (
-                    <button
-                      className="wf-btn wf-btn-danger"
-                      onClick={() => handleAction(s.id, 'cancel')}
-                    >Cancel</button>
-                  )}
+                  <div className="wf-swap-actions">
+                    {/* Claim: open swaps, show resource selector + claim button */}
+                    {s.status === 'open' && (
+                      <div className="wf-swap-claim-row">
+                        <select
+                          className="wf-select"
+                          style={{ maxWidth: 260 }}
+                          value={claimResource[s.id] ?? ''}
+                          onChange={e =>
+                            setClaimResource(prev => ({ ...prev, [s.id]: e.target.value }))
+                          }
+                        >
+                          <option value="">Select claimer...</option>
+                          {eligible.map(row => (
+                            <option key={row.resource.id} value={row.resource.id}>
+                              {row.resource.name}{row.conflict ? ' - conflict' : ' - clear'}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="wf-btn wf-btn-primary"
+                          disabled={!claimResource[s.id]}
+                          onClick={() => handleClaim(s.id)}
+                        >
+                          Claim
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Manager: approve / deny for claimed swaps */}
+                    {canHandle && s.status === 'claimed' && (
+                      <>
+                        <button
+                          className="wf-btn wf-btn-success"
+                          onClick={() => handleAction(s.id, 'approve')}
+                        >Approve</button>
+                        <button
+                          className="wf-btn wf-btn-danger"
+                          onClick={() => handleAction(s.id, 'deny')}
+                        >Deny</button>
+                      </>
+                    )}
+
+                    {/* Cancel: open or claimed */}
+                    {(s.status === 'open' || s.status === 'claimed') && (
+                      <button
+                        className="wf-btn wf-btn-danger"
+                        onClick={() => handleAction(s.id, 'cancel')}
+                      >Cancel</button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -227,7 +311,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
                     onChange={e => setFormShiftId(e.target.value)}
                     required
                   >
-                    <option value="">Select shift…</option>
+                    <option value="">Select shift...</option>
                     {shifts.map(sh => (
                       <option key={sh.id} value={sh.id}>{shiftLabel(sh)}</option>
                     ))}
@@ -252,7 +336,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
                 />
               </label>
               <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Offering…' : 'Offer swap'}
+                {submitting ? 'Offering...' : 'Offer swap'}
               </button>
             </form>
           </section>

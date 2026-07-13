@@ -7,6 +7,8 @@ import {
   type PayrollPeriod,
   type PayrollLineItem,
   type PayrollRate,
+  type PayrollExport,
+  type Payslip,
   type StaffResource,
 } from '../../shared/api';
 import {
@@ -27,8 +29,13 @@ export default function PayrollPage({ slug, perms }: Props) {
   const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null);
   const [lineItems, setLineItems] = useState<PayrollLineItem[]>([]);
   const [rates, setRates] = useState<PayrollRate[] | null>(null);
+  const [exports, setExports] = useState<PayrollExport[]>([]);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [staff, setStaff] = useState<StaffResource[]>([]);
   const [error, setError] = useState('');
+  const [exportFormat, setExportFormat] = useState<PayrollExport['export_format']>('csv');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // Create period form
   const [formStart, setFormStart] = useState('');
@@ -75,10 +82,17 @@ export default function PayrollPage({ slug, perms }: Props) {
   async function selectPeriod(p: PayrollPeriod) {
     setSelectedPeriod(p);
     setLineItems([]);
+    setExports([]);
+    setPayslips([]);
     try {
-      const data = await workforceApi.getPayrollPeriod(p.id);
+      const [data, exportData] = await Promise.all([
+        workforceApi.getPayrollPeriod(p.id),
+        workforceApi.listPayrollExports(p.id),
+      ]);
       setSelectedPeriod(data.period);
       setLineItems(data.line_items);
+      setExports(exportData.exports);
+      setPayslips(exportData.payslips);
     } catch {
       setError('Failed to load period detail.');
     }
@@ -115,6 +129,26 @@ export default function PayrollPage({ slug, perms }: Props) {
     }
   }
 
+  async function handleGenerateExport() {
+    if (!selectedPeriod) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      const data = await workforceApi.generatePayrollExport({
+        period_id: selectedPeriod.id,
+        export_format: exportFormat,
+        metadata: { source: 'workforce-ui' },
+      });
+      const exportData = await workforceApi.listPayrollExports(selectedPeriod.id);
+      setExports(exportData.exports.length > 0 ? exportData.exports : [data.export]);
+      setPayslips(exportData.payslips.length > 0 ? exportData.payslips : data.payslips);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'Failed to generate payroll export.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleSetRate(e: React.FormEvent) {
     e.preventDefault();
     if (!rateUserNodeId.trim()) { setRateFormError('Select a Team user.'); return; }
@@ -142,6 +176,10 @@ export default function PayrollPage({ slug, perms }: Props) {
       setRateSubmitting(false);
     }
   }
+
+  const currentRateUsers = new Set((rates ?? []).map(r => r.user_node_id));
+  const missingRateCount = lineItems.filter(li => !currentRateUsers.has(li.user_node_id)).length;
+  const canExportSelected = !!selectedPeriod && lineItems.length > 0 && missingRateCount === 0;
 
   return (
     <div className="wf-page">
@@ -237,11 +275,73 @@ export default function PayrollPage({ slug, perms }: Props) {
                   </table>
                 )}
 
+                <div className="wf-payroll-readiness">
+                  <div className={lineItems.length > 0 ? 'wf-ready-row ok' : 'wf-ready-row'}>
+                    <span>{lineItems.length > 0 ? 'Ready' : 'Blocked'}</span>
+                    <strong>Approved time entries</strong>
+                  </div>
+                  <div className={missingRateCount === 0 ? 'wf-ready-row ok' : 'wf-ready-row warn'}>
+                    <span>{missingRateCount === 0 ? 'Ready' : `${missingRateCount} missing`}</span>
+                    <strong>Hourly rates</strong>
+                  </div>
+                  <div className={selectedPeriod.status === 'approved' ? 'wf-ready-row ok' : 'wf-ready-row warn'}>
+                    <span>{selectedPeriod.status === 'approved' ? 'Locked' : 'Draft'}</span>
+                    <strong>Period approval</strong>
+                  </div>
+                </div>
+
                 {canApprove && selectedPeriod.status === 'draft' && (
                   <button className="wf-btn wf-btn-success" onClick={() => void handleApprovePeriod()}>
                     Approve Period
                   </button>
                 )}
+
+                <div className="wf-payroll-export-box">
+                  <div>
+                    <div className="wf-section-title" style={{ fontSize: '0.9rem' }}>Export Register</div>
+                    <p className="wf-muted-copy">Generate an export batch and draft payslips for review. This does not execute payroll.</p>
+                  </div>
+                  {exportError && <div className="wf-error">{exportError}</div>}
+                  <div className="wf-form-row">
+                    <label className="wf-label">Format
+                      <select className="wf-select" value={exportFormat} onChange={e => setExportFormat(e.target.value as PayrollExport['export_format'])}>
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                        <option value="provider">Provider</option>
+                      </select>
+                    </label>
+                    {canCreate && (
+                      <button className="wf-btn wf-btn-primary" type="button" disabled={!canExportSelected || exporting} onClick={() => void handleGenerateExport()}>
+                        {exporting ? 'Generating...' : 'Generate export'}
+                      </button>
+                    )}
+                  </div>
+                  {exports.length > 0 && (
+                    <div className="wf-payroll-export-list">
+                      {exports.map(item => (
+                        <div key={item.id} className="wf-payroll-export-row">
+                          <span>{item.export_format.toUpperCase()}</span>
+                          <span>{item.status}</span>
+                          <strong>{Number(item.total_amount).toFixed(2)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {payslips.length > 0 && (
+                    <div className="wf-payroll-export-list">
+                      {payslips.map(ps => {
+                        const member = findTeamMember(staff, ps.user_node_id);
+                        return (
+                          <div key={ps.id} className="wf-payroll-export-row">
+                            <span>{member?.display_name ?? ps.user_node_id.slice(0, 8)}</span>
+                            <span>{ps.status}</span>
+                            <strong>{ps.currency} {Number(ps.net_amount).toFixed(2)}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

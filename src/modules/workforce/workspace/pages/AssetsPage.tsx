@@ -6,6 +6,8 @@ import {
   workforceApi,
   type WorkforceAsset,
   type AssetAssignment,
+  type AssetMaintenance,
+  type ComplianceRequirement,
   type StaffResource,
 } from '../../shared/api';
 import {
@@ -28,7 +30,7 @@ interface Props {
   perms: ReadonlySet<string>;
 }
 
-type InnerTab = 'assets' | 'assignments';
+type InnerTab = 'assets' | 'assignments' | 'maintenance';
 
 export default function AssetsPage({ slug, perms }: Props) {
   const [innerTab, setInnerTab] = useState<InnerTab>('assets');
@@ -57,6 +59,10 @@ export default function AssetsPage({ slug, perms }: Props) {
             className={`wf-assets-inner-tab${innerTab === 'assignments' ? ' active' : ''}`}
             onClick={() => setInnerTab('assignments')}
           >Assignments</button>
+          <button
+            className={`wf-assets-inner-tab${innerTab === 'maintenance' ? ' active' : ''}`}
+            onClick={() => setInnerTab('maintenance')}
+          >Maintenance</button>
         </div>
 
         {innerTab === 'assets' && (
@@ -65,6 +71,174 @@ export default function AssetsPage({ slug, perms }: Props) {
         {innerTab === 'assignments' && (
           <AssignmentsTab canCreate={canCreate} canEdit={canEdit} staff={staff} slug={slug} />
         )}
+        {innerTab === 'maintenance' && (
+          <MaintenanceTab canCreate={canCreate} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Maintenance Tab ─────────────────────────────────────────────────────────
+
+function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
+  const [assets, setAssets] = useState<WorkforceAsset[]>([]);
+  const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
+  const [maintenance, setMaintenance] = useState<AssetMaintenance[]>([]);
+  const [error, setError] = useState('');
+  const [requirementName, setRequirementName] = useState('');
+  const [requirementAssetId, setRequirementAssetId] = useState('');
+  const [requirementDueDays, setRequirementDueDays] = useState('');
+  const [maintenanceAssetId, setMaintenanceAssetId] = useState('');
+  const [scheduledFor, setScheduledFor] = useState('');
+  const [maintenanceNotes, setMaintenanceNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  async function load() {
+    setError('');
+    try {
+      const [assetData, ops] = await Promise.all([
+        workforceApi.listAssets(),
+        workforceApi.listComplianceOps(),
+      ]);
+      setAssets(assetData.assets);
+      setRequirements(ops.requirements.filter(req => req.requirement_type === 'asset'));
+      setMaintenance(ops.maintenance);
+    } catch {
+      setError('Failed to load asset compliance operations.');
+    }
+  }
+
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function createRequirement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!requirementName.trim()) { setFormError('Requirement name is required.'); return; }
+    setSaving(true);
+    setFormError('');
+    try {
+      await workforceApi.createComplianceRequirement({
+        requirement_type: 'asset',
+        name: requirementName.trim(),
+        asset_id: requirementAssetId || null,
+        due_within_days: requirementDueDays ? Number(requirementDueDays) : null,
+      });
+      setRequirementName('');
+      setRequirementAssetId('');
+      setRequirementDueDays('');
+      await load();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to create asset requirement.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createMaintenance(e: React.FormEvent) {
+    e.preventDefault();
+    if (!maintenanceAssetId) { setFormError('Select an asset.'); return; }
+    if (!scheduledFor) { setFormError('Scheduled date is required.'); return; }
+    setSaving(true);
+    setFormError('');
+    try {
+      await workforceApi.createAssetMaintenance({
+        asset_id: maintenanceAssetId,
+        scheduled_for: scheduledFor,
+        notes: maintenanceNotes || null,
+      });
+      setMaintenanceAssetId('');
+      setScheduledFor('');
+      setMaintenanceNotes('');
+      await load();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to schedule maintenance.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const scheduled = maintenance.filter(row => row.status === 'scheduled').length;
+  const overdue = maintenance.filter(row => row.status === 'overdue').length;
+  const completed = maintenance.filter(row => row.status === 'completed').length;
+
+  return (
+    <div className="wf-compliance-layout">
+      {error && <div className="wf-error">{error}</div>}
+      {formError && <div className="wf-error">{formError}</div>}
+      <section className="wf-attendance-board">
+        <div className="wf-board-stat"><strong>{requirements.length}</strong><span>Asset requirements</span></div>
+        <div className="wf-board-stat"><strong>{scheduled}</strong><span>Scheduled</span></div>
+        <div className="wf-board-stat"><strong>{overdue}</strong><span>Overdue</span></div>
+        <div className="wf-board-stat"><strong>{completed}</strong><span>Completed</span></div>
+      </section>
+
+      <div className="wf-compliance-grid">
+        <section className="wf-asset-form">
+          <h3 className="wf-section-title">Asset Requirements</h3>
+          {requirements.length === 0 && <div className="wf-empty">No asset requirements configured.</div>}
+          {requirements.map(req => {
+            const asset = assets.find(a => a.id === req.asset_id);
+            return (
+              <div key={req.id} className="wf-compliance-row">
+                <strong>{req.name}</strong>
+                <span>{asset?.name ?? 'All assets'}{req.due_within_days !== null ? ` - due in ${req.due_within_days}d` : ''}</span>
+              </div>
+            );
+          })}
+          {canCreate && (
+            <form className="wf-ot-form" onSubmit={createRequirement}>
+              <label className="wf-label">Requirement name
+                <input className="wf-input" value={requirementName} onChange={e => setRequirementName(e.target.value)} required />
+              </label>
+              <div className="wf-form-row">
+                <label className="wf-label">Asset
+                  <select className="wf-select" value={requirementAssetId} onChange={e => setRequirementAssetId(e.target.value)}>
+                    <option value="">All assets</option>
+                    {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                  </select>
+                </label>
+                <label className="wf-label">Due within days
+                  <input className="wf-input" type="number" min="0" value={requirementDueDays} onChange={e => setRequirementDueDays(e.target.value)} />
+                </label>
+              </div>
+              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create requirement'}</button>
+            </form>
+          )}
+        </section>
+
+        <section className="wf-asset-form">
+          <h3 className="wf-section-title">Maintenance Schedule</h3>
+          {maintenance.length === 0 && <div className="wf-empty">No maintenance rows scheduled.</div>}
+          {maintenance.slice(0, 12).map(row => {
+            const asset = assets.find(a => a.id === row.asset_id);
+            return (
+              <div key={row.id} className="wf-compliance-row">
+                <strong>{asset?.name ?? row.asset_id}</strong>
+                <span>{row.status} - {row.scheduled_for}{row.notes ? ` - ${row.notes}` : ''}</span>
+              </div>
+            );
+          })}
+          {canCreate && (
+            <form className="wf-ot-form" onSubmit={createMaintenance}>
+              <div className="wf-form-row">
+                <label className="wf-label">Asset
+                  <select className="wf-select" value={maintenanceAssetId} onChange={e => setMaintenanceAssetId(e.target.value)} required>
+                    <option value="">Select asset...</option>
+                    {assets.filter(asset => asset.condition !== 'retired').map(asset => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                  </select>
+                </label>
+                <label className="wf-label">Scheduled for
+                  <input className="wf-input" type="date" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} required />
+                </label>
+              </div>
+              <label className="wf-label">Notes
+                <textarea className="wf-textarea" rows={2} value={maintenanceNotes} onChange={e => setMaintenanceNotes(e.target.value)} />
+              </label>
+              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Schedule maintenance'}</button>
+            </form>
+          )}
+        </section>
       </div>
     </div>
   );

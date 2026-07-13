@@ -428,6 +428,79 @@ export interface TimeCorrection {
   updated_at: string;
 }
 
+export interface PayrollExport {
+  id: string;
+  period_id: string;
+  export_format: 'csv' | 'json' | 'provider';
+  status: 'draft' | 'generated' | 'sent' | 'void';
+  total_amount: number | string;
+  exported_by: string | null;
+  exported_at: string | null;
+  file_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payslip {
+  id: string;
+  export_id: string | null;
+  period_id: string;
+  user_node_id: string;
+  gross_amount: number | string;
+  tax_amount: number | string;
+  deductions_amount: number | string;
+  net_amount: number | string;
+  currency: string;
+  status: 'draft' | 'published' | 'void';
+  published_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplianceRequirement {
+  id: string;
+  requirement_type: 'training' | 'asset';
+  name: string;
+  description: string | null;
+  course_id: string | null;
+  asset_id: string | null;
+  required_for_employment_type: EmploymentType | null;
+  due_within_days: number | null;
+  recurrence_days: number | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetMaintenance {
+  id: string;
+  asset_id: string;
+  scheduled_for: string;
+  completed_at: string | null;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'overdue';
+  notes: string | null;
+  performed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplianceTask {
+  id: string;
+  requirement_id: string | null;
+  resource_id: string;
+  user_node_id: string | null;
+  status: 'pending' | 'completed' | 'waived' | 'overdue';
+  due_date: string | null;
+  completed_at: string | null;
+  source_type: 'training_completion' | 'asset_assignment' | 'asset_maintenance' | 'manual' | null;
+  source_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---------- API ----------
 
 export const workforceApi = {
@@ -689,6 +762,15 @@ export const workforceApi = {
     return call<{ rate: PayrollRate }>('/api/workforce/payroll-rates', { method: 'POST', body: JSON.stringify(data) });
   },
 
+  listPayrollExports(period_id?: string): Promise<{ exports: PayrollExport[]; payslips: Payslip[] }> {
+    const q = period_id ? `?period_id=${period_id}` : '';
+    return call<{ exports: PayrollExport[]; payslips: Payslip[] }>(`/api/workforce/payroll-export${q}`);
+  },
+
+  generatePayrollExport(data: { period_id: string; export_format?: PayrollExport['export_format']; metadata?: Record<string, unknown> }): Promise<{ export: PayrollExport; payslips: Payslip[] }> {
+    return call<{ export: PayrollExport; payslips: Payslip[] }>('/api/workforce/payroll-export', json(data));
+  },
+
   listTrainingCourses(): Promise<{ courses: TrainingCourse[] }> {
     return call<{ courses: TrainingCourse[] }>('/api/workforce/training-courses');
   },
@@ -749,6 +831,40 @@ export const workforceApi = {
 
   returnAsset(assignment_id: string, data?: { condition_at_return?: string; notes?: string }): Promise<{ assignment: AssetAssignment }> {
     return call<{ assignment: AssetAssignment }>('/api/workforce/asset-assignments', { method: 'PATCH', body: JSON.stringify({ assignment_id, ...data }) });
+  },
+
+  listComplianceOps(): Promise<{ requirements: ComplianceRequirement[]; tasks: ComplianceTask[]; maintenance: AssetMaintenance[] }> {
+    return call<{ requirements: ComplianceRequirement[]; tasks: ComplianceTask[]; maintenance: AssetMaintenance[] }>('/api/workforce/compliance-ops');
+  },
+
+  createComplianceRequirement(data: {
+    requirement_type: ComplianceRequirement['requirement_type'];
+    name: string;
+    description?: string | null;
+    course_id?: string | null;
+    asset_id?: string | null;
+    required_for_employment_type?: EmploymentType | null;
+    due_within_days?: number | null;
+    recurrence_days?: number | null;
+    active?: boolean;
+  }): Promise<{ requirement: ComplianceRequirement }> {
+    return call<{ requirement: ComplianceRequirement }>('/api/workforce/compliance-ops', json({ kind: 'requirement', ...data }));
+  },
+
+  createAssetMaintenance(data: { asset_id: string; scheduled_for: string; notes?: string | null }): Promise<{ maintenance: AssetMaintenance }> {
+    return call<{ maintenance: AssetMaintenance }>('/api/workforce/compliance-ops', json({ kind: 'maintenance', ...data }));
+  },
+
+  createComplianceTask(data: {
+    resource_id: string;
+    requirement_id?: string | null;
+    user_node_id?: string | null;
+    due_date?: string | null;
+    source_type?: ComplianceTask['source_type'];
+    source_id?: string | null;
+    notes?: string | null;
+  }): Promise<{ task: ComplianceTask }> {
+    return call<{ task: ComplianceTask }>('/api/workforce/compliance-ops', json({ kind: 'task', ...data }));
   },
 
   getEmployeeProfile(resource_id: string): Promise<EmployeeProfile> {

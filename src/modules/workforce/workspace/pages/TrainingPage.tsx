@@ -4,10 +4,14 @@ import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import {
   workforceApi,
+  type ComplianceRequirement,
+  type ComplianceTask,
+  type EmploymentType,
   type TrainingCourse,
   type TrainingCompletion,
   type StaffResource,
 } from '../../shared/api';
+import { findTeamMember, teamMembersFromResources, TeamEmployeePicker } from '../components/TeamBridge';
 import '../../workforce.css';
 
 interface Props {
@@ -15,7 +19,7 @@ interface Props {
   perms: ReadonlySet<string>;
 }
 
-type InnerTab = 'courses' | 'completions';
+type InnerTab = 'courses' | 'completions' | 'compliance';
 
 export default function TrainingPage({ slug, perms }: Props) {
   const [innerTab, setInnerTab] = useState<InnerTab>('courses');
@@ -23,6 +27,8 @@ export default function TrainingPage({ slug, perms }: Props) {
   const canCreate = perms.has('workforce.employees.create');
   const canEdit = perms.has('workforce.employees.edit');
   const canDelete = perms.has('workforce.employees.delete');
+  const canComplianceView = perms.has('workforce.assets.view');
+  const canComplianceCreate = perms.has('workforce.assets.create');
 
   return (
     <div className="wf-page">
@@ -39,6 +45,10 @@ export default function TrainingPage({ slug, perms }: Props) {
             className={`wf-training-inner-tab${innerTab === 'completions' ? ' active' : ''}`}
             onClick={() => setInnerTab('completions')}
           >Completions</button>
+          <button
+            className={`wf-training-inner-tab${innerTab === 'compliance' ? ' active' : ''}`}
+            onClick={() => setInnerTab('compliance')}
+          >Compliance</button>
         </div>
 
         {innerTab === 'courses' && (
@@ -47,6 +57,223 @@ export default function TrainingPage({ slug, perms }: Props) {
         {innerTab === 'completions' && (
           <CompletionsTab canCreate={canCreate} />
         )}
+        {innerTab === 'compliance' && (
+          <TrainingComplianceTab canView={canComplianceView} canCreate={canComplianceCreate} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Compliance Tab ──────────────────────────────────────────────────────────
+
+function statusCounts(tasks: ComplianceTask[]) {
+  return {
+    pending: tasks.filter(t => t.status === 'pending').length,
+    overdue: tasks.filter(t => t.status === 'overdue').length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+  };
+}
+
+function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCreate: boolean }) {
+  const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
+  const [tasks, setTasks] = useState<ComplianceTask[]>([]);
+  const [courses, setCourses] = useState<TrainingCourse[]>([]);
+  const [staff, setStaff] = useState<StaffResource[]>([]);
+  const [error, setError] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formCourseId, setFormCourseId] = useState('');
+  const [formEmploymentType, setFormEmploymentType] = useState<EmploymentType | ''>('');
+  const [formDueDays, setFormDueDays] = useState('');
+  const [taskResourceId, setTaskResourceId] = useState('');
+  const [taskUserNodeId, setTaskUserNodeId] = useState('');
+  const [taskRequirementId, setTaskRequirementId] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskNotes, setTaskNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const teamMembers = teamMembersFromResources(staff);
+  const counts = statusCounts(tasks);
+
+  async function load() {
+    if (!canView) return;
+    setError('');
+    try {
+      const [ops, courseData, staffData] = await Promise.all([
+        workforceApi.listComplianceOps(),
+        workforceApi.listTrainingCourses(),
+        workforceApi.listStaff(),
+      ]);
+      setRequirements(ops.requirements.filter(req => req.requirement_type === 'training'));
+      setTasks(ops.tasks.filter(task => {
+        const req = ops.requirements.find(r => r.id === task.requirement_id);
+        return !req || req.requirement_type === 'training';
+      }));
+      setCourses(courseData.courses);
+      setStaff(staffData.resources);
+    } catch {
+      setError('Failed to load compliance operations.');
+    }
+  }
+
+  useEffect(() => { void load(); }, [canView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function createRequirement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formName.trim()) { setFormError('Requirement name is required.'); return; }
+    setSaving(true);
+    setFormError('');
+    try {
+      await workforceApi.createComplianceRequirement({
+        requirement_type: 'training',
+        name: formName.trim(),
+        course_id: formCourseId || null,
+        required_for_employment_type: formEmploymentType || null,
+        due_within_days: formDueDays ? Number(formDueDays) : null,
+      });
+      setFormName('');
+      setFormCourseId('');
+      setFormEmploymentType('');
+      setFormDueDays('');
+      await load();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to create requirement.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createTask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!taskResourceId) { setFormError('Select a staff resource.'); return; }
+    setSaving(true);
+    setFormError('');
+    try {
+      await workforceApi.createComplianceTask({
+        resource_id: taskResourceId,
+        requirement_id: taskRequirementId || null,
+        user_node_id: taskUserNodeId || null,
+        due_date: taskDueDate || null,
+        source_type: 'manual',
+        notes: taskNotes || null,
+      });
+      setTaskResourceId('');
+      setTaskUserNodeId('');
+      setTaskRequirementId('');
+      setTaskDueDate('');
+      setTaskNotes('');
+      await load();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to create task.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!canView) {
+    return <div className="wf-empty">Training compliance operations require asset/compliance view access.</div>;
+  }
+
+  return (
+    <div className="wf-compliance-layout">
+      {error && <div className="wf-error">{error}</div>}
+      {formError && <div className="wf-error">{formError}</div>}
+      <section className="wf-attendance-board">
+        <div className="wf-board-stat"><strong>{requirements.length}</strong><span>Training requirements</span></div>
+        <div className="wf-board-stat"><strong>{counts.pending}</strong><span>Pending tasks</span></div>
+        <div className="wf-board-stat"><strong>{counts.overdue}</strong><span>Overdue tasks</span></div>
+        <div className="wf-board-stat"><strong>{counts.completed}</strong><span>Completed tasks</span></div>
+      </section>
+
+      <div className="wf-compliance-grid">
+        <section className="wf-training-form">
+          <h3 className="wf-section-title">Training Requirements</h3>
+          {requirements.length === 0 && <div className="wf-empty">No training requirements configured.</div>}
+          {requirements.map(req => (
+            <div key={req.id} className="wf-compliance-row">
+              <strong>{req.name}</strong>
+              <span>{req.required_for_employment_type ?? 'All types'}{req.due_within_days !== null ? ` - due in ${req.due_within_days}d` : ''}</span>
+            </div>
+          ))}
+          {canCreate && (
+            <form className="wf-ot-form" onSubmit={createRequirement}>
+              <label className="wf-label">Requirement name
+                <input className="wf-input" value={formName} onChange={e => setFormName(e.target.value)} required />
+              </label>
+              <div className="wf-form-row">
+                <label className="wf-label">Course
+                  <select className="wf-select" value={formCourseId} onChange={e => setFormCourseId(e.target.value)}>
+                    <option value="">No linked course</option>
+                    {courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+                  </select>
+                </label>
+                <label className="wf-label">Employment type
+                  <select className="wf-select" value={formEmploymentType} onChange={e => setFormEmploymentType(e.target.value as EmploymentType | '')}>
+                    <option value="">All</option>
+                    <option value="full_time">Full time</option>
+                    <option value="part_time">Part time</option>
+                    <option value="contractor">Contractor</option>
+                    <option value="intern">Intern</option>
+                  </select>
+                </label>
+                <label className="wf-label">Due within days
+                  <input className="wf-input" type="number" min="0" value={formDueDays} onChange={e => setFormDueDays(e.target.value)} />
+                </label>
+              </div>
+              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create requirement'}</button>
+            </form>
+          )}
+        </section>
+
+        <section className="wf-training-form">
+          <h3 className="wf-section-title">Compliance Tasks</h3>
+          {tasks.length === 0 && <div className="wf-empty">No training compliance tasks.</div>}
+          {tasks.slice(0, 12).map(task => {
+            const member = findTeamMember(staff, task.user_node_id);
+            const resource = staff.find(s => s.id === task.resource_id);
+            return (
+              <div key={task.id} className="wf-compliance-row">
+                <strong>{member?.display_name ?? resource?.name ?? task.resource_id}</strong>
+                <span>{task.status}{task.due_date ? ` - due ${task.due_date}` : ''}</span>
+              </div>
+            );
+          })}
+          {canCreate && (
+            <form className="wf-ot-form" onSubmit={createTask}>
+              <div className="wf-form-row">
+                <label className="wf-label">Staff resource
+                  <select className="wf-select" value={taskResourceId} onChange={e => setTaskResourceId(e.target.value)} required>
+                    <option value="">Select staff...</option>
+                    {staff.map(resource => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                  </select>
+                </label>
+                <TeamEmployeePicker
+                  label="Team user"
+                  value={taskUserNodeId}
+                  onChange={setTaskUserNodeId}
+                  members={teamMembers}
+                  blankLabel="No Team user"
+                />
+              </div>
+              <div className="wf-form-row">
+                <label className="wf-label">Requirement
+                  <select className="wf-select" value={taskRequirementId} onChange={e => setTaskRequirementId(e.target.value)}>
+                    <option value="">Manual task</option>
+                    {requirements.map(req => <option key={req.id} value={req.id}>{req.name}</option>)}
+                  </select>
+                </label>
+                <label className="wf-label">Due date
+                  <input className="wf-input" type="date" value={taskDueDate} onChange={e => setTaskDueDate(e.target.value)} />
+                </label>
+              </div>
+              <label className="wf-label">Notes
+                <textarea className="wf-textarea" rows={2} value={taskNotes} onChange={e => setTaskNotes(e.target.value)} />
+              </label>
+              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create task'}</button>
+            </form>
+          )}
+        </section>
       </div>
     </div>
   );
