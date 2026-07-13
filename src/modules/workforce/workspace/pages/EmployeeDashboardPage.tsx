@@ -11,7 +11,6 @@ import {
   type TeamMember,
 } from '../../shared/api';
 import {
-  findTeamMember,
   TeamEmployeePicker,
   TeamStatusCard,
 } from '../components/TeamBridge';
@@ -110,6 +109,28 @@ function teamMemberFromEmployee(employee: EmployeeDirectoryEntry): TeamMember | 
   };
 }
 
+function employeeDisplayName(employee: EmployeeDirectoryEntry): string {
+  return employee.legal_name ?? employee.display_name ?? employee.resource_name ?? 'Unnamed employee';
+}
+
+function employeeInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() ?? '')
+    .join('') || 'E';
+}
+
+function employeeSubtitle(employee: EmployeeDirectoryEntry): string {
+  return [
+    employee.job_title,
+    employee.department,
+    employee.role_label,
+    employee.level_label,
+  ].filter(Boolean).join(' · ') || employee.email || 'Team user';
+}
+
 function profileFromEmployee(employee: EmployeeDirectoryEntry | undefined): EmployeeMasterProfile | null {
   if (!employee?.profile_id || !employee.resource_id || !employee.legal_name || !employee.employment_status || !employee.employment_type) {
     return null;
@@ -192,6 +213,7 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
   const [selectedEmployeeKey, setSelectedEmployeeKey] = useState('');
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [form, setForm] = useState<MasterForm>(blankForm);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -208,17 +230,25 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
   const selectedTeamMember = teamMembers.find(member => member.id === (selectedMaster?.user_node_id ?? form.user_node_id)) ?? null;
   const managerMember = teamMembers.find(member => member.id === (selectedMaster?.manager_user_node_id ?? form.manager_user_node_id)) ?? null;
   const completion = completeness(selectedMaster);
+  const readyCount = employees.filter(employee => completeness(profileFromEmployee(employee)).missing.length === 0).length;
+  const activeCount = employees.filter(employee => employee.employment_status === 'active').length;
+  const selectedDisplayName = selectedEmployee ? employeeDisplayName(selectedEmployee) : '';
 
   async function loadEmployeesDirectory() {
     const data = await workforceApi.listEmployeesDirectory();
     setEmployees(data.employees);
+    setSelectedEmployeeKey(current => {
+      if (current && data.employees.some(employee => employeeKey(employee) === current)) return current;
+      return data.employees[0] ? employeeKey(data.employees[0]) : '';
+    });
   }
 
   useEffect(() => {
-    workforceApi.listEmployeesDirectory().then(data => {
-      setEmployees(data.employees);
-    }).catch(() => {
+    setDirectoryLoading(true);
+    loadEmployeesDirectory().catch(() => {
       setError('Failed to load employee directory.');
+    }).finally(() => {
+      setDirectoryLoading(false);
     });
   }, []);
 
@@ -289,82 +319,155 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
     <div className="wf-page">
       <WorkforceNav slug={slug} active="employees" />
 
-      <div className="wf-page-heading">
+      <div className="wf-page-heading wf-emp-heading">
         <div>
           <h1>Employee Tracking</h1>
           <p>Employee 360 records extend Team identity with employment, readiness, and operational context.</p>
         </div>
-        <div className="wf-emp-select-row">
-          <span className="wf-emp-select-label">Employee</span>
-          <select
-            className="wf-select"
-            value={selectedEmployeeKey}
-            onChange={e => setSelectedEmployeeKey(e.target.value)}
-          >
-            <option value="">Select employee...</option>
-            {employees.map(employee => (
-              <option key={employeeKey(employee)} value={employeeKey(employee)}>
-                {employee.legal_name ?? employee.display_name}
-                {!employee.profile_id ? ' - needs profile' : ''}
-                {!employee.user_node_id && employee.resource_name ? ` - unlinked profile (${employee.resource_name})` : ''}
-              </option>
-            ))}
-          </select>
+      </div>
+
+      <div className="wf-emp-overview" aria-label="Employee directory summary">
+        <div className="wf-emp-kpi">
+          <span className="wf-emp-kpi-value">{employees.length}</span>
+          <span className="wf-emp-kpi-label">Team employees</span>
+        </div>
+        <div className="wf-emp-kpi">
+          <span className="wf-emp-kpi-value">{activeCount}</span>
+          <span className="wf-emp-kpi-label">Active profiles</span>
+        </div>
+        <div className="wf-emp-kpi">
+          <span className="wf-emp-kpi-value">{readyCount}</span>
+          <span className="wf-emp-kpi-label">Ready records</span>
         </div>
       </div>
 
-      {!selectedEmployeeKey && (
-        <div className="wf-emp-empty">Select a Team user to view or complete their employee profile.</div>
-      )}
-
-      {selectedEmployee && (
-        <div className="wf-emp-layout">
-          {error && <div className="wf-error">{error}</div>}
-
-          <div className="wf-emp-profile-grid">
-            <section className="wf-emp-card wf-emp-card-wide">
-              <div className="wf-emp-card-title">Team Link</div>
-              <TeamStatusCard slug={slug} member={selectedTeamMember} emptyText="No Team user linked to this employee profile." />
-              {managerMember && (
-                <div className="wf-emp-manager-line">
-                  Manager: {managerMember.display_name}{managerMember.email ? ` - ${managerMember.email}` : ''}
-                </div>
-              )}
-            </section>
-
-            <section className="wf-emp-card">
-              <div className="wf-emp-card-title">Profile Completeness</div>
-              <div className="wf-emp-completion">
-                <span className="wf-emp-stat-value">{completion.done}/{completion.total}</span>
-                <span className="wf-emp-stat-label">Fields complete</span>
-              </div>
-              {completion.missing.length > 0 ? (
-                <div className="wf-emp-balance-row">
-                  {completion.missing.map(item => (
-                    <span key={item} className="wf-emp-balance-chip">{item}</span>
-                  ))}
-                </div>
-              ) : (
-                <span className="wf-badge-ontime">Ready</span>
-              )}
-            </section>
-
-            <section className="wf-emp-card">
-              <div className="wf-emp-card-title">Employment State</div>
-              <div className="wf-emp-stat">
-                <span className="wf-emp-stat-value" style={{ fontSize: '1.1rem' }}>
-                  {selectedMaster ? STATUS_LABELS[selectedMaster.employment_status] : 'Not created'}
-                </span>
-                <span className="wf-emp-stat-label">
-                  {selectedMaster ? TYPE_LABELS[selectedMaster.employment_type] : 'Create a master profile'}
-                </span>
-              </div>
-              {selectedMaster?.department && <div className="wf-team-meta">{selectedMaster.department}</div>}
-              {selectedMaster?.job_title && <div className="wf-team-meta">{selectedMaster.job_title}</div>}
-            </section>
+      <div className="wf-emp-browser">
+        <aside className="wf-emp-roster" aria-label="Employee roster">
+          <div className="wf-emp-roster-head">
+            <div>
+              <div className="wf-emp-card-title">Employee Roster</div>
+              <div className="wf-emp-roster-count">{directoryLoading ? 'Loading employees' : `${employees.length} Team users`}</div>
+            </div>
           </div>
 
-          <section className="wf-emp-card">
+          <label className="wf-emp-select-row">
+            <span className="wf-emp-select-label">Jump to employee</span>
+            <select
+              className="wf-select"
+              value={selectedEmployeeKey}
+              onChange={e => setSelectedEmployeeKey(e.target.value)}
+              disabled={directoryLoading || employees.length === 0}
+            >
+              <option value="">{directoryLoading ? 'Loading employees...' : 'Select employee...'}</option>
+              {employees.map(employee => (
+                <option key={employeeKey(employee)} value={employeeKey(employee)}>
+                  {employeeDisplayName(employee)}
+                  {!employee.profile_id ? ' - needs profile' : ''}
+                  {!employee.user_node_id && employee.resource_name ? ` - unlinked profile (${employee.resource_name})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {directoryLoading && <div className="wf-emp-loading">Loading employee directory...</div>}
+          {!directoryLoading && employees.length === 0 && (
+            <div className="wf-emp-empty wf-emp-empty-compact">No Team users found for this workspace.</div>
+          )}
+          {!directoryLoading && employees.length > 0 && (
+            <div className="wf-emp-roster-list">
+              {employees.map(employee => {
+                const key = employeeKey(employee);
+                const isSelected = key === selectedEmployeeKey;
+                const displayName = employeeDisplayName(employee);
+                const rowCompletion = completeness(profileFromEmployee(employee));
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`wf-emp-roster-item${isSelected ? ' active' : ''}`}
+                    onClick={() => setSelectedEmployeeKey(key)}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="wf-emp-avatar" aria-hidden="true">{employeeInitials(displayName)}</span>
+                    <span className="wf-emp-roster-main">
+                      <span className="wf-emp-roster-name">{displayName}</span>
+                      <span className="wf-emp-roster-meta">{employeeSubtitle(employee)}</span>
+                    </span>
+                    <span className="wf-emp-roster-side">
+                      <span className={employee.employment_status === 'active' ? 'wf-emp-status-dot active' : 'wf-emp-status-dot'} aria-hidden="true" />
+                      <span className="wf-emp-readiness">{rowCompletion.done}/{rowCompletion.total}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
+
+        <section className="wf-emp-detail" aria-label={selectedDisplayName ? `${selectedDisplayName} employee profile` : 'Employee profile'}>
+          {!selectedEmployee && !directoryLoading && (
+            <div className="wf-emp-empty wf-emp-empty-panel">Select an employee from the roster to view or complete their profile.</div>
+          )}
+
+          {selectedEmployee && (
+            <div className="wf-emp-layout">
+              {error && <div className="wf-error">{error}</div>}
+
+              <div className="wf-emp-selected-banner">
+                <span className="wf-emp-avatar wf-emp-avatar-large" aria-hidden="true">{employeeInitials(selectedDisplayName)}</span>
+                <div className="wf-emp-selected-main">
+                  <div className="wf-emp-selected-name">{selectedDisplayName}</div>
+                  <div className="wf-emp-selected-meta">{employeeSubtitle(selectedEmployee)}</div>
+                </div>
+                <div className="wf-emp-selected-status">
+                  <span className={selectedEmployee.employment_status === 'active' ? 'wf-badge-ontime' : 'wf-badge'}>{selectedEmployee.employment_status ? STATUS_LABELS[selectedEmployee.employment_status] : 'Profile pending'}</span>
+                </div>
+              </div>
+
+              <div className="wf-emp-profile-grid">
+                <section className="wf-emp-card wf-emp-card-wide">
+                  <div className="wf-emp-card-title">Team Link</div>
+                  <TeamStatusCard slug={slug} member={selectedTeamMember} emptyText="No Team user linked to this employee profile." />
+                  {managerMember && (
+                    <div className="wf-emp-manager-line">
+                      Manager: {managerMember.display_name}{managerMember.email ? ` - ${managerMember.email}` : ''}
+                    </div>
+                  )}
+                </section>
+
+                <section className="wf-emp-card">
+                  <div className="wf-emp-card-title">Profile Completeness</div>
+                  <div className="wf-emp-completion">
+                    <span className="wf-emp-stat-value">{completion.done}/{completion.total}</span>
+                    <span className="wf-emp-stat-label">Fields complete</span>
+                  </div>
+                  {completion.missing.length > 0 ? (
+                    <div className="wf-emp-balance-row">
+                      {completion.missing.map(item => (
+                        <span key={item} className="wf-emp-balance-chip">{item}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="wf-badge-ontime">Ready</span>
+                  )}
+                </section>
+
+                <section className="wf-emp-card">
+                  <div className="wf-emp-card-title">Employment State</div>
+                  <div className="wf-emp-stat">
+                    <span className="wf-emp-state-value">
+                      {selectedMaster ? STATUS_LABELS[selectedMaster.employment_status] : 'Not created'}
+                    </span>
+                    <span className="wf-emp-stat-label">
+                      {selectedMaster ? TYPE_LABELS[selectedMaster.employment_type] : 'Create a master profile'}
+                    </span>
+                  </div>
+                  {selectedMaster?.department && <div className="wf-team-meta">{selectedMaster.department}</div>}
+                  {selectedMaster?.job_title && <div className="wf-team-meta">{selectedMaster.job_title}</div>}
+                </section>
+              </div>
+
+              <section className="wf-emp-card">
             <div className="wf-emp-card-title">Master Profile</div>
             <form className="wf-employee-form" onSubmit={handleSave}>
               {formError && <div className="wf-error">{formError}</div>}
@@ -446,14 +549,14 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                 <div className="wf-emp-stat-label">You can view employee profiles, but cannot edit them.</div>
               )}
             </form>
-          </section>
+              </section>
 
-          {selectedResourceId && loading && <div className="wf-emp-loading">Loading operational profile...</div>}
-          {!selectedResourceId && (
-            <div className="wf-emp-empty">Save this employee profile to create their operational Workforce resource.</div>
-          )}
-          {selectedResourceId && !loading && !error && profile && (
-            <div className="wf-emp-grid">
+              {selectedResourceId && loading && <div className="wf-emp-loading">Loading operational profile...</div>}
+              {!selectedResourceId && (
+                <div className="wf-emp-empty">Save this employee profile to create their operational Workforce resource.</div>
+              )}
+              {selectedResourceId && !loading && !error && profile && (
+                <div className="wf-emp-grid">
               <div className="wf-emp-card">
                 <div className="wf-emp-card-title">This Week</div>
                 <div className="wf-emp-stats-grid">
@@ -497,10 +600,12 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                   </div>
                 ))}
               </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
+        </section>
+      </div>
     </div>
   );
 }
