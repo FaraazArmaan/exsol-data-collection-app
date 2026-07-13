@@ -6,7 +6,7 @@
 
 # API endpoints
 
-298 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+303 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -403,7 +403,12 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-leaves.ts | `/api/workforce/leaves` | any | bucket-user | — |
 | workforce-me-clock-in.ts | `/api/workforce/me/clock-in` | any | public | — |
 | workforce-me-clock-out.ts | `/api/workforce/me/clock-out` | any | public | — |
+| workforce-me-dashboard.ts | `/api/workforce/me/dashboard` | any | public | — |
 | workforce-me-end-break.ts | `/api/workforce/me/end-break` | any | public | — |
+| workforce-me-leave-request.ts | `/api/workforce/me/leave-request/:id` | any | public | — |
+| workforce-me-leave-requests.ts | `/api/workforce/me/leave-requests` | any | public | — |
+| workforce-me-shift-swap.ts | `/api/workforce/me/shift-swap/:id` | any | public | — |
+| workforce-me-shift-swaps.ts | `/api/workforce/me/shift-swaps` | any | public | — |
 | workforce-me-start-break.ts | `/api/workforce/me/start-break` | any | public | — |
 | workforce-me-time-correction.ts | `/api/workforce/me/time-correction` | any | public | — |
 | workforce-me-time-status.ts | `/api/workforce/me/time-status` | any | public | — |
