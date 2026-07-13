@@ -339,6 +339,95 @@ export interface EmployeeProfile {
   };
 }
 
+export type EmploymentStatus = 'active' | 'on_leave' | 'terminated';
+export type EmploymentType = 'full_time' | 'part_time' | 'contractor' | 'intern';
+
+export interface EmployeeMasterProfile {
+  id: string;
+  client_id: string;
+  resource_id: string;
+  resource_name?: string;
+  user_node_id: string | null;
+  employee_number: string | null;
+  legal_name: string;
+  preferred_name: string | null;
+  employment_status: EmploymentStatus;
+  employment_type: EmploymentType;
+  job_title: string | null;
+  department: string | null;
+  hire_date: string | null;
+  termination_date: string | null;
+  manager_user_node_id: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
+  emergency_contact: Record<string, unknown>;
+  custom_fields: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SchedulePlanRow {
+  resource_id: string;
+  resource_name: string;
+  shift_count: number;
+  scheduled_hours: number | string;
+  rule_id: string | null;
+  rule_name: string | null;
+  max_daily_hours: number | string | null;
+  max_daily_hours_exceeded: boolean;
+}
+
+export interface ScheduleFinding {
+  id: string;
+  resource_id: string;
+  finding_type: string;
+  severity: 'info' | 'warning' | 'blocker';
+  status: 'open' | 'waived' | 'resolved';
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ComplianceRule {
+  id: string;
+  name: string;
+  max_daily_hours: number | string | null;
+  max_weekly_hours: number | string | null;
+  break_required_after_hours: number | string | null;
+  min_break_minutes: number | null;
+  effective_from: string;
+  active: boolean;
+}
+
+export interface TimeClockEvent {
+  id: string;
+  resource_id: string;
+  user_node_id: string | null;
+  punch_id: string | null;
+  event_type: 'clock_in' | 'clock_out' | 'correction' | 'absence' | 'note';
+  occurred_at: string;
+  source: 'manual' | 'kiosk' | 'mobile' | 'system' | 'import';
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+export interface TimeCorrection {
+  id: string;
+  punch_id: string | null;
+  resource_id: string;
+  requested_by: string | null;
+  correction_type: 'missed_clock_in' | 'missed_clock_out' | 'edit_time' | 'delete_punch';
+  original_values: Record<string, unknown>;
+  new_values: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'denied';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---------- API ----------
 
 export const workforceApi = {
@@ -664,6 +753,76 @@ export const workforceApi = {
 
   getEmployeeProfile(resource_id: string): Promise<EmployeeProfile> {
     return call<EmployeeProfile>(`/api/workforce/employee-profile?resource_id=${resource_id}`);
+  },
+
+  listEmployeeMaster(status?: string): Promise<{ profiles: EmployeeMasterProfile[] }> {
+    const q = status ? `?status=${status}` : '';
+    return call<{ profiles: EmployeeMasterProfile[] }>(`/api/workforce/employee-master${q}`);
+  },
+
+  saveEmployeeMaster(data: {
+    resource_id: string;
+    user_node_id?: string | null;
+    employee_number?: string | null;
+    legal_name: string;
+    preferred_name?: string | null;
+    employment_status?: EmploymentStatus;
+    employment_type?: EmploymentType;
+    job_title?: string | null;
+    department?: string | null;
+    hire_date?: string | null;
+    termination_date?: string | null;
+    manager_user_node_id?: string | null;
+    primary_email?: string | null;
+    primary_phone?: string | null;
+    emergency_contact?: Record<string, unknown>;
+    custom_fields?: Record<string, unknown>;
+  }): Promise<{ profile: EmployeeMasterProfile }> {
+    return call<{ profile: EmployeeMasterProfile }>('/api/workforce/employee-master', json(data));
+  },
+
+  getSchedulePlanner(date: string): Promise<{ date: string; plans: SchedulePlanRow[]; findings: ScheduleFinding[] }> {
+    return call<{ date: string; plans: SchedulePlanRow[]; findings: ScheduleFinding[] }>(`/api/workforce/schedule-planner?date=${date}`);
+  },
+
+  createComplianceRule(data: {
+    name: string;
+    max_daily_hours?: number | null;
+    max_weekly_hours?: number | null;
+    break_required_after_hours?: number | null;
+    min_break_minutes?: number | null;
+    effective_from?: string;
+  }): Promise<{ rule: ComplianceRule }> {
+    return call<{ rule: ComplianceRule }>('/api/workforce/schedule-planner', json(data));
+  },
+
+  getTimeLedger(resource_id?: string): Promise<{ events: TimeClockEvent[]; corrections: TimeCorrection[] }> {
+    const q = resource_id ? `?resource_id=${resource_id}` : '';
+    return call<{ events: TimeClockEvent[]; corrections: TimeCorrection[] }>(`/api/workforce/time-ledger${q}`);
+  },
+
+  appendTimeLedgerEvent(data: {
+    resource_id: string;
+    user_node_id?: string | null;
+    punch_id?: string | null;
+    event_type: TimeClockEvent['event_type'];
+    occurred_at?: string;
+    source?: TimeClockEvent['source'];
+    notes?: string | null;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ event: TimeClockEvent }> {
+    return call<{ event: TimeClockEvent }>('/api/workforce/time-ledger', json({ kind: 'event', ...data }));
+  },
+
+  requestTimeCorrection(data: {
+    resource_id: string;
+    punch_id?: string | null;
+    correction_type: TimeCorrection['correction_type'];
+    original_values?: Record<string, unknown>;
+    new_values?: Record<string, unknown>;
+    notes?: string | null;
+  }): Promise<{ correction: TimeCorrection }> {
+    return call<{ correction: TimeCorrection }>('/api/workforce/time-ledger', json({ kind: 'correction', ...data }));
   },
 
   generateAiPlan: (project_id: string, description: string) =>

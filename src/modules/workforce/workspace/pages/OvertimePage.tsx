@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
-import { Link } from 'react-router-dom';
-import { workforceApi, type OvertimeEntry, type StaffResource } from '../../shared/api';
+import { workforceApi, type OvertimeEntry, type StaffResource, type TimesheetEntry } from '../../shared/api';
 import '../../workforce.css';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,6 +21,16 @@ interface WeeklySummaryRow {
   approvedHours: number;
 }
 
+interface ForecastRow {
+  resourceId: string;
+  resourceName: string;
+  workedHours: number;
+  pendingOt: number;
+  approvedOt: number;
+  projectedHours: number;
+  riskHours: number;
+}
+
 function computeSummary(entries: OvertimeEntry[], staff: StaffResource[]): WeeklySummaryRow[] {
   const map = new Map<string, WeeklySummaryRow>();
   for (const e of entries) {
@@ -37,11 +46,65 @@ function computeSummary(entries: OvertimeEntry[], staff: StaffResource[]): Weekl
   return [...map.values()].filter(r => r.pendingHours > 0 || r.approvedHours > 0);
 }
 
+function addDays(dateIso: string, days: number): string {
+  const date = new Date(`${dateIso}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function entryHours(entry: TimesheetEntry): number {
+  const start = new Date(`${entry.entry_date}T${entry.start_time}`);
+  const end = new Date(`${entry.entry_date}T${entry.end_time}`);
+  const diff = (end.getTime() - start.getTime()) / 36e5;
+  return Number.isFinite(diff) && diff > 0 ? diff : 0;
+}
+
+function computeForecast(
+  timesheets: TimesheetEntry[],
+  entries: OvertimeEntry[],
+  staff: StaffResource[],
+  threshold: number,
+): ForecastRow[] {
+  const map = new Map<string, ForecastRow>();
+  for (const s of staff) {
+    map.set(s.id, {
+      resourceId: s.id,
+      resourceName: s.name,
+      workedHours: 0,
+      pendingOt: 0,
+      approvedOt: 0,
+      projectedHours: 0,
+      riskHours: 0,
+    });
+  }
+  for (const t of timesheets) {
+    const row = map.get(t.resource_id);
+    if (row) row.workedHours += entryHours(t);
+  }
+  for (const e of entries) {
+    const row = map.get(e.resource_id);
+    if (!row) continue;
+    const hours = Number(e.ot_hours);
+    if (e.status === 'pending') row.pendingOt += hours;
+    if (e.status === 'approved') row.approvedOt += hours;
+  }
+  for (const row of map.values()) {
+    row.projectedHours = row.workedHours + row.pendingOt + row.approvedOt;
+    row.riskHours = Math.max(0, row.projectedHours - threshold);
+  }
+  return [...map.values()]
+    .filter(row => row.projectedHours > 0 || row.riskHours > 0)
+    .sort((a, b) => b.riskHours - a.riskHours || b.projectedHours - a.projectedHours);
+}
+
 export default function OvertimePage({ slug, perms }: Props) {
   const [entries, setEntries] = useState<OvertimeEntry[] | null>(null);
+  const [timesheets, setTimesheets] = useState<TimesheetEntry[]>([]);
   const [staff, setStaff] = useState<StaffResource[]>([]);
   const [selectedResourceId, setSelectedResourceId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [weekStart, setWeekStart] = useState(() => new Date().toISOString().slice(0, 10));
+  const [weeklyThreshold, setWeeklyThreshold] = useState('40');
   const [error, setError] = useState('');
 
   // Log OT form state
@@ -65,14 +128,18 @@ export default function OvertimePage({ slug, perms }: Props) {
       const params: { resource_id?: string; status?: string } = {};
       if (selectedResourceId) params.resource_id = selectedResourceId;
       if (selectedStatus) params.status = selectedStatus;
-      const data = await workforceApi.listOvertime(params);
+      const [data, ts] = await Promise.all([
+        workforceApi.listOvertime({ ...params, from: weekStart, to: addDays(weekStart, 6) }),
+        workforceApi.listTimesheets({ resource_id: selectedResourceId || undefined, from: weekStart, to: addDays(weekStart, 6) }),
+      ]);
       setEntries(data.entries);
+      setTimesheets(ts.entries);
     } catch {
       setError('Failed to load overtime entries.');
     }
   }
 
-  useEffect(() => { load(); }, [selectedResourceId, selectedStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [selectedResourceId, selectedStatus, weekStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAction(id: string, action: 'approve' | 'deny') {
     try {
@@ -112,6 +179,8 @@ export default function OvertimePage({ slug, perms }: Props) {
   }
 
   const summary = entries ? computeSummary(entries, staff) : [];
+  const threshold = Number(weeklyThreshold) > 0 ? Number(weeklyThreshold) : 40;
+  const forecast = entries ? computeForecast(timesheets, entries, staff, threshold) : [];
 
   return (
     <div className="wf-page">
@@ -140,6 +209,12 @@ export default function OvertimePage({ slug, perms }: Props) {
             <option value="approved">Approved</option>
             <option value="denied">Denied</option>
           </select>
+          <label className="wf-label wf-date-filter">Week start
+            <input className="wf-input" type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} />
+          </label>
+          <label className="wf-label wf-date-filter">OT threshold
+            <input className="wf-input" type="number" min="1" step="0.5" value={weeklyThreshold} onChange={e => setWeeklyThreshold(e.target.value)} />
+          </label>
         </div>
 
         {/* Error / loading / empty */}
@@ -147,6 +222,26 @@ export default function OvertimePage({ slug, perms }: Props) {
         {entries === null && !error && <div className="wf-loading">Loading overtime entries…</div>}
         {entries !== null && entries.length === 0 && (
           <div className="wf-empty">No overtime entries found.</div>
+        )}
+
+        {forecast.length > 0 && (
+          <section className="wf-forecast-panel">
+            <div className="wf-section-title">Weekly Overtime Forecast</div>
+            <div className="wf-forecast-list">
+              {forecast.map(row => (
+                <div key={row.resourceId} className={row.riskHours > 0 ? 'wf-forecast-row danger' : 'wf-forecast-row'}>
+                  <div>
+                    <strong>{row.resourceName}</strong>
+                    <span>{row.workedHours.toFixed(1)}h worked + {row.pendingOt.toFixed(1)}h pending OT + {row.approvedOt.toFixed(1)}h approved OT</span>
+                  </div>
+                  <div>
+                    <strong>{row.projectedHours.toFixed(1)}h</strong>
+                    <span>{row.riskHours > 0 ? `${row.riskHours.toFixed(1)}h over threshold` : 'Below threshold'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Entries list */}
