@@ -241,7 +241,7 @@ export default function WorkforcePage({ slug, perms }: Props) {
         {perms.has('workforce.employees.edit') && (
           <form className="wf-planner-panel" onSubmit={createRule}>
             <div className="wf-section-title">Active Rule Template</div>
-            <div className="wf-form-row">
+            <div className="wf-rule-form-grid">
               <label className="wf-label">Rule name
                 <input className="wf-input" value={ruleName} onChange={e => setRuleName(e.target.value)} required />
               </label>
@@ -251,15 +251,15 @@ export default function WorkforcePage({ slug, perms }: Props) {
               <label className="wf-label">Weekly max
                 <input className="wf-input" type="number" min="0" step="0.25" value={maxWeeklyHours} onChange={e => setMaxWeeklyHours(e.target.value)} />
               </label>
-            </div>
-            <div className="wf-form-row">
               <label className="wf-label">Break after hours
                 <input className="wf-input" type="number" min="0" step="0.25" value={breakAfterHours} onChange={e => setBreakAfterHours(e.target.value)} />
               </label>
               <label className="wf-label">Minimum break minutes
                 <input className="wf-input" type="number" min="0" step="5" value={minBreakMinutes} onChange={e => setMinBreakMinutes(e.target.value)} />
               </label>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={savingRule}>{savingRule ? 'Saving...' : 'Save rule'}</button>
+              <div className="wf-rule-action">
+                <button className="wf-btn wf-btn-primary" type="submit" disabled={savingRule}>{savingRule ? 'Saving...' : 'Save rule'}</button>
+              </div>
             </div>
           </form>
         )}

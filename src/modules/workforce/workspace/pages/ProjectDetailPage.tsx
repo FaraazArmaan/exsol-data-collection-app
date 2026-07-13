@@ -411,7 +411,6 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="New task title…"
-                required
               />
               <input
                 type="date"
@@ -515,7 +514,6 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
               onChange={(e) => setPlanDescription(e.target.value)}
               placeholder="e.g. Build a customer portal with login, dashboard, and billing pages…"
               maxLength={2000}
-              required
             />
             <button type="submit" disabled={generatingPlan || !planDescription.trim()}>
               {generatingPlan ? 'Generating…' : 'Generate Plan'}

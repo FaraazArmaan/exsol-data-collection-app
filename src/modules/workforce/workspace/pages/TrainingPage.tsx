@@ -411,7 +411,7 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
             <label className="wf-label">Description (optional)
               <textarea className="wf-textarea" rows={2} value={formDesc} onChange={e => setFormDesc(e.target.value)} />
             </label>
-            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            <label className="wf-checkbox-row">
               <input type="checkbox" checked={formRequired} onChange={e => setFormRequired(e.target.checked)} />
               Required course
             </label>
@@ -467,7 +467,7 @@ function EditCourseForm({ course, onSaved }: { course: TrainingCourse; onSaved: 
       <label className="wf-label">Description
         <textarea className="wf-textarea" rows={2} value={desc} onChange={e => setDesc(e.target.value)} />
       </label>
-      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+      <label className="wf-checkbox-row">
         <input type="checkbox" checked={required} onChange={e => setRequired(e.target.checked)} />
         Required
       </label>

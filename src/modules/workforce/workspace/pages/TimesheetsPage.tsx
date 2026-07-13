@@ -157,44 +157,65 @@ function LogEntryForm({
     <div className="wf-ts-log-form">
       <h4>Log entry</h4>
       <form onSubmit={submit} className="wf-ts-log-form-fields">
-        <select
-          value={resourceId}
-          onChange={(e) => setResourceId(e.target.value)}
-          required
-        >
-          {resources.length === 0 && <option value="">No resources</option>}
-          {resources.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={entryDate}
-          onChange={(e) => setEntryDate(e.target.value)}
-          required
-        />
-        <input
-          type="time"
-          value={startTime}
-          onChange={(e) => setStartTime(e.target.value)}
-          required
-        />
-        <span>to</span>
-        <input
-          type="time"
-          value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="Notes (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={1}
-        />
-        <button type="submit" disabled={saving || !resourceId}>
-          {saving ? 'Saving…' : 'Log'}
-        </button>
+        <div className="wf-ts-log-main">
+          <label className="wf-label">Staff member
+            <select
+              className="wf-select"
+              value={resourceId}
+              onChange={(e) => setResourceId(e.target.value)}
+              required
+            >
+              {resources.length === 0 && <option value="">No resources</option>}
+              {resources.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="wf-label">Date
+            <input
+              className="wf-input"
+              type="date"
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              required
+            />
+          </label>
+          <div className="wf-ts-time-pair">
+            <label className="wf-label">Start
+              <input
+                className="wf-input"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+              />
+            </label>
+            <span>to</span>
+            <label className="wf-label">End
+              <input
+                className="wf-input"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+              />
+            </label>
+          </div>
+        </div>
+        <label className="wf-label">Notes
+          <textarea
+            className="wf-textarea"
+            placeholder="Optional notes for this timesheet entry"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+          />
+        </label>
+        <div className="wf-form-actions">
+          <button className="wf-btn wf-btn-primary" type="submit" disabled={saving || !resourceId}>
+            {saving ? 'Saving…' : 'Log entry'}
+          </button>
+        </div>
       </form>
       {error && <p className="wf-error">{error}</p>}
     </div>

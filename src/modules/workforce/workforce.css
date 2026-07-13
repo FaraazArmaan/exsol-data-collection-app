@@ -1516,3 +1516,219 @@
     padding: 20px;
   }
 }
+
+/* ── Workforce UI alignment pass ─────────────────────────────────────────── */
+.wf-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.wf-rule-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 1.15rem 1.35rem;
+  align-items: end;
+}
+
+.wf-rule-action {
+  display: flex;
+  align-items: end;
+  justify-content: flex-start;
+  min-height: 100%;
+}
+
+.wf-rule-action .wf-btn {
+  min-width: 160px;
+}
+
+.wf-work-location-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wf-work-location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 0.9rem 1rem;
+}
+
+.wf-work-location-row strong,
+.wf-work-location-row span {
+  display: block;
+}
+
+.wf-work-location-row strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.wf-work-location-row div > span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+}
+
+.wf-ts-log-form {
+  border-style: solid;
+  background: var(--bg-surface);
+  padding: 1.35rem;
+}
+
+.wf-ts-log-form h4 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.wf-ts-log-form-fields {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.wf-ts-log-main {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(170px, 0.7fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: end;
+}
+
+.wf-ts-time-pair {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto minmax(110px, 1fr);
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.wf-ts-time-pair > span {
+  color: var(--text-secondary);
+  font-weight: 650;
+  padding-bottom: 0.7rem;
+}
+
+.wf-ts-log-form-fields textarea {
+  min-height: 96px;
+  min-width: 0;
+  flex: initial;
+}
+
+.wf-checkbox-row {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.wf-checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.wf-training-form form {
+  gap: 1rem !important;
+}
+
+.wf-training-form .wf-checkbox-row {
+  margin-top: 0.1rem;
+}
+
+.wf-task-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.25fr) minmax(180px, 0.55fr) auto;
+  gap: 0.85rem;
+  align-items: end;
+  margin-top: 1rem;
+}
+
+.wf-task-form input {
+  min-height: 42px;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-base);
+}
+
+.wf-task-form button,
+.wf-planner-form button,
+.wf-doc-link-form button,
+.wf-budget-form button,
+.wf-create-form button,
+.wf-shift-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0.55rem 1.05rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.wf-task-form button:disabled,
+.wf-planner-form button:disabled,
+.wf-doc-link-form button:disabled,
+.wf-budget-form button:disabled,
+.wf-create-form button:disabled,
+.wf-shift-form button:disabled,
+.wf-btn:disabled {
+  border-color: var(--border-default);
+  background: color-mix(in srgb, var(--text-muted) 28%, var(--bg-elevated));
+  color: var(--text-secondary);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.wf-planner-form {
+  gap: 0.85rem;
+}
+
+.wf-planner-form textarea {
+  min-height: 140px;
+  background: var(--bg-base);
+}
+
+.wf-planner-form button,
+.wf-task-form button {
+  justify-self: start;
+  min-width: 150px;
+}
+
+.wf-risk-banner {
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .wf-rule-form-grid,
+  .wf-ts-log-main,
+  .wf-task-form {
+    grid-template-columns: 1fr;
+  }
+
+  .wf-rule-action,
+  .wf-task-form button,
+  .wf-planner-form button {
+    width: 100%;
+  }
+
+  .wf-rule-action .wf-btn,
+  .wf-task-form button,
+  .wf-planner-form button {
+    min-width: 0;
+  }
+}

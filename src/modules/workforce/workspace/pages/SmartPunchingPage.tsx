@@ -269,19 +269,23 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                   <input className="wf-input" type="number" min="1" max="5000" value={locationAccuracy} onChange={e => setLocationAccuracy(e.target.value)} required />
                 </label>
               </div>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={savingLocation}>
-                {savingLocation ? 'Saving...' : 'Add work location'}
-              </button>
+              <div className="wf-form-actions">
+                <button className="wf-btn wf-btn-primary" type="submit" disabled={savingLocation}>
+                  {savingLocation ? 'Saving...' : 'Add work location'}
+                </button>
+              </div>
             </form>
             {workLocations.length === 0 ? (
               <div className="wf-empty">No work locations configured. Employee dashboard clock-in stays blocked until one is assigned.</div>
             ) : (
-              <div className="wf-payroll-export-list">
+              <div className="wf-work-location-list">
                 {workLocations.map(location => (
-                  <div className="wf-payroll-export-row" key={location.id}>
-                    <span>{location.name}</span>
-                    <span>{location.radius_meters}m radius</span>
-                    <span>{location.active ? 'Active' : 'Inactive'}</span>
+                  <div className="wf-work-location-row" key={location.id}>
+                    <div>
+                      <strong>{location.name}</strong>
+                      <span>{location.radius_meters}m radius · max accuracy {location.min_accuracy_meters}m</span>
+                    </div>
+                    <span className={location.active ? 'wf-status-badge active' : 'wf-status-badge done'}>{location.active ? 'Active' : 'Inactive'}</span>
                   </div>
                 ))}
               </div>
