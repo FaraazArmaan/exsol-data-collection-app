@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { ensureEmployeeProfilesForTeam } from './_workforce-employee-sync';
 
 export const config = { path: '/api/workforce/employees-directory' };
 
@@ -12,6 +13,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const a = await requireWorkforce(req, ['workforce.employees.view']);
   if (!a.ok) return a.res;
+
+  await ensureEmployeeProfilesForTeam(a.ctx.clientId);
 
   const sql = db();
   const teamRows = await sql`

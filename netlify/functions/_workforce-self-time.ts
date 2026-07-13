@@ -1,6 +1,7 @@
 import { db } from './_shared/db';
 import { jsonError } from './_shared/http';
 import { requireWorkforce, type WorkforceAuthCtx } from './_workforce-authz';
+import { ensureEmployeeProfileForUser } from './_workforce-employee-sync';
 
 export interface SelfEmployee {
   resource_id: string;
@@ -39,6 +40,7 @@ export async function requireWorkforceSelf(req: Request) {
 }
 
 export async function resolveSelfEmployee(ctx: WorkforceAuthCtx): Promise<SelfEmployee | Response> {
+  await ensureEmployeeProfileForUser(ctx.clientId, ctx.userNodeId);
   const rows = await db()`
     SELECT
       p.resource_id,

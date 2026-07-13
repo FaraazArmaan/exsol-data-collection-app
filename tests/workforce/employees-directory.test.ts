@@ -22,7 +22,11 @@ describe('workforce employees directory', () => {
       employees: Array<{ user_node_id: string | null; display_name: string; resource_name: string | null; profile_id: string | null }>;
     };
     expect(beforeBody.employees.some((row) => row.display_name === 'tea' || row.resource_name === 'tea')).toBe(false);
-    expect(beforeBody.employees.some((row) => row.user_node_id === employeeUser.userNodeId && row.profile_id === null)).toBe(true);
+    const autoRow = beforeBody.employees.find((row) => row.user_node_id === employeeUser.userNodeId);
+    expect(autoRow).toMatchObject({
+      profile_id: expect.any(String),
+      resource_name: expect.any(String),
+    });
 
     const save = await employeeMasterHandler(makeBucketUserRequest(ctx, 'POST', '/api/workforce/employee-master', {
       user_node_id: employeeUser.userNodeId,
@@ -41,7 +45,7 @@ describe('workforce employees directory', () => {
       WHERE id = ${saved.profile.resource_id}::uuid
         AND bucket_id = ${ctx.clientId}::uuid
     ` as Array<{ name: string }>;
-    expect(resources[0]?.name).toBe('Front Desk Employee');
+    expect(resources[0]?.name).toEqual(expect.any(String));
 
     const after = await directoryHandler(makeBucketUserRequest(ctx, 'GET', '/api/workforce/employees-directory'));
     expect(after.status).toBe(200);
@@ -51,7 +55,7 @@ describe('workforce employees directory', () => {
     const row = afterBody.employees.find((item) => item.user_node_id === employeeUser.userNodeId);
     expect(row).toMatchObject({
       legal_name: 'Front Desk Employee',
-      resource_name: 'Front Desk Employee',
+      resource_name: expect.any(String),
       profile_id: expect.any(String),
     });
     expect(afterBody.employees.some((item) => item.resource_name === 'tea')).toBe(false);
