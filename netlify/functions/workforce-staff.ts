@@ -29,7 +29,12 @@ export default async function handler(req: Request): Promise<Response> {
           json_build_object(
             'id', un.id,
             'display_name', un.display_name,
-            'role_label', cr.label
+            'email', COALESCE(unc.email, un.email),
+            'level_number', un.level_number,
+            'level_label', cl.label,
+            'role_label', cr.label,
+            'has_login', unc.id IS NOT NULL,
+            'login_disabled', unc.disabled_at IS NOT NULL
           )
           ORDER BY un.display_name
         ) FILTER (WHERE un.id IS NOT NULL),
@@ -40,6 +45,10 @@ export default async function handler(req: Request): Promise<Response> {
       ON un.client_id = br.bucket_id
     LEFT JOIN public.client_roles cr
       ON cr.id = un.role_id
+    LEFT JOIN public.client_levels cl
+      ON cl.client_id = un.client_id AND cl.level_number = un.level_number
+    LEFT JOIN public.user_node_credentials unc
+      ON unc.user_node_id = un.id
     WHERE br.bucket_id = ${a.ctx.clientId}::uuid
     GROUP BY br.id, br.name, br.active
     ORDER BY br.active DESC, br.name ASC

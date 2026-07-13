@@ -606,6 +606,75 @@
 
 .wf-loading { color: var(--text-muted); font-size: 0.875rem; font-style: italic; }
 
+.wf-team-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.wf-team-card-muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.wf-team-card-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.wf-team-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.wf-team-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wf-team-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.wf-team-tag {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.wf-team-tag.ok {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, var(--border-subtle));
+}
+
+.wf-team-tag.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border-subtle));
+}
+
+.wf-team-link {
+  color: var(--accent);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.wf-team-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Leave Requests ───────────────────────────────────────────────────────── */
 .wf-leave-layout        { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem 0; }
 .wf-leave-filters       { display: flex; gap: 0.75rem; flex-wrap: wrap; }

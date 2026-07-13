@@ -10,10 +10,29 @@ describe('workforce-staff', () => {
     const ctx = await seedWorkforceClient();
     const res = await list(ctx);
     expect(res.status).toBe(200);
-    const body = await res.json() as { resources: Array<{ id: string; team_members: unknown[] }> };
+    const body = await res.json() as {
+      resources: Array<{
+        id: string;
+        team_members: Array<{
+          id: string;
+          display_name: string;
+          email: string | null;
+          level_number: number | null;
+          role_label: string | null;
+          has_login: boolean;
+          login_disabled: boolean;
+        }>;
+      }>;
+    };
     const found = body.resources.find((r) => r.id === ctx.resourceId);
     expect(found).toBeDefined();
     expect(Array.isArray(found!.team_members)).toBe(true);
+    expect(found!.team_members[0]).toMatchObject({
+      id: expect.any(String),
+      display_name: expect.any(String),
+      has_login: expect.any(Boolean),
+      login_disabled: expect.any(Boolean),
+    });
   });
 
   it('405 on POST', async () => {

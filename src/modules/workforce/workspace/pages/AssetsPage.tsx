@@ -6,7 +6,14 @@ import {
   workforceApi,
   type WorkforceAsset,
   type AssetAssignment,
+  type StaffResource,
 } from '../../shared/api';
+import {
+  findTeamMember,
+  teamMembersFromResources,
+  TeamEmployeePicker,
+  TeamStatusCard,
+} from '../components/TeamBridge';
 import '../../workforce.css';
 
 const CONDITION_LABELS: Record<string, string> = {
@@ -25,10 +32,15 @@ type InnerTab = 'assets' | 'assignments';
 
 export default function AssetsPage({ slug, perms }: Props) {
   const [innerTab, setInnerTab] = useState<InnerTab>('assets');
+  const [staff, setStaff] = useState<StaffResource[]>([]);
 
   const canCreate = perms.has('workforce.assets.create');
   const canEdit = perms.has('workforce.assets.edit');
   const canDelete = perms.has('workforce.assets.delete');
+
+  useEffect(() => {
+    workforceApi.listStaff().then(d => setStaff(d.resources)).catch(() => {});
+  }, []);
 
   return (
     <div className="wf-page">
@@ -48,10 +60,10 @@ export default function AssetsPage({ slug, perms }: Props) {
         </div>
 
         {innerTab === 'assets' && (
-          <AssetsTab canCreate={canCreate} canDelete={canDelete} />
+          <AssetsTab canCreate={canCreate} canDelete={canDelete} staff={staff} />
         )}
         {innerTab === 'assignments' && (
-          <AssignmentsTab canCreate={canCreate} canEdit={canEdit} />
+          <AssignmentsTab canCreate={canCreate} canEdit={canEdit} staff={staff} slug={slug} />
         )}
       </div>
     </div>
@@ -63,9 +75,10 @@ export default function AssetsPage({ slug, perms }: Props) {
 interface AssetsTabProps {
   canCreate: boolean;
   canDelete: boolean;
+  staff: StaffResource[];
 }
 
-function AssetsTab({ canCreate, canDelete }: AssetsTabProps) {
+function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
   const [assets, setAssets] = useState<WorkforceAsset[] | null>(null);
   const [conditionFilter, setConditionFilter] = useState('');
   const [error, setError] = useState('');
@@ -164,11 +177,15 @@ function AssetsTab({ canCreate, canDelete }: AssetsTabProps) {
               {a.description && (
                 <div className="wf-asset-desc">{a.description}</div>
               )}
-              {a.current_assignee_user_node_id && (
-                <div className="wf-asset-desc" style={{ fontSize: '0.8rem' }}>
-                  Assignee: {a.current_assignee_user_node_id}
-                </div>
-              )}
+              {a.current_assignee_user_node_id && (() => {
+                const assignee = findTeamMember(staff, a.current_assignee_user_node_id);
+                return (
+                  <div className="wf-asset-desc" style={{ fontSize: '0.8rem' }}>
+                    Assignee: {assignee?.display_name ?? a.current_assignee_user_node_id}
+                    {assignee?.email && <span> - {assignee.email}</span>}
+                  </div>
+                );
+              })()}
               <div className="wf-asset-actions">
                 {canDelete && a.condition !== 'retired' && (
                   <button
@@ -221,10 +238,13 @@ function AssetsTab({ canCreate, canDelete }: AssetsTabProps) {
 interface AssignmentsTabProps {
   canCreate: boolean;
   canEdit: boolean;
+  staff: StaffResource[];
+  slug: string;
 }
 
-function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
+function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps) {
   const [assignments, setAssignments] = useState<AssetAssignment[] | null>(null);
+  const [assets, setAssets] = useState<WorkforceAsset[]>([]);
   const [filterUserId, setFilterUserId] = useState('');
   const [activeOnly, setActiveOnly] = useState(false);
   const [error, setError] = useState('');
@@ -240,6 +260,17 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
   const [formNotes, setFormNotes] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState('');
+  const teamMembers = teamMembersFromResources(staff);
+  const availableAssets = assets.filter(asset => asset.condition !== 'retired' && asset.current_assignment_id === null);
+
+  async function loadAssetOptions() {
+    try {
+      const data = await workforceApi.listAssets();
+      setAssets(data.assets);
+    } catch {
+      setAssets([]);
+    }
+  }
 
   async function load() {
     setError('');
@@ -256,6 +287,10 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
 
   useEffect(() => { load(); }, [filterUserId, activeOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    void loadAssetOptions();
+  }, []);
+
   async function handleReturn(assignmentId: string) {
     setReturning(true);
     setReturnError('');
@@ -268,6 +303,7 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
       setReturnCondition('');
       setReturnNotes('');
       await load();
+      await loadAssetOptions();
     } catch (err: unknown) {
       setReturnError(err instanceof Error ? err.message : 'Failed to return asset.');
     } finally {
@@ -277,8 +313,8 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
 
   async function handleAssign(e: React.FormEvent) {
     e.preventDefault();
-    if (!formAssetId.trim()) { setAssignError('Asset ID is required.'); return; }
-    if (!formUserNodeId.trim()) { setAssignError('User Node ID is required.'); return; }
+    if (!formAssetId.trim()) { setAssignError('Select an asset.'); return; }
+    if (!formUserNodeId.trim()) { setAssignError('Select a Team user.'); return; }
     setAssigning(true);
     setAssignError('');
     try {
@@ -291,6 +327,7 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
       setFormUserNodeId('');
       setFormNotes('');
       await load();
+      await loadAssetOptions();
     } catch (err: unknown) {
       setAssignError(err instanceof Error ? err.message : 'Failed to assign asset.');
     } finally {
@@ -302,12 +339,12 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
     <div>
       {/* Filters */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-        <input
-          className="wf-input"
-          style={{ width: 'auto', maxWidth: '260px' }}
-          placeholder="Filter by user node ID…"
+        <TeamEmployeePicker
+          label="Filter by Team user"
           value={filterUserId}
-          onChange={e => setFilterUserId(e.target.value)}
+          onChange={setFilterUserId}
+          members={teamMembers}
+          blankLabel="All Team users"
         />
         <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
           <input type="checkbox" checked={activeOnly} onChange={e => setActiveOnly(e.target.checked)} />
@@ -329,9 +366,15 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
                   <span className="wf-assignment-active">Active</span>
                 )}
               </div>
-              <div className="wf-assignment-dates">
-                User: {aa.user_node_id}
-              </div>
+              {(() => {
+                const assignee = findTeamMember(staff, aa.user_node_id);
+                return (
+                  <div className="wf-assignment-dates">
+                    User: {assignee?.display_name ?? aa.user_node_id}
+                    {assignee?.email && <span> - {assignee.email}</span>}
+                  </div>
+                );
+              })()}
               <div className="wf-assignment-dates">
                 Assigned: {new Date(aa.assigned_at).toLocaleDateString()}
                 {aa.returned_at && ` · Returned: ${new Date(aa.returned_at).toLocaleDateString()}`}
@@ -392,13 +435,33 @@ function AssignmentsTab({ canCreate, canEdit }: AssignmentsTabProps) {
           <form onSubmit={handleAssign} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {assignError && <div className="wf-error">{assignError}</div>}
             <div className="wf-form-row">
-              <label className="wf-label">Asset ID *
-                <input className="wf-input" value={formAssetId} onChange={e => setFormAssetId(e.target.value)} placeholder="UUID" required />
+              <label className="wf-label">Asset
+                <select
+                  className="wf-select"
+                  value={formAssetId}
+                  onChange={e => setFormAssetId(e.target.value)}
+                  required
+                >
+                  <option value="">{availableAssets.length === 0 ? 'No unassigned assets available' : 'Select asset...'}</option>
+                  {availableAssets.map(asset => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.name}{asset.serial_number ? ` - ${asset.serial_number}` : ''}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label className="wf-label">User Node ID *
-                <input className="wf-input" value={formUserNodeId} onChange={e => setFormUserNodeId(e.target.value)} placeholder="UUID" required />
-              </label>
+              <TeamEmployeePicker
+                label="Team user"
+                value={formUserNodeId}
+                onChange={setFormUserNodeId}
+                members={teamMembers}
+                required
+              />
             </div>
+            <TeamStatusCard
+              slug={slug}
+              member={findTeamMember(staff, formUserNodeId)}
+            />
             <label className="wf-label">Notes (optional)
               <textarea className="wf-textarea" rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} />
             </label>

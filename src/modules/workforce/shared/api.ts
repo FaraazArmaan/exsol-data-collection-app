@@ -41,7 +41,18 @@ export interface StaffResource {
   id: string;
   name: string;
   active: boolean;
-  team_members: Array<{ id: string; display_name: string; role_label: string | null }>;
+  team_members: TeamMember[];
+}
+
+export interface TeamMember {
+  id: string;
+  display_name: string;
+  email: string | null;
+  level_number: number | null;
+  level_label: string | null;
+  role_label: string | null;
+  has_login: boolean;
+  login_disabled: boolean;
 }
 
 export interface Shift {

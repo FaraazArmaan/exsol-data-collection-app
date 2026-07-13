@@ -7,7 +7,14 @@ import {
   type PayrollPeriod,
   type PayrollLineItem,
   type PayrollRate,
+  type StaffResource,
 } from '../../shared/api';
+import {
+  findTeamMember,
+  teamMembersFromResources,
+  TeamEmployeePicker,
+  TeamStatusCard,
+} from '../components/TeamBridge';
 import '../../workforce.css';
 
 interface Props {
@@ -20,6 +27,7 @@ export default function PayrollPage({ slug, perms }: Props) {
   const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null);
   const [lineItems, setLineItems] = useState<PayrollLineItem[]>([]);
   const [rates, setRates] = useState<PayrollRate[] | null>(null);
+  const [staff, setStaff] = useState<StaffResource[]>([]);
   const [error, setError] = useState('');
 
   // Create period form
@@ -61,6 +69,7 @@ export default function PayrollPage({ slug, perms }: Props) {
   useEffect(() => {
     void loadPeriods();
     void loadRates();
+    workforceApi.listStaff().then(d => setStaff(d.resources)).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function selectPeriod(p: PayrollPeriod) {
@@ -108,7 +117,7 @@ export default function PayrollPage({ slug, perms }: Props) {
 
   async function handleSetRate(e: React.FormEvent) {
     e.preventDefault();
-    if (!rateUserNodeId.trim()) { setRateFormError('User node ID is required.'); return; }
+    if (!rateUserNodeId.trim()) { setRateFormError('Select a Team user.'); return; }
     const rate = parseFloat(rateHourly);
     if (!rateHourly || isNaN(rate) || rate < 0) { setRateFormError('Hourly rate must be a non-negative number.'); return; }
     if (!rateEffective) { setRateFormError('Effective from date is required.'); return; }
@@ -206,16 +215,24 @@ export default function PayrollPage({ slug, perms }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {lineItems.map(li => (
-                        <tr key={li.user_node_id}>
-                          <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                            {li.user_node_id.slice(0, 8)}…
-                          </td>
-                          <td>{li.hours}h</td>
-                          <td>{li.hourly_rate.toFixed(2)}</td>
-                          <td className="wf-payroll-total">{li.amount.toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {lineItems.map(li => {
+                        const member = findTeamMember(staff, li.user_node_id);
+                        return (
+                          <tr key={li.user_node_id}>
+                            <td>
+                              <strong style={{ color: 'var(--text-primary)' }}>
+                                {member?.display_name ?? li.user_node_id.slice(0, 8)}
+                              </strong>
+                              {member?.email && (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{member.email}</div>
+                              )}
+                            </td>
+                            <td>{li.hours}h</td>
+                            <td>{li.hourly_rate.toFixed(2)}</td>
+                            <td className="wf-payroll-total">{li.amount.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -273,20 +290,24 @@ export default function PayrollPage({ slug, perms }: Props) {
 
             {rates !== null && rates.length > 0 && (
               <div className="wf-payroll-list">
-                {rates.map(r => (
-                  <div key={r.id} className="wf-payroll-card" style={{ cursor: 'default' }}>
-                    <div className="wf-payroll-card-header">
-                      <span className="wf-payroll-period" style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                        {r.user_node_id.slice(0, 8)}…
-                      </span>
-                      <span className="wf-payroll-total">{Number(r.hourly_rate).toFixed(2)}/hr</span>
+                {rates.map(r => {
+                  const member = findTeamMember(staff, r.user_node_id);
+                  return (
+                    <div key={r.id} className="wf-payroll-card" style={{ cursor: 'default' }}>
+                      <div className="wf-payroll-card-header">
+                        <span className="wf-payroll-period">
+                          {member?.display_name ?? r.user_node_id.slice(0, 8)}
+                        </span>
+                        <span className="wf-payroll-total">{Number(r.hourly_rate).toFixed(2)}/hr</span>
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        {member?.email && <span>{member.email} - </span>}
+                        From {r.effective_from}
+                        {r.notes && <span> - {r.notes}</span>}
+                      </div>
                     </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                      From {r.effective_from}
-                      {r.notes && <span> · {r.notes}</span>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -296,16 +317,17 @@ export default function PayrollPage({ slug, perms }: Props) {
                 <h4 className="wf-section-title" style={{ fontSize: '0.9rem' }}>Set Rate</h4>
                 <form onSubmit={(e) => void handleSetRate(e)} className="wf-payroll-form">
                   {rateFormError && <div className="wf-error">{rateFormError}</div>}
-                  <label className="wf-label">User Node ID (UUID)
-                    <input
-                      className="wf-input"
-                      type="text"
-                      placeholder="xxxxxxxx-xxxx-…"
-                      value={rateUserNodeId}
-                      onChange={e => setRateUserNodeId(e.target.value)}
-                      required
-                    />
-                  </label>
+                  <TeamEmployeePicker
+                    label="Team user"
+                    value={rateUserNodeId}
+                    onChange={setRateUserNodeId}
+                    members={teamMembersFromResources(staff)}
+                    required
+                  />
+                  <TeamStatusCard
+                    slug={slug}
+                    member={findTeamMember(staff, rateUserNodeId)}
+                  />
                   <div className="wf-form-row">
                     <label className="wf-label">Hourly rate
                       <input

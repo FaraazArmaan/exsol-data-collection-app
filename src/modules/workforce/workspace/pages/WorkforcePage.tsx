@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { Link, useParams } from 'react-router-dom';
 import { workforceApi, type StaffResource, type Shift } from '../../shared/api';
+import { TeamEmployeePicker } from '../components/TeamBridge';
 import '../../workforce.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -74,12 +75,13 @@ function AddShiftForm({
           {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
         </select>
         {teamMembers.length > 0 && (
-          <select value={userNodeId} onChange={(e) => setUserNodeId(e.target.value)}>
-            <option value="">— any team member —</option>
-            {teamMembers.map((m) => (
-              <option key={m.id} value={m.id}>{m.display_name}</option>
-            ))}
-          </select>
+          <TeamEmployeePicker
+            label="Team user"
+            value={userNodeId}
+            onChange={setUserNodeId}
+            members={teamMembers}
+            blankLabel="Any team member"
+          />
         )}
         <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
         <span>to</span>
