@@ -7,6 +7,7 @@ import {
   type StaffResource,
   type TimeClockEvent,
   type TimeCorrection,
+  type WorkLocation,
 } from '../../shared/api';
 import '../../workforce.css';
 
@@ -37,14 +38,35 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   const [correctionNotes, setCorrectionNotes] = useState('');
   const [correctionError, setCorrectionError] = useState('');
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
+  const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
+  const [locationName, setLocationName] = useState('');
+  const [locationLat, setLocationLat] = useState('');
+  const [locationLng, setLocationLng] = useState('');
+  const [locationRadius, setLocationRadius] = useState('100');
+  const [locationAccuracy, setLocationAccuracy] = useState('150');
+  const [locationError, setLocationError] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
 
   const canClockIn = perms.has('workforce.employees.create');
   const canClockOut = perms.has('workforce.employees.edit');
   const canCorrect = perms.has('workforce.employees.create');
+  const canManageLocations = perms.has('workforce.employees.edit');
 
   useEffect(() => {
     workforceApi.listStaff().then(d => setStaff(d.resources)).catch(() => {});
   }, []);
+
+  async function loadWorkLocations() {
+    if (!canManageLocations) return;
+    try {
+      const data = await workforceApi.listWorkLocations();
+      setWorkLocations(data.locations);
+    } catch {
+      setWorkLocations([]);
+    }
+  }
+
+  useEffect(() => { void loadWorkLocations(); }, [canManageLocations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     setError('');
@@ -160,6 +182,32 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   const latePunches = todayPunches.filter(p => (p.late_minutes ?? 0) > 0);
   const absentPunches = todayPunches.filter(p => p.is_absent);
 
+  async function submitWorkLocation(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingLocation(true);
+    setLocationError('');
+    try {
+      await workforceApi.createWorkLocation({
+        name: locationName.trim(),
+        latitude: Number(locationLat),
+        longitude: Number(locationLng),
+        radius_meters: Number(locationRadius),
+        min_accuracy_meters: Number(locationAccuracy),
+        applies_to_all: true,
+      });
+      setLocationName('');
+      setLocationLat('');
+      setLocationLng('');
+      setLocationRadius('100');
+      setLocationAccuracy('150');
+      await loadWorkLocations();
+    } catch (err: unknown) {
+      setLocationError(err instanceof Error ? err.message : 'Failed to save work location.');
+    } finally {
+      setSavingLocation(false);
+    }
+  }
+
   return (
     <div className="wf-page">
       <WorkforceNav slug={slug} active="punching" />
@@ -198,6 +246,48 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
             <span>Pending corrections</span>
           </div>
         </section>
+
+        {canManageLocations && (
+          <section className="wf-ot-form-section">
+            <h3 className="wf-section-title">Work Locations</h3>
+            <form className="wf-ot-form" onSubmit={submitWorkLocation}>
+              {locationError && <div className="wf-error">{locationError}</div>}
+              <div className="wf-form-row">
+                <label className="wf-label">Name
+                  <input className="wf-input" value={locationName} onChange={e => setLocationName(e.target.value)} required />
+                </label>
+                <label className="wf-label">Latitude
+                  <input className="wf-input" type="number" step="0.000001" value={locationLat} onChange={e => setLocationLat(e.target.value)} required />
+                </label>
+                <label className="wf-label">Longitude
+                  <input className="wf-input" type="number" step="0.000001" value={locationLng} onChange={e => setLocationLng(e.target.value)} required />
+                </label>
+                <label className="wf-label">Radius meters
+                  <input className="wf-input" type="number" min="1" max="5000" value={locationRadius} onChange={e => setLocationRadius(e.target.value)} required />
+                </label>
+                <label className="wf-label">Max accuracy meters
+                  <input className="wf-input" type="number" min="1" max="5000" value={locationAccuracy} onChange={e => setLocationAccuracy(e.target.value)} required />
+                </label>
+              </div>
+              <button className="wf-btn wf-btn-primary" type="submit" disabled={savingLocation}>
+                {savingLocation ? 'Saving...' : 'Add work location'}
+              </button>
+            </form>
+            {workLocations.length === 0 ? (
+              <div className="wf-empty">No work locations configured. Employee dashboard clock-in stays blocked until one is assigned.</div>
+            ) : (
+              <div className="wf-payroll-export-list">
+                {workLocations.map(location => (
+                  <div className="wf-payroll-export-row" key={location.id}>
+                    <span>{location.name}</span>
+                    <span>{location.radius_meters}m radius</span>
+                    <span>{location.active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Today's status cards */}
         {filteredStaff.length > 0 && (

@@ -6,7 +6,7 @@
 
 # API endpoints
 
-291 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+298 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -401,6 +401,12 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-leave-accrual.ts | `/api/workforce/leave-accrual` | any | bucket-user | — |
 | workforce-leave.ts | `/api/workforce/leave/:id` | any | bucket-user | — |
 | workforce-leaves.ts | `/api/workforce/leaves` | any | bucket-user | — |
+| workforce-me-clock-in.ts | `/api/workforce/me/clock-in` | any | public | — |
+| workforce-me-clock-out.ts | `/api/workforce/me/clock-out` | any | public | — |
+| workforce-me-end-break.ts | `/api/workforce/me/end-break` | any | public | — |
+| workforce-me-start-break.ts | `/api/workforce/me/start-break` | any | public | — |
+| workforce-me-time-correction.ts | `/api/workforce/me/time-correction` | any | public | — |
+| workforce-me-time-status.ts | `/api/workforce/me/time-status` | any | public | — |
 | workforce-overtime-id.ts | `/api/workforce/overtime/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-overtime.ts | `/api/workforce/overtime` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-payroll-export.ts | `/api/workforce/payroll-export` | any | bucket-user | — |
@@ -432,4 +438,5 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-training-completions.ts | `/api/workforce/training-completions` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-training-course.ts | `/api/workforce/training-course/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-training-courses.ts | `/api/workforce/training-courses` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-work-locations.ts | `/api/workforce/work-locations` | any | bucket-user | `workforce.employees.edit` |
 

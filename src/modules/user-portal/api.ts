@@ -24,6 +24,48 @@ export interface UserPortalEnabledModule {
   label: string;
 }
 
+export interface WorkforceMeEmployee {
+  resource_id: string;
+  user_node_id: string;
+  legal_name: string;
+  resource_name: string;
+}
+
+export interface WorkforceMePunch {
+  id: string;
+  punched_in_at: string;
+  punched_out_at: string | null;
+  late_minutes: number | null;
+}
+
+export interface WorkforceMeBreak {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+}
+
+export interface WorkforceMeLocation {
+  id: string;
+  name: string;
+  radius_meters: number;
+  min_accuracy_meters: number;
+}
+
+export interface WorkforceMeTimeStatus {
+  employee: WorkforceMeEmployee;
+  open_punch: WorkforceMePunch | null;
+  open_break: WorkforceMeBreak | null;
+  locations: WorkforceMeLocation[];
+  geofence_required: boolean;
+  today_events: Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    geofence_result: string | null;
+    distance_meters: number | string | null;
+  }>;
+}
+
 // PermissionMatrix is a flat map: 'module.bucket.verb' → true.
 // Absent keys are denied.
 export type UserPortalPermissionMatrix = Record<string, true>;
@@ -61,3 +103,21 @@ export const userChangePassword = (current_password: string, new_password: strin
   apiFetch<{ ok: true }>('/api/u-change-password', {
     method: 'POST', body: JSON.stringify({ current_password, new_password }),
   });
+
+export const workforceMeTimeStatus = () =>
+  apiFetch<WorkforceMeTimeStatus>('/api/workforce/me/time-status');
+
+export const workforceMeClockIn = (location: { latitude: number; longitude: number; accuracy_meters: number }) =>
+  apiFetch<{ punch: WorkforceMePunch }>('/api/workforce/me/clock-in', {
+    method: 'POST',
+    body: JSON.stringify(location),
+  });
+
+export const workforceMeClockOut = () =>
+  apiFetch<{ punch: WorkforceMePunch }>('/api/workforce/me/clock-out', { method: 'POST' });
+
+export const workforceMeStartBreak = () =>
+  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/start-break', { method: 'POST' });
+
+export const workforceMeEndBreak = () =>
+  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/end-break', { method: 'POST' });

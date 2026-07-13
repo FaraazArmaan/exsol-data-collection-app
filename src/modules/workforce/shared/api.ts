@@ -403,9 +403,9 @@ export interface TimeClockEvent {
   resource_id: string;
   user_node_id: string | null;
   punch_id: string | null;
-  event_type: 'clock_in' | 'clock_out' | 'correction' | 'absence' | 'note';
+  event_type: 'clock_in' | 'clock_out' | 'break_start' | 'break_end' | 'correction' | 'absence' | 'note';
   occurred_at: string;
-  source: 'manual' | 'kiosk' | 'mobile' | 'system' | 'import';
+  source: 'manual' | 'kiosk' | 'mobile' | 'self_service' | 'system' | 'import';
   notes: string | null;
   metadata: Record<string, unknown>;
   recorded_by: string | null;
@@ -497,6 +497,26 @@ export interface ComplianceTask {
   source_type: 'training_completion' | 'asset_assignment' | 'asset_maintenance' | 'manual' | null;
   source_id: string | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkLocation {
+  id: string;
+  client_id: string;
+  name: string;
+  latitude: string | number;
+  longitude: string | number;
+  radius_meters: number;
+  min_accuracy_meters: number;
+  active: boolean;
+  assignments: Array<{
+    id: string;
+    applies_to_all: boolean;
+    resource_id: string | null;
+    user_node_id: string | null;
+    active: boolean;
+  }>;
   created_at: string;
   updated_at: string;
 }
@@ -865,6 +885,23 @@ export const workforceApi = {
     notes?: string | null;
   }): Promise<{ task: ComplianceTask }> {
     return call<{ task: ComplianceTask }>('/api/workforce/compliance-ops', json({ kind: 'task', ...data }));
+  },
+
+  listWorkLocations(): Promise<{ locations: WorkLocation[] }> {
+    return call<{ locations: WorkLocation[] }>('/api/workforce/work-locations');
+  },
+
+  createWorkLocation(data: {
+    name: string;
+    latitude: number;
+    longitude: number;
+    radius_meters?: number;
+    min_accuracy_meters?: number;
+    applies_to_all?: boolean;
+    resource_id?: string | null;
+    user_node_id?: string | null;
+  }): Promise<{ location: WorkLocation }> {
+    return call<{ location: WorkLocation }>('/api/workforce/work-locations', json(data));
   },
 
   getEmployeeProfile(resource_id: string): Promise<EmployeeProfile> {

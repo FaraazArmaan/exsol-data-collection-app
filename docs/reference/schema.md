@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-134 tables across 129 forward-only migrations.
+137 tables across 130 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -687,6 +687,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `148_payroll_export_payslips.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `export_id UUID`, `period_id UUID`, `user_node_id UUID`, `gross_amount NUMERIC(12,2)`, `tax_amount NUMERIC(12,2)`, `deductions_amount NUMERIC(12,2)`, `net_amount NUMERIC(12,2)`, `currency TEXT`, `status TEXT`, `published_at TIMESTAMPTZ`, `metadata JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
+### `workforce_punch_breaks`
+
+- created in `151_workforce_self_service_geofence_time_clock.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `punch_id UUID`, `resource_id UUID`, `user_node_id UUID`, `started_at TIMESTAMPTZ`, `ended_at TIMESTAMPTZ`, `source TEXT`, `notes TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ### `workforce_punches`
 
 - created in `113_workforce_punches.sql`
@@ -704,11 +709,21 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `workforce_time_clock_events`
 
-- created in `146_time_clock_ledger_corrections.sql`
+- created in `146_time_clock_ledger_corrections.sql`; altered in `151_workforce_self_service_geofence_time_clock.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `punch_id UUID`, `event_type TEXT`, `occurred_at TIMESTAMPTZ`, `source TEXT`, `notes TEXT`, `metadata JSONB`, `recorded_by UUID`, `created_at TIMESTAMPTZ`
 
 ### `workforce_time_corrections`
 
 - created in `146_time_clock_ledger_corrections.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `punch_id UUID`, `resource_id UUID`, `requested_by UUID`, `correction_type TEXT`, `original_values JSONB`, `new_values JSONB`, `status TEXT`, `reviewed_by UUID`, `reviewed_at TIMESTAMPTZ`, `notes TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workforce_work_location_assignments`
+
+- created in `151_workforce_self_service_geofence_time_clock.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `work_location_id UUID`, `applies_to_all BOOLEAN`, `resource_id UUID`, `user_node_id UUID`, `active BOOLEAN`, `created_at TIMESTAMPTZ`
+
+### `workforce_work_locations`
+
+- created in `151_workforce_self_service_geofence_time_clock.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `name TEXT`, `latitude NUMERIC(9,6)`, `longitude NUMERIC(9,6)`, `radius_meters INTEGER`, `min_accuracy_meters INTEGER`, `active BOOLEAN`, `created_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
