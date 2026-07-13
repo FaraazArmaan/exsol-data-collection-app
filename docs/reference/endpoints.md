@@ -6,7 +6,7 @@
 
 # API endpoints
 
-283 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+291 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -18,6 +18,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | admin-client-products.ts | `/api/admin-client-products (name-routed)` | any | admin | — |
 | admin-impersonate.ts | `/api/admin-impersonate` | POST | public | — |
+| admin-impersonation-exit.ts | `/api/admin-impersonation-exit (name-routed)` | any | public | — |
 | admin-self.ts | `/api/admin-self (name-routed)` | any | admin | — |
 | admin-team-detail.ts | `/api/admin-team-detail (name-routed)` | any | public | — |
 | admin-team.ts | `/api/admin-team (name-routed)` | any | admin | — |
@@ -393,12 +394,16 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-asset-assignments.ts | `/api/workforce/asset-assignments` | any | bucket-user | — |
 | workforce-asset.ts | `/api/workforce/asset/:id` | any | bucket-user | — |
 | workforce-assets.ts | `/api/workforce/assets` | any | bucket-user | — |
+| workforce-compliance-ops.ts | `/api/workforce/compliance-ops` | any | bucket-user | — |
 | workforce-compliance.ts | `/api/workforce/compliance` | any | bucket-user | `workforce.employees.view` |
+| workforce-employee-master.ts | `/api/workforce/employee-master` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-employee-profile.ts | `/api/workforce/employee-profile` | any | bucket-user | `workforce.employees.view` |
+| workforce-leave-accrual.ts | `/api/workforce/leave-accrual` | any | bucket-user | — |
 | workforce-leave.ts | `/api/workforce/leave/:id` | any | bucket-user | — |
 | workforce-leaves.ts | `/api/workforce/leaves` | any | bucket-user | — |
 | workforce-overtime-id.ts | `/api/workforce/overtime/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-overtime.ts | `/api/workforce/overtime` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-payroll-export.ts | `/api/workforce/payroll-export` | any | bucket-user | — |
 | workforce-payroll-id.ts | `/api/workforce/payroll/:id` | any | bucket-user | — |
 | workforce-payroll-rates.ts | `/api/workforce/payroll-rates` | any | bucket-user | — |
 | workforce-payroll.ts | `/api/workforce/payroll` | any | bucket-user | — |
@@ -414,11 +419,14 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | workforce-projects.ts | `/api/workforce/projects` | any | bucket-user | `project-service.business.create`, `project-service.business.view` |
 | workforce-punch.ts | `/api/workforce/punch/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-punches.ts | `/api/workforce/punches` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-reporting-dashboard.ts | `/api/workforce/reporting-dashboard` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-schedule-planner.ts | `/api/workforce/schedule-planner` | any | bucket-user | `workforce.employees.edit`, `workforce.employees.view` |
 | workforce-shift.ts | `/api/workforce/shift/:id` | any | bucket-user | `workforce.employees.delete` |
 | workforce-shifts.ts | `/api/workforce/shifts` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-staff.ts | `/api/workforce/staff` | any | bucket-user | `workforce.employees.view` |
 | workforce-swap.ts | `/api/workforce/swap/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-swaps.ts | `/api/workforce/swaps` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
+| workforce-time-ledger.ts | `/api/workforce/time-ledger` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-timesheet.ts | `/api/workforce/timesheet/:id` | any | bucket-user | `workforce.employees.delete`, `workforce.employees.edit` |
 | workforce-timesheets.ts | `/api/workforce/timesheets` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |
 | workforce-training-completions.ts | `/api/workforce/training-completions` | any | bucket-user | `workforce.employees.create`, `workforce.employees.view` |

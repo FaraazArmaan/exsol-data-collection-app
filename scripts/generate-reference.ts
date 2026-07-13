@@ -246,7 +246,7 @@ function parseSchema(): TableInfo[] {
   for (const mig of migrations) {
     const sql = readFileSync(join(MIG_DIR, mig), 'utf8');
     // CREATE TABLE [IF NOT EXISTS] [public.]name ( ... );
-    const createRe = /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);/g;
+    const createRe = /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_0-9]+)\s*\(([\s\S]*?)\n\)\s*;/gi;
     for (const m of sql.matchAll(createRe)) {
       const name = m[1]!;
       const body = m[2]!;
