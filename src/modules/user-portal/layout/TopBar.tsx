@@ -32,8 +32,8 @@ export function TopBar() {
     setMenuOpen(false);
     document.cookie = 'imp_ctx=; Path=/; Max-Age=0; SameSite=Lax';
     document.cookie = 'imp_actor=; Path=/; Max-Age=0; SameSite=Lax';
-    await signOut();
     navigate('/login', { replace: true });
+    await signOut();
   }
 
   return (
