@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 interface Props {
   slug: string;
@@ -23,9 +23,25 @@ export function PublicSurfaceNav({ slug }: Props) {
 
   if (!surfaces.shop && !surfaces.booking) return null;
   return (
-    <nav className="brand-public-nav" aria-label="Business services">
-      {surfaces.shop ? <Link to={`/storefront/${slug}`}>Shop</Link> : null}
-      {surfaces.booking ? <Link to={`/book/${slug}`}>Book</Link> : null}
-    </nav>
+    <div className="brand-public-nav-wrap">
+      <nav className="brand-public-nav" aria-label="Business services">
+        {surfaces.shop ? (
+          <NavLink
+            to={`/storefront/${slug}`}
+            className={({ isActive }) => `brand-public-nav__link${isActive ? ' is-active' : ''}`}
+          >
+            Online ordering
+          </NavLink>
+        ) : null}
+        {surfaces.booking ? (
+          <NavLink
+            to={`/book/${slug}`}
+            className={({ isActive }) => `brand-public-nav__link${isActive ? ' is-active' : ''}`}
+          >
+            Online booking
+          </NavLink>
+        ) : null}
+      </nav>
+    </div>
   );
 }

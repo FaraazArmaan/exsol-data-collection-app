@@ -10,7 +10,7 @@ export default function StorefrontLayout() {
   const { slug } = useParams<{ slug: string }>();
   const { brand } = useBrand(slug);
   return (
-    <BrandShell brand={brand ?? undefined} fallbackName="Online ordering">
+    <BrandShell brand={brand ?? undefined} fallbackName="Storefront">
       {slug ? <PublicSurfaceNav slug={slug} /> : null}
       <Outlet />
     </BrandShell>

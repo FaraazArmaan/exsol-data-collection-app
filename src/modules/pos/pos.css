@@ -660,6 +660,31 @@
   margin: 0;
   color: var(--text-muted);
 }
+.storefront-settings__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.storefront-settings__summary-empty {
+  margin: 0;
+}
+.storefront-settings__preview-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.storefront-settings__preview-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
 .storefront-settings__features {
   display: grid;
   gap: 16px;
@@ -671,19 +696,41 @@
   gap: 12px 20px;
   align-items: start;
 }
+.storefront-settings__feature-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .storefront-settings__feature > p {
   grid-column: 1 / -1;
+  margin: 0;
+}
+.storefront-settings__link {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
 }
 .storefront-settings .toggle {
   margin-top: 8px;
 }
 .storefront-settings code {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   background: var(--bg-elevated);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .storefront-settings__feature {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Storefront coupon entry (details page) ────────────────────────────── */

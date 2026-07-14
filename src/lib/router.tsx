@@ -47,7 +47,6 @@ const SupplyChainRouteMount = lazy(() => import('../modules/supply-chain/SupplyC
 const ProcurementSpendMount = lazy(() => import('../modules/procurement/ProcurementSpendMount'));
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
-import BookingPublicLayout from '../modules/booking/public/BookingPublicLayout';
 import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingPolicyMount, BookingSettingsMount, BookingSetupMount,
 } from '../modules/booking/BookingRouteMounts';
@@ -98,6 +97,16 @@ function WorkspaceLoginRedirect() {
   const next = slug ? `/c/${slug}` : '/';
   const clientParam = slug ? `client=${encodeURIComponent(slug)}&` : '';
   return <Navigate to={`/login?${clientParam}next=${encodeURIComponent(next)}`} replace />;
+}
+
+function WorkspaceBookingRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={slug ? `/book/${slug}` : '/'} replace />;
+}
+
+function WorkspaceBookingManageRedirect() {
+  const { slug, token } = useParams<{ slug: string; token: string }>();
+  return <Navigate to={slug && token ? `/book/${slug}/manage/${token}` : '/'} replace />;
 }
 
 function WorkspaceAccessLevels() {
@@ -159,7 +168,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/book/:slug',
-    element: <BookingPublicLayout />,
+    element: <StorefrontLayout />,
     children: [
       { index: true, element: <BookingStorefront /> },
       { path: 'manage/:token', element: <ManageBooking /> },
@@ -182,9 +191,10 @@ export const router = createBrowserRouter([
     element: <UserPortalLayout />,
     children: [
       { path: 'login', element: <WorkspaceLoginRedirect /> },
-      // Anonymous booking storefront — sibling of login, OUTSIDE the auth gate.
-      { path: 'book', element: <BookingStorefront /> },
-      { path: 'book/manage/:token', element: <ManageBooking /> },
+      // Legacy public booking compatibility routes redirect into the shared
+      // public storefront shell at /book/:slug.
+      { path: 'book', element: <WorkspaceBookingRedirect /> },
+      { path: 'book/manage/:token', element: <WorkspaceBookingManageRedirect /> },
       // Public lead-capture form — anonymous, sibling of book.
       { path: 'lead', element: <LeadCaptureForm /> },
       {

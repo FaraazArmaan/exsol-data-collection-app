@@ -4,7 +4,7 @@ import { bookingPublicApi, type ManageView, type PublicService } from '../shared
 import { formatTime, formatDateLong } from '../format';
 import { SlotPicker } from './SlotPicker';
 
-// Anonymous magic-link page at /c/:slug/book/manage/:token — view + cancel/reschedule.
+// Anonymous magic-link page at /book/:slug/manage/:token — view + cancel/reschedule.
 export default function ManageBooking() {
   const { token = '' } = useParams<{ token: string }>();
   const [view, setView] = useState<ManageView | null>(null);

@@ -122,13 +122,42 @@ export default function StorefrontSettings() {
   if (!canEdit) return <p className="muted">You don’t have access to storefront settings.</p>;
   if (loading) return <p className="muted">Loading…</p>;
 
+  const enabledSurfaces = [
+    ordering.enabled ? 'Online ordering' : null,
+    booking.enabled ? 'Online booking' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <section className="storefront-settings page-narrow">
       <h1 className="page-title">Storefront</h1>
-      <p className="muted">Choose which customer features appear on your branded public website.</p>
+      <p className="muted">
+        Choose which customer features appear on your branded public website.
+      </p>
+      <div className="card storefront-settings__summary">
+        <div>
+          <h2 className="section-title">Customer navigation</h2>
+          <p className="muted">
+            Customers get one branded storefront. Enable ordering and booking independently and the
+            live sections appear together in the public header.
+          </p>
+        </div>
+        {enabledSurfaces.length > 0 ? (
+          <div className="storefront-settings__preview-nav" aria-label="Enabled storefront sections">
+            {enabledSurfaces.map((label) => (
+              <span key={label} className="storefront-settings__preview-pill">
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="muted storefront-settings__summary-empty">
+            No public customer sections are enabled right now.
+          </p>
+        )}
+      </div>
       <div className="storefront-settings__features">
         <article className="card storefront-settings__feature">
-          <div>
+          <div className="storefront-settings__feature-copy">
             <h2 className="section-title">Online ordering</h2>
             <p className="muted">
               Let customers browse your menu and place pickup or delivery orders.
@@ -149,13 +178,14 @@ export default function StorefrontSettings() {
           </button>
           {ordering.error ? <p className="error">Couldn’t save ({ordering.error}).</p> : null}
           {ordering.enabled && ordering.publicUrl ? (
-            <p>
-              Your ordering link: <code>{ordering.publicUrl}</code>
+            <p className="storefront-settings__link">
+              <span className="muted">Customer link</span>
+              <code>{ordering.publicUrl}</code>
             </p>
           ) : null}
         </article>
         <article className="card storefront-settings__feature">
-          <div>
+          <div className="storefront-settings__feature-copy">
             <h2 className="section-title">Online booking</h2>
             <p className="muted">
               Let customers choose an available time through the same public business site.
@@ -181,8 +211,9 @@ export default function StorefrontSettings() {
             </p>
           ) : null}
           {booking.enabled && booking.publicUrl ? (
-            <p>
-              Your booking link: <code>{booking.publicUrl}</code>
+            <p className="storefront-settings__link">
+              <span className="muted">Customer link</span>
+              <code>{booking.publicUrl}</code>
             </p>
           ) : null}
         </article>

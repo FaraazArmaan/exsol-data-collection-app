@@ -5,13 +5,14 @@ import { db } from './_shared/db';
 import { logAudit } from './_shared/audit';
 import { rejectCrossSiteMutation } from './_shared/csrf';
 import { requireBooking } from './_booking-authz';
+import { publicBookingUrl } from './_public-site-url';
 
 export const config = { path: '/api/booking/publication', method: ['GET', 'PUT'] };
 
 const PublicationPut = z.object({ enabled: z.boolean() });
 
 function publicUrl(slug: string) {
-  return `${(process.env.PUBLIC_BASE_URL ?? '').replace(/\/$/, '')}/book/${slug}`;
+  return publicBookingUrl(slug, process.env.PUBLIC_BASE_URL);
 }
 
 export default async function handler(req: Request): Promise<Response> {

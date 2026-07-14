@@ -760,6 +760,39 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
    rules orphan, so .brand-main carries the column (POS consume-review
    finding 2). POS re-scopes its narrower per-page rules under .brand-shell. */
 .brand-main { max-width: 880px; margin: 0 auto; padding: 16px; width: 100%; box-sizing: border-box; }
+.brand-public-nav-wrap { margin-bottom: 20px; }
+.brand-public-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.brand-public-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background 120ms ease;
+}
+.brand-public-nav__link:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.brand-public-nav__link.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
 
 /* Hero carousel */
 .brand-hero-carousel { position: relative; }

@@ -62,10 +62,11 @@ describe('StorefrontLayout', () => {
     global.fetch = vi.fn(async () => new Response('no', { status: 404 })) as never;
     const { container } = renderAt();
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-    // Storefront content still renders; shell falls back to the fallbackName
+    // Storefront content still renders; shell falls back to the generic public
+    // surface name.
     expect(screen.getByText('MENU_CONTENT')).toBeTruthy();
     expect(container.querySelector('.brand-shell')).not.toBeNull();
-    expect(container.textContent).toContain('Online ordering');
+    expect(container.textContent).toContain('Storefront');
   });
 
   test('fetches the brand for the route slug', async () => {

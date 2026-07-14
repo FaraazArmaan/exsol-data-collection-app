@@ -16,7 +16,7 @@ import {
   authenticateForPermission, resolveClientIdOrRespond,
 } from './_shared/permissions';
 import { rejectCrossSiteMutation } from './_shared/csrf';
-import { publicStorefrontUrl } from '../../src/modules/pos/lib/storefront-path';
+import { publicStorefrontUrl } from './_public-site-url';
 
 export const config = { path: '/api/client-settings/storefront' };
 

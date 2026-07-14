@@ -34,7 +34,7 @@ function mockToggleApi(orderingEnabled = false, bookingEnabled = false, bookingR
           enabled,
           ready: booking ? bookingReady : true,
           publicUrl: booking
-            ? 'https://exsol.app/book/cafe'
+            ? 'https://exsoldatacollectionapp.netlify.app/book/cafe'
             : 'https://exsoldatacollectionapp.netlify.app/storefront/cafe',
         }),
         { status: 200 },
@@ -62,7 +62,9 @@ describe('StorefrontSettings', () => {
     expect(
       screen.getByText('https://exsoldatacollectionapp.netlify.app/storefront/cafe'),
     ).toBeInTheDocument();
-    expect(screen.getByText('https://exsol.app/book/cafe')).toBeInTheDocument();
+    expect(
+      screen.getByText('https://exsoldatacollectionapp.netlify.app/book/cafe'),
+    ).toBeInTheDocument();
   });
 
   it('shows Booking as unavailable until its setup is ready', async () => {
