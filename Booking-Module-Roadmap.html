@@ -397,7 +397,8 @@
       </p>
       <div class="meta">
         <span>Repository evidence reviewed</span><span>State: July 14, 2026</span
-        ><span>Audience: first-year engineer</span><span>Scope: Booking only</span>
+        ><span>Audience: first-year engineer</span><span>Scope: Booking only</span
+        ><span>Active work: public storefront</span>
       </div>
     </header>
     <div class="layout">
@@ -408,25 +409,27 @@
         ><a href="#architecture">How the code connects</a><a href="#data">Data and storage</a
         ><a href="#systems">Required systems</a><a href="#integrations">Platform interactions</a
         ><a href="#structure">Folder architecture</a><a href="#roadmap">Build roadmap</a
-        ><a href="#questions">Decisions to make</a><a href="#definition">Definition of done</a>
+        ><a href="#current-work">Current work</a><a href="#questions">Decisions to make</a
+        ><a href="#definition">Definition of done</a>
       </nav>
       <main>
         <section id="start">
           <div class="eyebrow" style="color: var(--green)">Read this first</div>
           <h2>The honest short answer</h2>
           <p>
-            ExSol Booking is a <strong>functional v1 appointment scheduler</strong>, not a finished
-            booking product. It can configure services, staff or rooms, hours and time off;
-            calculate open slots; accept a guest booking; prevent two live bookings from occupying
-            the same resource at the same time; let staff view and operate bookings; and let a guest
-            cancel through a private link.
+            ExSol Booking is a <strong>functional appointment and reservation engine</strong>, not a
+            finished public storefront product. It now supports Booking Setup, Workforce-backed
+            availability, multi-service visits, policy snapshots, visit history, guest booking and
+            front-desk operations. The current build focuses on making that customer booking flow
+            publishable from one branded public business site.
           </p>
           <div class="callout">
-            <strong>Safe present-day promise:</strong> a small single-location service business can
-            demonstrate pay-at-venue appointment booking with manually managed availability.
-            <strong>Unsafe promise:</strong> production-grade online payments, dependable guest
-            rescheduling, notification delivery, reporting, auditability, multi-location operations,
-            or a unified customer record.
+            <strong>Safe present-day promise:</strong> a business can configure services and
+            capacity, offer policy-controlled pay-at-venue bookings, use Workforce shifts and leave
+            for staff availability, and operate visits from the workspace.
+            <strong>Still not ready to promise:</strong> verified online payments, reliable queued
+            reminders, a client-controlled public Booking publish switch, and one unified branded
+            Shop + Book public website.
           </div>
           <p>
             This document calls a feature <span class="tag good">good</span> when its core rule is
@@ -854,16 +857,19 @@ Guest clicks “Confirm booking”
                 </td>
               </tr>
               <tr>
-                <td><code>booking_setup</code> (target)</td>
+                <td><code>booking_setup</code></td>
                 <td>
                   Editable onboarding answers: booking party mode, bookable kinds, extra capacity
                   needs, availability source, setup completion/version, and display labels/types.
                 </td>
-                <td>Missing.</td>
                 <td>
-                  Store labels such as <code>Doctors</code>, <code>Stylists</code>,
-                  <code>Vehicles</code>, <code>Rooms</code>, and <code>Assets</code>. The frontend
-                  derives all client-facing navigation and copy from this record.
+                  Implemented in migration <code>152_booking_setup.sql</code>. Stores editable
+                  onboarding answers and derived client-facing labels.
+                </td>
+                <td>
+                  Use this configuration in the public booking flow and publish controls, so it says
+                  <code>Doctors</code>, <code>Stylists</code>, <code>Vehicles</code>,
+                  <code>Rooms</code>, or <code>Assets</code>, never “Resources.”
                 </td>
               </tr>
               <tr>
@@ -904,10 +910,45 @@ Guest clicks “Confirm booking”
                   The appointment ledger. Stores time range, service/resource/customer snapshot,
                   status, price and manage token.
                 </td>
-                <td>Strong overlap constraint and lifecycle columns.</td>
                 <td>
-                  Add immutable event log, version number, source/channel, payment reference,
-                  location, cancellation actor, reschedule lineage, consent snapshot.
+                  Compatibility projection for existing bookings; strong overlap constraint remains.
+                </td>
+                <td>
+                  Keep it compatible while new work reads visits and appointment lines. Add
+                  location, consent snapshot and provider payment reference only through dedicated
+                  modules.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code>booking_visits</code>, <code>booking_appointment_lines</code>,
+                  <code>booking_line_reservations</code>
+                </td>
+                <td>
+                  One customer visit with one or more sequential services and protected per-line
+                  capacity.
+                </td>
+                <td>
+                  Implemented in migration <code>153_booking_visits_appointment_lines.sql</code>.
+                </td>
+                <td>
+                  Support explicitly configured parallel lines, locations and group capacity only
+                  after the public flow is stable.
+                </td>
+              </tr>
+              <tr>
+                <td><code>booking_policies</code> and <code>booking_events</code></td>
+                <td>
+                  Workspace policy versions, per-visit policy snapshots, payment state and
+                  append-only lifecycle history.
+                </td>
+                <td>
+                  Implemented in migrations <code>154_booking_policies.sql</code> and
+                  <code>155_booking_lifecycle_events.sql</code>.
+                </td>
+                <td>
+                  Payments owns provider payment records; notifications own delivery jobs and retry
+                  state.
                 </td>
               </tr>
               <tr>
@@ -1207,6 +1248,44 @@ tests/booking/
             permitted notification channels; pay-at-venue stays unpaid until staff record online or
             cash settlement.
           </div>
+          <div class="callout" id="current-work">
+            <span class="tag success">Implemented locally, ready for integration</span>
+            <h3>
+              Public storefront integration: one branded website, independently published Shop and
+              Book modules
+            </h3>
+            <p>
+              The existing customer booking page at <code>/c/:slug/book</code> is the functional
+              booking flow to extend, not replace. The customer should reach it from the same
+              branded public business site that can also show ecommerce. A business may publish Shop
+              only, Book only, both, or neither.
+            </p>
+            <p>
+              <strong>What is now built:</strong> migration
+              <code>157_booking_publication</code> adds Booking-owned, default-off
+              <code>public_enabled</code> state. The workspace <em>Storefront</em> screen now owns
+              independent Online ordering and Online booking toggles. Booking Setup configures the
+              booking service; Storefront makes it customer-visible only when setup is complete and
+              an active service exists. Every Booking publication change is authenticated, protected
+              against cross-site requests and added to the audit log. Migration
+              <code>156</code> remains reserved for notification jobs.
+            </p>
+            <p>
+              The public entry point is now <code>/book/:slug</code>, wrapped in the shared brand
+              shell. A small public capability endpoint lets the same navigation show
+              <em>Shop</em> and/or <em>Book</em> independently. Booking public catalog,
+              availability, resource and create APIs return unavailable until Booking is enabled,
+              setup is completed, a service is active and the owner has published it.
+              <code>/menu/:slug</code> and the legacy <code>/c/:slug/book</code> route remain
+              available for compatibility.
+            </p>
+            <p class="small">
+              <strong>Remaining before release:</strong> add the owner-facing copy-link and QR-code
+              actions, exercise Shop-only, Book-only, both and neither in a real browser on desktop
+              and mobile, then apply migration 157 to production before promoting the code. Steps 9
+              (Payments) and 10 (notifications/integrations) are still pending.
+            </p>
+          </div>
           <div class="roadmap">
             <article class="phase">
               <h3>Rename the product concept and write the v1 contract</h3>
@@ -1388,7 +1467,10 @@ tests/booking/
               </p>
             </article>
             <article class="phase">
-              <h3>Integrate the Payments module after the Booking contract is stable</h3>
+              <h3>
+                <span class="tag missing">Pending: Step 9</span> Integrate the Payments module after
+                the Booking contract is stable
+              </h3>
               <p>
                 <span class="key">Do later, in the Payments chat:</span> build the provider-neutral
                 payment rail with Razorpay test credentials held only in environment variables. It
@@ -1409,7 +1491,10 @@ tests/booking/
               </p>
             </article>
             <article class="phase">
-              <h3>Deliver notifications, integrations, reporting and advanced features</h3>
+              <h3>
+                <span class="tag missing">Pending: Step 10</span> Deliver notifications,
+                integrations, reporting and advanced features
+              </h3>
               <p>
                 <span class="key">Do:</span> turn booking events into durable notification jobs for
                 email, SMS, WhatsApp and push only after each channel is configured and consented.

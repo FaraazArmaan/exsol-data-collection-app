@@ -133,7 +133,8 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  if (body.action === 'record_cash_payment') {
+  const action = body.action;
+  if (action === 'record_cash_payment') {
     if (!booking.visit_id) return jsonError(409, 'visit_required');
     const payment = await recordVisitCashPayment({
       visitId: booking.visit_id,
@@ -145,7 +146,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (!payment) return jsonError(409, 'invalid_cash_payment');
     return jsonOk({ id, status: payment.status, payment_status: payment.paymentStatus });
   }
-  if (body.action === 'check_in') {
+  if (action === 'check_in') {
     if (!booking.visit_id) return jsonError(409, 'visit_required');
     if (
       !(await checkInVisit({
@@ -157,14 +158,15 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonError(409, 'check_in_not_allowed');
     return jsonOk({ id, status: booking.status, checked_in: true });
   }
-  const action = body.action as BookingAction;
-  if (!['cancel', 'complete', 'noShow', 'unblock', 'pay'].includes(action))
+  if (!['cancel', 'complete', 'noShow', 'unblock', 'pay'].includes(action ?? ''))
     return jsonError(400, 'invalid_action');
 
-  const isEnd = action === 'complete' || action === 'noShow';
+  const fsmAction = action as BookingAction;
+
+  const isEnd = fsmAction === 'complete' || fsmAction === 'noShow';
   const t = applyTransition({
     from: booking.status as BookingStatus,
-    action,
+    action: fsmAction,
     perms: a.ctx.perms,
     now: new Date(),
     startsAt: new Date(isEnd ? booking.end_at : booking.start_at),
@@ -173,7 +175,7 @@ export default async function handler(req: Request): Promise<Response> {
   });
   if (!t.ok) return jsonError(FSM_HTTP[t.code] ?? 409, t.code);
 
-  if (action === 'unblock') {
+  if (fsmAction === 'unblock') {
     await sql`DELETE FROM public.bookings WHERE id = ${id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid`;
     return jsonOk({ id, deleted: true });
   }
@@ -182,13 +184,13 @@ export default async function handler(req: Request): Promise<Response> {
       visitId: booking.visit_id,
       clientId: a.ctx.clientId,
       status: t.to as 'cancelled' | 'completed' | 'no_show',
-      reason: action === 'cancel' ? (body.reason ?? null) : null,
+      reason: fsmAction === 'cancel' ? (body.reason ?? null) : null,
       eventSource: 'vendor',
       actorUserNodeId: a.ctx.userNodeId,
     });
     return jsonOk({ id, status: t.to });
   }
-  if (booking.visit_id && action === 'pay') {
+  if (booking.visit_id && fsmAction === 'pay') {
     const payment = await recordVisitCashPayment({
       visitId: booking.visit_id,
       clientId: a.ctx.clientId,
@@ -202,8 +204,8 @@ export default async function handler(req: Request): Promise<Response> {
   const updated = (await sql`
     UPDATE public.bookings SET
       status = ${t.to}::booking_status,
-      cancelled_at = ${action === 'cancel' ? new Date().toISOString() : null}::timestamptz,
-      cancellation_reason = ${action === 'cancel' ? (body.reason ?? null) : null},
+      cancelled_at = ${fsmAction === 'cancel' ? new Date().toISOString() : null}::timestamptz,
+      cancellation_reason = ${fsmAction === 'cancel' ? (body.reason ?? null) : null},
       updated_at = now()
     WHERE id = ${id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid
     RETURNING id, status, cancelled_at, cancellation_reason

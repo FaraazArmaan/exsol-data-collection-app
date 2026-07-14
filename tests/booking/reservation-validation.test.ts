@@ -4,6 +4,7 @@ import manage from '../../netlify/functions/booking-public-manage';
 import {
   enableBooking,
   makeService,
+  publishBooking,
   publicRequest,
   seedClientWithBooking,
   seedCustomerRole,
@@ -32,6 +33,7 @@ beforeAll(async () => {
     { mon: [{ open: '09:00', close: '12:00' }] },
     { slot_interval_min: 30 },
   );
+  await publishBooking(ctx.clientId);
 });
 
 function body(start: string, phone: string) {
@@ -109,8 +111,8 @@ describe('authoritative reservation validation', () => {
     );
     await sql`
       INSERT INTO public.booking_setup
-        (bucket_id, booking_party_mode, bookable_kinds, extra_capacity_needs, availability_source, completed_at)
-      VALUES (${workforce.clientId}::uuid, 'specific_team_member', ARRAY['appointment']::text[], ARRAY[]::text[], 'workforce', now())
+        (bucket_id, booking_party_mode, bookable_kinds, extra_capacity_needs, availability_source, completed_at, public_enabled)
+      VALUES (${workforce.clientId}::uuid, 'specific_team_member', ARRAY['appointment']::text[], ARRAY[]::text[], 'workforce', now(), true)
     `;
     await sql`
       INSERT INTO public.workforce_employee_profiles (client_id, resource_id, legal_name)

@@ -40,7 +40,7 @@ function renderRoute(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/menu/:slug" element={<StorefrontLayout />}>
+        <Route path="/storefront/:slug" element={<StorefrontLayout />}>
           <Route index element={<StorefrontMenuPage />} />
           <Route path="cart" element={<StorefrontCartPage />} />
         </Route>
@@ -52,7 +52,7 @@ function renderRoute(path: string) {
 describe('storefront pages consume the shared BrandShell (no local StorefrontShell)', () => {
   test('menu-fetch 404 renders NotAvailableCard as content inside the one branded shell', async () => {
     mockFetch({ menuStatus: 404 });
-    const { container } = renderRoute('/menu/papas');
+    const { container } = renderRoute('/storefront/papas');
     await waitFor(() => expect(screen.getByText(/isn.t available here/i)).toBeTruthy());
     // Exactly one shell — the shared brand shell — and NOT the legacy local one.
     expect(container.querySelectorAll('.brand-shell')).toHaveLength(1);
@@ -61,7 +61,7 @@ describe('storefront pages consume the shared BrandShell (no local StorefrontShe
 
   test('cart page renders its content inside the branded shell, no local StorefrontShell', async () => {
     mockFetch({ menuStatus: 200 });
-    const { container } = renderRoute('/menu/papas/cart');
+    const { container } = renderRoute('/storefront/papas/cart');
     await waitFor(() => expect(container.querySelector('.pos-cart-page')).not.toBeNull());
     expect(container.querySelector('.brand-shell')).not.toBeNull();
     expect(container.querySelector('.storefront-shell')).toBeNull();

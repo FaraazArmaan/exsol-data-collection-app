@@ -1,5 +1,5 @@
 import { Outlet, useParams } from 'react-router-dom';
-import { BrandShell, useBrand } from '../../branding';
+import { BrandShell, PublicSurfaceNav, useBrand } from '../../branding';
 
 // Public storefront layout. Fetches the tenant brand ONCE for the whole guest
 // flow (menu → cart → details → receipt) and wraps every page in the shared
@@ -11,6 +11,7 @@ export default function StorefrontLayout() {
   const { brand } = useBrand(slug);
   return (
     <BrandShell brand={brand ?? undefined} fallbackName="Online ordering">
+      {slug ? <PublicSurfaceNav slug={slug} /> : null}
       <Outlet />
     </BrandShell>
   );

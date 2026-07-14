@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   bookingApi,
   BookingApiError,
@@ -46,16 +47,19 @@ export default function BookingSetupPage({ slug, perms }: Props) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
+    setError(null);
     bookingApi
       .getSetup()
       .then((value) => {
         setSetup(value);
         setDraft(draftFrom(value));
+        setStep(value.completed_at ? STEPS.length : 0);
       })
-      .catch(() => setError('load_error'));
-  }, []);
+      .catch((e) => setError(e instanceof BookingApiError ? e.code : 'load_error'));
+  }, [loadAttempt]);
 
   async function save() {
     if (!draft) return;
@@ -76,8 +80,24 @@ export default function BookingSetupPage({ slug, perms }: Props) {
     }
   }
 
-  if (error === 'load_error') return <p className="error">Couldn’t load Booking Setup.</p>;
-  if (!setup || !draft) return <div className="muted">Loading…</div>;
+  if (!setup || !draft) {
+    return (
+      <div className="page booking-vendor">
+        <BookingTabs slug={slug} perms={perms} />
+        <h1 className="page-title">Booking Setup</h1>
+        {error ? (
+          <div className="card">
+            <p className="error">Couldn’t load Booking Setup ({error}).</p>
+            <button className="btn btn-secondary" onClick={() => setLoadAttempt((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
+        ) : (
+          <div className="muted">Loading…</div>
+        )}
+      </div>
+    );
+  }
   const needsTeam = draft.booking_party_mode !== 'nobody_specific';
   const needsSpace =
     draft.bookable_kinds.includes('space') || draft.extra_capacity_needs.includes('space');
@@ -106,6 +126,11 @@ export default function BookingSetupPage({ slug, perms }: Props) {
             {setup.availability_source === 'workforce'
               ? 'Workforce shifts and leave'
               : 'Manual business hours'}
+          </p>
+          <p className="muted">
+            Turn customer booking on or off in{' '}
+            <Link to={`/c/${slug}/pos/settings`}>Storefront</Link>. It appears beside online
+            ordering because both are features of the same public business site.
           </p>
           {canEdit ? (
             <button className="btn btn-primary" onClick={() => setStep(0)}>

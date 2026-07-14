@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Booking Tutorial | ExSol</title>
+    <style>
+      :root {
+        --ink: #14211f;
+        --muted: #53625e;
+        --paper: #f7f4ed;
+        --panel: #fffdf8;
+        --line: #d9d4c7;
+        --forest: #135843;
+        --mint: #dff1e4;
+        --gold: #b77817;
+        --blue: #245b83;
+        --soft-blue: #e3eff7;
+        --red: #9a3a32;
+        --shadow: 0 16px 40px rgba(20, 33, 31, 0.09);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 8% 0%, #e0efe4 0, transparent 28rem),
+          linear-gradient(120deg, var(--paper), #f0eee7);
+        font-family: Georgia, 'Times New Roman', serif;
+        line-height: 1.58;
+      }
+      a {
+        color: var(--forest);
+      }
+      .page {
+        width: min(1160px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+      .hero {
+        padding: 68px 0 38px;
+      }
+      .eyebrow {
+        color: var(--forest);
+        font:
+          700 0.78rem/1.2 Arial,
+          sans-serif;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.08;
+        margin: 0;
+      }
+      h1 {
+        max-width: 800px;
+        font-size: clamp(2.6rem, 7vw, 5.6rem);
+        letter-spacing: -0.065em;
+      }
+      h2 {
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        letter-spacing: -0.04em;
+      }
+      h3 {
+        font-size: 1.22rem;
+      }
+      .lead {
+        max-width: 720px;
+        color: var(--muted);
+        font-size: 1.22rem;
+      }
+      .badges,
+      .status-row,
+      .steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .badge,
+      .status {
+        border-radius: 999px;
+        padding: 5px 10px;
+        font:
+          700 0.74rem/1 Arial,
+          sans-serif;
+      }
+      .badge {
+        color: var(--forest);
+        background: var(--mint);
+      }
+      .status.live {
+        color: #0e523b;
+        background: var(--mint);
+      }
+      .status.next {
+        color: #704708;
+        background: #faecd2;
+      }
+      .status.note {
+        color: #174b70;
+        background: var(--soft-blue);
+      }
+      .toc {
+        margin: 16px 0 54px;
+        padding: 22px;
+        background: rgba(255, 253, 248, 0.72);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .toc strong {
+        font-family: Arial, sans-serif;
+      }
+      .toc a {
+        display: inline-block;
+        margin: 8px 18px 0 0;
+        font-family: Arial, sans-serif;
+        font-size: 0.9rem;
+      }
+      section {
+        padding: 54px 0;
+        border-top: 1px solid var(--line);
+      }
+      .intro-grid,
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+      .three {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .card,
+      .callout,
+      .screen {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+      .card p:last-child,
+      .callout p:last-child {
+        margin-bottom: 0;
+      }
+      .callout {
+        border-left: 6px solid var(--forest);
+        background: #edf7ef;
+        box-shadow: none;
+      }
+      .callout.warning {
+        border-left-color: var(--gold);
+        background: #fff5e2;
+      }
+      .callout.blue {
+        border-left-color: var(--blue);
+        background: #edf6fb;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 0.91rem;
+      }
+      .number {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        color: white;
+        background: var(--forest);
+        border-radius: 50%;
+        font:
+          700 0.9rem Arial,
+          sans-serif;
+      }
+      .step {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        margin: 16px 0;
+      }
+      .step p {
+        margin: 3px 0 0;
+      }
+      .definition {
+        margin: 16px 0;
+        padding: 15px 17px;
+        background: #f1f5ef;
+        border-radius: 10px;
+      }
+      .definition b {
+        font-family: Arial, sans-serif;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin-top: 22px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+        font-size: 0.94rem;
+      }
+      th,
+      td {
+        padding: 13px;
+        border: 1px solid var(--line);
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        background: #e6eee5;
+        font-family: Arial, sans-serif;
+      }
+      .screen {
+        padding: 0;
+        overflow: hidden;
+        background: #edf0ec;
+        font-family: Arial, sans-serif;
+      }
+      .screen-caption {
+        padding: 12px 16px;
+        border-bottom: 1px solid #cbd4ce;
+        color: #4d5c56;
+        background: #fbfcfa;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .mock {
+        padding: 22px;
+        color: #1d2b26;
+      }
+      .mock-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      .mock-title {
+        font:
+          700 1.15rem Georgia,
+          serif;
+      }
+      .button {
+        display: inline-block;
+        padding: 9px 13px;
+        border-radius: 7px;
+        color: white;
+        background: #176147;
+        font-weight: 700;
+        font-size: 0.8rem;
+      }
+      .progress {
+        display: flex;
+        gap: 5px;
+        margin: 14px 0 24px;
+      }
+      .progress i {
+        display: block;
+        width: 38px;
+        height: 5px;
+        border-radius: 4px;
+        background: #c8d2cd;
+      }
+      .progress i.on {
+        background: #176147;
+      }
+      .question {
+        padding: 15px;
+        margin-top: 11px;
+        border: 1px solid #cbd4ce;
+        border-radius: 9px;
+        background: white;
+      }
+      .choice {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 0;
+        font-size: 0.84rem;
+      }
+      .radio {
+        width: 15px;
+        height: 15px;
+        border: 2px solid #73847c;
+        border-radius: 50%;
+      }
+      .selected .radio {
+        border: 5px solid #176147;
+      }
+      .booking-layout {
+        display: grid;
+        grid-template-columns: 0.85fr 1.15fr;
+        gap: 16px;
+      }
+      .service,
+      .slot,
+      .summary-row {
+        padding: 11px;
+        margin: 7px 0;
+        border: 1px solid #d1d8d3;
+        border-radius: 7px;
+        background: white;
+        font-size: 0.78rem;
+      }
+      .service.selected,
+      .slot.selected {
+        border-color: #176147;
+        background: #eaf6ed;
+      }
+      .slot-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+      .slot {
+        margin: 0;
+        text-align: center;
+      }
+      .calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        margin: 9px 0 14px;
+      }
+      .day {
+        padding: 6px 2px;
+        border-radius: 5px;
+        text-align: center;
+        font-size: 0.7rem;
+      }
+      .day.available {
+        color: #11573f;
+        background: #dff1e4;
+        font-weight: 700;
+      }
+      .drawer {
+        width: min(430px, 100%);
+        margin-left: auto;
+        min-height: 400px;
+        padding: 22px;
+        background: white;
+        box-shadow: -10px 0 25px rgba(0, 0, 0, 0.08);
+      }
+      .timeline {
+        margin: 18px 0;
+        padding-left: 15px;
+        border-left: 2px solid #b9c8c0;
+      }
+      .event {
+        position: relative;
+        padding: 0 0 14px 13px;
+        font-size: 0.78rem;
+      }
+      .event::before {
+        position: absolute;
+        left: -6px;
+        top: 4px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #176147;
+        content: '';
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin: 22px 0;
+      }
+      .flow div {
+        position: relative;
+        padding: 12px 8px;
+        border-radius: 9px;
+        background: #e3ede5;
+        text-align: center;
+        font:
+          700 0.77rem/1.25 Arial,
+          sans-serif;
+      }
+      .flow div:not(:last-child)::after {
+        position: absolute;
+        right: -7px;
+        top: 50%;
+        z-index: 1;
+        color: var(--forest);
+        font-size: 1.2rem;
+        content: '>';
+        transform: translateY(-50%);
+      }
+      .client-note {
+        margin-top: 12px;
+        color: var(--muted);
+        font:
+          0.82rem Arial,
+          sans-serif;
+      }
+      footer {
+        padding: 38px 0 68px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      @media (max-width: 760px) {
+        .intro-grid,
+        .grid,
+        .three,
+        .booking-layout {
+          grid-template-columns: 1fr;
+        }
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .flow div:not(:last-child)::after {
+          right: auto;
+          top: auto;
+          bottom: -18px;
+          left: 50%;
+          content: 'v';
+          transform: translateX(-50%);
+        }
+        .hero {
+          padding-top: 42px;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        .card,
+        .screen {
+          box-shadow: none;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">ExSol platform guide</p>
+        <h1>Booking, explained from first click to finished visit.</h1>
+        <p class="lead">
+          This guide is for business owners and front-desk teams. It explains what the Booking
+          module does, how customers use it, and how your team controls availability, rules,
+          payments, and records.
+        </p>
+        <div class="badges">
+          <span class="badge">Client tutorial</span>
+          <span class="badge">Appointments and reservations</span>
+          <span class="badge">Click-by-click</span>
+        </div>
+      </header>
+
+      <nav class="toc" aria-label="Table of contents">
+        <strong>In this guide</strong><br />
+        <a href="#start">1. Start here</a>
+        <a href="#systems">2. Systems</a>
+        <a href="#setup">3. Set up booking</a>
+        <a href="#publish">4. Publish storefront</a>
+        <a href="#customer">5. Customer booking</a>
+        <a href="#operations">6. Front desk</a>
+        <a href="#rules">7. Rules and availability</a>
+        <a href="#payments">8. Payments</a>
+        <a href="#data">9. Data and connections</a>
+        <a href="#checklist">10. Launch checklist</a>
+      </nav>
+
+      <section id="start">
+        <p class="eyebrow">1. The simple picture</p>
+        <h2>What Booking is for</h2>
+        <div class="intro-grid" style="margin-top: 22px">
+          <div class="card">
+            <h3>It lets a customer reserve real time.</h3>
+            <p>
+              A customer chooses what they need, a person or place if relevant, and an available
+              time. The system checks the business rules before confirming the visit.
+            </p>
+            <p>
+              It works for salons, consultants, clinics, studios, rental businesses, classes, and
+              any business that needs to protect a time slot.
+            </p>
+          </div>
+          <div class="card">
+            <h3>It protects the business schedule.</h3>
+            <p>
+              The module checks working hours, staff shifts and leave, service duration, buffer
+              time, booking lead time, and existing reservations. A slot is not shown as available
+              just because it looks empty on a calendar.
+            </p>
+            <p>When staff are selected, Workforce is the source of truth for their availability.</p>
+          </div>
+        </div>
+        <div class="definition">
+          <b>Useful terms:</b> A <b>service</b> is what the customer receives, such as a
+          consultation or haircut. A <b>visit</b> is the complete customer reservation. A visit can
+          contain more than one service. A <b>booking rule</b> is a business decision, such as how
+          late someone may cancel.
+        </div>
+        <div class="callout blue">
+          <b>You will not see a generic “Resources” area.</b> The software uses a technical capacity
+          record internally, but the client-facing labels are meaningful: <i>Doctors</i>,
+          <i>Stylists</i>, <i>Rooms</i>, <i>Vehicles</i>, or <i>Equipment</i>. Booking Setup chooses
+          the correct language for your business.
+        </div>
+      </section>
+
+      <section id="systems">
+        <p class="eyebrow">2. The systems working together</p>
+        <h2>A booking is more than a calendar entry.</h2>
+        <div class="three" style="margin-top: 24px">
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Booking Setup</h3>
+            <p>
+              Guided questions set who is booked, what is booked, whether a room or equipment is
+              required, and where availability comes from.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Services</h3>
+            <p>
+              Defines what customers can book, their duration, price, and whether they are active.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Availability</h3>
+            <p>
+              Calculates safe time slots from business hours, Workforce shifts and leave, buffers,
+              and existing reservations.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Visits and service lines</h3>
+            <p>
+              Groups several services into one customer visit while recording each service
+              separately for capacity and history.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Policies</h3>
+            <p>
+              Stores cancellation, rescheduling, lead-time, buffer, deposit, and no-show choices.
+              Each visit keeps the policy that applied when it was made.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Front desk and history</h3>
+            <p>
+              Lets staff check in a customer, record cash received, update the visit status, and
+              view a permanent activity history.
+            </p>
+          </article>
+        </div>
+        <div class="three" style="margin-top: 16px">
+          <article class="card">
+            <span class="status note">Connected system</span>
+            <h3 style="margin-top: 12px">Workforce</h3>
+            <p>
+              Provides shifts and leave for team members. It is authoritative whenever a customer
+              books a named or available team member.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Public storefront</h3>
+            <p>
+              Gives customers a branded Booking page at <code>/book/your-business-slug</code>. It
+              can appear beside Shop on the same public business site.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status next">Next phase</span>
+            <h3 style="margin-top: 12px">Online payments</h3>
+            <p>
+              A payment provider will collect card or online payments and tell Booking whether
+              payment succeeded, failed, or needs a refund.
+            </p>
+          </article>
+          <article class="card">
+            <span class="status next">Next phase</span>
+            <h3 style="margin-top: 12px">Notification jobs</h3>
+            <p>
+              Queued reminders, follow-ups, and reliable retry handling will be added after the
+              Payments and notification work is completed.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="setup">
+        <p class="eyebrow">3. Owner tutorial</p>
+        <h2>Set up your business before opening bookings.</h2>
+        <div class="grid" style="margin-top: 24px">
+          <div>
+            <div class="screen">
+              <div class="screen-caption">Interface illustration: Booking Setup first visit</div>
+              <div class="mock">
+                <div class="mock-header">
+                  <span class="mock-title">Booking Setup</span
+                  ><span class="button">Save and continue</span>
+                </div>
+                <div class="progress">
+                  <i class="on"></i><i class="on"></i><i></i><i></i><i></i>
+                </div>
+                <div class="question">
+                  <b>Who do customers book with?</b>
+                  <div class="choice selected"><span class="radio"></span>Specific team member</div>
+                  <div class="choice"><span class="radio"></span>Any available team member</div>
+                  <div class="choice">
+                    <span class="radio"></span>Nobody specific, just a time/place
+                  </div>
+                </div>
+                <div class="question">
+                  <b>What can be booked?</b>
+                  <div class="choice selected"><span class="radio"></span>Appointments</div>
+                  <div class="choice"><span class="radio"></span>Rooms/spaces</div>
+                  <div class="choice"><span class="radio"></span>Equipment/assets</div>
+                </div>
+              </div>
+            </div>
+            <p class="client-note">Illustration only. Labels change to match your business.</p>
+          </div>
+          <div class="card">
+            <h3>Click-by-click: Booking Setup</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>
+                Open <b>Booking</b> from the platform navigation and select <b>Booking Setup</b>.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>
+                Answer <b>Who do customers book with?</b> Choose a named team member, any available
+                team member, or no person at all.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                Answer <b>What can be booked?</b> Choose appointments, rooms/spaces,
+                equipment/assets, or a combination.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>
+                Answer whether a booking also needs a room, equipment, both, or neither. Example: a
+                doctor consultation may need both a doctor and examination room.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Choose availability source. Pick <b>Workforce shifts and leave</b> for team-based
+                businesses. Pick manual business hours only if no Workforce schedule is used yet.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">6</span>
+              <p>
+                Connect services using clear prompts: “This service can be performed by...”, “This
+                service needs...”, and “This booking uses...”. Save the setup.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <b>What happens when you save?</b> Booking stores the answers, creates sensible default
+          rules, and chooses the client-facing capacity labels. You can reopen Booking Setup later
+          to change the answers; the configuration is editable rather than a one-time wizard.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>If your business is...</th>
+                <th>You will see...</th>
+                <th>Typical setup</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Solo consultant</td>
+                <td><b>Your Availability</b></td>
+                <td>
+                  Appointments, no additional capacity, manual hours or your Workforce schedule.
+                </td>
+              </tr>
+              <tr>
+                <td>Salon</td>
+                <td><b>Team Availability</b> and optional <b>Stations</b></td>
+                <td>
+                  Customers choose a stylist or any available stylist. Some services require a
+                  station.
+                </td>
+              </tr>
+              <tr>
+                <td>Clinic</td>
+                <td><b>Doctors</b>, <b>Rooms</b>, and <b>Equipment</b></td>
+                <td>
+                  A visit may require a doctor, room, and equipment together before a slot is
+                  offered.
+                </td>
+              </tr>
+              <tr>
+                <td>Equipment rental</td>
+                <td><b>Assets</b> and <b>Booking Rules</b></td>
+                <td>Customers reserve an item and period; a specific employee is optional.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <h3>Then add services</h3>
+            <p>
+              Open <b>Services</b>, select <b>Add service</b>, enter the service name, duration,
+              price, and availability. Repeat for every customer-facing offering. A service must be
+              active before customers can select it.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Then connect capacity</h3>
+            <p>
+              Use the contextual pages created by setup, such as <b>Team Availability</b>,
+              <b>Doctors</b>, <b>Rooms &amp; Spaces</b>, or <b>Equipment</b>. Do not think in
+              generic technical categories; think about what must be free for the booking to happen.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="publish">
+        <p class="eyebrow">4. Owner tutorial</p>
+        <h2>Publish Booking before customers can use the storefront.</h2>
+        <div class="callout blue" style="margin-top: 22px">
+          <b>Publishing is deliberate.</b> Completing Booking Setup does not automatically expose
+          your schedule online. Booking stays private until an authorised owner turns on
+          <b>Online booking</b> in Storefront. This prevents customers seeing an unfinished service
+          list or unreliable availability.
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="screen">
+            <div class="screen-caption">Interface illustration: Storefront settings</div>
+            <div class="mock">
+              <div class="mock-header">
+                <span class="mock-title">Storefront customer features</span>
+                <span class="status live">Ready to publish</span>
+              </div>
+              <div class="summary-row">
+                <b>Online ordering</b><br />Menu and ecommerce<br />On or off independently
+              </div>
+              <div class="summary-row">
+                <b>Online booking</b><br />Booking Setup complete<br />At least one active service
+              </div>
+              <span class="button">Turn on online booking</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Click-by-click: publish your storefront</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>Finish <b>Booking Setup</b> and create at least one active service.</p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>Open <b>Storefront</b> from the workspace navigation.</p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                Find <b>Online booking</b>. It stays unavailable until Booking Setup is complete and
+                a service is active.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>Turn <b>Online booking</b> on, then review the displayed customer address.</p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Make a test booking as a customer before sharing the address publicly. Online
+                ordering is controlled separately in the same Storefront page.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <h3>One business site, two independent offers</h3>
+            <p>
+              Your public site can show <b>Shop</b>, <b>Book</b>, both, or neither. Publishing
+              Booking never publishes ecommerce, and publishing ecommerce never opens Booking.
+            </p>
+          </div>
+          <div class="card">
+            <h3>When you need to pause bookings</h3>
+            <p>
+              Turn <b>Online booking</b> off from Storefront. Existing customers can still use their
+              secure management link; new visitors cannot view services, availability or make a new
+              booking.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="customer">
+        <p class="eyebrow">5. Customer tutorial</p>
+        <h2>How a customer makes and manages a booking</h2>
+        <div class="callout blue" style="margin-top: 22px">
+          <b>Where customers start:</b> the branded public booking storefront is
+          <code>https://your-exsol-domain/book/your-business-slug</code>. Replace
+          <code>your-business-slug</code> with the business workspace slug. This is an anonymous
+          customer page, not a workspace page: customers do not need an ExSol login. It is visible
+          only after the owner has published Booking.
+        </div>
+        <p class="small">
+          Older shared links using <code>/c/your-business-slug/book</code> remain a compatibility
+          path. Use <code>/book/your-business-slug</code> in new materials because it is the branded
+          storefront route and supports the shared Shop and Book navigation.
+        </p>
+        <div class="screen" style="margin-top: 24px">
+          <div class="screen-caption">Interface illustration: public booking page</div>
+          <div class="mock booking-layout">
+            <div>
+              <b>1. Choose services</b>
+              <div class="service selected">Haircut <small>45 min</small></div>
+              <div class="service selected">Beard trim <small>20 min</small></div>
+              <div class="service">Hair colour <small>90 min</small></div>
+            </div>
+            <div>
+              <b>2. Choose date and time</b>
+              <div class="calendar">
+                <span class="day">12</span><span class="day available">13</span
+                ><span class="day available">14</span><span class="day">15</span
+                ><span class="day available">16</span><span class="day">17</span
+                ><span class="day">18</span>
+              </div>
+              <div class="slot-grid">
+                <div class="slot">10:00</div>
+                <div class="slot selected">11:30</div>
+                <div class="slot">14:00</div>
+              </div>
+              <div class="summary-row">
+                <b>Your visit</b><br />Haircut + beard trim<br />11:30 to 12:35
+              </div>
+              <span class="button">Continue</span>
+            </div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <h3>Click-by-click: make a booking</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>
+                Open the business booking link. The current address format is
+                <code>/book/your-business-slug</code>. If the business also sells products, use the
+                <b>Book</b> link in its public navigation rather than the <b>Shop</b> link.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>
+                Select one or more services. The system creates one visit with separate service
+                lines, so the customer does not need separate bookings.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                Select a team member when the business offers that choice, or select “any available”
+                if offered.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>
+                Choose a date and an offered time. Only slots that pass the business availability
+                checks appear.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Enter contact details and accept any required consent. Review the appointment
+                summary and applicable policy.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">6</span>
+              <p>
+                Choose <b>pay at venue</b> when that option is offered and confirm. The customer
+                sees a confirmation with the visit details. Card, UPI, deposits and refunds require
+                the separate Payments module before they can be collected online.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>What the customer sees after booking</h3>
+            <p>
+              The confirmation records the visit reference, selected services, time, and status. A
+              calendar file can be used to add the visit to a personal calendar.
+            </p>
+            <p>
+              For a business that permits it, the customer can use the management link to view the
+              booking, choose another open slot, or cancel. The rules shown are the rules that
+              applied when the visit was created.
+            </p>
+            <p class="small">
+              <b>Important:</b> Cancellation and rescheduling are allowed only inside the limits set
+              by the business. A change frees the old reserved time after the new time has been
+              safely accepted.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="operations">
+        <p class="eyebrow">6. Team tutorial</p>
+        <h2>Run the day from the calendar and booking detail.</h2>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <h3>Click-by-click: front desk workflow</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>
+                Open <b>Booking</b> and go to the calendar or booking list. Select the visit you
+                need to handle.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>
+                Review the customer, all services, scheduled time, assigned person/place, payment
+                status, and policy snapshot.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                When the customer arrives, select <b>Check in</b>. This records an event in the
+                booking history.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>
+                If the customer pays cash, select <b>Record cash payment</b> only after receiving
+                it. This changes the payment status and records who did it.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Use the appropriate visit action to complete, cancel, mark no-show, or reschedule
+                the booking. Do not overwrite the past; each action becomes part of the history.
+              </p>
+            </div>
+          </div>
+          <div class="screen">
+            <div class="screen-caption">Interface illustration: booking detail and history</div>
+            <div class="drawer">
+              <div class="mock-header">
+                <span class="mock-title">Visit #BK-1042</span
+                ><span class="status live">Checked in</span>
+              </div>
+              <div class="summary-row">
+                <b>Asha Patel</b><br />Haircut + beard trim<br />Tue, 11:30 to 12:35
+              </div>
+              <div class="summary-row">
+                Payment: <b>Cash pending</b><br /><span class="button">Record cash payment</span>
+              </div>
+              <div class="timeline">
+                <div class="event"><b>Checked in</b><br />Today, 11:26 by front desk</div>
+                <div class="event"><b>Visit confirmed</b><br />Yesterday, 16:09</div>
+                <div class="event"><b>Booking created</b><br />Yesterday, 16:08</div>
+              </div>
+              <span class="button">Complete visit</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout blue">
+          <b>Why is the history important?</b> The event timeline is append-only. It provides a
+          trustworthy operational record of what happened and when, instead of silently rewriting a
+          booking after a dispute or staff handover.
+        </div>
+      </section>
+
+      <section id="rules">
+        <p class="eyebrow">7. Controls</p>
+        <h2>Use Booking Rules to set fair limits.</h2>
+        <div class="grid" style="margin-top: 24px">
+          <div class="screen">
+            <div class="screen-caption">Interface illustration: Booking Rules</div>
+            <div class="mock">
+              <div class="mock-header">
+                <span class="mock-title">Booking Rules</span
+                ><span class="button">Save changes</span>
+              </div>
+              <div class="question">
+                <b>How far ahead can customers book?</b>
+                <div class="choice selected">
+                  <span class="radio"></span>At least 2 hours before the start
+                </div>
+              </div>
+              <div class="question">
+                <b>How late can customers cancel?</b>
+                <div class="choice selected">
+                  <span class="radio"></span>Up to 24 hours before the start
+                </div>
+              </div>
+              <div class="question">
+                <b>Rescheduling</b>
+                <div class="choice selected"><span class="radio"></span>Allow up to 2 changes</div>
+              </div>
+              <div class="question">
+                <b>Buffer between appointments</b>
+                <div class="choice selected"><span class="radio"></span>10 minutes</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Click-by-click: policy setup</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>Open <b>Booking Rules</b> from Booking navigation.</p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>
+                Set booking lead time. This prevents last-minute online bookings your team cannot
+                realistically prepare for.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                Set a cancellation cutoff and reschedule cutoff. Industry-standard defaults are 24
+                hours before the appointment, but your business can choose another rule.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>
+                Set maximum customer reschedules and service buffers. Buffers reserve preparation or
+                cleanup time around the customer-facing service duration.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Choose deposit and no-show rules. Start with clear, simple values and revise them
+                once you understand actual customer behaviour.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="flow">
+          <div>Service and duration</div>
+          <div>Workforce shift / business hours</div>
+          <div>Required person, room, or equipment</div>
+          <div>Existing bookings and buffers</div>
+          <div>Safe slot shown</div>
+        </div>
+        <div class="callout">
+          <b>Availability rule:</b> when the business allows booking with a team member, Workforce
+          shifts and approved leave override manual assumptions. A doctor scheduled from 7 pm to 10
+          pm cannot be offered at 3 pm.
+        </div>
+      </section>
+
+      <section id="payments">
+        <p class="eyebrow">8. Payments, honestly explained</p>
+        <h2>Booking records payment state. Provider collection is a separate phase.</h2>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">Pay at venue and cash record</h3>
+            <p>
+              A booking can stay <b>cash pending</b> until the customer pays. When cash is received,
+              an authorised team member records it from the booking detail. The history shows that
+              action.
+            </p>
+            <p>
+              This separates the appointment state from payment state. A person can be booked and
+              confirmed while their cash payment is still pending.
+            </p>
+          </div>
+          <div class="card">
+            <span class="status next">Next phase: Payments module</span>
+            <h3 style="margin-top: 12px">Card, UPI, deposits, refunds</h3>
+            <p>
+              The Payments module will securely connect a provider such as Razorpay. It will confirm
+              online payment, handle failures, deposits, refunds, and reconciliation. Booking will
+              consume that confirmed result; it must not assume an online payment succeeded.
+            </p>
+            <p class="small">
+              Do not enter payment-provider keys in Booking screens or documents. They belong in the
+              protected Payments configuration.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="data">
+        <p class="eyebrow">9. Data, permissions, and connected modules</p>
+        <h2>What is stored, and who needs it</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>System</th>
+                <th>Booking reads from it</th>
+                <th>Booking provides back</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Workforce</td>
+                <td>Team members, working shifts, and leave.</td>
+                <td>Scheduled workload and visit assignment context.</td>
+              </tr>
+              <tr>
+                <td>Customer / CRM</td>
+                <td>Customer contact details where connected.</td>
+                <td>Visit history, cancellations, no-shows, and service interest.</td>
+              </tr>
+              <tr>
+                <td>Payments</td>
+                <td>Confirmed online payment, refund, and failure results.</td>
+                <td>Amount due, deposit requirement, booking reference, and payment purpose.</td>
+              </tr>
+              <tr>
+                <td>Notifications</td>
+                <td>Delivery status for confirmations and reminders.</td>
+                <td>Confirmation, change, cancellation, and reminder requests.</td>
+              </tr>
+              <tr>
+                <td>Reporting / finance</td>
+                <td>Optional payment and sales aggregation.</td>
+                <td>Service demand, attendance, payment state, and operational history.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <h3>What Booking stores</h3>
+            <p>
+              It stores the visit, individual service lines, scheduled times, capacity reservations,
+              selected team member/place if applicable, policy snapshot, payment status, and
+              lifecycle events. Storing each service line separately lets one visit include several
+              services without losing capacity accuracy.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Permissions and privacy</h3>
+            <p>
+              Owners configure Booking. Authorised staff operate bookings according to role
+              permissions. Customers should see only their own booking through a secure management
+              path. Staff should only access customer information needed to deliver and manage the
+              service.
+            </p>
+          </div>
+        </div>
+        <div class="callout warning">
+          <b>Technical note for administrators:</b> database and API names may use a generic
+          internal term for capacity records. This does not control the client interface. The
+          configured display type and label determine whether people see Doctors, Stylists,
+          Vehicles, Rooms, or Equipment.
+        </div>
+      </section>
+
+      <section id="checklist">
+        <p class="eyebrow">10. Launch checklist</p>
+        <h2>Complete this before sharing your booking link.</h2>
+        <div class="grid" style="margin-top: 22px">
+          <div class="card">
+            <h3>Business owner</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>Complete Booking Setup and confirm the labels make sense to your staff.</p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>Create every active service with correct duration and price.</p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>Set team shifts and leave in Workforce, or set reliable manual business hours.</p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>Set booking, cancellation, rescheduling, deposit, buffer, and no-show rules.</p>
+            </div>
+            <div class="step">
+              <span class="number">5</span>
+              <p>
+                Open <b>Storefront</b>, turn <b>Online booking</b> on, and review the displayed
+                customer address.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">6</span>
+              <p>Make one test booking as a customer, then check it in and complete it as staff.</p>
+            </div>
+            <div class="step">
+              <span class="number">7</span>
+              <p>
+                Share your public booking address:
+                <code>https://your-exsol-domain/book/your-business-slug</code>. Copy the displayed
+                address for your website, Google Business profile, social profile or customer
+                messages.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Before enabling online payment</h3>
+            <div class="step">
+              <span class="number">1</span>
+              <p>Finish the separate Payments module setup and provider verification.</p>
+            </div>
+            <div class="step">
+              <span class="number">2</span>
+              <p>Decide which services require a deposit, full prepayment, or payment at venue.</p>
+            </div>
+            <div class="step">
+              <span class="number">3</span>
+              <p>
+                Test success, failure, cancellation, and refund paths with the payment provider test
+                environment.
+              </p>
+            </div>
+            <div class="step">
+              <span class="number">4</span>
+              <p>
+                Train staff: only record cash after receiving it, and never mark an online payment
+                paid manually without verified evidence.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <p class="eyebrow">What improves next</p>
+        <h2>The public storefront is live. Payments and sharing tools come next.</h2>
+        <div class="grid" style="margin-top: 22px">
+          <div class="card">
+            <span class="status live">Available now</span>
+            <h3 style="margin-top: 12px">A branded public booking journey</h3>
+            <p>
+              Customers use <code>/book/your-business-slug</code>. It uses the business brand,
+              shares public navigation with Shop when both are published, and calls anonymous APIs
+              only while Booking is published and ready.
+            </p>
+          </div>
+          <div class="card">
+            <span class="status next">Planned enhancement</span>
+            <h3 style="margin-top: 12px">Faster sharing and online payment</h3>
+            <p>
+              A copy-link action and QR code are planned for the publish panel. The separate
+              Payments module will later add verified online card, UPI, deposit, refund and
+              reconciliation flows. Until then, use pay at venue and record cash only after it is
+              received.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="page">
+      <b>Booking Tutorial</b> | ExSol. This guide describes the Booking module's current
+      client-facing workflow and clearly marks planned integrations. Review business policies,
+      privacy notices, and local legal requirements before launch.
+    </footer>
+  </body>
+</html>

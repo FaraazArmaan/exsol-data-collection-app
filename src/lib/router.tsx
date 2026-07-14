@@ -47,6 +47,7 @@ const SupplyChainRouteMount = lazy(() => import('../modules/supply-chain/SupplyC
 const ProcurementSpendMount = lazy(() => import('../modules/procurement/ProcurementSpendMount'));
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
+import BookingPublicLayout from '../modules/booking/public/BookingPublicLayout';
 import {
   BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingPolicyMount, BookingSettingsMount, BookingSetupMount,
 } from '../modules/booking/BookingRouteMounts';
@@ -144,6 +145,24 @@ export const router = createBrowserRouter([
       { path: 'cart', element: <StorefrontCartPage /> },
       { path: 'details', element: <StorefrontDetailsPage /> },
       { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
+    ],
+  },
+  {
+    path: '/storefront/:slug',
+    element: <StorefrontLayout />,
+    children: [
+      { index: true, element: <StorefrontMenuPage /> },
+      { path: 'cart', element: <StorefrontCartPage /> },
+      { path: 'details', element: <StorefrontDetailsPage /> },
+      { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
+    ],
+  },
+  {
+    path: '/book/:slug',
+    element: <BookingPublicLayout />,
+    children: [
+      { index: true, element: <BookingStorefront /> },
+      { path: 'manage/:token', element: <ManageBooking /> },
     ],
   },
   // Public catalog — unauthenticated; reuses the storefront BrandShell + the menu

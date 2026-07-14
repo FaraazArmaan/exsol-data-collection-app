@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { crmApi, type RepeatCart } from '../shared/api';
 import { money } from '../format';
+import { publicStorefrontUrl } from '../../pos/lib/storefront-path';
 
 interface Props {
   customerId: string;
@@ -50,7 +51,7 @@ export function RepeatCartModal({ customerId, slug, onClose }: Props) {
     try { await navigator.clipboard.writeText(text); setCopied(true); } catch { /* clipboard blocked */ }
   }
 
-  const storefrontUrl = `/menu/${slug}`;
+  const storefrontUrl = publicStorefrontUrl(slug, window.location.origin);
 
   return (
     <div className="crm-modal-backdrop" role="dialog" aria-modal="true" aria-label="Repeat order">

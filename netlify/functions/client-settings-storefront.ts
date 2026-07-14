@@ -5,7 +5,7 @@
 // by the existing `_platform.settings.edit` permission (L1 Owners always hold
 // it via the requirePermission bypass) — no storefront-specific permission key.
 // Single function handles both methods on a unique path (no config.method
-// collision). publicUrl = `${PUBLIC_BASE_URL}/menu/<slug>` (env per Netlify
+// collision). publicUrl = `${PUBLIC_BASE_URL}/storefront/<slug>` (env per Netlify
 // context; relative when unset).
 
 import { z } from 'zod';
@@ -16,14 +16,14 @@ import {
   authenticateForPermission, resolveClientIdOrRespond,
 } from './_shared/permissions';
 import { rejectCrossSiteMutation } from './_shared/csrf';
+import { publicStorefrontUrl } from '../../src/modules/pos/lib/storefront-path';
 
 export const config = { path: '/api/client-settings/storefront' };
 
 const PatchBody = z.object({ enabled: z.boolean() });
 
 function publicUrlFor(slug: string): string {
-  const base = (process.env.PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-  return `${base}/menu/${slug}`;
+  return publicStorefrontUrl(slug, process.env.PUBLIC_BASE_URL);
 }
 
 export default async function handler(req: Request): Promise<Response> {

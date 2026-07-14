@@ -10,6 +10,7 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { db } from './_shared/db';
 import { deliver } from './_shared/resend';
+import { publicStorefrontUrl } from '../../src/modules/pos/lib/storefront-path';
 
 export const config = { schedule: '*/15 * * * *' };
 
@@ -70,12 +71,12 @@ export async function sweepAbandonedCarts(
     LIMIT ${BATCH}
   `) as CartRow[];
 
-  const base = process.env.URL || process.env.SITE_URL || '';
+  const base = process.env.URL || process.env.SITE_URL || process.env.PUBLIC_BASE_URL || '';
   const from = process.env.MAIL_FROM || 'notifications@example.com';
   let reminded = 0;
 
   for (const cart of carts) {
-    const link = base ? `${base}/menu/${cart.slug}` : '';
+    const link = publicStorefrontUrl(cart.slug, base);
     const res = await deliver({
       to: cart.customer_email,
       from,

@@ -1,9 +1,9 @@
 // GET /api/booking-public/:slug/availability — public projection of the same
 // reservation rules enforced by every booking write.
 import { jsonOk, jsonError } from './_shared/http';
-import { db } from './_shared/db';
 import { pickLeastBusy } from '../../src/modules/booking/lib/autoassign';
 import { getSequentialVisitAvailability } from './_booking-visits';
+import { resolvePublicBooking } from './_booking-public';
 
 export const config = { path: '/api/booking-public/:slug/availability', method: 'GET' };
 
@@ -31,13 +31,11 @@ export default async function handler(req: Request): Promise<Response> {
   ) {
     return jsonError(400, 'invalid_query');
   }
-  const clientRows = (await db()`
-    SELECT id, timezone FROM public.clients WHERE slug = ${slugFrom(req)} LIMIT 1
-  `) as Array<{ id: string; timezone: string }>;
-  if (!clientRows[0]) return jsonError(404, 'tenant_not_found');
+  const tenant = await resolvePublicBooking(slugFrom(req));
+  if (!tenant) return jsonError(404, 'booking_unavailable');
   const availability = await getSequentialVisitAvailability({
-    clientId: clientRows[0].id,
-    timeZone: clientRows[0].timezone,
+    clientId: tenant.clientId,
+    timeZone: tenant.timeZone,
     serviceIds,
     date,
     resourceId,

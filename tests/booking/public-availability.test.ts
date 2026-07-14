@@ -1,27 +1,55 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import availability from '../../netlify/functions/booking-public-availability';
-import { sqlClient, seedClientWithBooking, enableBooking, seedResource, makeService, setBookingSettings, publicRequest } from './_helpers';
+import {
+  sqlClient,
+  seedClientWithBooking,
+  enableBooking,
+  seedResource,
+  makeService,
+  publishBooking,
+  setBookingSettings,
+  publicRequest,
+} from './_helpers';
 
 const sql = sqlClient();
 let slug: string, clientId: string, resId: string, serviceId: string;
 
 beforeAll(async () => {
   const ctx = await seedClientWithBooking();
-  slug = ctx.slug; clientId = ctx.clientId;
+  slug = ctx.slug;
+  clientId = ctx.clientId;
   await enableBooking(clientId);
   resId = await seedResource(clientId, 'Sarah');
-  await setBookingSettings(clientId, { mon: [{ open: '09:00', close: '11:00' }] }, { slot_interval_min: 30 });
+  await setBookingSettings(
+    clientId,
+    { mon: [{ open: '09:00', close: '11:00' }] },
+    { slot_interval_min: 30 },
+  );
   serviceId = await makeService(clientId, { duration_min: 60, eligible_resource_ids: [resId] });
+  await publishBooking(clientId);
 });
 
 function q(date: string, resource = 'any') {
-  return publicRequest(slug, 'GET', `/availability?service_id=${serviceId}&date=${date}&resource_id=${resource}`);
+  return publicRequest(
+    slug,
+    'GET',
+    `/availability?service_id=${serviceId}&date=${date}&resource_id=${resource}`,
+  );
 }
 
 describe('public availability', () => {
   it('invalid query → 400; unknown service → 404', async () => {
-    expect((await availability(publicRequest(slug, 'GET', '/availability?service_id=x&date=bad'))).status).toBe(400);
-    const r = await availability(publicRequest(slug, 'GET', `/availability?service_id=${crypto.randomUUID()}&date=2026-08-17&resource_id=any`));
+    expect(
+      (await availability(publicRequest(slug, 'GET', '/availability?service_id=x&date=bad')))
+        .status,
+    ).toBe(400);
+    const r = await availability(
+      publicRequest(
+        slug,
+        'GET',
+        `/availability?service_id=${crypto.randomUUID()}&date=2026-08-17&resource_id=any`,
+      ),
+    );
     expect(r.status).toBe(404);
   });
 

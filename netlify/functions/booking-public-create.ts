@@ -11,6 +11,7 @@ import { upsertCustomer } from './_booking-customer-upsert';
 import { createVisit, validateSequentialVisit } from './_booking-visits';
 import { sendMail } from './_shared/mailer';
 import { randomUUID } from 'node:crypto';
+import { resolvePublicBooking } from './_booking-public';
 
 export const config = { path: '/api/booking-public/:slug/create', method: 'POST' };
 
@@ -32,13 +33,10 @@ export default async function handler(req: Request): Promise<Response> {
   if (body.hp && body.hp.trim() !== '') return jsonError(400, 'invalid_request');
   if (!(await allowBookingCreate(extractIp(req)))) return jsonError(429, 'rate_limited');
 
+  const tenant = await resolvePublicBooking(slugFrom(req));
+  if (!tenant) return jsonError(404, 'booking_unavailable');
   const sql = db();
-  const c =
-    (await sql`SELECT id FROM public.clients WHERE slug = ${slugFrom(req)} LIMIT 1`) as Array<{
-      id: string;
-    }>;
-  if (!c[0]) return jsonError(404, 'tenant_not_found');
-  const clientId = c[0].id;
+  const clientId = tenant.clientId;
   const serviceIds = body.service_ids ?? [body.service_id!];
   const plan = await validateSequentialVisit({
     clientId,

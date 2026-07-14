@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import services from '../../netlify/functions/booking-public-services';
 import resources from '../../netlify/functions/booking-public-resources';
-import { seedClientWithBooking, enableBooking, seedResource, makeService, publicRequest } from './_helpers';
+import {
+  seedClientWithBooking,
+  enableBooking,
+  seedResource,
+  makeService,
+  publishBooking,
+  publicRequest,
+} from './_helpers';
 
 let slug: string;
 beforeAll(async () => {
@@ -10,6 +17,7 @@ beforeAll(async () => {
   await enableBooking(ctx.clientId);
   await seedResource(ctx.clientId, 'Priya');
   await makeService(ctx.clientId, { name: 'Public Cut', duration_min: 30, price_cents: 25000 });
+  await publishBooking(ctx.clientId);
 });
 
 describe('public catalogs (anonymous)', () => {

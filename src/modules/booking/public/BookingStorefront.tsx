@@ -13,7 +13,7 @@ const STEPS: Array<{ key: Step; label: string }> = [
   { key: 'checkout', label: 'Details' },
 ];
 
-// Anonymous public storefront mounted at /c/:slug/book (outside the auth gate).
+// Anonymous Booking feature mounted on the branded public storefront at /book/:slug.
 export default function BookingStorefront() {
   const { slug = '' } = useParams<{ slug: string }>();
   const [tenant, setTenant] = useState<string | null>(null);

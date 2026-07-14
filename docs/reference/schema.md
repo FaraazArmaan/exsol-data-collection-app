@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-143 tables across 134 forward-only migrations.
+143 tables across 135 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -111,7 +111,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `booking_setup`
 
-- created in `152_booking_setup.sql`
+- created in `152_booking_setup.sql`; altered in `157_booking_publication.sql`
 - columns at creation: `bucket_id UUID`, `booking_party_mode TEXT`, `bookable_kinds TEXT[]`, `extra_capacity_needs TEXT[]`, `availability_source TEXT`, `display_labels JSONB`, `reservation_rules JSONB`, `setup_version INTEGER`, `completed_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `booking_visits`

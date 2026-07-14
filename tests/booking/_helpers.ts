@@ -12,13 +12,21 @@ import { mintBucketUserSession } from '../../netlify/functions/_shared/session';
 import { hashPassword } from '../../netlify/functions/_shared/argon';
 
 const sql = neon(process.env.DATABASE_URL!);
-export function sqlClient() { return sql; }
+export function sqlClient() {
+  return sql;
+}
 
 let cachedAdminId: string | null = null;
 async function ensureBootstrapAdmin(): Promise<string> {
   if (cachedAdminId) return cachedAdminId;
-  const found = (await sql`SELECT id FROM public.admins WHERE is_bootstrap = true LIMIT 1`) as Array<{ id: string }>;
-  if (found[0]) { cachedAdminId = found[0].id; return cachedAdminId; }
+  const found =
+    (await sql`SELECT id FROM public.admins WHERE is_bootstrap = true LIMIT 1`) as Array<{
+      id: string;
+    }>;
+  if (found[0]) {
+    cachedAdminId = found[0].id;
+    return cachedAdminId;
+  }
   const hash = await hashPassword('booking-test-admin-pw');
   const rows = (await sql`
     INSERT INTO public.admins (email, password_hash, display_name, is_bootstrap)
@@ -80,8 +88,19 @@ export async function enableBooking(clientId: string): Promise<void> {
   `;
 }
 
+export async function publishBooking(clientId: string): Promise<void> {
+  await sql`
+    INSERT INTO public.booking_setup (bucket_id, booking_party_mode, availability_source, completed_at, public_enabled)
+    VALUES (${clientId}, 'nobody_specific', 'manual', now(), true)
+    ON CONFLICT (bucket_id) DO UPDATE SET
+      booking_party_mode = 'nobody_specific', availability_source = 'manual', completed_at = now(), public_enabled = true
+  `;
+}
+
 export async function grantBookingPerms(
-  clientId: string, levelNumber: number, keys: readonly string[],
+  clientId: string,
+  levelNumber: number,
+  keys: readonly string[],
 ): Promise<void> {
   const perms: Record<string, true> = Object.fromEntries(keys.map((k) => [k, true]));
   await sql`UPDATE public.client_levels SET permissions = ${JSON.stringify(perms)}::jsonb
@@ -89,7 +108,10 @@ export async function grantBookingPerms(
 }
 
 export async function seedResource(clientId: string, name = 'Sarah'): Promise<string> {
-  const r = (await sql`INSERT INTO public.booking_resources (bucket_id, name) VALUES (${clientId}, ${name}) RETURNING id`) as Array<{ id: string }>;
+  const r =
+    (await sql`INSERT INTO public.booking_resources (bucket_id, name) VALUES (${clientId}, ${name}) RETURNING id`) as Array<{
+      id: string;
+    }>;
   return r[0]!.id;
 }
 
@@ -103,9 +125,13 @@ export async function seedCustomerRole(clientId: string): Promise<string> {
 }
 
 export interface SeedServiceInput {
-  name?: string; duration_min?: number; price_cents?: number;
+  name?: string;
+  duration_min?: number;
+  price_cents?: number;
   payment_mode?: 'pay_at_venue' | 'deposit' | 'full_upfront';
-  deposit_cents?: number; buffer_min?: number; eligible_resource_ids?: string[];
+  deposit_cents?: number;
+  buffer_min?: number;
+  eligible_resource_ids?: string[];
 }
 export async function makeService(clientId: string, opts: SeedServiceInput = {}): Promise<string> {
   const r = (await sql`
@@ -121,7 +147,8 @@ export async function makeService(clientId: string, opts: SeedServiceInput = {})
 
 /** Set the tenant's weekly schedule + interval (so availability has open windows). */
 export async function setBookingSettings(
-  clientId: string, weekly: Record<string, Array<{ open: string; close: string }>>,
+  clientId: string,
+  weekly: Record<string, Array<{ open: string; close: string }>>,
   opts: { slot_interval_min?: number; lead_time_min?: number; cancel_cutoff_min?: number } = {},
 ): Promise<void> {
   await sql`
@@ -136,7 +163,12 @@ export async function setBookingSettings(
 }
 
 /** Vendor (authed) request with the owner's JWT cookie. */
-export function bookingRequest(ctx: BookingTestCtx, method: string, path: string, body?: unknown): Request {
+export function bookingRequest(
+  ctx: BookingTestCtx,
+  method: string,
+  path: string,
+  body?: unknown,
+): Request {
   return new Request(`http://localhost${path}`, {
     method,
     headers: { cookie: ctx.cookie, 'Content-Type': 'application/json' },
@@ -145,7 +177,12 @@ export function bookingRequest(ctx: BookingTestCtx, method: string, path: string
 }
 
 /** Public (anonymous) request to /api/booking-public/:slug/<suffix>. */
-export function publicRequest(slug: string, method: string, suffix: string, body?: unknown): Request {
+export function publicRequest(
+  slug: string,
+  method: string,
+  suffix: string,
+  body?: unknown,
+): Request {
   const path = `/api/booking-public/${slug}${suffix.startsWith('/') ? suffix : '/' + suffix}`;
   return new Request(`http://localhost${path}`, {
     method,

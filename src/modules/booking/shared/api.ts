@@ -105,6 +105,11 @@ export interface BookingPolicy {
   late_reschedule_fee_cents: number;
   deposit_requirement: 'none' | 'service_defined' | 'required';
 }
+export interface BookingPublication {
+  enabled: boolean;
+  publicUrl: string;
+  ready: boolean;
+}
 export type BookingPartyMode = 'specific_team_member' | 'any_team_member' | 'nobody_specific';
 export type BookableKind = 'appointment' | 'space' | 'equipment';
 export type ExtraCapacityNeed = 'space' | 'equipment';
@@ -194,6 +199,9 @@ export const bookingApi = {
       'booking_party_mode' | 'bookable_kinds' | 'extra_capacity_needs' | 'availability_source'
     > & { display_labels?: Partial<BookingSetup['display_labels']> },
   ) => call<BookingSetup>('/api/booking/setup', { ...json(body), method: 'PUT' }),
+  getPublication: () => call<BookingPublication>('/api/booking/publication'),
+  putPublication: (enabled: boolean) =>
+    call<BookingPublication>('/api/booking/publication', { ...json({ enabled }), method: 'PUT' }),
 
   listServices: () => call<{ services: VendorService[] }>('/api/booking/services'),
   createService: (body: Partial<VendorService>) =>

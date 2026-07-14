@@ -8,6 +8,7 @@ import {
   enableBooking,
   grantBookingPerms,
   makeService,
+  publishBooking,
   publicRequest,
   seedClientWithBooking,
   seedCustomerRole,
@@ -75,6 +76,7 @@ describe('booking policy', () => {
       eligible_resource_ids: [resourceId],
     });
     await setBookingSettings(ctx.clientId, { mon: [{ open: '09:00', close: '12:00' }] });
+    await publishBooking(ctx.clientId);
     await policy(bookingRequest(ctx, 'PUT', '/api/booking/policy', customPolicy));
 
     const created = await create(

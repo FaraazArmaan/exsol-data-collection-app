@@ -2,6 +2,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { usesWorkforceAvailability } from '../../src/modules/booking/lib/setup';
+import { resolvePublicBooking } from './_booking-public';
 
 export const config = { path: '/api/booking-public/:slug/resources', method: 'GET' };
 
@@ -12,16 +13,13 @@ function slugFrom(req: Request): string {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+  const tenant = await resolvePublicBooking(slugFrom(req));
+  if (!tenant) return jsonError(404, 'booking_unavailable');
   const sql = db();
-  const c =
-    (await sql`SELECT id FROM public.clients WHERE slug = ${slugFrom(req)} LIMIT 1`) as Array<{
-      id: string;
-    }>;
-  if (!c[0]) return jsonError(404, 'tenant_not_found');
   const setupRows = (await sql`
     SELECT booking_party_mode, availability_source
     FROM public.booking_setup
-    WHERE bucket_id = ${c[0].id}::uuid AND completed_at IS NOT NULL
+    WHERE bucket_id = ${tenant.clientId}::uuid
     LIMIT 1
   `) as Array<{
     booking_party_mode: 'specific_team_member' | 'any_team_member' | 'nobody_specific';
@@ -33,7 +31,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.booking_resources br
     LEFT JOIN public.workforce_employee_profiles ep
       ON ep.client_id = br.bucket_id AND ep.resource_id = br.id
-    WHERE br.bucket_id = ${c[0].id}::uuid
+    WHERE br.bucket_id = ${tenant.clientId}::uuid
       AND br.active = true
       AND (NOT ${workforceAvailability}::boolean OR ep.employment_status = 'active')
     ORDER BY br.name

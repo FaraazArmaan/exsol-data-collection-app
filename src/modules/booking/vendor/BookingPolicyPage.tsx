@@ -12,15 +12,40 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
   const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
+    setMessage(null);
     bookingApi
       .getPolicy()
       .then(setPolicy)
-      .catch(() => setMessage('Could not load booking rules.'));
-  }, []);
+      .catch((error) =>
+        setMessage(
+          error instanceof BookingApiError
+            ? `Could not load booking rules (${error.code}).`
+            : 'Could not load booking rules.',
+        ),
+      );
+  }, [loadAttempt]);
 
-  if (!policy) return <div className="muted">Loading…</div>;
+  if (!policy) {
+    return (
+      <div className="page booking-vendor">
+        <BookingTabs slug={slug} perms={perms} />
+        <h1 className="page-title">Booking Rules</h1>
+        {message ? (
+          <div className="card">
+            <p className="error">{message}</p>
+            <button className="btn btn-secondary" onClick={() => setLoadAttempt((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
+        ) : (
+          <div className="muted">Loading…</div>
+        )}
+      </div>
+    );
+  }
   const update = <K extends keyof BookingPolicy>(key: K, value: BookingPolicy[K]) =>
     setPolicy((current) => (current ? { ...current, [key]: value } : current));
   const number = (key: keyof BookingPolicy) => (event: React.ChangeEvent<HTMLInputElement>) =>

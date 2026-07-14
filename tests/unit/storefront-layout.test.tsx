@@ -5,9 +5,17 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import StorefrontLayout from '../../src/modules/pos/pages/StorefrontLayout';
 
 const BRAND = {
-  name: 'Papas Saloon', logoUrl: null, logoAltUrl: null, faviconUrl: null,
-  appIconUrl: null, socialUrl: null, heroUrls: [], accent: null,
-  theme: 'light', fontHeading: null, fontBody: null,
+  name: 'Papas Saloon',
+  logoUrl: null,
+  logoAltUrl: null,
+  faviconUrl: null,
+  appIconUrl: null,
+  socialUrl: null,
+  heroUrls: [],
+  accent: null,
+  theme: 'light',
+  fontHeading: null,
+  fontBody: null,
 };
 
 afterEach(() => {
@@ -16,11 +24,11 @@ afterEach(() => {
   document.querySelectorAll('link[data-brand-shell="1"]').forEach((el) => el.remove());
 });
 
-function renderAt(path = '/menu/papas') {
+function renderAt(path = '/storefront/papas') {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/menu/:slug" element={<StorefrontLayout />}>
+        <Route path="/storefront/:slug" element={<StorefrontLayout />}>
           <Route index element={<div>MENU_CONTENT</div>} />
         </Route>
       </Routes>
@@ -30,9 +38,13 @@ function renderAt(path = '/menu/papas') {
 
 describe('StorefrontLayout', () => {
   test('wraps outlet content in BrandShell and applies the fetched brand', async () => {
-    global.fetch = vi.fn(async () => new Response(JSON.stringify(BRAND), {
-      status: 200, headers: { 'content-type': 'application/json' },
-    })) as never;
+    global.fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify(BRAND), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ) as never;
     const { container } = renderAt();
     // Outlet child renders through the layout
     expect(screen.getByText('MENU_CONTENT')).toBeTruthy();
@@ -41,7 +53,8 @@ describe('StorefrontLayout', () => {
     expect(container.querySelector('.storefront-shell')).toBeNull();
     // Brand applied once the fetch resolves
     await waitFor(() =>
-      expect(container.querySelector('.brand-shell')?.getAttribute('data-theme')).toBe('light'));
+      expect(container.querySelector('.brand-shell')?.getAttribute('data-theme')).toBe('light'),
+    );
     expect(container.textContent).toContain('Papas Saloon');
   });
 
@@ -56,12 +69,18 @@ describe('StorefrontLayout', () => {
   });
 
   test('fetches the brand for the route slug', async () => {
-    const f = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify(BRAND), {
-      status: 200, headers: { 'content-type': 'application/json' },
-    }));
+    const f = vi.fn(
+      async (_input: RequestInfo | URL) =>
+        new Response(JSON.stringify(BRAND), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
     global.fetch = f as never;
-    renderAt('/menu/papas');
+    renderAt('/storefront/papas');
     await waitFor(() => expect(f).toHaveBeenCalled());
-    expect(String(f.mock.calls[0]?.[0])).toContain('/api/public/brand/papas');
+    expect(f.mock.calls.some(([url]) => String(url).includes('/api/public/brand/papas'))).toBe(
+      true,
+    );
   });
 });

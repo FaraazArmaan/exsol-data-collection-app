@@ -5,6 +5,7 @@ import manage from '../../netlify/functions/booking-public-manage';
 import {
   enableBooking,
   makeService,
+  publishBooking,
   publicRequest,
   seedClientWithBooking,
   seedCustomerRole,
@@ -44,6 +45,7 @@ beforeAll(async () => {
     price_cents: 5000,
     eligible_resource_ids: [resourceId],
   });
+  await publishBooking(ctx.clientId);
 });
 
 describe('sequential booking visits', () => {

@@ -1,53 +1,121 @@
 import { useEffect, useState } from 'react';
 import { useUserAuth } from '../../user-portal/user-auth-context';
 
-// L1 Owner self-serve toggle for the public storefront (spec §6.9). Reads the
-// current state on mount and flips it via PATCH /api/client-settings/storefront.
-// Self-gated to Owners (or holders of _platform.settings.edit). Mounted on a
-// POS route for now; can move into a workspace-settings page when one exists.
-export default function StorefrontSettings() {
-  const { user, permissions } = useUserAuth();
-  const canEdit = !!user && (
-    user.level_number == null || user.level_number === 1 ||
-    permissions['_platform.settings.edit'] === true
-  );
+interface FeatureState {
+  enabled: boolean;
+  publicUrl: string;
+  ready: boolean;
+  error: string | null;
+}
 
-  const [enabled, setEnabled] = useState(false);
-  const [url, setUrl] = useState('');
+const unavailable: FeatureState = { enabled: false, publicUrl: '', ready: false, error: null };
+
+async function api(path: string, init?: RequestInit) {
+  const response = await fetch(path, { credentials: 'include', ...init });
+  return { response, body: await response.json().catch(() => null) };
+}
+
+export default function StorefrontSettings() {
+  const { user, client, permissions } = useUserAuth();
+  const canEdit =
+    !!user &&
+    (user.level_number == null ||
+      user.level_number === 1 ||
+      permissions['_platform.settings.edit'] === true);
+
+  const [ordering, setOrdering] = useState<FeatureState>(unavailable);
+  const [booking, setBooking] = useState<FeatureState>(unavailable);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [orderingBusy, setOrderingBusy] = useState(false);
+  const [bookingBusy, setBookingBusy] = useState(false);
 
   useEffect(() => {
-    if (!canEdit) { setLoading(false); return; }
+    if (!canEdit) {
+      setLoading(false);
+      return;
+    }
     let cancel = false;
     (async () => {
       try {
-        const r = await fetch('/api/client-settings/storefront', { credentials: 'include' });
-        const d = await r.json();
-        if (!cancel && r.ok) { setEnabled(!!d.enabled); setUrl(d.publicUrl ?? ''); }
+        const [orderingResult, bookingResult] = await Promise.all([
+          api('/api/client-settings/storefront'),
+          api('/api/booking/publication'),
+        ]);
+        if (cancel) return;
+        setOrdering({
+          enabled: !!orderingResult.body?.enabled,
+          publicUrl: orderingResult.body?.publicUrl ?? '',
+          ready: orderingResult.response.ok,
+          error: orderingResult.response.ok
+            ? null
+            : (orderingResult.body?.error?.code ?? 'load_error'),
+        });
+        setBooking({
+          enabled: !!bookingResult.body?.enabled,
+          publicUrl: bookingResult.body?.publicUrl ?? `/book/${client?.slug ?? ''}`,
+          ready: !!bookingResult.body?.ready,
+          error: bookingResult.response.ok
+            ? null
+            : (bookingResult.body?.error?.code ?? 'booking_not_ready'),
+        });
+      } catch {
+        if (!cancel) {
+          setOrdering((current) => ({ ...current, error: 'network_error' }));
+          setBooking((current) => ({ ...current, error: 'network_error' }));
+        }
       } finally {
         if (!cancel) setLoading(false);
       }
     })();
-    return () => { cancel = true; };
-  }, [canEdit]);
+    return () => {
+      cancel = true;
+    };
+  }, [canEdit, client?.slug]);
 
-  async function toggle(next: boolean) {
-    setBusy(true); setError(null);
+  async function toggleOrdering(next: boolean) {
+    setOrderingBusy(true);
     try {
-      const r = await fetch('/api/client-settings/storefront', {
-        method: 'PATCH', credentials: 'include',
+      const { response, body } = await api('/api/client-settings/storefront', {
+        method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: next }),
       });
-      const d = await r.json();
-      if (r.ok) { setEnabled(!!d.enabled); setUrl(d.publicUrl ?? ''); }
-      else setError(d?.error?.code ?? 'error');
+      if (response.ok)
+        setOrdering({
+          enabled: !!body.enabled,
+          publicUrl: body.publicUrl ?? '',
+          ready: true,
+          error: null,
+        });
+      else setOrdering((current) => ({ ...current, error: body?.error?.code ?? 'save_error' }));
     } catch {
-      setError('network_error');
+      setOrdering((current) => ({ ...current, error: 'network_error' }));
     } finally {
-      setBusy(false);
+      setOrderingBusy(false);
+    }
+  }
+
+  async function toggleBooking(next: boolean) {
+    setBookingBusy(true);
+    try {
+      const { response, body } = await api('/api/booking/publication', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (response.ok)
+        setBooking({
+          enabled: !!body.enabled,
+          publicUrl: body.publicUrl ?? '',
+          ready: !!body.ready,
+          error: null,
+        });
+      else setBooking((current) => ({ ...current, error: body?.error?.code ?? 'save_error' }));
+    } catch {
+      setBooking((current) => ({ ...current, error: 'network_error' }));
+    } finally {
+      setBookingBusy(false);
     }
   }
 
@@ -56,26 +124,69 @@ export default function StorefrontSettings() {
 
   return (
     <section className="storefront-settings page-narrow">
-      <h1 className="page-title">Public Storefront</h1>
-      <p className="muted">Let customers browse your menu and place pickup/delivery orders online. You take payment when they collect.</p>
-
-      <button
-        type="button" role="switch" aria-checked={enabled} aria-label="Public storefront"
-        className="toggle" disabled={busy} onClick={() => toggle(!enabled)}
-      >
-        <span className="toggle-label toggle-label-on">ON</span>
-        <span className="toggle-label toggle-label-off">OFF</span>
-        <span className="toggle-knob" />
-      </button>
-
-      {error && <p className="error">Couldn’t save ({error}).</p>}
-
-      {enabled && url && (
-        <p style={{ marginTop: 16 }}>
-          Your storefront link: <code>{url}</code>{' '}
-          <button type="button" className="btn btn-secondary" onClick={() => navigator.clipboard?.writeText(url)}>Copy</button>
-        </p>
-      )}
+      <h1 className="page-title">Storefront</h1>
+      <p className="muted">Choose which customer features appear on your branded public website.</p>
+      <div className="storefront-settings__features">
+        <article className="card storefront-settings__feature">
+          <div>
+            <h2 className="section-title">Online ordering</h2>
+            <p className="muted">
+              Let customers browse your menu and place pickup or delivery orders.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ordering.enabled}
+            aria-label="Online ordering"
+            className="toggle"
+            disabled={orderingBusy}
+            onClick={() => void toggleOrdering(!ordering.enabled)}
+          >
+            <span className="toggle-label toggle-label-on">ON</span>
+            <span className="toggle-label toggle-label-off">OFF</span>
+            <span className="toggle-knob" />
+          </button>
+          {ordering.error ? <p className="error">Couldn’t save ({ordering.error}).</p> : null}
+          {ordering.enabled && ordering.publicUrl ? (
+            <p>
+              Your ordering link: <code>{ordering.publicUrl}</code>
+            </p>
+          ) : null}
+        </article>
+        <article className="card storefront-settings__feature">
+          <div>
+            <h2 className="section-title">Online booking</h2>
+            <p className="muted">
+              Let customers choose an available time through the same public business site.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={booking.enabled}
+            aria-label="Online booking"
+            className="toggle"
+            disabled={bookingBusy || (!booking.enabled && !booking.ready)}
+            onClick={() => void toggleBooking(!booking.enabled)}
+          >
+            <span className="toggle-label toggle-label-on">ON</span>
+            <span className="toggle-label toggle-label-off">OFF</span>
+            <span className="toggle-knob" />
+          </button>
+          {booking.error ? <p className="error">Couldn’t save ({booking.error}).</p> : null}
+          {!booking.enabled && !booking.ready ? (
+            <p className="muted">
+              Complete Booking Setup and add an active service before turning this on.
+            </p>
+          ) : null}
+          {booking.enabled && booking.publicUrl ? (
+            <p>
+              Your booking link: <code>{booking.publicUrl}</code>
+            </p>
+          ) : null}
+        </article>
+      </div>
     </section>
   );
 }

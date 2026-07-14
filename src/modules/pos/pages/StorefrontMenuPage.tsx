@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { publicApi, PosApiError, type PublicMenuResponse } from '../shared/api';
 import { getOrCreateStorefrontSession } from '../lib/session';
+import { storefrontPath } from '../lib/storefront-path';
 import MenuPage from './MenuPage';
 import { NotAvailableCard } from './NotAvailableCard';
 
@@ -24,6 +25,7 @@ function safeHref(h?: string): string | null {
 // fetch (404 → NotAvailableCard), never on the brand — see branding spec §9.4.
 export default function StorefrontMenuPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const [data, setData] = useState<PublicMenuResponse | null>(null);
   const [error, setError] = useState<PosApiError | null>(null);
   const sessionId = getOrCreateStorefrontSession();
@@ -62,7 +64,7 @@ export default function StorefrontMenuPage() {
         bucketId={slug!}
         userNodeId={`guest-${sessionId}`}
         slug={slug!}
-        checkoutHref={`/menu/${slug}/cart`}
+        checkoutHref={storefrontPath(location.pathname, slug!, 'cart')}
         loadMenu={() => Promise.resolve({ categories: data.categories, products: data.products })}
       />
     </>

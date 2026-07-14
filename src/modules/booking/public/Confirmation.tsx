@@ -15,7 +15,7 @@ interface Props {
 export function Confirmation({ slug, services, slot, result, onBookAnother }: Props) {
   const pendingPayment = result.status === 'pending' && !!result.payment_intent;
   const [copied, setCopied] = useState(false);
-  const manageUrl = `${window.location.origin}/c/${slug}/book/manage/${result.manage_token}`;
+  const manageUrl = `${window.location.origin}/book/${slug}/manage/${result.manage_token}`;
 
   function copyLink() {
     navigator.clipboard
@@ -90,7 +90,7 @@ export function Confirmation({ slug, services, slot, result, onBookAnother }: Pr
       </div>
 
       <div className="booking-confirm-actions">
-        <Link className="booking-sf-back" to={`/c/${slug}/book/manage/${result.manage_token}`}>
+        <Link className="booking-sf-back" to={`/book/${slug}/manage/${result.manage_token}`}>
           Manage booking
         </Link>
         <button type="button" className="booking-sf-back" onClick={onBookAnother}>

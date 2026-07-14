@@ -6,7 +6,7 @@
 
 # API endpoints
 
-306 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+308 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -67,6 +67,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | booking-manual-create.ts | `/api/booking/manual-create` | POST | bucket-user | `booking.customers.create` |
 | booking-pending-cleanup.ts | `/api/booking-pending-cleanup (name-routed)` | any | public | — |
 | booking-policy.ts | `/api/booking/policy` | GET, PUT | bucket-user | `booking.employees.edit`, `booking.employees.view` |
+| booking-publication.ts | `/api/booking/publication` | GET, PUT | bucket-user | `booking.employees.edit`, `booking.employees.view` |
 | booking-razorpay-webhook.ts | `/api/booking-public/razorpay-webhook` | POST | public | — |
 | booking-resource-detail.ts | `/api/booking/resource-detail/:id` | GET, PATCH, DELETE | bucket-user | `booking.employees.edit`, `booking.employees.view` |
 | booking-resource-time-off.ts | `/api/booking/resource-time-off` | GET, POST, DELETE | bucket-user | `booking.employees.edit`, `booking.employees.view` |
@@ -318,6 +319,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | pub-reviews.ts | `/api/public/reviews/:slug` | GET | public | — |
 | pub-sale-create.ts | `/api/public/sales` | POST | public | `pos.sale.created` |
 | pub-sale-detail.ts | `/api/public/sales/:saleUuid` | GET | public | — |
+| pub-site-surfaces.ts | `/api/public/site-surfaces/:slug` | GET | public | — |
 | pub-site.ts | `/api/public/site/:slug` | GET | public | — |
 | pub-storefront-config.ts | `/api/public/config/:slug` | GET | public | — |
 

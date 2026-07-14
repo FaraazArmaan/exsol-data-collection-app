@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { createGuestCartStore } from '../store/cart';
 import { getOrCreateStorefrontSession } from '../lib/session';
 import { publicApi, PosApiError, type CouponPreview, type StorefrontConfig } from '../shared/api';
 import { formatMoney } from '../../../lib/currency';
+import { storefrontPath } from '../lib/storefront-path';
 
 // Human-readable copy for the coupon rejection codes the API returns.
 const COUPON_REASONS: Record<string, string> = {
@@ -23,6 +24,7 @@ const COUPON_REASONS: Record<string, string> = {
 // idempotency key. See spec §6.7. Branded chrome is supplied by StorefrontLayout.
 export default function StorefrontDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const sessionId = getOrCreateStorefrontSession();
   const useStore = useMemo(() => createGuestCartStore(slug!, sessionId), [slug, sessionId]);
   const lines = useStore((s) => s.lines);
@@ -121,7 +123,7 @@ export default function StorefrontDetailsPage() {
         couponCode: coupon?.valid ? coupon.code : undefined,
       });
       clear();
-      nav(`/menu/${slug}/order/${sale.id}`);
+      nav(storefrontPath(location.pathname, slug!, `order/${sale.id}`));
     } catch (err) {
       setError(err instanceof PosApiError ? err.code : 'network_error');
     } finally {
@@ -132,7 +134,7 @@ export default function StorefrontDetailsPage() {
   return (
     <form className="pos-cart-page__customer" onSubmit={submit}>
         <header>
-          <Link to={`/menu/${slug}/cart`}>← Back to cart</Link>
+          <Link to={storefrontPath(location.pathname, slug!, 'cart')}>← Back to cart</Link>
           <h1>Your details</h1>
         </header>
 

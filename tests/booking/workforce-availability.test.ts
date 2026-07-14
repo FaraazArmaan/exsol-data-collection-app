@@ -29,8 +29,8 @@ async function seedStaffBooking(status = 'active') {
   );
   await sql`
     INSERT INTO public.booking_setup
-      (bucket_id, booking_party_mode, bookable_kinds, extra_capacity_needs, availability_source, completed_at)
-    VALUES (${ctx.clientId}::uuid, 'specific_team_member', ARRAY['appointment']::text[], ARRAY[]::text[], 'workforce', now())
+      (bucket_id, booking_party_mode, bookable_kinds, extra_capacity_needs, availability_source, completed_at, public_enabled)
+    VALUES (${ctx.clientId}::uuid, 'specific_team_member', ARRAY['appointment']::text[], ARRAY[]::text[], 'workforce', now(), true)
   `;
   await sql`
     INSERT INTO public.workforce_employee_profiles (client_id, resource_id, legal_name, employment_status)

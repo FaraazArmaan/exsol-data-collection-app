@@ -6,6 +6,7 @@ import {
   bookingRequest,
   enableBooking,
   makeService,
+  publishBooking,
   publicRequest,
   seedClientWithBooking,
   seedCustomerRole,
@@ -32,6 +33,7 @@ beforeAll(async () => {
     eligible_resource_ids: [resourceId],
   });
   await setBookingSettings(ctx.clientId, { mon: [{ open: '09:00', close: '12:00' }] });
+  await publishBooking(ctx.clientId);
   const response = await create(
     publicRequest(ctx.slug, 'POST', '/create', {
       service_id: serviceId,
