@@ -48,7 +48,7 @@ const ProcurementSpendMount = lazy(() => import('../modules/procurement/Procurem
 import BookingStorefront from '../modules/booking/public/BookingStorefront';
 import ManageBooking from '../modules/booking/public/ManageBooking';
 import {
-  BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingSettingsMount,
+  BookingCalendarMount, BookingListMount, BookingServicesMount, BookingResourcesMount, BookingPolicyMount, BookingSettingsMount, BookingSetupMount,
 } from '../modules/booking/BookingRouteMounts';
 import {
   InventoryListMount, InventoryDashboardMount, InventoryReturnsMount, InventoryLocationsMount,
@@ -95,7 +95,8 @@ function RequireAdmin() {
 function WorkspaceLoginRedirect() {
   const { slug } = useParams<{ slug: string }>();
   const next = slug ? `/c/${slug}` : '/';
-  return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
+  const clientParam = slug ? `client=${encodeURIComponent(slug)}&` : '';
+  return <Navigate to={`/login?${clientParam}next=${encodeURIComponent(next)}`} replace />;
 }
 
 function WorkspaceAccessLevels() {
@@ -213,6 +214,8 @@ export const router = createBrowserRouter([
               { path: 'booking', element: <BookingCalendarMount /> },
               { path: 'booking/list', element: <BookingListMount /> },
               { path: 'booking/services', element: <BookingServicesMount /> },
+              { path: 'booking/setup', element: <BookingSetupMount /> },
+              { path: 'booking/policy', element: <BookingPolicyMount /> },
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
               { path: 'inventory', element: <InventoryListMount /> },

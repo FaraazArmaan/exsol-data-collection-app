@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import manage from '../../netlify/functions/booking-public-manage';
-import { sqlClient, seedClientWithBooking, enableBooking, seedResource, makeService, setBookingSettings } from './_helpers';
+import {
+  sqlClient,
+  seedClientWithBooking,
+  enableBooking,
+  seedResource,
+  makeService,
+  setBookingSettings,
+} from './_helpers';
 
 const sql = sqlClient();
 let ctx: Awaited<ReturnType<typeof seedClientWithBooking>>;
@@ -11,7 +18,16 @@ beforeAll(async () => {
   await enableBooking(ctx.clientId);
   resId = await seedResource(ctx.clientId, 'Sarah');
   svc = await makeService(ctx.clientId, { duration_min: 60 });
-  await setBookingSettings(ctx.clientId, { mon: [{ open: '09:00', close: '18:00' }] }, { cancel_cutoff_min: 60 });
+  await setBookingSettings(
+    ctx.clientId,
+    Object.fromEntries(
+      ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) => [
+        day,
+        [{ open: '09:00', close: '18:00' }],
+      ]),
+    ),
+    { cancel_cutoff_min: 60 },
+  );
 });
 
 async function mkBooking(range: string, token: string): Promise<void> {
@@ -21,7 +37,9 @@ async function mkBooking(range: string, token: string): Promise<void> {
 
 function req(token: string, method: string, body?: unknown) {
   return new Request(`http://localhost/api/booking-public/manage/${token}`, {
-    method, headers: { 'Content-Type': 'application/json' }, body: body !== undefined ? JSON.stringify(body) : undefined,
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
 
@@ -56,16 +74,21 @@ describe('magic-link manage', () => {
     const get = await (await manage(req(tok, 'GET'))).json();
     expect(get.reschedulable).toBe(true);
     expect(get.duration_min).toBe(60);
-    const r = await manage(req(tok, 'POST', { action: 'reschedule', start: '2031-06-01T14:00:00Z' }));
+    const r = await manage(
+      req(tok, 'POST', { action: 'reschedule', start: '2031-06-01T07:00:00Z' }),
+    );
     expect(r.status).toBe(200);
     const j = await r.json();
-    expect(new Date(j.start_at).toISOString()).toBe('2031-06-01T14:00:00.000Z');
-    expect(new Date(j.end_at).toISOString()).toBe('2031-06-01T15:00:00.000Z');
+    expect(new Date(j.start_at).toISOString()).toBe('2031-06-01T07:00:00.000Z');
+    expect(new Date(j.end_at).toISOString()).toBe('2031-06-01T08:00:00.000Z');
   });
 
   it('reschedule past the cutoff → 409', async () => {
     const tok = `tok-${crypto.randomUUID()}`;
     await mkBooking('[2020-06-01T09:00:00Z,2020-06-01T10:00:00Z)', tok);
-    expect((await manage(req(tok, 'POST', { action: 'reschedule', start: '2020-06-01T14:00:00Z' }))).status).toBe(409);
+    expect(
+      (await manage(req(tok, 'POST', { action: 'reschedule', start: '2020-06-01T14:00:00Z' })))
+        .status,
+    ).toBe(409);
   });
 });

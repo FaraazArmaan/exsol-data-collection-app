@@ -18,7 +18,7 @@ export default function BookingStorefront() {
   const { slug = '' } = useParams<{ slug: string }>();
   const [tenant, setTenant] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('service');
-  const [service, setService] = useState<PublicService | null>(null);
+  const [services, setServices] = useState<PublicService[]>([]);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -27,19 +27,34 @@ export default function BookingStorefront() {
 
   useEffect(() => {
     let cancel = false;
-    bookingPublicApi.tenant(slug).then((r) => { if (!cancel) setTenant(r.client.name); }).catch(() => {});
-    return () => { cancel = true; };
+    bookingPublicApi
+      .tenant(slug)
+      .then((r) => {
+        if (!cancel) setTenant(r.client.name);
+      })
+      .catch(() => {});
+    return () => {
+      cancel = true;
+    };
   }, [slug]);
 
   function reset() {
-    setService(null); setSlot(null); setResult(null); setNotice(null); setStep('service');
+    setServices([]);
+    setSlot(null);
+    setResult(null);
+    setNotice(null);
+    setStep('service');
   }
 
   return (
     <div className="booking-sf">
       <div className="booking-sf-col">
         <header className="booking-sf-header">
-          {tenant ? <div className="booking-sf-avatar" aria-hidden>{tenant.charAt(0).toUpperCase()}</div> : null}
+          {tenant ? (
+            <div className="booking-sf-avatar" aria-hidden>
+              {tenant.charAt(0).toUpperCase()}
+            </div>
+          ) : null}
           <span className="booking-sf-brandline">Online booking</span>
           <h1 className="booking-sf-title">{tenant ?? 'Book an appointment'}</h1>
           {tenant ? <p className="booking-sf-sub">Book an appointment</p> : null}
@@ -48,7 +63,10 @@ export default function BookingStorefront() {
         {step !== 'done' && (
           <ol className="booking-sf-steps" aria-label="Progress">
             {STEPS.map((s, i) => (
-              <li key={s.key} className={`booking-sf-step${i === activeIndex ? ' is-active' : ''}${i < activeIndex ? ' is-done' : ''}`}>
+              <li
+                key={s.key}
+                className={`booking-sf-step${i === activeIndex ? ' is-active' : ''}${i < activeIndex ? ' is-done' : ''}`}
+              >
                 <span className="booking-sf-step-dot">{i < activeIndex ? '✓' : i + 1}</span>
                 <span className="booking-sf-step-label">{s.label}</span>
               </li>
@@ -60,24 +78,54 @@ export default function BookingStorefront() {
 
         <div className="booking-sf-body">
           {step === 'service' && (
-            <ServicePicker slug={slug} onPick={(s) => { setService(s); setNotice(null); setStep('slot'); }} />
+            <ServicePicker
+              slug={slug}
+              onPick={(selected) => {
+                setServices(selected);
+                setNotice(null);
+                setStep('slot');
+              }}
+            />
           )}
 
-          {step === 'slot' && service && (
-            <SlotPicker slug={slug} service={service}
-              onPick={(sl) => { setSlot(sl); setNotice(null); setStep('checkout'); }}
-              onBack={() => setStep('service')} />
+          {step === 'slot' && services.length > 0 && (
+            <SlotPicker
+              slug={slug}
+              services={services}
+              onPick={(sl) => {
+                setSlot(sl);
+                setNotice(null);
+                setStep('checkout');
+              }}
+              onBack={() => setStep('service')}
+            />
           )}
 
-          {step === 'checkout' && service && slot && (
-            <Checkout slug={slug} service={service} slot={slot}
-              onDone={(r) => { setResult(r); setStep('done'); }}
-              onSlotTaken={() => { setNotice('That time was just taken — please pick another.'); setStep('slot'); }}
-              onBack={() => setStep('slot')} />
+          {step === 'checkout' && services.length > 0 && slot && (
+            <Checkout
+              slug={slug}
+              services={services}
+              slot={slot}
+              onDone={(r) => {
+                setResult(r);
+                setStep('done');
+              }}
+              onSlotTaken={() => {
+                setNotice('That time was just taken — please pick another.');
+                setStep('slot');
+              }}
+              onBack={() => setStep('slot')}
+            />
           )}
 
-          {step === 'done' && service && slot && result && (
-            <Confirmation slug={slug} service={service} slot={slot} result={result} onBookAnother={reset} />
+          {step === 'done' && services.length > 0 && slot && result && (
+            <Confirmation
+              slug={slug}
+              services={services}
+              slot={slot}
+              result={result}
+              onBookAnother={reset}
+            />
           )}
         </div>
 

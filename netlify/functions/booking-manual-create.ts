@@ -7,6 +7,7 @@ import { requireBooking } from './_booking-authz';
 import { ManualCreateBody } from './_booking-validators';
 import { upsertCustomer } from './_booking-customer-upsert';
 import { sendMail } from './_shared/mailer';
+import { createVisit, validateSequentialVisit } from './_booking-visits';
 
 export const config = { path: '/api/booking/manual-create', method: 'POST' };
 
@@ -16,8 +17,11 @@ export default async function handler(req: Request): Promise<Response> {
   if (!a.ok) return a.res;
 
   let body: ManualCreateBody;
-  try { body = ManualCreateBody.parse(await req.json()); }
-  catch (e: any) { return jsonError(400, 'invalid_body', { issues: e?.issues }); }
+  try {
+    body = ManualCreateBody.parse(await req.json());
+  } catch (e: any) {
+    return jsonError(400, 'invalid_body', { issues: e?.issues });
+  }
 
   const sql = db();
   // Resource must belong to this tenant.
@@ -44,20 +48,34 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Normal vendor booking.
     if (!body.service_id || !body.customer) return jsonError(400, 'service_and_customer_required');
-    const svc = (await sql`SELECT id, name, duration_min, price_cents FROM public.booking_services
-      WHERE id = ${body.service_id}::uuid AND bucket_id = ${a.ctx.clientId}::uuid AND active = true LIMIT 1`) as any[];
-    if (!svc[0]) return jsonError(404, 'service_not_found');
-    const endIso = new Date(start.getTime() + svc[0].duration_min * 60_000).toISOString();
+    const plan = await validateSequentialVisit({
+      clientId: a.ctx.clientId,
+      serviceIds: [body.service_id],
+      resourceId: body.resource_id,
+      start: body.start,
+      allowAvailabilityOverride: true,
+    });
+    if (!plan.ok) {
+      const status =
+        plan.code === 'invalid_start'
+          ? 400
+          : plan.code === 'service_not_found' || plan.code === 'resource_not_found'
+            ? 404
+            : 409;
+      return jsonError(status, plan.code);
+    }
     const { userNodeId } = await upsertCustomer(sql, a.ctx.clientId, body.customer);
-    const rows = (await sql`
-      INSERT INTO public.bookings
-        (bucket_id, service_id, resource_id, user_node_id, time_range, status,
-         customer_name, customer_phone, customer_email, price_cents, deposit_paid_cents, created_by_user_node)
-      VALUES (${a.ctx.clientId}::uuid, ${svc[0].id}::uuid, ${body.resource_id}::uuid, ${userNodeId}::uuid,
-              tstzrange(${start.toISOString()}::timestamptz, ${endIso}::timestamptz), 'confirmed',
-              ${body.customer.name}, ${body.customer.phone}, ${body.customer.email ?? null},
-              ${svc[0].price_cents}, ${body.mark_paid ? svc[0].price_cents : 0}, ${a.ctx.userNodeId}::uuid)
-      RETURNING id, status`) as any[];
+    const visit = await createVisit({
+      clientId: a.ctx.clientId,
+      userNodeId,
+      customer: body.customer,
+      plan,
+      status: 'confirmed',
+      paymentStatus: body.mark_paid ? 'paid' : 'cash_pending',
+      createdByUserNodeId: a.ctx.userNodeId,
+      depositPaidCents: body.mark_paid ? plan.priceCents : 0,
+      eventSource: 'vendor',
+    });
     // Vendor-created bookings are always confirmed → send the confirmation + .ics.
     // No manage_token on this path; the booking id seeds the calendar UID.
     await sendMail({
@@ -66,14 +84,17 @@ export default async function handler(req: Request): Promise<Response> {
       template: 'booking_confirmation',
       data: {
         customerName: body.customer.name,
-        serviceName: svc[0].name,
-        startIso: start.toISOString(),
-        endIso,
-        priceCents: svc[0].price_cents,
-        uid: `${rows[0].id}@exsol`,
+        serviceName: plan.lines[0]!.service.name,
+        startIso: plan.startIso,
+        endIso: plan.endIso,
+        priceCents: plan.priceCents,
+        uid: `${visit.bookingId}@exsol`,
       },
     });
-    return jsonOk(rows[0], { status: 201 });
+    return jsonOk(
+      { id: visit.bookingId, visit_id: visit.visitId, status: 'confirmed' },
+      { status: 201 },
+    );
   } catch (err: any) {
     const code = err?.code ?? err?.cause?.code;
     if (code === '23P01') return jsonError(409, 'slot_taken');

@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-137 tables across 130 forward-only migrations.
+143 tables across 134 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -69,6 +69,26 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ## booking
 
+### `booking_appointment_lines`
+
+- created in `153_booking_visits_appointment_lines.sql`
+- columns at creation: `id UUID`, `visit_id UUID`, `service_id UUID`, `sequence_number INTEGER`, `resource_id UUID`, `time_range TSTZRANGE`, `duration_min INTEGER`, `buffer_min INTEGER`, `price_cents BIGINT`, `created_at TIMESTAMPTZ`
+
+### `booking_events`
+
+- created in `155_booking_lifecycle_events.sql`
+- columns at creation: `id UUID`, `visit_id UUID`, `bucket_id UUID`, `actor_user_node UUID`, `source TEXT`, `event_type TEXT`, `previous_state JSONB`, `new_state JSONB`, `reason TEXT`, `reference TEXT`, `created_at TIMESTAMPTZ`
+
+### `booking_line_reservations`
+
+- created in `153_booking_visits_appointment_lines.sql`
+- columns at creation: `id UUID`, `visit_id UUID`, `appointment_line_id UUID`, `resource_id UUID`, `time_range TSTZRANGE`, `status public.booking_status`, `created_at TIMESTAMPTZ`, `resource_id WITH`, `time_range WITH`, `) WHERE`
+
+### `booking_policies`
+
+- created in `154_booking_policies.sql`
+- columns at creation: `bucket_id UUID`, `version INTEGER`, `cancel_cutoff_min INTEGER`, `reschedule_cutoff_min INTEGER`, `max_customer_reschedules INTEGER`, `late_arrival_grace_min INTEGER`, `no_show_outcome TEXT`, `cancellation_settlement TEXT`, `late_reschedule_action TEXT`, `late_reschedule_fee_cents BIGINT`, `deposit_requirement TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ### `booking_resource_time_off`
 
 - created in `047_booking_core.sql`
@@ -89,9 +109,19 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `047_booking_core.sql`
 - columns at creation: `bucket_id UUID`, `slot_interval_min INTEGER`, `lead_time_min INTEGER`, `cancel_cutoff_min INTEGER`, `weekly_schedule JSONB`, `date_overrides JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
+### `booking_setup`
+
+- created in `152_booking_setup.sql`
+- columns at creation: `bucket_id UUID`, `booking_party_mode TEXT`, `bookable_kinds TEXT[]`, `extra_capacity_needs TEXT[]`, `availability_source TEXT`, `display_labels JSONB`, `reservation_rules JSONB`, `setup_version INTEGER`, `completed_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `booking_visits`
+
+- created in `153_booking_visits_appointment_lines.sql`; altered in `154_booking_policies.sql`, `155_booking_lifecycle_events.sql`
+- columns at creation: `id UUID`, `bucket_id UUID`, `user_node_id UUID`, `time_range TSTZRANGE`, `status public.booking_status`, `customer_name TEXT`, `customer_phone TEXT`, `customer_email TEXT`, `price_cents BIGINT`, `deposit_paid_cents BIGINT`, `cancellation_reason TEXT`, `cancelled_at TIMESTAMPTZ`, `manage_token TEXT`, `created_by_user_node UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ### `bookings`
 
-- created in `048_bookings.sql`
+- created in `048_bookings.sql`; altered in `153_booking_visits_appointment_lines.sql`
 - columns at creation: `id UUID`, `bucket_id UUID`, `service_id UUID`, `resource_id UUID`, `user_node_id UUID`, `time_range TSTZRANGE`, `status public.booking_status`, `customer_name TEXT`, `customer_phone TEXT`, `customer_email TEXT`, `price_cents BIGINT`, `deposit_paid_cents BIGINT`, `cancellation_reason TEXT`, `cancelled_at TIMESTAMPTZ`, `manage_token TEXT`, `created_by_user_node UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`, `(status =`, `OR (status`, `)`, `resource_id WITH`, `time_range WITH`, `) WHERE`
 
 ## crm

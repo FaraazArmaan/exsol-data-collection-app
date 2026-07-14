@@ -55,6 +55,7 @@ describe('product registry', () => {
   it('saloon-booking product exists and references real modules', () => {
     const p = getProduct('saloon-booking');
     expect(p).toBeDefined();
+    expect(p!.label).toBe('Appointments & Reservations');
     for (const ref of p!.modules) {
       expect(getModule(ref.module)).toBeDefined();
     }

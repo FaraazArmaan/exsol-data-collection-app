@@ -62,7 +62,7 @@ A module is reachable only when an enabled product carries it (iron rule 4).
 | pos | POS | pos (vendor), email (vendor) | products |
 | procurement | Procurement | procurement (vendor) | products, inventory |
 | products | Products Management | products (both) | — |
-| saloon-booking | Saloon Booking System | booking (both), payments (both), products (both), email (vendor) | — |
+| saloon-booking | Appointments & Reservations | booking (both), payments (both), products (both), email (vendor) | — |
 | supply-chain | Supply Chain | supply-chain (vendor) | — |
 | warehouse | Warehouse | warehouse (vendor) | inventory |
 | workforce | Workforce & Projects | workforce (vendor), project-service (vendor) | saloon-booking |
