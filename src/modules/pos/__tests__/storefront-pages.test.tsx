@@ -23,8 +23,8 @@ describe('StorefrontMenuPage', () => {
       products: [{ id: 'p1', name: 'Latte', categoryId: null, salePriceCents: 25000, thumbKey: null }],
     }));
     render(
-      <MemoryRouter initialEntries={['/storefront/corner-cafe']}>
-        <Routes><Route path="/storefront/:slug" element={<StorefrontMenuPage />} /></Routes>
+      <MemoryRouter initialEntries={['/storefront/corner-cafe/Order']}>
+        <Routes><Route path="/storefront/:slug/Order" element={<StorefrontMenuPage />} /></Routes>
       </MemoryRouter>,
     );
     // The branded header (brand/tenant name) is supplied by StorefrontLayout —
@@ -36,8 +36,8 @@ describe('StorefrontMenuPage', () => {
   it('shows the not-available card on a 404', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(jsonResponse(404, { error: { code: 'storefront_unavailable' } }));
     render(
-      <MemoryRouter initialEntries={['/storefront/nope']}>
-        <Routes><Route path="/storefront/:slug" element={<StorefrontMenuPage />} /></Routes>
+      <MemoryRouter initialEntries={['/storefront/nope/Order']}>
+        <Routes><Route path="/storefront/:slug/Order" element={<StorefrontMenuPage />} /></Routes>
       </MemoryRouter>,
     );
     expect(await screen.findByText(/isn.t available/i)).toBeInTheDocument();
@@ -58,11 +58,11 @@ describe('StorefrontDetailsPage', () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => jsonResponse(201, { id: 'sale-xyz', status: 'pending_payment' }));
 
     render(
-      <MemoryRouter initialEntries={['/storefront/corner-cafe/details']}>
+      <MemoryRouter initialEntries={['/storefront/corner-cafe/Order/details']}>
         <Routes>
-          <Route path="/storefront/:slug/details" element={<StorefrontDetailsPage />} />
+          <Route path="/storefront/:slug/Order/details" element={<StorefrontDetailsPage />} />
           <Route
-            path="/storefront/:slug/order/:saleUuid"
+            path="/storefront/:slug/Order/order/:saleUuid"
             element={<div>RECEIPT sale-xyz</div>}
           />
         </Routes>
@@ -96,10 +96,10 @@ describe('StorefrontReceiptPage', () => {
       timeline: { placedAt: '2026-06-30T10:00:00Z', paidAt: '2026-06-30T10:05:00Z', fulfilledAt: null, cancelledAt: null, refundedAt: null },
     }));
     render(
-      <MemoryRouter initialEntries={['/storefront/corner-cafe/order/sale-xyz']}>
+      <MemoryRouter initialEntries={['/storefront/corner-cafe/Order/order/sale-xyz']}>
         <Routes>
           <Route
-            path="/storefront/:slug/order/:saleUuid"
+            path="/storefront/:slug/Order/order/:saleUuid"
             element={<StorefrontReceiptPage />}
           />
         </Routes>

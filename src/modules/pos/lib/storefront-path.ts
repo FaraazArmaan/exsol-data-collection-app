@@ -12,7 +12,7 @@ export function publicStorefrontUrl(slug: string, baseUrl?: string): string {
 }
 
 export function storefrontBasePath(pathname: string, slug: string): string {
-  return pathname.startsWith(`/storefront/${slug}`) ? `/storefront/${slug}` : `/menu/${slug}`;
+  return pathname.startsWith(`/storefront/${slug}`) ? `/storefront/${slug}/Order` : `/menu/${slug}`;
 }
 
 export function storefrontPath(pathname: string, slug: string, suffix = ''): string {

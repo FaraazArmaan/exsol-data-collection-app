@@ -27,18 +27,18 @@ export function PublicSurfaceNav({ slug }: Props) {
       <nav className="brand-public-nav" aria-label="Business services">
         {surfaces.shop ? (
           <NavLink
-            to={`/storefront/${slug}`}
+            to={`/storefront/${slug}/Order`}
             className={({ isActive }) => `brand-public-nav__link${isActive ? ' is-active' : ''}`}
           >
-            Online ordering
+            Ordering
           </NavLink>
         ) : null}
         {surfaces.booking ? (
           <NavLink
-            to={`/book/${slug}`}
+            to={`/storefront/${slug}/Book`}
             className={({ isActive }) => `brand-public-nav__link${isActive ? ' is-active' : ''}`}
           >
-            Online booking
+            Booking
           </NavLink>
         ) : null}
       </nav>

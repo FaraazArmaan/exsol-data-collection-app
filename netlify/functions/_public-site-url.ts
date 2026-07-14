@@ -12,5 +12,9 @@ export function publicStorefrontUrl(slug: string, baseUrl?: string): string {
 }
 
 export function publicBookingUrl(slug: string, baseUrl?: string): string {
-  return `${normalizePublicBaseUrl(baseUrl)}/book/${slug}`;
+  return `${publicStorefrontUrl(slug, baseUrl)}/Book`;
+}
+
+export function publicOrderingUrl(slug: string, baseUrl?: string): string {
+  return `${publicStorefrontUrl(slug, baseUrl)}/Order`;
 }

@@ -47,7 +47,7 @@ describe('Booking publication', () => {
     expect(enabled.status).toBe(200);
     expect(await enabled.json()).toMatchObject({
       enabled: true,
-      publicUrl: `https://exsoldatacollectionapp.netlify.app/book/${ctx.slug}`,
+      publicUrl: `https://exsoldatacollectionapp.netlify.app/storefront/${ctx.slug}/Book`,
     });
     const audit = (await sqlClient()`
       SELECT op, detail

@@ -4,6 +4,7 @@ import { useAuth } from './auth-context';
 import LoginPage from '../modules/login/pages/LoginPage';
 import SetPasswordPage from '../modules/login/pages/SetPasswordPage';
 import StorefrontLayout from '../modules/pos/pages/StorefrontLayout';
+import StorefrontHome from '../modules/pos/pages/StorefrontHome';
 import StorefrontMenuPage from '../modules/pos/pages/StorefrontMenuPage';
 import StorefrontCartPage from '../modules/pos/pages/StorefrontCartPage';
 import StorefrontDetailsPage from '../modules/pos/pages/StorefrontDetailsPage';
@@ -101,12 +102,17 @@ function WorkspaceLoginRedirect() {
 
 function WorkspaceBookingRedirect() {
   const { slug } = useParams<{ slug: string }>();
-  return <Navigate to={slug ? `/book/${slug}` : '/'} replace />;
+  return <Navigate to={slug ? `/storefront/${slug}/Book` : '/'} replace />;
 }
 
 function WorkspaceBookingManageRedirect() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
-  return <Navigate to={slug && token ? `/book/${slug}/manage/${token}` : '/'} replace />;
+  return <Navigate to={slug && token ? `/storefront/${slug}/Book/manage/${token}` : '/'} replace />;
+}
+
+function LegacyOrderingRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={slug ? `/storefront/${slug}/Order` : '/'} replace />;
 }
 
 function WorkspaceAccessLevels() {
@@ -148,19 +154,20 @@ export const router = createBrowserRouter([
   // whole guest flow); see branding spec §9.4.
   {
     path: '/menu/:slug',
-    element: <StorefrontLayout />,
-    children: [
-      { index: true, element: <StorefrontMenuPage /> },
-      { path: 'cart', element: <StorefrontCartPage /> },
-      { path: 'details', element: <StorefrontDetailsPage /> },
-      { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
-    ],
+    element: <LegacyOrderingRedirect />,
   },
   {
     path: '/storefront/:slug',
     element: <StorefrontLayout />,
     children: [
-      { index: true, element: <StorefrontMenuPage /> },
+      { index: true, element: <StorefrontHome /> },
+      { path: 'Order', element: <StorefrontMenuPage /> },
+      { path: 'Order/cart', element: <StorefrontCartPage /> },
+      { path: 'Order/details', element: <StorefrontDetailsPage /> },
+      { path: 'Order/order/:saleUuid', element: <StorefrontReceiptPage /> },
+      { path: 'Book', element: <BookingStorefront /> },
+      { path: 'Book/manage/:token', element: <ManageBooking /> },
+      // Previous public URLs remain valid while all new links use surface paths.
       { path: 'cart', element: <StorefrontCartPage /> },
       { path: 'details', element: <StorefrontDetailsPage /> },
       { path: 'order/:saleUuid', element: <StorefrontReceiptPage /> },
@@ -168,11 +175,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/book/:slug',
-    element: <StorefrontLayout />,
-    children: [
-      { index: true, element: <BookingStorefront /> },
-      { path: 'manage/:token', element: <ManageBooking /> },
-    ],
+    element: <WorkspaceBookingRedirect />,
+  },
+  {
+    path: '/book/:slug/manage/:token',
+    element: <WorkspaceBookingManageRedirect />,
   },
   // Public catalog — unauthenticated; reuses the storefront BrandShell + the menu
   // grid in catalogMode (no cart). Gated on the `catalog` product server-side.
