@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const { refresh: refreshAdminAuth } = useAuth();
   const nextPath = searchParams.get('next');
+  const explicitWorkspaceSlug = searchParams.get('client');
   const nextWorkspaceSlug = nextPath?.match(/^\/c\/([^/]+)/)?.[1];
 
   const [email, setEmail] = useState('');
@@ -48,7 +49,7 @@ export default function LoginPage() {
     setSubmitting(true);
     const { controller, clear } = makeAbortController();
     try {
-      const r = await unifiedLogin(emailVal, passwordVal, clientSlug ?? nextWorkspaceSlug, controller.signal);
+      const r = await unifiedLogin(emailVal, passwordVal, clientSlug ?? explicitWorkspaceSlug ?? undefined, controller.signal);
       if (!r.ok) {
         setError(r.error.code === 'too_many_attempts'
           ? 'Too many attempts. Try again in a few minutes.'
@@ -97,7 +98,7 @@ export default function LoginPage() {
     setSubmitting(true);
     const { controller, clear } = makeAbortController();
     try {
-      const r = await unifiedGoogleLogin(idToken, clientSlug ?? nextWorkspaceSlug, controller.signal);
+      const r = await unifiedGoogleLogin(idToken, clientSlug ?? explicitWorkspaceSlug ?? undefined, controller.signal);
       if (!r.ok) {
         setError(r.error.code === 'too_many_attempts'
           ? 'Too many attempts. Try again in a few minutes.'
