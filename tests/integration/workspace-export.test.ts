@@ -185,6 +185,8 @@ beforeAll(async () => {
   const nodeRows = (await sql`
     INSERT INTO public.user_nodes (client_id, parent_id, level_number, role_id, display_name, email, created_by_admin)
     VALUES (${clientBId}, NULL, 1, ${roleBId}, 'CLIENT_B_NEEDLE_HUMAN', 'needle@b.test', ${adminId})
+    ON CONFLICT (client_id, (lower(email::text))) WHERE email IS NOT NULL
+      DO UPDATE SET display_name = EXCLUDED.display_name
     RETURNING id
   `) as { id: string }[];
   clientBNeedleNodeId = nodeRows[0]!.id;

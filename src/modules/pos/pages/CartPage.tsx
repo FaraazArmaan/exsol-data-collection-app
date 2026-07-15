@@ -6,6 +6,7 @@ import { CustomerForm } from '../components/CustomerForm';
 import { ChannelPicker } from '../components/ChannelPicker';
 import { posApi, PosApiError } from '../shared/api';
 import { formatRupees } from '../lib/money';
+import { loadRazorpayCheckout } from '../../../lib/razorpay-checkout';
 
 export interface CartPageProps {
   bucketId: string;
@@ -62,6 +63,19 @@ export default function CartPage(props: CartPageProps) {
         customer: { ...customer, email: customer.email || undefined },
         lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
       });
+      if (sale.payment_intent) {
+        await loadRazorpayCheckout();
+        const Razorpay = window.Razorpay;
+        if (!Razorpay) throw new Error('razorpay_unavailable');
+        new Razorpay({
+          key: sale.payment_intent.key_id, order_id: sale.payment_intent.order_id,
+          amount: sale.payment_intent.amount_cents, currency: sale.payment_intent.currency,
+          name: 'ExSol POS sale', prefill: { name: customer.name.trim(), contact: customer.phone.trim(), email: customer.email || undefined },
+          handler: () => { clear(); nav(`/c/${props.slug}/pos/sales/${sale.id}`); },
+          modal: { ondismiss: () => { setSubmitting(false); setError('Payment was not completed. The sale remains pending payment.'); } },
+        }).open();
+        return;
+      }
       clear();
       nav(`/c/${props.slug}/pos/sales/${sale.id}`);
     } catch (e) {

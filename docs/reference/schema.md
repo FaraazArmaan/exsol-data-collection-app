@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-149 tables across 138 forward-only migrations.
+149 tables across 139 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -484,7 +484,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `payment_transactions`
 
-- created in `159_payments_core.sql`
+- created in `159_payments_core.sql`; altered in `162_orders_refund_payment_links.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `kind TEXT`, `status TEXT`, `amount_minor BIGINT`, `currency CHAR(3)`, `provider TEXT`, `provider_transaction_id TEXT`, `reference TEXT`, `actor_user_node UUID`, `occurred_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`
 
 ### `payment_webhook_events`

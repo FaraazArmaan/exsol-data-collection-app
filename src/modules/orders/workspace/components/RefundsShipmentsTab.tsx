@@ -96,9 +96,9 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
     setAdvanceMsg(null);
     try {
       const res = await ordersApi.advanceRefund(id, to);
-      let msg = `Refund ${to}.`;
-      if (to === 'completed' && res.sale_refunded) msg += ' Sale marked refunded.';
-      if (to === 'completed' && !res.sale_refunded) msg += ' Sale status unchanged (not in paid/fulfilled).';
+      let msg = to === 'approved' && res.provider_pending
+        ? 'Refund submitted to the payment provider; awaiting confirmation.'
+        : `Refund ${to}.`;
       setAdvanceMsg(msg);
       loadRefunds();
     } catch (e) {
@@ -108,7 +108,6 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
 
   const nextActions: Record<string, string[]> = {
     requested: ['approved', 'rejected'],
-    approved: ['completed'],
   };
 
   return (
@@ -177,7 +176,9 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
                 <td>{r.reason ?? '—'}</td>
                 <td>
                   <span className={`ord-badge ord-badge-${r.state}`}>
-                    {REFUND_STATE_LABEL[r.state] ?? r.state}
+                    {r.state === 'approved' && r.provider_refund_status === 'pending'
+                      ? 'Processing'
+                      : (REFUND_STATE_LABEL[r.state] ?? r.state)}
                   </span>
                 </td>
                 {canEdit && (
@@ -188,7 +189,7 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
                         className="ord-btn ord-btn-sm"
                         onClick={() => handleAdvance(r.id, to)}
                       >
-                        → {to}
+                        {to === 'approved' ? 'Initiate payment refund' : `→ ${to}`}
                       </button>
                     ))}
                   </td>

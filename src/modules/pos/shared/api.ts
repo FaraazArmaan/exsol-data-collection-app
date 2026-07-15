@@ -93,6 +93,23 @@ export interface PublicSaleInput {
   couponCode?: string;
 }
 
+export interface RazorpayPaymentIntent {
+  provider: 'razorpay';
+  status: 'created';
+  amount_cents: number;
+  currency: 'INR';
+  order_id: string;
+  key_id: string;
+  expires_at: string;
+}
+
+export interface SaleCheckoutResponse {
+  id: string;
+  totalCents?: number;
+  total_cents?: number | string;
+  payment_intent?: RazorpayPaymentIntent;
+}
+
 export type CouponPreview =
   | { valid: true; code: string; discountCents: number }
   | { valid: false; reason: string };
@@ -108,7 +125,7 @@ export const publicApi = {
     }),
 
   createSale: (body: PublicSaleInput) =>
-    call<any>('/api/public/sales', {
+    call<SaleCheckoutResponse>('/api/public/sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -184,7 +201,7 @@ export const posApi = {
   getMenu: () => call<MenuResponse>('/api/pos/menu'),
 
   createSale: (body: SaleCreateInput) =>
-    call<any>('/api/pos/sales', {
+    call<SaleCheckoutResponse>('/api/pos/sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

@@ -41,7 +41,7 @@ describe('orders refunds', () => {
     expect(found).toBeDefined();
   });
 
-  it('advance requested→approved→completed (partial) — sale.status unchanged, sale_refunded:false', async () => {
+  it('cannot approve an Orders refund that has no configured provider capture', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'paid', total: 5000 });
 
@@ -57,23 +57,11 @@ describe('orders refunds', () => {
     const r2 = await refundAdvanceHandler(
       makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'approved' }),
     );
-    expect(r2.status).toBe(200);
-    expect((await r2.json()).state).toBe('approved');
-
-    const r3 = await refundAdvanceHandler(
-      makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'completed' }),
-    );
-    expect(r3.status).toBe(200);
-    const body3 = await r3.json();
-    expect(body3.state).toBe('completed');
-    // Partial: amount (2000) < total (5000) → sale not refunded
-    expect(body3.sale_refunded).toBe(false);
-
-    const sales = await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid`;
-    expect(sales[0]?.status).toBe('paid');
+    expect(r2.status).toBe(409);
+    expect((await r2.json()).error.code).toBe('razorpay_not_configured');
   });
 
-  it('full-amount refund on a paid sale → sale_refunded:true, sale.status=refunded', async () => {
+  it('manual completion is unavailable even for a fully paid sale', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'paid', total: 3000 });
 
@@ -85,24 +73,14 @@ describe('orders refunds', () => {
     );
     const { id } = await r.json();
 
-    await refundAdvanceHandler(
-      makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'approved' }),
-    );
-
     const r3 = await refundAdvanceHandler(
       makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'completed' }),
     );
-    expect(r3.status).toBe(200);
-    const body3 = await r3.json();
-    expect(body3.state).toBe('completed');
-    expect(body3.sale_refunded).toBe(true);
-
-    // The guarded UPDATE should have flipped sale.status to 'refunded'
-    const sales = await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid`;
-    expect(sales[0]?.status).toBe('refunded');
+    expect(r3.status).toBe(409);
+    expect((await r3.json()).error.code).toBe('illegal_transition');
   });
 
-  it('full-amount refund on a pending_payment sale → sale_refunded:false, sale.status unchanged', async () => {
+  it('does not approve an uncollected sale as a provider refund', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'pending_payment', total: 2000 });
 
@@ -114,21 +92,11 @@ describe('orders refunds', () => {
     );
     const { id } = await r.json();
 
-    await refundAdvanceHandler(
+    const r3 = await refundAdvanceHandler(
       makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'approved' }),
     );
-
-    const r3 = await refundAdvanceHandler(
-      makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'completed' }),
-    );
-    expect(r3.status).toBe(200);
-    const body3 = await r3.json();
-    expect(body3.state).toBe('completed');
-    // Guarded update: sale not in paid/fulfilled → 0 rows → sale_refunded:false
-    expect(body3.sale_refunded).toBe(false);
-
-    const sales = await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid`;
-    expect(sales[0]?.status).toBe('pending_payment');
+    expect(r3.status).toBe(409);
+    expect((await r3.json()).error.code).toBe('razorpay_not_configured');
   });
 
   it('amount > total → 400 amount_invalid', async () => {

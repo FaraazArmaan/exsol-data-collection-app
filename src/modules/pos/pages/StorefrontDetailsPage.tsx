@@ -5,6 +5,7 @@ import { getOrCreateStorefrontSession } from '../lib/session';
 import { publicApi, PosApiError, type CouponPreview, type StorefrontConfig } from '../shared/api';
 import { formatMoney } from '../../../lib/currency';
 import { storefrontPath } from '../lib/storefront-path';
+import { loadRazorpayCheckout } from '../../../lib/razorpay-checkout';
 
 // Human-readable copy for the coupon rejection codes the API returns.
 const COUPON_REASONS: Record<string, string> = {
@@ -122,6 +123,19 @@ export default function StorefrontDetailsPage() {
         lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
         couponCode: coupon?.valid ? coupon.code : undefined,
       });
+      if (sale.payment_intent) {
+        await loadRazorpayCheckout();
+        const Razorpay = window.Razorpay;
+        if (!Razorpay) throw new Error('razorpay_unavailable');
+        new Razorpay({
+          key: sale.payment_intent.key_id, order_id: sale.payment_intent.order_id,
+          amount: sale.payment_intent.amount_cents, currency: sale.payment_intent.currency,
+          name: 'ExSol order', prefill: { name: customer.name.trim(), contact: customer.phone.trim(), email: customer.email || undefined },
+          handler: () => { clear(); nav(storefrontPath(location.pathname, slug!, `order/${sale.id}`)); },
+          modal: { ondismiss: () => { setSubmitting(false); setError('Payment was not completed. Your order remains pending payment.'); } },
+        }).open();
+        return;
+      }
       clear();
       nav(storefrontPath(location.pathname, slug!, `order/${sale.id}`));
     } catch (err) {

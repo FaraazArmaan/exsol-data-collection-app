@@ -12,7 +12,7 @@ import { createVisit, validateSequentialVisit } from './_booking-visits';
 import { sendMail } from './_shared/mailer';
 import { randomUUID } from 'node:crypto';
 import { resolvePublicBooking } from './_booking-public';
-import { createBookingRazorpayCheckout } from './_payments-booking-checkout';
+import { createBookingRazorpayCheckout } from './_payments-checkout';
 import { razorpayTestConnectionReady, RazorpayProviderError } from './_payments-razorpay';
 import { PaymentsEncryptionUnavailable } from './_payments-secrets';
 
@@ -111,6 +111,7 @@ export default async function handler(req: Request): Promise<Response> {
           clientId, visitId: visit.visitId, amountMinor: amountCents,
           purpose: firstService.payment_mode === 'deposit' ? 'deposit' : 'full_upfront',
         });
+        if (!checkout) return jsonError(409, 'online_payment_unavailable');
         payment_intent = {
           provider: 'razorpay', status: 'created', amount_cents: checkout.amountMinor,
           currency: checkout.currency, order_id: checkout.orderId, key_id: checkout.keyId, expires_at: checkout.expiresAt,

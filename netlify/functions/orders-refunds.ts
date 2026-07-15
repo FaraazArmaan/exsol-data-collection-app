@@ -26,9 +26,16 @@ export default async function handler(req: Request): Promise<Response> {
     const rows = (await sql`
       SELECT r.id, r.sale_id, r.amount_cents, r.reason, r.state,
              r.requested_by, r.created_at, r.updated_at, r.completed_at,
-             s.order_no, s.customer_name
+             s.order_no, s.customer_name, tx.status AS provider_refund_status
       FROM public.orders_refunds r
       JOIN public.sales s ON s.id = r.sale_id
+      LEFT JOIN LATERAL (
+        SELECT status
+        FROM public.payment_transactions
+        WHERE orders_refund_id = r.id AND kind = 'provider_refunded'
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) tx ON true
       WHERE r.client_id = ${clientId}::uuid
       ORDER BY r.created_at DESC
     `) as Array<Record<string, unknown>>;

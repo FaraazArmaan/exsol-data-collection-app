@@ -7,7 +7,7 @@ import {
   type CreateResult,
 } from '../shared/api';
 import { formatRupees, formatTime, formatDateLong, paymentChip } from '../format';
-import { loadRazorpayCheckout } from './razorpay';
+import { loadRazorpayCheckout } from '../../../lib/razorpay-checkout';
 
 interface Props {
   slug: string;

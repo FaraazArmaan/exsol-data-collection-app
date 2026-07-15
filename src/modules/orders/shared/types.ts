@@ -45,6 +45,7 @@ export interface RefundRow {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  provider_refund_status: 'pending' | 'succeeded' | 'failed' | 'void' | null;
   order_no: number;
   customer_name: string;
 }
@@ -53,6 +54,7 @@ export interface RefundAdvanceResult {
   id: string;
   state: RefundState;
   sale_refunded: boolean;
+  provider_pending?: boolean;
 }
 
 // ── Shipments ─────────────────────────────────────────────────────────────────

@@ -1,18 +1,11 @@
-// POST /api/orders/refund-advance/:id — advance refund state machine.
-//
-// Legal transitions:
-//   requested → approved | rejected
-//   approved  → completed
-//
-// On completed + full amount: guarded UPDATE to sales.status='refunded'
-// via ALLOWED_FROM['refund'] = ['paid','fulfilled']. If the sale is not in
-// one of those states (e.g. pending_payment), the refund still completes
-// but sale_refunded=false is returned — no rollback, no 409.
+// POST /api/orders/refund-advance/:id — approve/reject an Orders refund request.
+// Approval records a pending provider-refund ledger entry; only the signed provider
+// webhook may complete the refund or change the sale to refunded.
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireOrders, ordersAuditSession } from './_orders-authz';
 import { logAudit } from './_shared/audit';
-import { ALLOWED_FROM } from './_pos-fsm';
+import { createRazorpayRefund, getRazorpayTestConnection, RazorpayProviderError } from './_payments-razorpay';
 
 export const config = { path: '/api/orders/refund-advance/:id', method: 'POST' };
 
@@ -21,19 +14,8 @@ function idFrom(req: Request): string {
   return new URL(req.url).pathname.split('/').pop() ?? '';
 }
 
-// Legal next-states per current state
-const LEGAL: Readonly<Record<string, readonly string[]>> = {
-  requested: ['approved', 'rejected'],
-  approved: ['completed'],
-};
-
-type RefundRow = {
-  id: string;
-  state: string;
-  amount_cents: string; // BIGINT → string from Neon
-  sale_id: string;
-  total_cents: string;  // BIGINT → string from Neon
-};
+type RefundRow = { id: string; state: string; sale_id: string };
+type PendingRefund = { id: string; amount_minor: string; currency: string; provider_payment_id: string; sale_id: string };
 
 export default async function handler(req: Request): Promise<Response> {
   const id = idFrom(req);
@@ -44,81 +26,144 @@ export default async function handler(req: Request): Promise<Response> {
   const { clientId } = a.ctx;
 
   let body: { to?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError(400, 'invalid_body');
-  }
-
-  const { to } = body;
-  if (typeof to !== 'string') return jsonError(400, 'invalid_body');
+  try { body = await req.json(); } catch { return jsonError(400, 'invalid_body'); }
+  if (typeof body.to !== 'string') return jsonError(400, 'invalid_body');
+  if (body.to !== 'approved' && body.to !== 'rejected') return jsonError(409, 'illegal_transition');
 
   const sql = db();
-
-  // Load refund + sale, scoped by client
-  const rows = (await sql`
-    SELECT r.id, r.state, r.amount_cents, r.sale_id, s.total_cents
-    FROM public.orders_refunds r
-    JOIN public.sales s ON s.id = r.sale_id
-    WHERE r.id = ${id}::uuid AND r.client_id = ${clientId}::uuid
+  const refunds = (await sql`
+    SELECT id, state, sale_id
+    FROM public.orders_refunds
+    WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid
     LIMIT 1
   `) as RefundRow[];
+  const refund = refunds[0];
+  if (!refund) return jsonError(404, 'not_found');
+  if (refund.state !== 'requested') return jsonError(409, 'illegal_transition');
 
-  if (!rows[0]) return jsonError(404, 'not_found');
-
-  const refund = rows[0];
-  const legalNext = LEGAL[refund.state] ?? [];
-
-  if (!legalNext.includes(to)) return jsonError(409, 'illegal_transition');
-
-  let saleRefunded = false;
-
-  if (to === 'completed') {
-    // Build transaction: refund UPDATE always first; sale UPDATE appended when full-refund.
-    // Using sql.transaction([...]) array form so a DB error on the sale UPDATE cannot leave
-    // the refund marked completed while the sale is untouched.
-    const fullRefund = Number(refund.amount_cents) === Number(refund.total_cents);
-    const canRefund = ALLOWED_FROM['refund']; // ['paid', 'fulfilled']
-    const queries = [
-      sql`
-        UPDATE public.orders_refunds
-        SET state = 'completed', completed_at = now(), updated_at = now()
-        WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid
-      `,
-    ];
-    let saleIdx = -1;
-    if (fullRefund) {
-      saleIdx = queries.length;
-      queries.push(
-        sql`
-          UPDATE public.sales
-          SET status = 'refunded', refunded_at = now()
-          WHERE id = ${refund.sale_id}::uuid
-            AND bucket_id = ${clientId}::uuid
-            AND status = ANY(${canRefund as string[]}::sale_status[])
-          RETURNING id
-        `,
-      );
-    }
-    const results = await sql.transaction(queries);
-    // 0-row sale UPDATE means sale was not in paid/fulfilled; refund still completes.
-    saleRefunded = saleIdx >= 0 ? (results[saleIdx] as unknown[]).length > 0 : false;
-  } else {
+  if (body.to === 'rejected') {
     await sql`
       UPDATE public.orders_refunds
-      SET state = ${to}
-      WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid
+      SET state = 'rejected'::refund_state
+      WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND state = 'requested'::refund_state
     `;
+    await logAudit(sql, {
+      session: ordersAuditSession(a.ctx), op: 'orders.refund.rejected', clientId,
+      targetType: 'refund', targetId: id, detail: { to: 'rejected' },
+    });
+    return jsonOk({ id, state: 'rejected', sale_refunded: false });
+  }
+
+  const connection = await getRazorpayTestConnection(clientId);
+  if (!connection) return jsonError(409, 'razorpay_not_configured');
+
+  const pending = (await sql`
+    WITH refund AS (
+      SELECT id, client_id, sale_id, amount_cents
+      FROM public.orders_refunds
+      WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND state = 'requested'::refund_state
+      FOR UPDATE
+    ), capture AS (
+      SELECT t.id, t.provider, t.provider_transaction_id, t.currency
+      FROM public.payment_transactions t
+      JOIN public.payment_allocations a ON a.transaction_id = t.id
+      JOIN public.payment_requests p ON p.id = a.request_id
+      JOIN refund r ON r.sale_id = p.source_id
+      LEFT JOIN public.payment_transactions prior
+        ON prior.refund_of_transaction_id = t.id
+        AND prior.kind = 'provider_refunded'
+        AND prior.status IN ('pending', 'succeeded')
+      WHERE p.source_type = 'sale'
+        AND t.client_id = r.client_id
+        AND t.kind = 'provider_captured'
+        AND t.status = 'succeeded'
+        AND t.provider = 'razorpay'
+        AND t.provider_transaction_id IS NOT NULL
+      GROUP BY t.id, t.provider, t.provider_transaction_id, t.currency, t.amount_minor, r.amount_cents
+      HAVING t.amount_minor - COALESCE(SUM(prior.amount_minor), 0)::bigint >= r.amount_cents
+      ORDER BY t.id
+      LIMIT 1
+    ), ledger AS (
+      INSERT INTO public.payment_transactions
+        (client_id, kind, status, amount_minor, currency, provider, orders_refund_id, refund_of_transaction_id)
+      SELECT r.client_id, 'provider_refunded', 'pending', r.amount_cents, c.currency, c.provider, r.id, c.id
+      FROM refund r CROSS JOIN capture c
+      RETURNING id, amount_minor, currency, refund_of_transaction_id
+    ), approved AS (
+      UPDATE public.orders_refunds r
+      SET state = 'approved'::refund_state
+      FROM ledger
+      WHERE r.id = ${id}::uuid AND r.state = 'requested'::refund_state
+      RETURNING r.sale_id
+    )
+    SELECT l.id, l.amount_minor, l.currency, c.provider_transaction_id AS provider_payment_id, a.sale_id
+    FROM ledger l
+    JOIN capture c ON c.id = l.refund_of_transaction_id
+    CROSS JOIN approved a
+  `) as PendingRefund[];
+  const ledger = pending[0];
+  if (!ledger) return jsonError(409, 'refund_requires_captured_payment');
+
+  let providerRefund: { id: string; amount: number; currency: string; status: string };
+  try {
+    providerRefund = await createRazorpayRefund({
+      connection,
+      paymentId: ledger.provider_payment_id,
+      amountMinor: Number(ledger.amount_minor),
+      receipt: `refund_${id.replace(/-/g, '')}`,
+      notes: { orders_refund_id: id, sale_id: ledger.sale_id },
+    });
+  } catch (error) {
+    if (error instanceof RazorpayProviderError && error.outcomeKnown) {
+      await sql`
+        WITH failed AS (
+          UPDATE public.payment_transactions
+          SET status = 'failed'
+          WHERE id = ${ledger.id}::uuid AND status = 'pending'
+          RETURNING orders_refund_id
+        )
+        UPDATE public.orders_refunds r
+        SET state = 'requested'::refund_state
+        FROM failed
+        WHERE r.id = failed.orders_refund_id AND r.state = 'approved'::refund_state
+      `;
+      return jsonError(409, 'razorpay_refund_rejected');
+    }
+    await logAudit(sql, {
+      session: ordersAuditSession(a.ctx), op: 'orders.refund.provider_outcome_unknown', clientId,
+      targetType: 'refund', targetId: id, detail: { transaction_id: ledger.id },
+    });
+    return jsonError(502, 'razorpay_refund_outcome_unknown');
+  }
+
+  await sql`
+    UPDATE public.payment_transactions
+    SET provider_transaction_id = ${providerRefund.id}
+    WHERE id = ${ledger.id}::uuid AND status = 'pending'
+  `;
+  if (providerRefund.amount !== Number(ledger.amount_minor) || providerRefund.currency !== ledger.currency) {
+    return jsonError(502, 'razorpay_refund_response_invalid');
+  }
+  if (providerRefund.status === 'failed') {
+    await sql`
+      WITH failed AS (
+        UPDATE public.payment_transactions
+        SET status = 'failed'
+        WHERE id = ${ledger.id}::uuid AND status = 'pending'
+        RETURNING orders_refund_id
+      )
+      UPDATE public.orders_refunds r
+      SET state = 'requested'::refund_state
+      FROM failed
+      WHERE r.id = failed.orders_refund_id AND r.state = 'approved'::refund_state
+    `;
+    return jsonError(409, 'razorpay_refund_rejected');
   }
 
   await logAudit(sql, {
-    session: ordersAuditSession(a.ctx),
-    op: `orders.refund.${to}`,
-    clientId,
-    targetType: 'refund',
-    targetId: id,
-    detail: { to, sale_refunded: saleRefunded },
+    session: ordersAuditSession(a.ctx), op: 'orders.refund.approved', clientId,
+    targetType: 'refund', targetId: id,
+    detail: { transaction_id: ledger.id, provider_refund_id: providerRefund.id },
   });
-
-  return jsonOk({ id, state: to, sale_refunded: saleRefunded });
+  return jsonOk({ id, state: 'approved', provider_pending: true, sale_refunded: false });
 }

@@ -31,6 +31,9 @@ import { db } from './_shared/db';
 import { logAudit } from './_shared/audit';
 import { requirePos } from './_pos-authz';
 import { SaleCreateBody } from './_pos-validators';
+import { createSaleRazorpayCheckout } from './_payments-checkout';
+import { razorpayTestConnectionReady, RazorpayProviderError } from './_payments-razorpay';
+import { PaymentsEncryptionUnavailable } from './_payments-secrets';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 // `method` disambiguates from sales-list.ts which declares the same path with GET.
@@ -55,6 +58,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const sql = db();
   const { clientId, userNodeId } = a.ctx;
+  if (body.channel === 'online' && !(await razorpayTestConnectionReady(clientId))) {
+    return jsonError(409, 'online_payment_unavailable');
+  }
 
   // Idempotency replay check — was this key used by this caller in the last 24h?
   const existing = (await sql`
@@ -66,7 +72,7 @@ export default async function handler(req: Request): Promise<Response> {
     LIMIT 1
   `) as Array<{ id: string }>;
   if (existing[0]) {
-    return jsonOk(await loadSaleResponse(sql, existing[0].id), { status: 200 });
+    return paymentResponse(clientId, existing[0].id, body.channel, 200);
   }
 
   // Hydrate products with full visibility check (mirrors /menu).
@@ -172,7 +178,26 @@ export default async function handler(req: Request): Promise<Response> {
     detail: { total_cents: total, channel: body.channel, lines: lineSpecs.length },
   });
 
-  return jsonOk(await loadSaleResponse(sql, saleId), { status: 201 });
+  return paymentResponse(clientId, saleId, body.channel, 201);
+}
+
+async function paymentResponse(clientId: string, saleId: string, channel: SaleCreateBody['channel'], status: number): Promise<Response> {
+  const sale = await loadSaleResponse(db(), saleId);
+  if (channel !== 'online') return jsonOk(sale, { status });
+  try {
+    const checkout = await createSaleRazorpayCheckout({ clientId, saleId, amountMinor: Number(sale.total_cents) });
+    return jsonOk(checkout ? {
+      ...sale,
+      payment_intent: {
+        provider: 'razorpay', status: 'created', amount_cents: checkout.amountMinor,
+        currency: checkout.currency, order_id: checkout.orderId, key_id: checkout.keyId, expires_at: checkout.expiresAt,
+      },
+    } : sale, { status });
+  } catch (error) {
+    if (error instanceof PaymentsEncryptionUnavailable) return jsonError(503, 'payments_encryption_unavailable');
+    if (error instanceof RazorpayProviderError) return jsonError(502, 'payment_provider_unavailable');
+    throw error;
+  }
 }
 
 async function loadSaleResponse(sql: NeonQueryFunction<false, false>, saleId: string) {

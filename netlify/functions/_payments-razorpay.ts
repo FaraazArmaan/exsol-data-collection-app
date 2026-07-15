@@ -2,7 +2,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from './_shared/db';
 import { decryptPaymentSecret, PaymentsEncryptionUnavailable } from './_payments-secrets';
 
-export class RazorpayProviderError extends Error {}
+export class RazorpayProviderError extends Error {
+  constructor(
+    message: string,
+    readonly outcomeKnown = false,
+  ) {
+    super(message);
+  }
+}
 
 export interface RazorpayConnection {
   keyId: string;
@@ -64,9 +71,36 @@ export async function createRazorpayOrder(input: {
   }
   const body = await response.json().catch(() => null) as { id?: unknown; amount?: unknown; currency?: unknown } | null;
   if (!response.ok || typeof body?.id !== 'string' || typeof body.amount !== 'number' || typeof body.currency !== 'string') {
-    throw new RazorpayProviderError('razorpay_order_failed');
+    throw new RazorpayProviderError('razorpay_order_failed', response.status >= 400 && response.status < 500);
   }
   return { id: body.id, amount: body.amount, currency: body.currency };
+}
+
+export async function createRazorpayRefund(input: {
+  connection: Pick<RazorpayConnection, 'keyId' | 'apiSecret'>;
+  paymentId: string;
+  amountMinor: number;
+  receipt: string;
+  notes: Record<string, string>;
+}): Promise<{ id: string; amount: number; currency: string; status: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(input.paymentId)}/refund`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${input.connection.keyId}:${input.connection.apiSecret}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ amount: input.amountMinor, receipt: input.receipt, notes: input.notes }),
+    });
+  } catch {
+    throw new RazorpayProviderError('razorpay_refund_outcome_unknown');
+  }
+  const body = await response.json().catch(() => null) as { id?: unknown; amount?: unknown; currency?: unknown; status?: unknown } | null;
+  if (!response.ok || typeof body?.id !== 'string' || typeof body.amount !== 'number' || typeof body.currency !== 'string' || typeof body.status !== 'string') {
+    throw new RazorpayProviderError('razorpay_refund_failed', response.status >= 400 && response.status < 500);
+  }
+  return { id: body.id, amount: body.amount, currency: body.currency, status: body.status };
 }
 
 export function verifyRazorpayWebhook(rawBody: string, signature: string, secret: string): boolean {
