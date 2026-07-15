@@ -6,7 +6,7 @@
 
 # API endpoints
 
-308 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+312 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -271,6 +271,14 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | orders-sla.ts | `/api/orders/sla` | GET | bucket-user | `orders.business.view` |
 | orders-split.ts | `/api/orders/split/:saleId` | POST | bucket-user | `orders.business.edit` |
 
+## payments
+
+| function | path | methods | auth | permission keys checked |
+|---|---|---|---|---|
+| payments-cash-receipt.ts | `/api/payments/cash-receipts` | POST | bucket-user | `payments.customers.create` |
+| payments-dashboard.ts | `/api/payments/dashboard` | GET | bucket-user | `payments.customers.view` |
+| payments-provider-connection.ts | `/api/payments/provider-connection` | any | bucket-user | `payments.products.edit`, `payments.products.view` |
+
 ## platform
 
 | function | path | methods | auth | permission keys checked |
@@ -278,6 +286,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | abandoned-cart-cron.ts | `/api/abandoned-cart-cron (name-routed)` | any | public | — |
 | onboard-import.ts | `/api/onboard-import/:token` | POST | public | — |
 | onboard-public.ts | `/api/onboard-public/:token` | GET | public | — |
+| payments-razorpay-webhook.ts | `/api/payments/razorpay-webhook` | POST | public | — |
 | u-credential-token.ts | `/api/u-credential-token (name-routed)` | any | public | — |
 | webhook-example.ts | `/api/webhook-example` | POST | public | — |
 

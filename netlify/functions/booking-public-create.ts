@@ -1,7 +1,7 @@
 // POST /api/booking-public/:slug/create — anonymous guest booking.
 // Match-or-create customer → resolve resource (named or least-busy) → single INSERT
 // guarded by the gist EXCLUDE constraint (23P01 → 409). pay_at_venue confirms instantly;
-// deposit/full_upfront return a payment_intent stub (Razorpay wired in Phase 3).
+// deposit/full_upfront create a Razorpay Test-mode order; only its signed webhook confirms the visit.
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { extractIp } from './_shared/rate-limit';
@@ -12,6 +12,9 @@ import { createVisit, validateSequentialVisit } from './_booking-visits';
 import { sendMail } from './_shared/mailer';
 import { randomUUID } from 'node:crypto';
 import { resolvePublicBooking } from './_booking-public';
+import { createBookingRazorpayCheckout } from './_payments-booking-checkout';
+import { razorpayTestConnectionReady, RazorpayProviderError } from './_payments-razorpay';
+import { PaymentsEncryptionUnavailable } from './_payments-secrets';
 
 export const config = { path: '/api/booking-public/:slug/create', method: 'POST' };
 
@@ -62,6 +65,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const firstService = plan.lines[0]!.service;
   const isPayAtVenue = plan.lines.every((line) => line.service.payment_mode === 'pay_at_venue');
+  if (!isPayAtVenue && !(await razorpayTestConnectionReady(clientId))) {
+    return jsonError(409, 'online_payment_unavailable');
+  }
   const status = isPayAtVenue ? 'confirmed' : 'pending';
   const manageToken = randomUUID();
 
@@ -93,14 +99,28 @@ export default async function handler(req: Request): Promise<Response> {
         },
       });
     }
-    const payment_intent = isPayAtVenue
-      ? undefined
-      : {
-          provider: 'razorpay',
-          amount_cents:
-            firstService.payment_mode === 'deposit' ? firstService.deposit_cents : plan.priceCents,
-          status: 'stub',
+    let payment_intent: undefined | {
+      provider: 'razorpay'; status: 'created'; amount_cents: number; currency: 'INR'; order_id: string; key_id: string; expires_at: string;
+    };
+    if (!isPayAtVenue) {
+      try {
+        const amountCents = Number(firstService.payment_mode === 'deposit'
+          ? firstService.deposit_cents
+          : plan.priceCents);
+        const checkout = await createBookingRazorpayCheckout({
+          clientId, visitId: visit.visitId, amountMinor: amountCents,
+          purpose: firstService.payment_mode === 'deposit' ? 'deposit' : 'full_upfront',
+        });
+        payment_intent = {
+          provider: 'razorpay', status: 'created', amount_cents: checkout.amountMinor,
+          currency: checkout.currency, order_id: checkout.orderId, key_id: checkout.keyId, expires_at: checkout.expiresAt,
         };
+      } catch (error) {
+        if (error instanceof PaymentsEncryptionUnavailable) return jsonError(503, 'payments_encryption_unavailable');
+        if (error instanceof RazorpayProviderError) return jsonError(502, 'payment_provider_unavailable');
+        throw error;
+      }
+    }
     return jsonOk(
       {
         booking_id: visit.bookingId,

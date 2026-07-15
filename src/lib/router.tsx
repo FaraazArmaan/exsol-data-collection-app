@@ -59,6 +59,7 @@ import { OrdersDashboardMount } from '../modules/orders/OrdersRouteMounts';
 import { ManufacturingMount } from '../modules/manufacturing/ManufacturingRouteMounts';
 import { EmailOutboxMount } from '../modules/email/EmailRouteMounts';
 import { FinanceMount } from '../modules/finance/FinanceRouteMounts';
+import { PaymentsMount } from '../modules/payments/PaymentsRouteMounts';
 import {
   ProcurementOrdersMount, ProcurementSuppliersMount, ProcurementOrderDetailMount, ProcurementMatchMount,
 } from '../modules/procurement/ProcurementRouteMounts';
@@ -254,6 +255,7 @@ export const router = createBrowserRouter([
               { path: 'booking/policy', element: <BookingPolicyMount /> },
               { path: 'booking/resources', element: <BookingResourcesMount /> },
               { path: 'booking/settings', element: <BookingSettingsMount /> },
+              { path: 'payments', element: <PaymentsMount /> },
               { path: 'inventory', element: <InventoryListMount /> },
               { path: 'inventory/dashboard', element: <InventoryDashboardMount /> },
               { path: 'inventory/returns', element: <InventoryReturnsMount /> },

@@ -7,6 +7,7 @@ import {
   type CreateResult,
 } from '../shared/api';
 import { formatRupees, formatTime, formatDateLong, paymentChip } from '../format';
+import { loadRazorpayCheckout } from './razorpay';
 
 interface Props {
   slug: string;
@@ -59,6 +60,24 @@ export function Checkout({ slug, services, slot, onDone, onSlotTaken, onBack }: 
         LS_KEY,
         JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() }),
       );
+      if (result.payment_intent?.status === 'created') {
+        await loadRazorpayCheckout();
+        const Razorpay = window.Razorpay;
+        if (!Razorpay) throw new Error('razorpay_unavailable');
+        new Razorpay({
+          key: result.payment_intent.key_id,
+          order_id: result.payment_intent.order_id,
+          amount: result.payment_intent.amount_cents,
+          currency: result.payment_intent.currency,
+          name: 'ExSol booking',
+          prefill: { name: name.trim(), contact: phone.trim(), email: email.trim() || undefined },
+          // Razorpay's browser callback is only a customer-experience signal.
+          // The signed webhook is the sole authority that confirms the visit.
+          handler: () => onDone({ ...result, payment_intent: { ...result.payment_intent!, status: 'awaiting_webhook' } }),
+          modal: { ondismiss: () => { setSubmitting(false); setError('Payment was not completed. Your held slot will expire shortly.'); } },
+        }).open();
+        return;
+      }
       onDone(result);
     } catch (err) {
       setSubmitting(false);

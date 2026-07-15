@@ -86,14 +86,13 @@ describe('POST public create', () => {
     expect((await second.json()).error.code).toBe('no_resource_available');
   });
 
-  it('deposit service → 201 pending + payment_intent', async () => {
+  it('deposit service without a tenant Test-mode connection → 409', async () => {
     const r = await create(
       publicRequest(slug, 'POST', '/create', body(depositService, '2026-08-17T08:00:00.000Z', 3)),
     );
-    expect(r.status).toBe(201);
+    expect(r.status).toBe(409);
     const j = await r.json();
-    expect(j.status).toBe('pending');
-    expect(j.payment_intent.amount_cents).toBe('10000');
+    expect(j.error.code).toBe('online_payment_unavailable');
   });
 
   it('honeypot: a filled hp field is rejected as a bot → 400', async () => {

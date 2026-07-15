@@ -71,8 +71,8 @@ export function Confirmation({ slug, services, slot, result, onBookAnother }: Pr
 
       {pendingPayment ? (
         <p className="muted booking-confirm-note">
-          Online payment isn’t enabled yet — your slot is held and will be confirmed automatically
-          once payment is taken.
+          We’re verifying your payment. Your booking is confirmed only after the signed payment
+          notification arrives; this browser confirmation alone does not confirm it.
         </p>
       ) : null}
 

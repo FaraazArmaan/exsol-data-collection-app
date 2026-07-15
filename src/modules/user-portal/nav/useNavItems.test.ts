@@ -1,8 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { computeNavItems } from './useNavItems';
-import type {
-  UserPortalEnabledModule, UserPortalPermissionMatrix,
-} from '../api';
+import type { UserPortalEnabledModule } from '../api';
 
 // Real Module shapes from src/modules/registry/manifests/.
 // Booking & Calendar has buckets { customers, employees }; Payments has { customers, products }.
@@ -12,22 +10,14 @@ const payments: UserPortalEnabledModule = { key: 'payments', label: 'Payments' }
 const enabled = [booking, payments];
 
 describe('computeNavItems', () => {
-  test('L1 (Owner) sees every enabled rail Module regardless of matrix', () => {
-    // Note: booking now has a dedicated sidebar entry (like products + pos), so it
-    // is excluded from the generic Modules rail. Only `payments` surfaces in this rail
-    // for this fixture; the booking link is rendered separately by Sidebar.tsx.
+  test('L1 (Owner) excludes every enabled dedicated-nav Module from the generic rail', () => {
     const items = computeNavItems({
       slug: 'acme',
       levelNumber: 1,
       enabledModules: enabled,
       permissions: {},
     });
-    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
-    expect(items[0]).toMatchObject({
-      moduleKey: 'payments',
-      label: 'Payments',
-      href: '/c/acme/m/payments',
-    });
+    expect(items).toEqual([]);
   });
 
   test('L2 with view on Booking does NOT surface in generic rail (dedicated entry instead)', () => {
@@ -53,14 +43,14 @@ describe('computeNavItems', () => {
     expect(items).toEqual([]);
   });
 
-  test('Module enabled on client but absent from permissions is excluded for L2+', () => {
+  test('L2 with view on Payments does NOT surface in generic rail (dedicated entry instead)', () => {
     const items = computeNavItems({
       slug: 'acme',
       levelNumber: 2,
       enabledModules: enabled,
       permissions: { 'payments.customers.view': true },
     });
-    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
+    expect(items).toEqual([]);
   });
 
   test('alphabetical ordering by label', () => {
@@ -86,11 +76,10 @@ describe('computeNavItems', () => {
       enabledModules: enabled,
       permissions: {},
     });
-    // booking excluded (dedicated entry); payments surfaces in rail.
-    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
+    expect(items).toEqual([]);
   });
 
-  test('products + pos + booking are excluded from generic rail (each has dedicated sidebar entry)', () => {
+  test('products, pos, booking, and payments are excluded from generic rail', () => {
     const products: UserPortalEnabledModule = { key: 'products', label: 'Product Manager' };
     const pos: UserPortalEnabledModule = { key: 'pos', label: 'POS' };
     const items = computeNavItems({
@@ -99,7 +88,7 @@ describe('computeNavItems', () => {
       enabledModules: [booking, products, pos, payments],
       permissions: {},
     });
-    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
+    expect(items).toEqual([]);
   });
 
   test('analytics is excluded from the generic rail (it has a dedicated sidebar entry)', () => {
@@ -111,7 +100,7 @@ describe('computeNavItems', () => {
       permissions: {},
     });
     expect(items.find((i) => i.moduleKey === 'analytics')).toBeUndefined();
-    expect(items.map((i) => i.moduleKey)).toEqual(['payments']);
+    expect(items).toEqual([]);
   });
 
   test('platform keys (_platform.*) are ignored — they do not surface a Module', () => {

@@ -28,6 +28,7 @@ import { requireOrders } from '../../netlify/functions/_orders-authz';
 import { requirePortfolio } from '../../netlify/functions/_portfolio-authz';
 import { requireProcurement } from '../../netlify/functions/_procurement-authz';
 import { requireWarehouse } from '../../netlify/functions/_warehouse-authz';
+import { requirePayments } from '../../netlify/functions/_payments-authz';
 // Expected L1 full sets are INLINED literals on purpose — importing the same
 // constants the wrappers use would make the assertion tautological (drift in
 // the shared list would move test and implementation together).
@@ -38,6 +39,10 @@ const FINANCE_FULL = [
 const HR_FULL = [
   'hr.employees.view', 'hr.employees.create',
   'hr.employees.edit', 'hr.employees.delete',
+];
+const PAYMENTS_FULL = [
+  'payments.customers.view', 'payments.customers.create', 'payments.customers.edit',
+  'payments.products.view', 'payments.products.create', 'payments.products.edit',
 ];
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -57,7 +62,7 @@ async function enableProduct(ctx: PosTestCtx, productKey: string): Promise<void>
 }
 
 interface Case {
-  name: 'finance' | 'workforce' | 'hr';
+  name: 'finance' | 'workforce' | 'hr' | 'payments';
   require: (r: Request, required: readonly string[]) => Promise<
     { ok: true; ctx: { userNodeId: string; clientId: string; perms: ReadonlySet<string> } } | { ok: false; res: Response }
   >;
@@ -96,6 +101,12 @@ const CASES: Case[] = [
     notEnabledCode: 'hr_module_not_enabled',
     viewKey: 'hr.employees.view', writeKey: 'hr.employees.delete',
     fullSet: HR_FULL,
+  },
+  {
+    name: 'payments', require: requirePayments, productKey: 'saloon-booking',
+    notEnabledCode: 'payments_module_not_enabled',
+    viewKey: 'payments.customers.view', writeKey: 'payments.products.edit',
+    fullSet: PAYMENTS_FULL,
   },
 ];
 
@@ -194,6 +205,7 @@ describe('all module-authz wrappers return their exact 412 code', () => {
     ['manufacturing', requireManufacturing, 'manufacturing_module_not_enabled'],
     ['marketing', requireMarketing, 'marketing_module_not_enabled'],
     ['orders', requireOrders, 'orders_module_not_enabled'],
+    ['payments', requirePayments, 'payments_module_not_enabled'],
     ['portfolio', requirePortfolio, 'portfolio_module_not_enabled'],
     ['procurement', requireProcurement, 'procurement_module_not_enabled'],
     ['warehouse', requireWarehouse, 'warehouse_module_not_enabled'],

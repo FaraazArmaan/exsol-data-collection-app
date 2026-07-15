@@ -61,7 +61,10 @@ export interface CreateResult {
   visit_id?: string;
   status: string;
   manage_token: string;
-  payment_intent?: { provider: string; amount_cents: number; status: string };
+  payment_intent?: {
+    provider: 'razorpay'; amount_cents: number; status: 'created' | 'awaiting_webhook';
+    currency: 'INR'; order_id: string; key_id: string; expires_at: string;
+  };
 }
 export interface ManageView {
   id: string;

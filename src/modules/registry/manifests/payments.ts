@@ -7,4 +7,8 @@ export const paymentsManifest: ModuleManifest = {
   verbs: ['view', 'create', 'edit'],  // no 'delete' — payments are immutable once captured
   vendor_side: true,
   customer_side: true,
+  hasDedicatedNav: true,
+  navLinks: [
+    { path: '/payments', label: 'Payments', viewKeys: ['payments.customers.view'], order: 35 },
+  ],
 };

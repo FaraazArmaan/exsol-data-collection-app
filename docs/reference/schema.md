@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-143 tables across 135 forward-only migrations.
+149 tables across 138 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -461,6 +461,36 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `114_overtime_entries.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `punch_id UUID`, `ot_date DATE`, `ot_hours NUMERIC(5,2)`, `reason TEXT`, `status TEXT`, `handled_by UUID`, `handled_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `payment_allocations`
+
+- created in `159_payments_core.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `transaction_id UUID`, `request_id UUID`, `amount_minor BIGINT`, `created_at TIMESTAMPTZ`
+
+### `payment_attempts`
+
+- created in `161_payment_provider_attempts_webhooks.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `request_id UUID`, `provider TEXT`, `status TEXT`, `provider_order_id TEXT`, `provider_payment_id TEXT`, `amount_minor BIGINT`, `currency CHAR(3)`, `expires_at TIMESTAMPTZ`, `failure_reason TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `payment_provider_connections`
+
+- created in `160_payment_provider_connections.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `provider TEXT`, `mode TEXT`, `key_id TEXT`, `api_secret_enc TEXT`, `webhook_secret_enc TEXT`, `enabled BOOLEAN`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `payment_requests`
+
+- created in `159_payments_core.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `source_type TEXT`, `source_id UUID`, `purpose TEXT`, `amount_minor BIGINT`, `currency CHAR(3)`, `status TEXT`, `expires_at TIMESTAMPTZ`, `source_snapshot JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `payment_transactions`
+
+- created in `159_payments_core.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `kind TEXT`, `status TEXT`, `amount_minor BIGINT`, `currency CHAR(3)`, `provider TEXT`, `provider_transaction_id TEXT`, `reference TEXT`, `actor_user_node UUID`, `occurred_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`
+
+### `payment_webhook_events`
+
+- created in `161_payment_provider_attempts_webhooks.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `attempt_id UUID`, `provider TEXT`, `provider_event_id TEXT`, `event_type TEXT`, `payload JSONB`, `status TEXT`, `reason TEXT`, `received_at TIMESTAMPTZ`, `processed_at TIMESTAMPTZ`
 
 ### `payroll_periods`
 

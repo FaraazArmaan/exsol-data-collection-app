@@ -1,0 +1,7 @@
+.pay-shell { max-width: 900px; margin: 0 auto; color: var(--text-primary); }
+.pay-header, .pay-panel { border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); }
+.pay-header { padding: 24px; }.pay-header h1, .pay-panel h2 { margin: 0; }
+.pay-eyebrow { margin: 0 0 8px; color: var(--accent); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.pay-muted, .pay-panel p, .pay-checklist { color: var(--text-secondary); }.pay-header .pay-muted { max-width: 680px; margin: 12px 0 0; }
+.pay-panel { margin-top: 16px; padding: 20px 24px; }.pay-checklist { margin: 16px 0 0; padding-left: 20px; }.pay-checklist li + li { margin-top: 8px; }.pay-error { margin-top: 16px; color: var(--danger); }
+.pay-panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }.pay-status { color: var(--text-muted); }.pay-status-ready { color: var(--success); }.pay-form { display: grid; gap: 14px; margin-top: 18px; }.pay-form label { display: grid; gap: 6px; color: var(--text-secondary); }.pay-form input { border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); color: var(--text-primary); padding: 10px 12px; }.pay-toggle { grid-template-columns: auto 1fr; align-items: center; }.pay-button { justify-self: start; border: 0; border-radius: 8px; background: var(--accent); color: var(--text-on-accent); padding: 10px 14px; font: inherit; font-weight: 700; }.pay-button:disabled { opacity: 0.65; }
