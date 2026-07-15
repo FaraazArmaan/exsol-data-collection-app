@@ -396,9 +396,9 @@
         scheduling feature into an unmaintainable tangle.
       </p>
       <div class="meta">
-        <span>Repository evidence reviewed</span><span>State: July 14, 2026</span
+        <span>Repository evidence reviewed</span><span>State: July 15, 2026</span
         ><span>Audience: first-year engineer</span><span>Scope: Booking only</span
-        ><span>Active work: public storefront</span>
+        ><span>Active work: public storefront verification</span>
       </div>
     </header>
     <div class="layout">
@@ -417,19 +417,19 @@
           <div class="eyebrow" style="color: var(--green)">Read this first</div>
           <h2>The honest short answer</h2>
           <p>
-            ExSol Booking is a <strong>functional appointment and reservation engine</strong>, not a
-            finished public storefront product. It now supports Booking Setup, Workforce-backed
-            availability, multi-service visits, policy snapshots, visit history, guest booking and
-            front-desk operations. The current build focuses on making that customer booking flow
-            publishable from one branded public business site.
+            ExSol Booking is a <strong>functional v1 appointment and reservation engine</strong>
+            with a customer-facing flow on the shared public storefront. It supports Booking Setup,
+            Workforce-backed availability, multi-service visits, policy snapshots, visit history,
+            guest booking, front-desk operations, and independently published Ordering and Booking
+            storefront features. It is not yet a complete production booking product.
           </p>
           <div class="callout">
             <strong>Safe present-day promise:</strong> a business can configure services and
             capacity, offer policy-controlled pay-at-venue bookings, use Workforce shifts and leave
             for staff availability, and operate visits from the workspace.
             <strong>Still not ready to promise:</strong> verified online payments, reliable queued
-            reminders, a client-controlled public Booking publish switch, and one unified branded
-            Shop + Book public website.
+            reminders, complete privacy operations, all client-facing capacity wording, and
+            real-browser release verification of every public-storefront state.
           </div>
           <p>
             This document calls a feature <span class="tag good">good</span> when its core rule is
@@ -517,14 +517,17 @@
                 </div>
               </div>
               <p>
-                After setup, the navigation is contextual: <strong>Team Availability</strong>,
-                <strong>Rooms &amp; Spaces</strong>, <strong>Equipment</strong>, and
-                <strong>Booking Rules</strong> appear only when relevant. A solo consultant sees
-                <strong>Your Availability</strong>; a salon sees
-                <strong>Team Availability</strong> and optional <strong>Stations</strong>; a clinic
-                sees <strong>Doctors</strong>, <strong>Rooms</strong>, and
-                <strong>Equipment</strong>; an equipment-rental business sees
-                <strong>Assets</strong> and <strong>Booking Rules</strong>.
+                The current workspace navigation is deliberately fixed:
+                <strong>Calendar</strong>, <strong>Bookings</strong>, <strong>Services</strong>,
+                <strong>Booking Setup</strong>, <strong>Booking Rules</strong>, and
+                <strong>Settings</strong>. The old <strong>Resources</strong> route redirects to
+                Booking Setup. Setup already saves the labels needed for a solo consultant (<strong
+                  >Your Availability</strong
+                >), salon (<strong>Stylists</strong> and <strong>Stations</strong>), clinic
+                (<strong>Doctors</strong>, <strong>Rooms</strong>, and <strong>Equipment</strong>),
+                or equipment rental business (<strong>Assets</strong>). Applying those labels
+                consistently, rather than adding generic capacity-management tabs, is remaining
+                presentation work.
               </p>
             </div>
           </details>
@@ -557,8 +560,8 @@
               <tr>
                 <td>Service catalogue</td>
                 <td>
-                  Create, list, edit, deactivate services; duration, price, buffer, eligible
-                  resources, payment mode.
+                  Create, list, edit, deactivate services; duration, price, buffer, internal
+                  capacity eligibility, payment mode.
                 </td>
                 <td><code>booking_services</code>, service endpoints, vendor screens</td>
                 <td>Usable v1</td>
@@ -566,12 +569,11 @@
               <tr>
                 <td>Booking Setup</td>
                 <td>
-                  Current implementation creates/edits staff or rooms, per-capacity hours and time
-                  off, but exposes this as a generic “Resources” screen. Replace it with guided
-                  Booking Setup and contextual labels before a client-facing release.
+                  Guided five-step onboarding stores booking party, bookable types, extra capacity,
+                  availability source, and display labels. The old Resources route redirects here.
                 </td>
-                <td><code>booking_resources</code>, <code>booking_resource_time_off</code></td>
-                <td>Usable v1</td>
+                <td><code>booking_setup</code>, setup UI, internal capacity tables</td>
+                <td>Usable v1; label consumption remains</td>
               </tr>
               <tr>
                 <td>Availability</td>
@@ -579,15 +581,20 @@
                   Computed slots respect tenant hours, resource hours, service buffer, booked
                   ranges, time off, and lead time; “any” selects least busy.
                 </td>
-                <td><code>availability.ts</code>, public availability handler</td>
-                <td>Strong core, needs hardening</td>
+                <td>
+                  <code>availability.ts</code>, <code>_booking-reservation.ts</code>, visit helpers
+                </td>
+                <td>Strong v1 core</td>
               </tr>
               <tr>
                 <td>Reservation safety</td>
                 <td>
                   PostgreSQL exclusion constraint rejects overlapping live ranges for a resource.
                 </td>
-                <td><code>bookings_no_overlap</code>, concurrency test</td>
+                <td>
+                  <code>booking_line_reservations_no_overlap</code>, compatibility constraint,
+                  concurrency tests
+                </td>
                 <td>Excellent core invariant</td>
               </tr>
               <tr>
@@ -597,7 +604,7 @@
                   private manage page.
                 </td>
                 <td><code>public/*.tsx</code></td>
-                <td>Demonstrable v1</td>
+                <td>Functional v1</td>
               </tr>
               <tr>
                 <td>Vendor operations</td>
@@ -615,7 +622,7 @@
                   cutoff; pending cleanup handler.
                 </td>
                 <td><code>fsm.ts</code>, detail/manage/cleanup handlers</td>
-                <td>Partial</td>
+                <td>Basic v1; payment settlement remains separate</td>
               </tr>
               <tr>
                 <td>Payments</td>
@@ -675,8 +682,8 @@
               <h3>Tenant isolation is deliberate</h3>
               <p>
                 Vendor queries scope records by <code>bucket_id</code>/<code>clientId</code>;
-                private guest management uses an unguessable token; settings and resources belong to
-                one client.
+                private guest management uses an unguessable token; settings and internal capacity
+                records belong to one client.
               </p>
             </article>
             <article class="card good">
@@ -688,25 +695,22 @@
                 and client gates.
               </p>
             </article>
-            <article class="card bad">
-              <span class="tag bad">Repair first</span>
-              <h3>Rescheduling bypasses business rules</h3>
+            <article class="card good">
+              <span class="tag good">Good</span>
+              <h3>Booking writes use a shared reservation path</h3>
               <p>
-                The guest manage endpoint directly changes <code>time_range</code>. It does not
-                verify that the new time is an advertised slot, respects resource working hours/time
-                off, matches service eligibility, or observes lead time. The overlap constraint
-                catches only collisions. This must be routed through one shared reservation
-                validator.
+                Public create, vendor manual create, guest reschedule, and vendor reschedule now
+                validate through the shared reservation and visit helpers before changing durable
+                records. The database exclusion constraint remains the final concurrency guard.
               </p>
             </article>
             <article class="card bad">
-              <span class="tag bad">Repair first</span>
-              <h3>Public creation trusts too much</h3>
+              <span class="tag bad">Repair</span>
+              <h3>Configured capacity labels are not consumed everywhere</h3>
               <p>
-                A named resource booking verifies that the resource exists, but does not verify that
-                it is eligible for the chosen service or that the chosen start is inside working
-                hours and outside time off. The UI normally supplies valid data; the server must
-                independently enforce it.
+                Booking Setup stores labels such as Doctors, Stylists, Rooms, and Assets, but the
+                public picker and some workspace service copy still expose generic or staff-specific
+                wording. Add one label resolver and use it at every display boundary.
               </p>
             </article>
             <article class="card bad">
@@ -720,11 +724,12 @@
             </article>
             <article class="card bad">
               <span class="tag bad">Repair</span>
-              <h3>Module boundaries are weak in the frontend</h3>
+              <h3>Contracts and permissions still have small local duplication</h3>
               <p>
-                Booking styles sit in the large shared <code>src/lib/components.css</code>, contrary
-                to the repository’s namespaced per-module CSS rule. This increases coupling and
-                makes visual regressions harder to isolate.
+                The module now owns <code>booking.css</code>, but
+                <code>shared/api.ts</code> combines browser wrappers with UI contracts and the full
+                permission list is local to the route mount. Extract the permission list now;
+                extract shared types only when a second consumer would otherwise duplicate them.
               </p>
             </article>
             <article class="card missing">
@@ -736,13 +741,13 @@
                 reminders will generate avoidable no-shows.
               </p>
             </article>
-            <article class="card missing">
-              <span class="tag missing">Missing</span>
+            <article class="card bad">
+              <span class="tag bad">Partial</span>
               <h3>Operational audit and recovery</h3>
               <p>
-                There is no appointment event history, actor record for each change, optimistic
-                versioning, admin override reason, or payment-to-booking reconciliation view.
-                Operators cannot explain “who changed this and why?”
+                Visit events now preserve actor, source, previous/new state, and reason. Remaining
+                work is optimistic concurrency, required reasons for staff overrides, and a
+                payment-to-booking reconciliation view.
               </p>
             </article>
             <article class="card missing">
@@ -766,8 +771,8 @@
           </div>
           <div class="callout danger">
             <strong>Priority rule:</strong> do not add attractive features such as memberships or
-            calendar sync before server-side booking validation is centralized. A reliable
-            scheduling kernel is the prerequisite for every later capability.
+            calendar sync before the current shared scheduling kernel is extended to them. A
+            reliable reservation service is the prerequisite for every later capability.
           </div>
         </section>
 
@@ -785,16 +790,18 @@ Guest clicks “Confirm booking”
       ↓ bookingPublicApi.create(...)
   POST /api/booking-public/:slug/create
       ↓ booking-public-create.ts
-  Zod validation → rate limit → tenant/service/resource checks → customer upsert
+  Zod validation → rate limit → tenant/service/capacity checks → customer upsert
       ↓
-  INSERT public.bookings (... time_range ...)
+  validateSequentialVisit(...) → createVisit(...)
+      ↓ one transaction writes booking_visits, appointment lines, line reservations,
+        events, and the legacy primary-line bookings compatibility record
       ↓ PostgreSQL exclusion constraint either accepts or rejects overlap
   JSON response → confirmation screen / manage link / ICS file</pre>
           <div class="flow">
             <div data-n="1">
               <strong>Route:</strong> <code>src/lib/router.tsx</code> maps public
-              <code>/c/:slug/book</code> and vendor <code>/c/:slug/booking/*</code> URLs to
-              components.
+              <code>/storefront/:slug/Book</code> and vendor <code>/c/:slug/booking/*</code> URLs to
+              components. Older public booking URLs redirect to the shared storefront shell.
             </div>
             <div data-n="2">
               <strong>UI:</strong> public and vendor React components call typed wrapper functions
@@ -806,8 +813,9 @@ Guest clicks “Confirm booking”
             </div>
             <div data-n="4">
               <strong>Domain logic:</strong> pure scheduling and state-transition rules live in
-              <code>src/modules/booking/lib/</code>. These must become the only source for all
-              validation paths.
+              <code>src/modules/booking/lib/</code>; server-only reservation and visit orchestration
+              live in <code>netlify/functions/_booking-reservation.ts</code> and
+              <code>_booking-visits.ts</code>. All booking write paths use that shared validation.
             </div>
             <div data-n="5">
               <strong>Storage:</strong> database tables record the durable truth; the query result
@@ -911,12 +919,14 @@ Guest clicks “Confirm booking”
                   status, price and manage token.
                 </td>
                 <td>
-                  Compatibility projection for existing bookings; strong overlap constraint remains.
+                  A primary-line compatibility bridge. New visits are dual-written here while
+                  calendar, list, detail, and manage endpoints still use its stable booking ID.
                 </td>
                 <td>
-                  Keep it compatible while new work reads visits and appointment lines. Add
-                  location, consent snapshot and provider payment reference only through dedicated
-                  modules.
+                  Do not delete it yet. First move every read path to a visit-first contract, prove
+                  the bridge stays consistent, then schedule a separately reviewed retirement
+                  migration. Add location, consent snapshot and provider payment reference only
+                  through dedicated modules.
                 </td>
               </tr>
               <tr>
@@ -1012,8 +1022,8 @@ Guest clicks “Confirm booking”
               <tr>
                 <td>Catalogue</td>
                 <td>
-                  Services, durations, prices, taxes, prerequisites, add-ons, resource eligibility,
-                  capacity.
+                  Services, durations, prices, taxes, prerequisites, add-ons, internal capacity
+                  eligibility, capacity.
                 </td>
                 <td>Booking tables and vendor APIs.</td>
               </tr>
@@ -1107,8 +1117,9 @@ Guest clicks “Confirm booking”
                 </li>
                 <li><strong>Email:</strong> transactional templates and delivery outbox.</li>
                 <li>
-                  <strong>Workforce:</strong> staff identities, shifts, leave, timesheets; currently
-                  it already reads booking resources.
+                  <strong>Workforce:</strong> staff identities, shifts, approved leave, and
+                  employment status. When configured, Booking reads Workforce as the authoritative
+                  staff-availability source through the internal capacity link.
                 </li>
                 <li><strong>CRM:</strong> canonical customer profile, notes, consent, timeline.</li>
                 <li>
@@ -1152,10 +1163,10 @@ Guest clicks “Confirm booking”
             </article>
           </div>
           <div class="callout warn">
-            <strong>Ownership rule:</strong> Booking owns appointment facts. Payments owns provider
-            transactions. CRM owns rich customer profile. Workforce owns employment and shifts.
-            Finance owns accounting treatment. Integration means reference IDs and events, not
-            copying each system’s whole record into every table.
+            <strong>Ownership rule:</strong> Booking owns appointment facts. Payments will own
+            provider transactions. CRM should own rich customer profile. Workforce owns employment
+            and shifts. Finance owns accounting treatment. Integration means reference IDs and
+            events, not copying each system’s whole record into every table.
           </div>
         </section>
 
@@ -1163,24 +1174,30 @@ Guest clicks “Confirm booking”
           <div class="eyebrow" style="color: var(--green)">Code organization</div>
           <h2>Current shape and recommended shape</h2>
           <p>
-            The current module is close to the platform pattern but has two important debts: it
-            lacks <code>shared/types.ts</code> and <code>shared/permissions.ts</code>, and it
-            spreads Booking CSS into the global component stylesheet. The target keeps domain rules
-            independent of UI and makes API contracts explicit.
+            The current module follows the platform shape: public and workspace React surfaces are
+            isolated from server-only booking orchestration, and pure rules live in
+            <code>lib/</code>. Do not introduce a second <code>domain/</code> directory: it would
+            duplicate the implemented split. The remaining organization work is deliberately small:
+            extract the shared permission list, extract contracts only when duplication justifies
+            it, and centralize client-facing capacity labels.
           </p>
           <pre>
 src/modules/booking/
   BookingRouteMounts.tsx       # Client-side auth/product/permission gate
   booking.css                  # Only .booking-* styles, theme tokens only
   shared/
-    api.ts                     # Browser fetch wrappers
-    types.ts                   # API request/response and domain wire types
-    permissions.ts             # One Booking permission list, shared by client/server
-  domain/
+    api.ts                     # Browser fetch wrappers and current UI contracts
+    permissions.ts             # Next small extraction: one Booking permission list
+    presentation.ts            # Next small extraction: setup-derived capacity labels
+  lib/
     availability.ts            # Pure scheduling calculation
-    reservation.ts             # Single “can this request be reserved?” policy
-    lifecycle.ts               # State transition policy
-    money.ts                   # Quote/deposit/refund calculations
+    autoassign.ts              # Least-busy capacity choice
+    fsm.ts                     # State-transition policy
+    setup.ts                   # Booking Setup defaults and visible sections
+    tz.ts                      # Tenant-local date/time handling
+    ics.ts                     # Customer calendar file generation
+  components/
+    BookingStatusPill.tsx
   public/
     BookingStorefront.tsx      # Public flow shell
     ServicePicker.tsx
@@ -1192,18 +1209,18 @@ src/modules/booking/
     BookingsListPage.tsx
     BookingDetailDrawer.tsx
     ServicesPage.tsx
-    BookingSetupPage.tsx         # Guided onboarding and contextual setup hub
-    TeamAvailabilityPage.tsx     # Only when client configured team booking
-    SpacesPage.tsx               # Label derives from setup: Rooms, Stations, etc.
-    EquipmentPage.tsx            # Label derives from setup: Assets, Vehicles, etc.
+    BookingSetupPage.tsx       # Guided onboarding and editable setup hub
+    BookingPolicyPage.tsx
     SettingsPage.tsx
   __tests__/
-    domain/*.test.ts
+    *.test.ts                  # Pure-rule and setup tests
 
 netlify/functions/
   _booking-authz.ts            # Thin auth wrapper, platform pattern
+  _booking-public.ts           # Public setup/publication readiness gate
   _booking-validators.ts       # Zod at HTTP boundary
   _booking-reservation.ts      # Server orchestration shared by create/reschedule/manual
+  _booking-visits.ts           # Visit, line, reservation, event and bridge writes
   booking-*.ts                 # Flat HTTP handlers only
 
 db/migrations/
@@ -1214,19 +1231,28 @@ tests/booking/
           <div class="callout">
             <strong>Internal names, plain-language UI:</strong> <code>booking_resources</code>,
             <code>resource_id</code> and generic resource types may remain stable internal API and
-            database names. <code>booking_setup</code> supplies the display labels and enabled types
-            used by frontend navigation and copy, so a clinic sees <em>Doctors</em>, a rental
-            business sees <em>Assets</em>, and no client sees a generic <em>Resources</em> tab.
+            database names. <code>booking_setup</code> already stores display labels and enabled
+            types. The next focused UI extraction is a single label resolver used by Services,
+            Calendar, and the public picker, so a clinic sees <em>Doctors</em>, a rental business
+            sees <em>Assets</em>, and no client sees a generic <em>Resources</em> tab or an
+            inappropriate hardcoded “Any professional” label.
+          </div>
+          <div class="callout good">
+            <strong>Do not CRUD the storage shape now:</strong> do not add a duplicate
+            <code>domain/</code> layer, create standalone team/room/equipment pages merely to mirror
+            internal records, or delete <code>bookings</code>. The next code-organization work is
+            one shared permission list, one display-label resolver, and a later separately planned
+            visit-first migration once every read path has moved.
           </div>
           <details>
             <summary>What does “single reservation policy” mean?</summary>
             <div>
               <p>
-                Public create, vendor manual create, customer reschedule, vendor reschedule,
-                waitlist promotion, and calendar sync must not each implement a slightly different
-                availability check. They should call one service that receives a request, explicit
-                override flags, and a current database view. Only approved staff actions may use
-                explicit overrides, and those overrides must be logged.
+                Public create, vendor manual create, customer reschedule, and vendor reschedule
+                already call the shared reservation/visit helpers. Future waitlist promotion and
+                calendar sync must use the same helpers rather than implement their own availability
+                check. Only approved staff actions may use explicit overrides, and those overrides
+                must be logged.
               </p>
             </div>
           </details>
@@ -1243,22 +1269,22 @@ tests/booking/
           </p>
           <div class="callout">
             <strong>Confirmed decisions:</strong> an appointment may contain multiple services and
-            reserve multiple resources; staff availability comes from Workforce shifts and approved
-            leave; each workspace configures deposits, cancellation/rescheduling/no-show rules and
-            permitted notification channels; pay-at-venue stays unpaid until staff record online or
-            cash settlement.
+            reserve multiple internal capacity records; staff availability comes from Workforce
+            shifts and approved leave; each workspace configures deposits,
+            cancellation/rescheduling/no-show rules and permitted notification channels;
+            pay-at-venue stays unpaid until staff record online or cash settlement.
           </div>
           <div class="callout" id="current-work">
-            <span class="tag success">Implemented locally, ready for integration</span>
+            <span class="tag success">Implemented in the current codebase</span>
             <h3>
-              Public storefront integration: one branded website, independently published Shop and
-              Book modules
+              Public storefront integration: one branded website, independently published Ordering
+              and Booking features
             </h3>
             <p>
-              The existing customer booking page at <code>/c/:slug/book</code> is the functional
-              booking flow to extend, not replace. The customer should reach it from the same
-              branded public business site that can also show ecommerce. A business may publish Shop
-              only, Book only, both, or neither.
+              The functional customer booking flow now lives on the same branded public business
+              site as ecommerce. Its canonical address is
+              <code>/storefront/:slug/Book</code>. A business may publish Ordering only, Booking
+              only, both, or neither.
             </p>
             <p>
               <strong>What is now built:</strong> migration
@@ -1271,36 +1297,39 @@ tests/booking/
               <code>156</code> remains reserved for notification jobs.
             </p>
             <p>
-              The public entry point is now <code>/book/:slug</code>, wrapped in the shared brand
-              shell. A small public capability endpoint lets the same navigation show
-              <em>Shop</em> and/or <em>Book</em> independently. Booking public catalog,
-              availability, resource and create APIs return unavailable until Booking is enabled,
-              setup is completed, a service is active and the owner has published it.
-              <code>/menu/:slug</code> and the legacy <code>/c/:slug/book</code> route remain
-              available for compatibility.
+              <code>/storefront/:slug</code> resolves to the first enabled public feature, and the
+              shared public navigation shows <em>Ordering</em> and/or
+              <em>Booking</em> independently. Booking public service, availability, capacity, and
+              create APIs return unavailable until Booking is enabled, setup is completed, a service
+              is active, and the owner has published it. Older <code>/book/:slug</code> and
+              <code>/c/:slug/book</code> URLs redirect into the shared storefront shell.
             </p>
             <p class="small">
               <strong>Remaining before release:</strong> add the owner-facing copy-link and QR-code
-              actions, exercise Shop-only, Book-only, both and neither in a real browser on desktop
-              and mobile, then apply migration 157 to production before promoting the code. Steps 9
-              (Payments) and 10 (notifications/integrations) are still pending.
+              actions, exercise Ordering-only, Booking-only, both and neither in a real browser on
+              desktop and mobile, and confirm migration 157 is applied to the intended deployment
+              database before promotion. Steps 9 (Payments) and 10 (notifications/integrations) are
+              still pending.
             </p>
           </div>
           <div class="roadmap">
             <article class="phase">
-              <h3>Rename the product concept and write the v1 contract</h3>
+              <h3>
+                <span class="tag success">Completed: Step 1</span> Rename the product concept and
+                write the v1 contract
+              </h3>
               <p>
-                <span class="key">Do:</span> retire the misleading product label “Saloon Booking
-                System” in favor of a neutral customer-facing name such as “Appointments &
-                Reservations.” Keep a compatibility decision for the existing registry/product key:
-                changing a live key is a migration project, not a text edit.
+                <span class="key">Implemented:</span> the customer-facing product label is
+                <strong>Appointments &amp; Reservations</strong>. The historic
+                <code>saloon-booking</code> registry key remains stable intentionally; changing a
+                live key remains a separately reviewed compatibility migration, not a copy edit.
               </p>
               <p class="small">
-                Write a one-page v1 contract: supported appointment types, one or many locations,
-                currencies, staff versus non-staff resources, multi-service visit behavior,
-                customer/employee roles, payment states, notification channels, global privacy
-                baseline, and explicit items deferred to v2. Do this before any migration is
-                proposed.
+                This roadmap is the current v1 contract: general-purpose appointments and
+                reservations, one visit with sequential service lines, staff or non-staff capacity,
+                pay-at-venue, Workspace-defined policies, Workforce-backed staff availability, and a
+                shared public storefront. Multi-location, online settlement, notifications, and
+                advanced capacity are intentionally deferred.
               </p>
               <p class="small">
                 <strong>Acceptance:</strong> a developer can explain the product without using
@@ -1308,22 +1337,21 @@ tests/booking/
               </p>
             </article>
             <article class="phase">
-              <h3>Build Booking Setup onboarding before any capacity-management screen</h3>
+              <h3>
+                <span class="tag success">Completed: Step 2</span> Build Booking Setup onboarding
+                before any capacity-management screen
+              </h3>
               <p>
-                <span class="key">Do:</span> replace the generic client-facing “Resources” page with
-                <strong>Booking Setup</strong>. On the first visit, save each answer as editable
-                onboarding state: who customers book with (specific team member, any available team
-                member, or nobody specific), what can be booked (appointments, rooms/spaces,
-                equipment/assets, or a combination), whether a booking needs a team member plus a
-                room/space and/or equipment, and whether availability comes from Workforce or manual
-                business hours for now.
+                <span class="key">Implemented:</span> Booking Setup replaces the client-facing
+                Resources page. Its five-step flow persists editable answers for booking party,
+                bookable kinds, extra capacity, availability source, and display labels in
+                <code>booking_setup</code>. The old Resources route redirects here.
               </p>
               <p class="small">
-                Save a <code>booking_setup</code> record with the answers, setup version/completion
-                state, enabled internal types, and display labels. Generate safe defaults from the
-                answers: navigation sections, default reservation rules, service wording, and the
-                availability-source choice. The client can reopen and edit Booking Setup later;
-                edits must show what will change before they affect new bookings.
+                The client can reopen and edit the answers. Setup completion and an active service
+                are prerequisites for publishing Booking. Current navigation remains fixed rather
+                than generating tabs; this prevents a generic Resources surface while keeping the
+                workspace predictable.
               </p>
               <p class="small">
                 The service editor uses plain questions: “This service can be performed by…”, “This
@@ -1332,85 +1360,93 @@ tests/booking/
                 in the UI.
               </p>
               <p class="small">
-                <strong>Acceptance:</strong> tests cover every onboarding branch and verify the
-                resulting UI: solo consultant → <em>Your Availability</em>; salon →
-                <em>Team Availability</em> and optional <em>Stations</em>; clinic →
-                <em>Doctors</em>, <em>Rooms</em>, <em>Equipment</em>; rental business →
-                <em>Assets</em> and <em>Booking Rules</em>. No configuration path displays a generic
-                “Resources” label or page.
+                <strong>Remaining acceptance:</strong> add configuration-path presentation tests and
+                one label resolver so a solo consultant sees <em>Your Availability</em>, a salon
+                sees <em>Stylists</em>/<em>Stations</em>, a clinic sees <em>Doctors</em>,
+                <em>Rooms</em>, <em>Equipment</em>, and a rental business sees <em>Assets</em>. No
+                client-facing configuration path may display a generic “Resources” label or page.
               </p>
             </article>
             <article class="phase">
-              <h3>Make Workforce the staff-availability authority</h3>
+              <h3>
+                <span class="tag success">Completed: Step 3</span> Make Workforce the
+                staff-availability authority
+              </h3>
               <p>
-                <span class="key">Do:</span> define the contract between Workforce and Booking.
-                Workforce owns employee identity, published shifts, approved leave, and employment
-                status. When Booking Setup selects specific or any team member, Booking reads that
-                availability and must not create a second competing staff schedule. Internal
-                time-off records remain only for non-staff capacity or exceptional local blocks.
+                <span class="key">Implemented:</span> when Booking Setup selects Workforce,
+                availability joins Booking capacity to Workforce employee profiles and reads active
+                employment, shifts, and approved leave. Workforce hours replace the legacy Booking
+                weekly schedule for staff booking; an off-shift or terminated employee is not
+                offered.
               </p>
               <p class="small">
-                Add a resource-to-employee link, query shift/leave intervals in availability, and
-                decide the fallback for a resource not linked to a worker. If an employee’s 3pm
-                shift starts at 7pm, a 3pm slot must never be returned, even if the booking
-                resource’s old weekly JSON says it is open.
+                Booking-owned time off remains for non-staff capacity and exceptional local blocks.
+                A manual availability source remains available for businesses that do not use
+                Workforce. The implementation tests immediate shift changes, approved leave,
+                inactive employees, and tenant isolation.
               </p>
               <p class="small">
-                <strong>Acceptance:</strong> create a Workforce shift, request slots, change or
-                cancel the shift, and prove the slot list changes immediately; test leave, inactive
-                employees, and cross-tenant isolation.
+                <strong>Guardrail:</strong> future staff-related features must read Workforce rather
+                than creating a competing schedule in Booking.
               </p>
             </article>
             <article class="phase">
-              <h3>Build one authoritative reservation-validation service</h3>
+              <h3>
+                <span class="tag success">Completed: Step 4</span> Build one authoritative
+                reservation-validation service
+              </h3>
               <p>
-                <span class="key">Do:</span> trace every appointment-changing endpoint: public
-                create, vendor manual create, customer reschedule, vendor reschedule, waitlist
-                promotion and future calendar sync. Make all of them call one server-only
-                reservation service. The browser may ask for availability, but the server makes the
-                final decision.
+                <span class="key">Implemented:</span> public create, standard vendor manual create,
+                guest reschedule, and vendor reschedule use the server-only reservation and visit
+                helpers. The browser requests slots, but the server validates the requested time and
+                the database exclusion constraint is the final concurrency authority.
               </p>
               <p class="small">
-                The service must validate tenant/location, service/resource eligibility, Workforce
-                shifts, resource hours, closures, leave, buffers, lead time, cancellation cutoff,
-                appointment policy, timezone, and live overlap. It then performs the insert/update
-                within the database protection already provided by the exclusion constraint.
+                It validates tenant scope, service/capacity eligibility, Workforce shifts, leave,
+                business or manual hours, buffers, lead time, timezone, and live overlap before
+                writing. Future waitlist promotion, external calendar sync, and advanced capacity
+                must call this same seam.
               </p>
               <p class="small">
-                <strong>Acceptance:</strong> a forged API request cannot reserve an unavailable
-                time; public create and reschedule have identical rule coverage; ten simultaneous
-                requests yield one winner and nine safe conflicts.
+                <strong>Verified acceptance:</strong> forged requests cannot reserve an unavailable
+                time and concurrent create coverage confirms one durable winner with safe conflicts.
+                The blocked-time compatibility path is intentionally separate and must stay an
+                explicit staff-only override.
               </p>
             </article>
             <article class="phase">
-              <h3>Introduce a visit with appointment lines</h3>
+              <h3>
+                <span class="tag success">Completed: Step 5</span> Introduce a visit with
+                appointment lines
+              </h3>
               <p>
-                <span class="key">Do:</span> replace the one-row-equals-one-service limitation with
-                a parent <code>booking_visit</code> and child
-                <code>booking_appointment_lines</code>. The visit is what the customer sees and pays
-                for. Each line records service, duration, price snapshot, sequence, assigned
-                resource(s), and its own time range.
+                <span class="key">Implemented:</span> migration
+                <code>153_booking_visits_appointment_lines.sql</code> adds a parent visit,
+                sequential appointment lines, protected per-line reservations, and a primary-line
+                bridge for the existing <code>bookings</code> read contract. One customer can select
+                several services, receive one confirmation, and reserve each line safely.
               </p>
               <p class="small">
-                First build the simple sequential case: haircut 30 minutes followed by beard trim 20
-                minutes, with one customer confirmation and one total. Then support parallel lines
-                only where a business explicitly configures them, such as a doctor consultation and
-                a machine test. Do not model complex clinical workflows before the sequential visit
-                works.
+                The delivered scope is sequential lines: a haircut followed by a beard trim is one
+                visit with one end time and total. Parallel clinical or equipment workflows are not
+                inferred and remain deferred until explicitly configured.
               </p>
               <p class="small">
-                <strong>Acceptance:</strong> a customer selects several services once, sees one
-                visit total and one end time, and the database prevents overlap on every resource
-                used by every line.
+                <strong>Remaining work:</strong> migrate read APIs from booking-first to visit-first
+                only after bridge consistency is proven. Do not remove <code>bookings</code> before
+                that separately reviewed migration.
               </p>
             </article>
             <article class="phase">
-              <h3>Give each workspace a configurable policy engine</h3>
+              <h3>
+                <span class="tag success">Completed: Step 6</span> Give each workspace a
+                configurable policy engine
+              </h3>
               <p>
-                <span class="key">Do:</span> provide a Booking Policy settings screen, not hardcoded
-                behavior. Each workspace chooses a deposit rule, cancellation cutoff, reschedule
-                cutoff, permitted reschedule count, late-arrival grace period, no-show outcome,
-                refund/credit rule, and whether an extra fee applies to a late reschedule.
+                <span class="key">Implemented:</span> Booking Rules persists workspace cancellation,
+                reschedule, no-show, late-arrival, settlement, deposit, and fee choices in
+                <code>booking_policies</code>. The relevant policy snapshot is stored against a
+                visit, so later workspace edits do not silently rewrite an existing agreement.
               </p>
               <p class="small">
                 Industry-standard baseline: allow free customer cancellation/reschedule until a
@@ -1420,56 +1456,59 @@ tests/booking/
                 Staff may override any rule only with a reason recorded in history.
               </p>
               <p class="small">
-                <strong>Acceptance:</strong> changing a workspace policy changes what the customer
-                can do, but never silently changes the policy snapshot already agreed for an
-                existing visit.
-              </p>
-            </article>
-            <article class="phase">
-              <h3>Make lifecycle, payment state and history explicit</h3>
-              <p>
-                <span class="key">Do:</span> separate appointment status from payment status.
-                Appointment status answers “is the customer expected, checked in, completed,
-                cancelled or no-show?” Payment status answers “unpaid, payment requested, partly
-                paid, paid, refunded, waived, or cash pending?” A pay-at-venue visit may be
-                confirmed while payment remains unpaid.
-              </p>
-              <p class="small">
-                Add an append-only <code>booking_events</code> ledger. Write one event for create,
-                quote, hold expiry, confirm, reschedule, cancel, check-in, completion, no-show,
-                payment request, payment confirmation, offline cash receipt, refund and override.
-                Include actor, source, previous/new value, timestamp and reason.
-              </p>
-              <p class="small">
-                <strong>Acceptance:</strong> a staff member can open a visit and answer “what
-                happened, who did it, what is owed, and why?” without reading database logs.
-              </p>
-            </article>
-            <article class="phase">
-              <h3>Build the customer and front-desk flows around the policy</h3>
-              <p>
-                <span class="key">Do:</span> revise the storefront flow to become: choose location
-                (when enabled) → choose one or more services → choose staff preference if permitted
-                → choose a valid visit time → see itemized price/deposit/policy → supply contact and
-                consent → select payment method → receive confirmation. The manage flow must show
-                only actions allowed by that visit’s policy snapshot.
-              </p>
-              <p class="small">
-                Build the vendor flow in parallel: calendar and list → open visit → check in →
-                record cash/offline payment or send online payment link →
-                complete/no-show/reschedule/cancel with reason. Move global Booking CSS into
-                <code>booking.css</code> and use only ExSol theme tokens.
-              </p>
-              <p class="small">
-                <strong>Acceptance:</strong> a customer can move to an open allowed slot and their
-                original capacity is released atomically; a receptionist can complete the same
-                process on behalf of a caller.
+                <strong>Remaining work:</strong> online deposit collection and automatic settlement
+                actions await Step 9. Staff overrides should require a reason wherever the policy
+                permits them.
               </p>
             </article>
             <article class="phase">
               <h3>
-                <span class="tag missing">Pending: Step 9</span> Integrate the Payments module after
-                the Booking contract is stable
+                <span class="tag success">Completed: Step 7</span> Make lifecycle, payment state and
+                history explicit
+              </h3>
+              <p>
+                <span class="key">Implemented:</span> appointment status is separate from payment
+                status. A pay-at-venue visit can be confirmed while payment remains unpaid. The
+                lifecycle supports create, confirm, reschedule, cancel, check-in, complete, no-show,
+                block, and unblock.
+              </p>
+              <p class="small">
+                Migration <code>155_booking_lifecycle_events.sql</code> adds the append-only
+                <code>booking_events</code> ledger. Current transitions record actor, source,
+                previous/new state, timestamp, and reason where supplied. Payment provider events,
+                refund events, and reconciliation await Payments.
+              </p>
+              <p class="small">
+                <strong>Remaining work:</strong> add optimistic concurrency and require a reason for
+                every policy override, not merely for the transitions that already collect one.
+              </p>
+            </article>
+            <article class="phase">
+              <h3>
+                <span class="tag success">Completed: Step 8</span> Build the customer and front-desk
+                flows around the policy
+              </h3>
+              <p>
+                <span class="key">Implemented:</span> the customer books from the same branded
+                Storefront as ordering: select one or more services, choose an allowed time and
+                capacity preference, provide contact information, choose an available payment mode,
+                then receive confirmation, a manage link, and an ICS calendar file. Booking and
+                Ordering publish independently from the workspace Storefront controls.
+              </p>
+              <p class="small">
+                The vendor flow provides calendar/list, manual booking, blocked time, visit detail,
+                check-in, cash recording, completion, no-show, cancellation, and reschedule actions.
+                Booking CSS is now isolated in <code>booking.css</code> and uses ExSol theme tokens.
+              </p>
+              <p class="small">
+                <strong>Remaining work:</strong> complete real-browser checks for Booking-only,
+                Ordering-only, both, and neither storefront states on desktop and mobile; add
+                copy-link/QR actions; apply the setup-derived label resolver throughout this flow.
+              </p>
+            </article>
+            <article class="phase">
+              <h3>
+                <span class="tag missing">Pending: Step 9</span> Integrate the Payments module
               </h3>
               <p>
                 <span class="key">Do later, in the Payments chat:</span> build the provider-neutral
@@ -1520,69 +1559,75 @@ tests/booking/
 
         <section id="questions">
           <div class="eyebrow" style="color: var(--green)">Product decisions</div>
-          <h2>Adopted product and operating policies</h2>
+          <h2>Adopted decisions and planned safeguards</h2>
           <p>
-            The following decisions are now part of the roadmap. They are not implementation
-            details: each changes the data model, permissions, policy, screens, integrations and
-            operational obligations.
+            The following product decisions guide the implementation. “Implemented” identifies a
+            rule already enforced by current code. “Planned safeguard” identifies an accepted target
+            that must not be represented as live behavior until its data model, UI, and tests exist.
           </p>
           <ul class="checklist">
             <li>
-              <strong>Product scope:</strong> a configurable general-purpose appointment and
-              reservation system, not a salon product. The historic <code>saloon-booking</code>
-              registry key requires a separate compatibility/rename decision.
+              <strong>Product scope (implemented):</strong> a configurable general-purpose
+              appointment and reservation system, not a salon product. The historic
+              <code>saloon-booking</code> registry key is retained for compatibility.
             </li>
             <li>
-              <strong>Resource:</strong> any scarce capacity. It can be staff, space, equipment or
-              another reservable asset. Staff resources must derive availability from Workforce
-              shifts and leave.
+              <strong>Internal capacity term (implemented):</strong> <code>resource</code> means
+              scarce capacity in database/API code: staff, space, equipment, or another reservable
+              asset. Clients never need that term; staff availability derives from Workforce shifts
+              and approved leave when Workforce is selected.
             </li>
             <li>
-              <strong>One visit, many services:</strong> the customer gets one booking/confirmation
-              for several sequential or explicitly configured parallel appointment lines. The model
-              must support multiple resources per visit.
+              <strong>One visit, many services (implemented sequentially):</strong> the customer
+              gets one booking/confirmation for several sequential appointment lines. Parallel lines
+              and multi-capacity orchestration are planned only after explicit business
+              configuration.
             </li>
             <li>
-              <strong>Customer policy:</strong> each workspace configures cancellation,
-              rescheduling, late-arrival and no-show rules, deposits/fees/refunds/credits, and staff
-              override permission. Industry-standard default behavior is a configurable free-change
-              window, followed by a staff approval or configured charge/deposit rule.
+              <strong>Customer policy (implemented v1):</strong> each workspace configures
+              cancellation, rescheduling, late-arrival and no-show rules,
+              deposits/fees/refunds/credits, and staff override permission. Industry-standard
+              default behavior is a configurable free-change window, followed by a staff approval or
+              configured charge/deposit rule.
             </li>
             <li>
-              <strong>Payments:</strong> deposits and payment choice are client-configurable. A
-              pay-at-venue visit stays open until verified online payment or staff-recorded offline
-              cash payment settles it.
+              <strong>Payments (partial):</strong> payment choice and pay-at-venue state are
+              client-configurable. A pay-at-venue visit stays open until staff records cash or a
+              future Payments-module integration verifies online settlement. Online payments remain
+              disabled until Step 9 is complete.
             </li>
             <li>
-              <strong>Channels:</strong> email, SMS, WhatsApp and push are all potential channels;
-              each requires provider setup, customer consent rules and delivery monitoring.
+              <strong>Channels (planned):</strong> email, SMS, WhatsApp and push are all potential
+              channels; each requires provider setup, customer consent rules and delivery
+              monitoring.
             </li>
             <li>
               <strong>Workforce integration:</strong> staff availability must follow actual
               Workforce shifts and leave, so an off-shift doctor cannot be offered as bookable.
             </li>
             <li>
-              <strong>POS/Payments interaction:</strong> front desk retains the payment option for
-              pay-at-venue; a shared payment record becomes confirmed through the Payments module or
-              an authorized cash-received action.
+              <strong>POS/Payments interaction (target contract):</strong> front desk retains the
+              payment option for pay-at-venue; a shared payment record will become confirmed through
+              the Payments module or an authorized cash-received action.
             </li>
           </ul>
           <div class="callout">
-            <strong>Adopted guest-manage security default.</strong> The private manage URL starts a
-            session but is not sufficient for a destructive action. Viewing is limited to the
-            booking summary; cancel, reschedule, contact-detail change and payment-link actions
-            require a one-time code sent to the booking’s verified email or phone. The code expires
-            after 10 minutes, can be used once, is rate-limited, and every existing manage session
-            is revoked when the booking is cancelled or materially changed. A logged-in customer
-            uses their normal account instead.
+            <strong>Planned guest-manage security safeguard, not implemented.</strong> The current
+            private manage page relies on an unguessable manage token. Before high-assurance
+            customer self-service is released, destructive actions must require a one-time code sent
+            to the booking’s verified email or phone. The code should expire after 10 minutes, be
+            single-use and rate-limited, and affected tokens/sessions should be revoked after
+            cancellation or a material change. A logged-in customer should use their normal account
+            instead.
           </div>
           <div class="callout">
-            <strong>Adopted global privacy baseline.</strong> Booking collects only information
-            necessary to provide the reservation and transaction; transactional booking messages and
-            marketing consent are separate; sensitive medical/clinical notes are out of the generic
-            Booking core until a sector-specific privacy design exists. The platform must provide
-            role-based access, audit history, tenant isolation, customer data export/correction/
-            deletion workflows, a documented retention schedule, and purge/anonymisation jobs.
+            <strong>Planned global privacy baseline, not implemented.</strong> Booking must collect
+            only information necessary to provide the reservation and transaction; transactional
+            booking messages and marketing consent are separate; sensitive medical/clinical notes
+            are out of the generic Booking core until a sector-specific privacy design exists. The
+            platform must provide role-based access, audit history, tenant isolation, customer data
+            export/correction/ deletion workflows, a documented retention schedule, and
+            purge/anonymisation jobs.
           </div>
           <p class="small">
             A global product still needs a jurisdiction review before launching in each market. The
@@ -1592,58 +1637,80 @@ tests/booking/
             for an appointment as consent for marketing.
           </p>
           <div class="callout">
-            <strong>Adopted external-failure defaults.</strong> A payment-required visit holds the
-            resource for 15 minutes, then expires according to the workspace policy. Payment
-            provider events are stored idempotently; a late event never silently reopens a now-taken
-            slot and instead enters a staff-visible reconciliation queue. Notification delivery is
-            retried with backoff for up to 24 hours; permanent failure creates a visible action for
-            staff but does not cancel the booking. Calendar-sync failure leaves the ExSol booking
-            unchanged, retries safely, and shows its sync state to staff.
+            <strong>Planned external-failure defaults, not implemented.</strong> A payment-required
+            visit should hold capacity for 15 minutes, then expire according to the workspace
+            policy. Payment provider events must be stored idempotently; a late event must never
+            silently reopen a taken slot and instead enter a staff-visible reconciliation queue.
+            Notification delivery should retry with backoff for up to 24 hours; permanent failure
+            should create a visible staff action without cancelling the booking. Calendar-sync
+            failure must leave the ExSol booking unchanged, retry safely, and show its sync state to
+            staff.
           </div>
           <p>
-            These defaults now belong in the technical design, migrations and tests. They are
-            product commitments; the detailed legal/privacy implementation still requires review for
-            each target jurisdiction and industry.
+            These targets belong in the technical design, migrations, and tests for Steps 9 and 10.
+            The detailed legal/privacy implementation still requires review for each target
+            jurisdiction and industry.
           </p>
         </section>
 
         <section id="definition">
           <div class="eyebrow" style="color: var(--green)">Release bar</div>
-          <h2>When can we call Booking production-ready?</h2>
+          <h2>What remains before we call Booking production-ready?</h2>
           <div class="grid">
             <article class="card">
               <h3>Correctness</h3>
               <ul>
                 <li>
-                  Every create and reschedule path uses one server-side reservation validation
-                  service.
+                  <strong>Implemented:</strong> public create, standard manual create, and
+                  guest/vendor reschedule use shared server-side reservation validation. Future
+                  writers must use it too.
                 </li>
-                <li>Database prevents double-booking under concurrent requests.</li>
-                <li>Timezone/DST, buffers, closures, lead time and cutoffs are tested.</li>
-                <li>Lifecycle changes are valid, authorized and auditable.</li>
+                <li>
+                  <strong>Implemented:</strong> database constraints prevent double-booking under
+                  concurrent requests.
+                </li>
+                <li>
+                  <strong>Implemented:</strong> timezone/DST, buffers, lead time, availability and
+                  key cutoffs are tested.
+                </li>
+                <li>
+                  <strong>Partial:</strong> lifecycle changes are authorized and evented; optimistic
+                  concurrency and mandatory override reasons remain.
+                </li>
               </ul>
             </article>
             <article class="card">
               <h3>Operations</h3>
               <ul>
                 <li>
-                  Staff can configure catalogue/capacity, manage a full day, search,
-                  cancel/reschedule, check in and close appointments.
+                  <strong>Implemented v1:</strong> staff can configure services and Booking Setup,
+                  manage a day, create bookings or blocks, cancel/reschedule, check in, record cash,
+                  and close appointments.
                 </li>
-                <li>Notifications are queued, observable and retryable.</li>
-                <li>Failures have clear user messages and an operator recovery path.</li>
+                <li>
+                  <strong>Missing:</strong> notifications must be queued, observable and retryable.
+                </li>
+                <li>
+                  <strong>Partial:</strong> surface errors now show retry actions; reconciliation
+                  and recovery work remains.
+                </li>
               </ul>
             </article>
             <article class="card">
               <h3>Platform quality</h3>
               <ul>
                 <li>
-                  Module has isolated CSS, typed API contracts and no duplicated scheduling logic.
+                  <strong>Partial:</strong> module CSS is isolated and scheduling writes are shared;
+                  shared permissions and setup-derived presentation labels still need extraction.
                 </li>
-                <li>All auth gates include product enablement and Owner bypass.</li>
                 <li>
-                  Full <code>npm run typecheck</code> and <code>npm test</code> are green; browser
-                  flows are verified against a real deployment.
+                  <strong>Implemented:</strong> auth gates include product enablement and Owner
+                  bypass.
+                </li>
+                <li>
+                  Full <code>npm run typecheck</code> and <code>npm test</code> are green, and all
+                  public storefront states are verified against a real deployment on desktop and
+                  mobile.
                 </li>
               </ul>
             </article>
@@ -1651,28 +1718,33 @@ tests/booking/
               <h3>Money and data</h3>
               <ul>
                 <li>
-                  Online payment remains disabled until verified webhook, idempotency and
-                  reconciliation are live.
+                  <strong>Required:</strong> online payment remains disabled until verified webhook,
+                  idempotency and reconciliation are live.
                 </li>
-                <li>Finance/Analytics consume explicit, documented booking events.</li>
                 <li>
-                  Customer identity and consent ownership are clear across Booking, CRM and
-                  Marketing.
+                  <strong>Partial:</strong> Finance/Analytics consume booking outcomes; documented
+                  payment and visit-first read contracts remain.
+                </li>
+                <li>
+                  <strong>Required:</strong> customer identity and consent ownership must be clear
+                  across Booking, CRM and Marketing.
                 </li>
               </ul>
             </article>
           </div>
           <div class="callout">
-            <strong>Recommended next engineering task:</strong> write a narrow technical design for
-            the shared reservation-validation service and its test matrix, then repair public create
-            and guest reschedule to use it. This is the smallest high-leverage change because it
-            turns the existing strong exclusion constraint into a complete scheduling guarantee.
+            <strong>Recommended next Booking task:</strong> add a small setup-derived presentation
+            helper and use it in Services, Calendar, and the public picker, then add tests for each
+            setup configuration. In parallel, complete real-browser verification of the published
+            storefront states. The next large capabilities are Step 9 Payments and Step 10
+            notifications, integrations, reporting, and privacy operations.
           </div>
           <p class="small">
-            Evidence reviewed: Booking migrations 047–049; Booking React and Netlify Function
-            sources; booking unit/integration tests; registry/routes; generated endpoint, permission
-            and schema references; platform module rules and strategy documents. This guide
-            deliberately distinguishes implemented code from planned or stubbed capability.
+            Evidence reviewed: Booking migrations 047–049, 152–155, and 157; Booking React and
+            Netlify Function sources; booking unit/integration tests; registry/routes; generated
+            endpoint, permission and schema references; platform module rules and strategy
+            documents. This guide deliberately distinguishes implemented code from planned, partial,
+            or stubbed capability.
           </p>
         </section>
       </main>

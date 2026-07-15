@@ -344,6 +344,485 @@
         background: #dff1e4;
         font-weight: 700;
       }
+      .booking-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        padding: 18px;
+      }
+      .booking-preview {
+        overflow: hidden;
+        border: 1px solid #38433f;
+        border-radius: 10px;
+        background: #151a18;
+        color: #ece8df;
+        font-size: 0.76rem;
+      }
+      .booking-preview__top {
+        padding: 13px 14px 10px;
+        border-bottom: 1px solid #38433f;
+        text-align: center;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+      .booking-preview__nav {
+        display: flex;
+        gap: 7px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #38433f;
+      }
+      .booking-preview__nav span {
+        padding: 6px 10px;
+        border: 1px solid #4a5651;
+        border-radius: 999px;
+        color: #c5cbc7;
+        font-size: 0.68rem;
+        font-weight: 700;
+      }
+      .booking-preview__nav .active,
+      .booking-preview__cta,
+      .booking-preview__day.active,
+      .booking-preview__chip.active {
+        border-color: #58b18b;
+        background: #2e8a68;
+        color: #fff;
+      }
+      .booking-preview__body {
+        padding: 16px;
+      }
+      .booking-preview__brand {
+        text-align: center;
+      }
+      .booking-preview__avatar {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin: 0 auto 5px;
+        border-radius: 50%;
+        background: #2e8a68;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .booking-preview__eyebrow {
+        color: #aeb8b2;
+        font-size: 0.59rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .booking-preview__title {
+        margin-top: 3px;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .booking-preview__sub {
+        margin-top: 2px;
+        color: #b8c1bb;
+        font-size: 0.68rem;
+      }
+      .booking-preview__steps {
+        display: flex;
+        justify-content: space-between;
+        gap: 5px;
+        margin: 17px 0;
+      }
+      .booking-preview__step {
+        position: relative;
+        display: grid;
+        flex: 1;
+        place-items: center;
+        gap: 4px;
+        color: #aeb8b2;
+        font-size: 0.62rem;
+      }
+      .booking-preview__step::before {
+        position: absolute;
+        top: 10px;
+        left: -50%;
+        z-index: 0;
+        width: 100%;
+        height: 1px;
+        background: #4a5651;
+        content: '';
+      }
+      .booking-preview__step:first-child::before {
+        display: none;
+      }
+      .booking-preview__dot {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 21px;
+        height: 21px;
+        border: 1px solid #68756e;
+        border-radius: 50%;
+        background: #202825;
+        font-weight: 700;
+      }
+      .booking-preview__step.done,
+      .booking-preview__step.current {
+        color: #f4f0e8;
+      }
+      .booking-preview__step.done .booking-preview__dot {
+        border-color: #2e8a68;
+        background: #2e8a68;
+        color: #fff;
+      }
+      .booking-preview__step.current .booking-preview__dot {
+        border-color: #58b18b;
+        color: #6cce9d;
+      }
+      .booking-preview__heading {
+        margin: 0 0 10px;
+        font-size: 0.88rem;
+      }
+      .booking-preview__service,
+      .booking-preview__summary,
+      .booking-preview__input,
+      .booking-preview__slot {
+        border: 1px solid #45524c;
+        border-radius: 7px;
+        background: #202825;
+      }
+      .booking-preview__service {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px;
+        margin: 7px 0;
+      }
+      .booking-preview__service-meta,
+      .booking-preview__muted,
+      .booking-preview__back {
+        color: #aeb8b2;
+        font-size: 0.65rem;
+      }
+      .booking-preview__service-right {
+        text-align: right;
+        font-weight: 700;
+      }
+      .booking-preview__chosen {
+        padding: 9px 10px;
+        margin: 10px 0 15px;
+        border: 1px solid #3b4942;
+        border-radius: 7px;
+        background: #202825;
+      }
+      .booking-preview__date-strip {
+        display: grid;
+        grid-template-columns: 20px repeat(7, 1fr) 20px;
+        gap: 3px;
+        margin-bottom: 14px;
+      }
+      .booking-preview__date-nav,
+      .booking-preview__day {
+        display: grid;
+        place-items: center;
+        min-height: 37px;
+        border: 1px solid #45524c;
+        border-radius: 5px;
+        background: #202825;
+      }
+      .booking-preview__day {
+        grid-template-rows: auto auto;
+        min-width: 0;
+        padding: 3px 0;
+        font-size: 0.56rem;
+      }
+      .booking-preview__day b {
+        font-size: 0.76rem;
+      }
+      .booking-preview__chips,
+      .booking-preview__slots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .booking-preview__chip {
+        padding: 6px 9px;
+        border: 1px solid #45524c;
+        border-radius: 999px;
+        background: #202825;
+        font-size: 0.63rem;
+      }
+      .booking-preview__slot {
+        min-width: 53px;
+        padding: 7px;
+        text-align: center;
+      }
+      .booking-preview__group {
+        margin-top: 13px;
+      }
+      .booking-preview__group-label {
+        margin-bottom: 6px;
+        color: #aeb8b2;
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .booking-preview__summary {
+        overflow: hidden;
+        margin-bottom: 13px;
+      }
+      .booking-preview__summary div {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid #3b4942;
+      }
+      .booking-preview__summary div:last-child {
+        border: 0;
+        font-weight: 700;
+      }
+      .booking-preview__fields {
+        display: grid;
+        gap: 7px;
+      }
+      .booking-preview__input {
+        padding: 8px 9px;
+        color: #9da9a2;
+      }
+      .booking-preview__consent {
+        margin: 10px 0;
+        color: #c7cec9;
+        font-size: 0.66rem;
+      }
+      .booking-preview__cta {
+        display: block;
+        padding: 10px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+      .workspace-preview {
+        overflow: hidden;
+        color: #ece8df;
+        background: #141716;
+        font-family: Arial, sans-serif;
+      }
+      .workspace-preview__bar {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid #343c38;
+        background: #1d211f;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+      .workspace-preview__muted {
+        color: #a7afaa;
+        font-size: 0.7rem;
+      }
+      .workspace-preview__tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 10px 16px 0;
+        border-bottom: 1px solid #404944;
+      }
+      .workspace-preview__tabs span {
+        padding: 7px 9px;
+        border-bottom: 2px solid transparent;
+        color: #b6c0ba;
+        font-size: 0.68rem;
+      }
+      .workspace-preview__tabs .active {
+        border-color: #58b18b;
+        color: #78d5aa;
+        font-weight: 700;
+      }
+      .workspace-preview__content {
+        padding: 18px;
+      }
+      .workspace-preview__heading {
+        margin: 0 0 5px;
+        color: #f3f0e9;
+        font-size: 1.1rem;
+      }
+      .workspace-preview__card {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        margin-top: 14px;
+        border: 1px solid #3e4943;
+        border-radius: 8px;
+        background: #202522;
+      }
+      .workspace-preview__card h4 {
+        margin: 0;
+        font-size: 0.82rem;
+      }
+      .workspace-preview__choice,
+      .workspace-preview__field,
+      .workspace-preview__feature {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: #d2d8d4;
+        font-size: 0.72rem;
+      }
+      .workspace-preview__choice::before {
+        width: 13px;
+        height: 13px;
+        border: 4px solid #58b18b;
+        border-radius: 50%;
+        background: #202522;
+        content: '';
+      }
+      .workspace-preview__choice {
+        justify-content: flex-start;
+      }
+      .workspace-preview__field {
+        padding: 8px 9px;
+        border: 1px solid #46514b;
+        border-radius: 6px;
+        background: #171c19;
+      }
+      .workspace-preview__field span:last-child {
+        color: #f0ede6;
+      }
+      .workspace-preview__button,
+      .workspace-preview__toggle.on {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        min-height: 30px;
+        padding: 0 11px;
+        border-radius: 6px;
+        background: #2e8a68;
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+      .workspace-preview__feature {
+        align-items: flex-start;
+        padding: 13px 0;
+        border-bottom: 1px solid #3e4943;
+      }
+      .workspace-preview__feature:last-child {
+        border-bottom: 0;
+      }
+      .workspace-preview__toggle {
+        min-width: 43px;
+        min-height: 23px;
+        padding: 3px;
+        border: 1px solid #65716a;
+        border-radius: 999px;
+        background: #353d38;
+        color: #d4d9d5;
+        font-size: 0.59rem;
+        font-weight: 700;
+        text-align: center;
+      }
+      .workspace-preview__layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(180px, 0.7fr);
+        gap: 14px;
+      }
+      .workspace-preview__controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+        margin: 13px 0;
+      }
+      .workspace-preview__control {
+        padding: 6px 8px;
+        border: 1px solid #46514b;
+        border-radius: 5px;
+        background: #202522;
+        color: #cdd4cf;
+        font-size: 0.66rem;
+      }
+      .workspace-preview__control.active {
+        background: #2e8a68;
+        border-color: #2e8a68;
+        color: #fff;
+      }
+      .workspace-preview__calendar {
+        display: grid;
+        grid-template-columns: 40px repeat(2, minmax(90px, 1fr));
+        overflow: hidden;
+        border: 1px solid #404a44;
+        border-radius: 7px;
+      }
+      .workspace-preview__calendar-head,
+      .workspace-preview__calendar-time {
+        padding: 9px 7px;
+        border-right: 1px solid #404a44;
+        border-bottom: 1px solid #404a44;
+        color: #bac4bd;
+        font-size: 0.63rem;
+      }
+      .workspace-preview__calendar-head {
+        color: #eef1ee;
+        font-weight: 700;
+        text-align: center;
+      }
+      .workspace-preview__calendar-column {
+        position: relative;
+        min-height: 190px;
+        border-right: 1px solid #404a44;
+        background: repeating-linear-gradient(
+          to bottom,
+          #1b211e 0,
+          #1b211e 46px,
+          #343d38 47px,
+          #1b211e 48px
+        );
+      }
+      .workspace-preview__booking-block {
+        position: absolute;
+        right: 6px;
+        left: 6px;
+        padding: 6px;
+        border-left: 3px solid #5fc391;
+        border-radius: 4px;
+        background: #283c32;
+        color: #e3eee7;
+        font-size: 0.61rem;
+        line-height: 1.35;
+      }
+      .workspace-preview__booking-block.pending {
+        border-left-color: #ddb65d;
+        background: #453d28;
+      }
+      .workspace-preview__drawer {
+        padding: 13px;
+        border: 1px solid #404a44;
+        border-radius: 7px;
+        background: #202522;
+      }
+      .workspace-preview__pill {
+        display: inline-block;
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #315841;
+        color: #c8f0d5;
+        font-size: 0.61rem;
+        font-weight: 700;
+      }
+      .workspace-preview__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .workspace-preview__actions span {
+        padding: 6px 7px;
+        border: 1px solid #54615a;
+        border-radius: 5px;
+        font-size: 0.61rem;
+      }
       .drawer {
         width: min(430px, 100%);
         margin-left: auto;
@@ -414,7 +893,11 @@
         .intro-grid,
         .grid,
         .three,
-        .booking-layout {
+        .booking-layout,
+        .booking-preview-grid {
+          grid-template-columns: 1fr;
+        }
+        .workspace-preview__layout {
           grid-template-columns: 1fr;
         }
         .flow {
@@ -555,8 +1038,8 @@
             <span class="status live">Available now</span>
             <h3 style="margin-top: 12px">Policies</h3>
             <p>
-              Stores cancellation, rescheduling, lead-time, buffer, deposit, and no-show choices.
-              Each visit keeps the policy that applied when it was made.
+              Stores customer change, attendance, settlement, deposit, and no-show choices. Each
+              visit keeps the policy that applied when it was made.
             </p>
           </article>
           <article class="card">
@@ -581,8 +1064,9 @@
             <span class="status live">Available now</span>
             <h3 style="margin-top: 12px">Public storefront</h3>
             <p>
-              Gives customers a branded Booking page at <code>/book/your-business-slug</code>. It
-              can appear beside Shop on the same public business site.
+              Gives customers a branded Booking page at
+              <code>/storefront/your-business-slug/Book</code>. It can appear beside Ordering on the
+              same public business site.
             </p>
           </article>
           <article class="card">
@@ -610,32 +1094,36 @@
         <div class="grid" style="margin-top: 24px">
           <div>
             <div class="screen">
-              <div class="screen-caption">Interface illustration: Booking Setup first visit</div>
-              <div class="mock">
-                <div class="mock-header">
-                  <span class="mock-title">Booking Setup</span
-                  ><span class="button">Save and continue</span>
+              <div class="screen-caption">
+                Interface illustration: current workspace Booking Setup
+              </div>
+              <div class="workspace-preview">
+                <div class="workspace-preview__bar">
+                  <span>ExSol Enterprise</span><span class="workspace-preview__muted">Booking</span>
                 </div>
-                <div class="progress">
-                  <i class="on"></i><i class="on"></i><i></i><i></i><i></i>
+                <div class="workspace-preview__tabs">
+                  <span>Calendar</span><span>Bookings</span><span>Services</span
+                  ><span class="active">Booking Setup</span><span>Booking Rules</span
+                  ><span>Settings</span>
                 </div>
-                <div class="question">
-                  <b>Who do customers book with?</b>
-                  <div class="choice selected"><span class="radio"></span>Specific team member</div>
-                  <div class="choice"><span class="radio"></span>Any available team member</div>
-                  <div class="choice">
-                    <span class="radio"></span>Nobody specific, just a time/place
+                <div class="workspace-preview__content">
+                  <h3 class="workspace-preview__heading">Booking Setup</h3>
+                  <p class="workspace-preview__muted">Step 1 of 5 · Who books</p>
+                  <div class="workspace-preview__card">
+                    <h4>Who do customers book with?</h4>
+                    <div class="workspace-preview__choice">A specific team member</div>
+                    <div class="workspace-preview__choice">Any available team member</div>
+                    <div class="workspace-preview__choice">
+                      Nobody specific, just a time or place
+                    </div>
+                    <span class="workspace-preview__button">Next</span>
                   </div>
-                </div>
-                <div class="question">
-                  <b>What can be booked?</b>
-                  <div class="choice selected"><span class="radio"></span>Appointments</div>
-                  <div class="choice"><span class="radio"></span>Rooms/spaces</div>
-                  <div class="choice"><span class="radio"></span>Equipment/assets</div>
                 </div>
               </div>
             </div>
-            <p class="client-note">Illustration only. Labels change to match your business.</p>
+            <p class="client-note">
+              This is the actual workspace tab layout. The five Setup screens appear one at a time.
+            </p>
           </div>
           <div class="card">
             <h3>Click-by-click: Booking Setup</h3>
@@ -676,8 +1164,8 @@
             <div class="step">
               <span class="number">6</span>
               <p>
-                Connect services using clear prompts: “This service can be performed by...”, “This
-                service needs...”, and “This booking uses...”. Save the setup.
+                On the final <b>Names</b> screen, set plain labels for team, rooms/spaces, or
+                equipment where those are needed, then select <b>Save booking setup</b>.
               </p>
             </div>
           </div>
@@ -738,11 +1226,12 @@
             </p>
           </div>
           <div class="card">
-            <h3>Then connect capacity</h3>
+            <h3>Then set service eligibility</h3>
             <p>
-              Use the contextual pages created by setup, such as <b>Team Availability</b>,
-              <b>Doctors</b>, <b>Rooms &amp; Spaces</b>, or <b>Equipment</b>. Do not think in
-              generic technical categories; think about what must be free for the booking to happen.
+              When capacity choices are available, use the service form to control who or what can
+              perform the service. Booking Setup supplies the configured labels; the workspace
+              navigation itself remains Calendar, Bookings, Services, Booking Setup, Booking Rules,
+              and Settings.
             </p>
           </div>
         </div>
@@ -759,19 +1248,40 @@
         </div>
         <div class="grid" style="margin-top: 24px">
           <div class="screen">
-            <div class="screen-caption">Interface illustration: Storefront settings</div>
-            <div class="mock">
-              <div class="mock-header">
-                <span class="mock-title">Storefront customer features</span>
-                <span class="status live">Ready to publish</span>
+            <div class="screen-caption">Interface illustration: current Storefront settings</div>
+            <div class="workspace-preview">
+              <div class="workspace-preview__bar">
+                <span>ExSol Enterprise</span
+                ><span class="workspace-preview__muted">Storefront</span>
               </div>
-              <div class="summary-row">
-                <b>Online ordering</b><br />Menu and ecommerce<br />On or off independently
+              <div class="workspace-preview__content">
+                <h3 class="workspace-preview__heading">Storefront</h3>
+                <p class="workspace-preview__muted">
+                  Link to storefront site: /storefront/olive-and-stone
+                </p>
+                <div class="workspace-preview__card">
+                  <h4>Customer features</h4>
+                  <p class="workspace-preview__muted">
+                    Turn each feature on or off for your single branded storefront.
+                  </p>
+                  <div class="workspace-preview__feature">
+                    <div>
+                      <b>Online booking</b><br /><span class="workspace-preview__muted"
+                        >Let customers choose an available time through your storefront.</span
+                      >
+                    </div>
+                    <span class="workspace-preview__toggle on">ON</span>
+                  </div>
+                  <div class="workspace-preview__feature">
+                    <div>
+                      <b>Online ordering</b><br /><span class="workspace-preview__muted"
+                        >Let customers browse your menu and place pickup or delivery orders.</span
+                      >
+                    </div>
+                    <span class="workspace-preview__toggle">OFF</span>
+                  </div>
+                </div>
               </div>
-              <div class="summary-row">
-                <b>Online booking</b><br />Booking Setup complete<br />At least one active service
-              </div>
-              <span class="button">Turn on online booking</span>
             </div>
           </div>
           <div class="card">
@@ -808,8 +1318,9 @@
           <div class="card">
             <h3>One business site, two independent offers</h3>
             <p>
-              Your public site can show <b>Shop</b>, <b>Book</b>, both, or neither. Publishing
-              Booking never publishes ecommerce, and publishing ecommerce never opens Booking.
+              Your public site can show <b>Ordering</b>, <b>Booking</b>, both, or neither.
+              Publishing Booking never publishes ecommerce, and publishing ecommerce never opens
+              Booking.
             </p>
           </div>
           <div class="card">
@@ -828,42 +1339,156 @@
         <h2>How a customer makes and manages a booking</h2>
         <div class="callout blue" style="margin-top: 22px">
           <b>Where customers start:</b> the branded public booking storefront is
-          <code>https://your-exsol-domain/book/your-business-slug</code>. Replace
-          <code>your-business-slug</code> with the business workspace slug. This is an anonymous
-          customer page, not a workspace page: customers do not need an ExSol login. It is visible
-          only after the owner has published Booking.
+          <code>https://your-exsol-domain/storefront/your-business-slug/Book</code>. Replace
+          <code>your-business-slug</code> with the business workspace slug. This anonymous customer
+          page is part of the business storefront, not the workspace: customers do not need an ExSol
+          login. It is visible only after the owner turns on Online booking.
         </div>
         <p class="small">
-          Older shared links using <code>/c/your-business-slug/book</code> remain a compatibility
-          path. Use <code>/book/your-business-slug</code> in new materials because it is the branded
-          storefront route and supports the shared Shop and Book navigation.
+          New materials should use the storefront address above. Older <code>/book/...</code> and
+          <code>/c/.../book</code> links redirect into the same storefront surface. When both
+          features are enabled, the public navigation labels are <b>Ordering</b> and <b>Booking</b>.
         </p>
         <div class="screen" style="margin-top: 24px">
-          <div class="screen-caption">Interface illustration: public booking page</div>
-          <div class="mock booking-layout">
-            <div>
-              <b>1. Choose services</b>
-              <div class="service selected">Haircut <small>45 min</small></div>
-              <div class="service selected">Beard trim <small>20 min</small></div>
-              <div class="service">Hair colour <small>90 min</small></div>
+          <div class="screen-caption">
+            Interface illustration: current public storefront Booking flow
+          </div>
+          <div class="booking-preview-grid">
+            <div class="booking-preview">
+              <div class="booking-preview__top">Olive &amp; Stone</div>
+              <div class="booking-preview__nav">
+                <span>Ordering</span><span class="active">Booking</span>
+              </div>
+              <div class="booking-preview__body">
+                <div class="booking-preview__brand">
+                  <div class="booking-preview__avatar">O</div>
+                  <div class="booking-preview__eyebrow">Online booking</div>
+                  <div class="booking-preview__title">Olive &amp; Stone</div>
+                  <div class="booking-preview__sub">Book an appointment</div>
+                </div>
+                <div class="booking-preview__steps">
+                  <div class="booking-preview__step current">
+                    <span class="booking-preview__dot">1</span><span>Service</span>
+                  </div>
+                  <div class="booking-preview__step">
+                    <span class="booking-preview__dot">2</span><span>Time</span>
+                  </div>
+                  <div class="booking-preview__step">
+                    <span class="booking-preview__dot">3</span><span>Details</span>
+                  </div>
+                </div>
+                <h3 class="booking-preview__heading">Choose a service</h3>
+                <div class="booking-preview__service">
+                  <div>
+                    <b>Haircut</b><br /><span class="booking-preview__service-meta"
+                      >45 min · Pay at venue</span
+                    >
+                  </div>
+                  <div class="booking-preview__service-right">₹500<br />✓</div>
+                </div>
+                <div class="booking-preview__service">
+                  <div>
+                    <b>Beard trim</b><br /><span class="booking-preview__service-meta"
+                      >20 min · Pay at venue</span
+                    >
+                  </div>
+                  <div class="booking-preview__service-right">₹250<br />+</div>
+                </div>
+                <span class="booking-preview__cta">Continue with 1 service</span>
+              </div>
             </div>
-            <div>
-              <b>2. Choose date and time</b>
-              <div class="calendar">
-                <span class="day">12</span><span class="day available">13</span
-                ><span class="day available">14</span><span class="day">15</span
-                ><span class="day available">16</span><span class="day">17</span
-                ><span class="day">18</span>
+            <div class="booking-preview">
+              <div class="booking-preview__top">Olive &amp; Stone</div>
+              <div class="booking-preview__nav">
+                <span>Ordering</span><span class="active">Booking</span>
               </div>
-              <div class="slot-grid">
-                <div class="slot">10:00</div>
-                <div class="slot selected">11:30</div>
-                <div class="slot">14:00</div>
+              <div class="booking-preview__body">
+                <div class="booking-preview__brand">
+                  <div class="booking-preview__avatar">O</div>
+                  <div class="booking-preview__eyebrow">Online booking</div>
+                  <div class="booking-preview__title">Olive &amp; Stone</div>
+                  <div class="booking-preview__sub">Book an appointment</div>
+                </div>
+                <div class="booking-preview__steps">
+                  <div class="booking-preview__step done">
+                    <span class="booking-preview__dot">✓</span><span>Service</span>
+                  </div>
+                  <div class="booking-preview__step current">
+                    <span class="booking-preview__dot">2</span><span>Time</span>
+                  </div>
+                  <div class="booking-preview__step">
+                    <span class="booking-preview__dot">3</span><span>Details</span>
+                  </div>
+                </div>
+                <div class="booking-preview__back">← Services</div>
+                <div class="booking-preview__chosen">
+                  <b>Haircut</b><br /><span class="booking-preview__muted">45 min · ₹500</span>
+                </div>
+                <h3 class="booking-preview__heading">Pick a date</h3>
+                <div class="booking-preview__date-strip">
+                  <span class="booking-preview__date-nav">‹</span>
+                  <span class="booking-preview__day"><span>Mon</span><b>12</b></span>
+                  <span class="booking-preview__day active"><span>Tue</span><b>13</b></span>
+                  <span class="booking-preview__day"><span>Wed</span><b>14</b></span>
+                  <span class="booking-preview__day"><span>Thu</span><b>15</b></span>
+                  <span class="booking-preview__day"><span>Fri</span><b>16</b></span>
+                  <span class="booking-preview__day"><span>Sat</span><b>17</b></span>
+                  <span class="booking-preview__day"><span>Sun</span><b>18</b></span>
+                  <span class="booking-preview__date-nav">›</span>
+                </div>
+                <h3 class="booking-preview__heading">With</h3>
+                <div class="booking-preview__chips">
+                  <span class="booking-preview__chip active">Any professional</span
+                  ><span class="booking-preview__chip">Aarav</span>
+                </div>
+                <div class="booking-preview__group">
+                  <div class="booking-preview__group-label">Available times</div>
+                  <div class="booking-preview__slots">
+                    <span class="booking-preview__slot">09:00</span
+                    ><span class="booking-preview__slot">10:30</span
+                    ><span class="booking-preview__slot">11:30</span>
+                  </div>
+                </div>
               </div>
-              <div class="summary-row">
-                <b>Your visit</b><br />Haircut + beard trim<br />11:30 to 12:35
+            </div>
+            <div class="booking-preview">
+              <div class="booking-preview__top">Olive &amp; Stone</div>
+              <div class="booking-preview__nav">
+                <span>Ordering</span><span class="active">Booking</span>
               </div>
-              <span class="button">Continue</span>
+              <div class="booking-preview__body">
+                <div class="booking-preview__brand">
+                  <div class="booking-preview__avatar">O</div>
+                  <div class="booking-preview__eyebrow">Online booking</div>
+                  <div class="booking-preview__title">Olive &amp; Stone</div>
+                  <div class="booking-preview__sub">Book an appointment</div>
+                </div>
+                <div class="booking-preview__steps">
+                  <div class="booking-preview__step done">
+                    <span class="booking-preview__dot">✓</span><span>Service</span>
+                  </div>
+                  <div class="booking-preview__step done">
+                    <span class="booking-preview__dot">✓</span><span>Time</span>
+                  </div>
+                  <div class="booking-preview__step current">
+                    <span class="booking-preview__dot">3</span><span>Details</span>
+                  </div>
+                </div>
+                <div class="booking-preview__back">← Times</div>
+                <h3 class="booking-preview__heading">Confirm your booking</h3>
+                <div class="booking-preview__summary">
+                  <div><span>Services</span><span>Haircut</span></div>
+                  <div><span>When</span><span>Tue 13, 10:30</span></div>
+                  <div><span>Total</span><span>₹500</span></div>
+                </div>
+                <div class="booking-preview__fields">
+                  <div class="booking-preview__input">Name * &nbsp; Your name</div>
+                  <div class="booking-preview__input">Phone * &nbsp; Mobile number</div>
+                  <div class="booking-preview__input">Email &nbsp; Optional</div>
+                </div>
+                <div class="booking-preview__consent">□ I agree to the booking terms.</div>
+                <span class="booking-preview__cta">Confirm booking</span>
+              </div>
             </div>
           </div>
         </div>
@@ -874,8 +1499,9 @@
               <span class="number">1</span>
               <p>
                 Open the business booking link. The current address format is
-                <code>/book/your-business-slug</code>. If the business also sells products, use the
-                <b>Book</b> link in its public navigation rather than the <b>Shop</b> link.
+                <code>/storefront/your-business-slug/Book</code>. If the business also sells
+                products, use the <b>Booking</b> link in its public navigation rather than the
+                <b>Ordering</b> link.
               </p>
             </div>
             <div class="step">
@@ -888,15 +1514,15 @@
             <div class="step">
               <span class="number">3</span>
               <p>
-                Select a team member when the business offers that choice, or select “any available”
-                if offered.
+                On the <b>Time</b> step, choose a date, then select a team member when the business
+                offers that choice, or select <b>Any professional</b> if offered.
               </p>
             </div>
             <div class="step">
               <span class="number">4</span>
               <p>
-                Choose a date and an offered time. Only slots that pass the business availability
-                checks appear.
+                Select an offered time. Only slots that pass the business availability checks
+                appear, grouped as Morning, Afternoon, or Evening.
               </p>
             </div>
             <div class="step">
@@ -951,8 +1577,8 @@
             <div class="step">
               <span class="number">2</span>
               <p>
-                Review the customer, all services, scheduled time, assigned person/place, payment
-                status, and policy snapshot.
+                Review the customer, scheduled time, price, payment status, current booking status,
+                and history in the booking drawer.
               </p>
             </div>
             <div class="step">
@@ -965,8 +1591,8 @@
             <div class="step">
               <span class="number">4</span>
               <p>
-                If the customer pays cash, select <b>Record cash payment</b> only after receiving
-                it. This changes the payment status and records who did it.
+                If the customer pays cash, select <b>Record cash received</b> only after receiving
+                it. This updates the payment status and records the event.
               </p>
             </div>
             <div class="step">
@@ -978,24 +1604,68 @@
             </div>
           </div>
           <div class="screen">
-            <div class="screen-caption">Interface illustration: booking detail and history</div>
-            <div class="drawer">
-              <div class="mock-header">
-                <span class="mock-title">Visit #BK-1042</span
-                ><span class="status live">Checked in</span>
+            <div class="screen-caption">
+              Interface illustration: current Calendar and booking drawer
+            </div>
+            <div class="workspace-preview">
+              <div class="workspace-preview__bar">
+                <span>ExSol Enterprise</span><span class="workspace-preview__muted">Booking</span>
               </div>
-              <div class="summary-row">
-                <b>Asha Patel</b><br />Haircut + beard trim<br />Tue, 11:30 to 12:35
+              <div class="workspace-preview__tabs">
+                <span class="active">Calendar</span><span>Bookings</span><span>Services</span
+                ><span>Booking Setup</span><span>Booking Rules</span><span>Settings</span>
               </div>
-              <div class="summary-row">
-                Payment: <b>Cash pending</b><br /><span class="button">Record cash payment</span>
+              <div class="workspace-preview__content">
+                <div class="workspace-preview__layout">
+                  <div>
+                    <h3 class="workspace-preview__heading">Calendar</h3>
+                    <div class="workspace-preview__controls">
+                      <span class="workspace-preview__control active">Day</span>
+                      <span class="workspace-preview__control">Week</span>
+                      <span class="workspace-preview__control">2026-07-15</span>
+                      <span class="workspace-preview__control">List view</span>
+                      <span class="workspace-preview__button">+ New booking</span>
+                    </div>
+                    <div class="workspace-preview__calendar">
+                      <span class="workspace-preview__calendar-head"></span>
+                      <span class="workspace-preview__calendar-head">Aarav</span>
+                      <span class="workspace-preview__calendar-head">Maya</span>
+                      <span class="workspace-preview__calendar-time">09:00</span>
+                      <div class="workspace-preview__calendar-column">
+                        <div class="workspace-preview__booking-block" style="top: 16px">
+                          09:15–10:00<br />Asha Patel
+                        </div>
+                      </div>
+                      <div class="workspace-preview__calendar-column">
+                        <div class="workspace-preview__booking-block pending" style="top: 68px">
+                          10:00–10:30<br />Blocked time
+                        </div>
+                      </div>
+                      <span class="workspace-preview__calendar-time">10:00</span>
+                      <div class="workspace-preview__calendar-column"></div>
+                      <div class="workspace-preview__calendar-column"></div>
+                    </div>
+                  </div>
+                  <aside class="workspace-preview__drawer">
+                    <b>Booking</b><br /><br />
+                    <span class="workspace-preview__pill">confirmed</span>
+                    <p class="workspace-preview__muted">Tue, 15 Jul · 09:15–10:00</p>
+                    <p>
+                      <b>Asha Patel</b><br /><span class="workspace-preview__muted"
+                        >+91 98765 43210</span
+                      >
+                    </p>
+                    <p>
+                      ₹500<br /><span class="workspace-preview__muted">Payment: cash pending</span>
+                    </p>
+                    <div class="workspace-preview__actions">
+                      <span>Mark completed</span><span>Check in</span
+                      ><span>Record cash received</span>
+                    </div>
+                    <p class="workspace-preview__muted">History<br />booking created · confirmed</p>
+                  </aside>
+                </div>
               </div>
-              <div class="timeline">
-                <div class="event"><b>Checked in</b><br />Today, 11:26 by front desk</div>
-                <div class="event"><b>Visit confirmed</b><br />Yesterday, 16:09</div>
-                <div class="event"><b>Booking created</b><br />Yesterday, 16:08</div>
-              </div>
-              <span class="button">Complete visit</span>
             </div>
           </div>
         </div>
@@ -1011,31 +1681,56 @@
         <h2>Use Booking Rules to set fair limits.</h2>
         <div class="grid" style="margin-top: 24px">
           <div class="screen">
-            <div class="screen-caption">Interface illustration: Booking Rules</div>
-            <div class="mock">
-              <div class="mock-header">
-                <span class="mock-title">Booking Rules</span
-                ><span class="button">Save changes</span>
+            <div class="screen-caption">Interface illustration: current Booking Rules form</div>
+            <div class="workspace-preview">
+              <div class="workspace-preview__bar">
+                <span>ExSol Enterprise</span><span class="workspace-preview__muted">Booking</span>
               </div>
-              <div class="question">
-                <b>How far ahead can customers book?</b>
-                <div class="choice selected">
-                  <span class="radio"></span>At least 2 hours before the start
+              <div class="workspace-preview__tabs">
+                <span>Calendar</span><span>Bookings</span><span>Services</span
+                ><span>Booking Setup</span><span class="active">Booking Rules</span
+                ><span>Settings</span>
+              </div>
+              <div class="workspace-preview__content">
+                <h3 class="workspace-preview__heading">Booking Rules</h3>
+                <p class="workspace-preview__muted">
+                  Changes apply to new visits only. Existing visits keep the rules accepted when
+                  they were created.
+                </p>
+                <div class="workspace-preview__card">
+                  <h4>Customer changes</h4>
+                  <div class="workspace-preview__field">
+                    <span>Cancellation cutoff</span><span>1440 min</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Reschedule cutoff</span><span>1440 min</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Customer reschedule limit</span><span>2</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Late reschedule handling</span><span>Disallow</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Late reschedule fee</span><span>0 paise</span>
+                  </div>
                 </div>
-              </div>
-              <div class="question">
-                <b>How late can customers cancel?</b>
-                <div class="choice selected">
-                  <span class="radio"></span>Up to 24 hours before the start
+                <div class="workspace-preview__card">
+                  <h4>Attendance and settlement</h4>
+                  <div class="workspace-preview__field">
+                    <span>Late-arrival grace</span><span>10 min</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>No-show outcome</span><span>Staff review</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Cancellation settlement</span><span>Forfeit deposit</span>
+                  </div>
+                  <div class="workspace-preview__field">
+                    <span>Deposit rule</span><span>Service setting</span>
+                  </div>
                 </div>
-              </div>
-              <div class="question">
-                <b>Rescheduling</b>
-                <div class="choice selected"><span class="radio"></span>Allow up to 2 changes</div>
-              </div>
-              <div class="question">
-                <b>Buffer between appointments</b>
-                <div class="choice selected"><span class="radio"></span>10 minutes</div>
+                <span class="workspace-preview__button">Save booking rules</span>
               </div>
             </div>
           </div>
@@ -1048,29 +1743,29 @@
             <div class="step">
               <span class="number">2</span>
               <p>
-                Set booking lead time. This prevents last-minute online bookings your team cannot
-                realistically prepare for.
+                In <b>Customer changes</b>, set cancellation and reschedule cutoffs, the maximum
+                number of customer reschedules, late-reschedule handling, and any late fee.
               </p>
             </div>
             <div class="step">
               <span class="number">3</span>
               <p>
-                Set a cancellation cutoff and reschedule cutoff. Industry-standard defaults are 24
-                hours before the appointment, but your business can choose another rule.
+                In <b>Attendance and settlement</b>, set the late-arrival grace, no-show outcome,
+                cancellation settlement, and deposit rule.
               </p>
             </div>
             <div class="step">
               <span class="number">4</span>
               <p>
-                Set maximum customer reschedules and service buffers. Buffers reserve preparation or
-                cleanup time around the customer-facing service duration.
+                Select <b>Save booking rules</b>. The page confirms the policy version; the new
+                rules affect new visits only.
               </p>
             </div>
             <div class="step">
               <span class="number">5</span>
               <p>
-                Choose deposit and no-show rules. Start with clear, simple values and revise them
-                once you understand actual customer behaviour.
+                Use <b>Settings</b> for slot interval, minimum lead time, weekly hours, and closed
+                dates. Set a service buffer from that service's <b>Edit</b> drawer.
               </p>
             </div>
           </div>
@@ -1228,9 +1923,9 @@
               <span class="number">7</span>
               <p>
                 Share your public booking address:
-                <code>https://your-exsol-domain/book/your-business-slug</code>. Copy the displayed
-                address for your website, Google Business profile, social profile or customer
-                messages.
+                <code>https://your-exsol-domain/storefront/your-business-slug/Book</code>. Copy the
+                displayed address for your website, Google Business profile, social profile or
+                customer messages.
               </p>
             </div>
           </div>
@@ -1269,9 +1964,9 @@
             <span class="status live">Available now</span>
             <h3 style="margin-top: 12px">A branded public booking journey</h3>
             <p>
-              Customers use <code>/book/your-business-slug</code>. It uses the business brand,
-              shares public navigation with Shop when both are published, and calls anonymous APIs
-              only while Booking is published and ready.
+              Customers use <code>/storefront/your-business-slug/Book</code>. It uses the business
+              brand, shares public navigation with Ordering when both are published, and calls
+              anonymous APIs only while Booking is published and ready.
             </p>
           </div>
           <div class="card">

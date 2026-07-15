@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ExSol Payments Module Roadmap</title>
+    <style>
+      :root { --ink:#18231d; --muted:#607068; --paper:#f8f5ee; --panel:#fffdf8; --line:#d9d6ca; --green:#176b4d; --lime:#cce99f; --amber:#a65e00; --red:#aa352b; --blue:#265b87; --dark:#10231c; }
+      * { box-sizing:border-box; } html { scroll-behavior:smooth; }
+      body { margin:0; color:var(--ink); background:linear-gradient(125deg,#edf1e5 0%,var(--paper) 42%,#f7eee2 100%); font:16px/1.58 Georgia,'Times New Roman',serif; }
+      .hero { background:radial-gradient(circle at 83% 25%,#315f4b 0 4%,transparent 4.2%),linear-gradient(135deg,#102a20,#1d5942); color:#f8f4e9; padding:72px max(24px,calc((100vw - 1180px)/2)); }
+      .eyebrow { color:var(--lime); font:700 12px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; }
+      h1,h2,h3 { font-family:'Trebuchet MS',Arial,sans-serif; line-height:1.12; } h1 { max-width:840px; margin:14px 0; font-size:clamp(38px,6vw,72px); letter-spacing:-.055em; } h2 { margin:0 0 18px; font-size:clamp(26px,3vw,38px); letter-spacing:-.035em; } h3 { margin:0 0 8px; font-size:20px; } p { margin:0 0 14px; }
+      .lede { max-width:780px; color:#dce9dd; font-size:20px; }.meta { display:flex; flex-wrap:wrap; gap:10px; margin-top:28px; font:13px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace; }.meta span { border:1px solid #5c8571; border-radius:999px; padding:7px 10px; }
+      .layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:38px; max-width:1180px; margin:auto; padding:28px 24px 80px; } main { min-width:0; } nav { position:sticky; top:18px; align-self:start; font:13px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; } nav b { display:block; margin-bottom:9px; color:var(--muted); font-size:11px; letter-spacing:.1em; text-transform:uppercase; } nav a { display:block; padding:6px 0; color:var(--ink); border-bottom:1px solid transparent; text-decoration:none; } nav a:hover { color:var(--green); border-color:var(--green); }
+      section { padding:44px 0; border-bottom:1px solid var(--line); scroll-margin-top:14px; }.callout,.card,details { border:1px solid var(--line); border-radius:12px; background:rgba(255,253,248,.82); box-shadow:0 10px 28px rgba(38,47,31,.05); }.callout { margin:18px 0; padding:18px 20px; border-left:5px solid var(--green); }.callout.warn { border-left-color:var(--amber); }.callout.danger { border-left-color:var(--red); }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }.grid.three { grid-template-columns:repeat(3,minmax(0,1fr)); }.card { padding:19px; }.card.good { border-top:4px solid var(--green); }.card.bad { border-top:4px solid var(--red); }.card.missing { border-top:4px solid var(--amber); }.tag { display:inline-block; margin-bottom:9px; padding:3px 8px; border-radius:99px; font:700 11px/1.1 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.06em; text-transform:uppercase; }.tag.good { color:#12613f; background:#d8efdd; }.tag.bad { color:#923329; background:#f7ddd8; }.tag.missing { color:#814800; background:#fae7c2; }.tag.info { color:#27567c; background:#dceaf6; }
+      table { width:100%; margin:16px 0; border-collapse:collapse; background:var(--panel); font-size:14px; }th,td { padding:11px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }th { background:#e9ede2; font-family:'Trebuchet MS',Arial,sans-serif; }code { padding:1px 4px; border-radius:4px; color:#174a37; background:#e8eee5; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }pre { overflow:auto; padding:18px; border-radius:10px; color:#dcefe0; background:var(--dark); font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+      .flow { display:grid; gap:8px; margin:18px 0; }.flow div { position:relative; padding:13px 15px 13px 47px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }.flow div::before { content:attr(data-n); position:absolute; top:12px; left:13px; display:grid; width:23px; height:23px; place-items:center; border-radius:50%; color:#fff; background:var(--green); font:700 12px/1 ui-monospace,SFMono-Regular,Consolas,monospace; }.flow div:not(:last-child)::after { content:'↓'; position:absolute; bottom:-20px; left:18px; z-index:2; color:var(--green); font:20px sans-serif; }
+      details { margin:10px 0; padding:0 17px; }summary { padding:14px 0; cursor:pointer; font:700 16px/1.35 'Trebuchet MS',Arial,sans-serif; }details > div { padding:0 0 14px; }.checklist { padding:0; list-style:none; }.checklist li { position:relative; margin:8px 0; padding-left:28px; }.checklist li::before { content:'□'; position:absolute; left:0; color:var(--green); font-weight:bold; }.roadmap { display:grid; gap:13px; counter-reset:phase; }.phase { position:relative; padding:20px 20px 20px 78px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }.phase::before { position:absolute; top:20px; left:18px; color:var(--green); font:700 28px/1 'Trebuchet MS',Arial,sans-serif; counter-increment:phase; content:'0' counter(phase); }.phase h3,.key { color:var(--green); }.key { font-weight:bold; }.small { color:var(--muted); font-size:14px; }
+      @media (max-width:800px) { .layout { display:block; padding:20px 16px 60px; }nav { position:static; display:flex; gap:12px; overflow:auto; padding-bottom:12px; white-space:nowrap; }nav b { display:none; }nav a { display:inline; }.grid,.grid.three { grid-template-columns:1fr; }section { padding:32px 0; }.hero { padding:52px 24px; } }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="eyebrow">ExSol / Product Architecture Field Guide</div>
+      <h1>Payments Module: from scattered payment flags to one reliable money system</h1>
+      <p class="lede">A click-by-click, first-principles roadmap of what exists, what is sound, what is unsafe, what a production payment product needs, and how to connect it to Booking and POS without creating two incompatible money systems.</p>
+      <div class="meta"><span>Repository evidence reviewed</span><span>State: July 15, 2026</span><span>Audience: first-year engineer</span><span>Scope: Payments only</span><span>Razorpay Test keys available</span></div>
+    </header>
+    <div class="layout">
+      <nav aria-label="Guide sections">
+        <b>Jump to</b>
+        <a href="#start">Start here</a><a href="#plain">What is a payment system?</a><a href="#today">What exists today</a><a href="#assessment">Good / bad / missing</a><a href="#architecture">How the code connects</a><a href="#data">Data and storage</a><a href="#systems">Required systems</a><a href="#integrations">Platform interactions</a><a href="#structure">Folder architecture</a><a href="#roadmap">Build roadmap</a><a href="#questions">Decisions to make</a><a href="#definition">Definition of done</a>
+      </nav>
+      <main>
+        <section id="start">
+          <div class="eyebrow" style="color:var(--green)">Read this first</div>
+          <h2>The honest short answer</h2>
+          <p>ExSol does <strong>not</strong> have a working Payments module today. It has a Payments label in the module registry, a product entry and valid permission rows. Around that empty shell, Booking and POS each have payment-adjacent fields, status changes and partial workflows. Those are useful integration seams, but they are not a ledger and must not be mistaken for a complete money system.</p>
+          <div class="callout danger"><strong>Safe present-day promise:</strong> staff can record cash-like payment state in Booking and POS can mark a sale paid under its existing permissioned state machine. <strong>Not ready to promise:</strong> online collection, a provider order, verified settlement, refunds through a provider, payment receipts, duplicate-webhook safety across the real Booking model, tenant payment settings, or reliable payment reporting.</div>
+          <p>A safe Payments module should own the question <em>“what money was requested, attempted, captured, refunded, or still owed?”</em> Booking should continue to own appointments; POS should continue to own sales and fulfilment. Finance and Analytics should read payment evidence rather than infer money from an appointment or sale status.</p>
+          <div class="callout"><strong>Recommended first milestone:</strong> build the shared ledger and staff cash receipts for Booking before touching online money. That proves the data model, tenant scope, permissions and UI. Then build one Razorpay Booking deposit flow end to end, harden it against retries, and reuse the same core for POS/storefront.</div>
+          <div class="callout warn"><strong>Update: Razorpay Test keys are available.</strong> This unblocks sandbox order creation and Checkout testing; it does not make production payments ready. Keep the downloaded key pair out of Git, source files, browser bundles, screenshots, test fixtures and this roadmap. The Key ID may be returned only as part of a specific Checkout response; the Key Secret stays server-only. Before webhook testing, create a <em>separate Test-mode webhook secret</em> in Razorpay Dashboard and use a publicly reachable staging URL—Razorpay cannot deliver webhooks directly to localhost. Test and Live mode connections, credentials and webhook URLs remain separate.</div>
+        </section>
+
+        <section id="plain">
+          <div class="eyebrow" style="color:var(--green)">First principles</div>
+          <h2>What a payment module really does</h2>
+          <p>A payment module is not just “a Pay now button.” It is the system of record for a financial promise between a business and a customer. It must keep the business state and the money state separate, because money can arrive late, fail, be partly paid, be refunded, or be disputed.</p>
+          <div class="grid three">
+            <article class="card"><span class="tag info">Input</span><h3>Obligation</h3><p>Booking or POS says what is owed: for example, “₹500 appointment deposit” or “₹1,249 order total.” The source gives a stable ID and a server-calculated amount snapshot.</p></article>
+            <article class="card"><span class="tag info">Decision</span><h3>Collection</h3><p>Payments creates a request and an attempt: a staff cash receipt, a Razorpay order, or later a payment link. It never trusts the browser to choose the final price.</p></article>
+            <article class="card"><span class="tag info">Outcome</span><h3>Evidence</h3><p>A verified capture or cash receipt becomes an immutable transaction. An allocation says which obligation it settled. A refund becomes a separate negative transaction.</p></article>
+          </div>
+          <div class="callout warn"><strong>The essential separation:</strong> a Booking visit can be <em>confirmed</em> while its payment is <em>cash pending</em>. A POS sale can be <em>paid</em> while fulfilment is still pending. “Appointment/order status” and “payment status” must never be one overloaded field.</div>
+          <details><summary>A small vocabulary that prevents expensive mistakes</summary><div><table><thead><tr><th>Word</th><th>Plain meaning</th><th>Example</th></tr></thead><tbody><tr><td>Payment request</td><td>An exact payable obligation.</td><td>Deposit due for visit <code>V-123</code>.</td></tr><tr><td>Attempt</td><td>One try to collect it.</td><td>Customer opens Razorpay Checkout; then retries after UPI fails.</td></tr><tr><td>Transaction</td><td>Immutable evidence of cash, capture, refund or adjustment.</td><td>Razorpay payment <code>pay_…</code> captured at 15:02.</td></tr><tr><td>Allocation</td><td>The portion of a transaction applied to a request.</td><td>₹500 of a capture settles the appointment deposit.</td></tr><tr><td>Settlement</td><td>The provider sends captured funds to the merchant bank later.</td><td>Captured today, bank payout tomorrow.</td></tr><tr><td>Reconciliation</td><td>Resolving differences between ExSol and the provider/bank.</td><td>Provider says paid but amount is mismatched locally.</td></tr></tbody></table></div></details>
+        </section>
+
+        <section id="today">
+          <div class="eyebrow" style="color:var(--green)">Inventory</div>
+          <h2>Systems that exist today</h2>
+          <p>This table is deliberately concrete. A “good” row means the foundation can be retained; it does not mean online payments are ready to release.</p>
+          <table><thead><tr><th>Existing system</th><th>Where it lives</th><th>What is useful</th><th>What is still absent or unsafe</th></tr></thead><tbody>
+            <tr><td>Payments registry stub</td><td><code>src/modules/registry/manifests/payments.ts</code>; <code>saloon-booking.ts</code></td><td>It declares payments as vendor + customer facing, with buckets <code>customers</code> and <code>products</code>. No delete verb is correct for financial evidence.</td><td>No module directory, API, authz wrapper, route mount, CSS or screen. It appears in the generic module rail and reaches <code>ModuleStub</code>.</td></tr>
+            <tr><td>Booking payment policy</td><td><code>booking_services</code>, <code>booking_policies</code>, Booking UI</td><td>Services can be pay-at-venue, deposit or full-upfront. A policy snapshot makes future settings changes not rewrite old visits.</td><td>Refund/credit choices are business promises with no payment rail that can actually execute or reconcile them.</td></tr>
+            <tr><td>Booking payment state</td><td><code>booking_visits.payment_status</code>; <code>_booking-visits.ts</code></td><td>Explicit states include payment requested, cash pending, partly paid, paid, refunded and waived. Booking events are append-only evidence of lifecycle actions.</td><td>The cash helper mutates visit totals directly. There is no independent receipt, allocation, provider transaction ID or reusable ledger record.</td></tr>
+            <tr><td>Booking Razorpay seam</td><td><code>booking-public-create.ts</code>; <code>booking-razorpay-webhook.ts</code></td><td>Raw-body HMAC verification and constant-time signature comparison are the correct security primitives.</td><td><strong>Do not enable it:</strong> public create returns a stub intent; no provider order or Checkout exists; it uses a global secret; it does not verify amount; and webhook updates legacy <code>bookings</code> instead of the current <code>booking_visits</code> payment model.</td></tr>
+            <tr><td>POS sale state machine</td><td><code>pos-sale-create.ts</code>; <code>pos-sale-state.ts</code></td><td>Server-side price snapshots, create idempotency, permissioned transitions, timestamps, audit events and fulfilment-triggered inventory handling are strong foundations.</td><td>Marking paid adds a method/timestamp to a sale, not a payment transaction. <code>payment_ref</code> is already an idempotency cache and cannot be reused as a provider order ID.</td></tr>
+            <tr><td>Public sale checkout</td><td><code>pub-sale-create.ts</code></td><td>Rate limit, honeypot, server price/tax/coupon calculation and public sale idempotency are all appropriate to retain.</td><td>It only creates <code>pending_payment</code> sales. There is no online order, hosted Checkout, webhook confirmation, or expiry programme.</td></tr>
+            <tr><td>Orders refund workflow</td><td><code>orders_refunds</code>; <code>orders-refunds.ts</code></td><td>It tracks request/approval/rejection/completion and caps refund requests against a sale.</td><td>It does not issue a provider refund or create a payment refund transaction. It should become a Payments client, not a second money ledger.</td></tr>
+            <tr><td>Finance, Analytics, Marketing</td><td>Finance summaries; sales/booking analytics; ROI queries</td><td>They read existing business records rather than duplicate an editable revenue table.</td><td>They infer revenue from sale or confirmed booking state, often using <code>created_at</code>. That is inaccurate once deposits, partial payment, delayed capture and refunds exist.</td></tr>
+          </tbody></table>
+          <div class="callout warn"><strong>Why the Booking webhook needs replacement, not a small patch:</strong> a real handler must resolve an internal attempt by provider order ID, select the tenant connection, verify raw signed data, record/deduplicate the provider event, check currency/amount, create a transaction, allocate it, then notify Booking of a payment outcome. Updating a booking row directly is the final step of none of those required safeguards.</div>
+        </section>
+
+        <section id="assessment">
+          <div class="eyebrow" style="color:var(--green)">Engineering assessment</div>
+          <h2>What is good, bad, and missing</h2>
+          <div class="grid">
+            <article class="card good"><span class="tag good">Good</span><h3>The source modules already protect prices</h3><p>POS and public storefront calculate price, tax and discounts on the server before persisting a sale. Payments should consume that snapshot—not ask a React page to send an amount it chose.</p></article>
+            <article class="card good"><span class="tag good">Good</span><h3>Payment and fulfilment are partly separated</h3><p>POS distinguishes pending payment, paid and fulfilled. Booking distinguishes appointment state from payment state. This is the correct conceptual direction.</p></article>
+            <article class="card good"><span class="tag good">Good</span><h3>Security primitives already exist</h3><p>The shared webhook helper documents raw-body HMAC verification and timing-safe comparison. Sessions, tenant IDs, audit logging and module authz factories already exist.</p></article>
+            <article class="card good"><span class="tag good">Good</span><h3>Money is already integer minor units</h3><p>Amounts are stored in integer <code>*_cents</code> fields. In an INR-first product these represent paise; the new module should use explicit <code>amount_minor</code> plus <code>currency</code>.</p></article>
+            <article class="card bad"><span class="tag bad">Repair first</span><h3>There is no authoritative payment record</h3><p>Several modules write their own payment-like fields. No row answers: which provider transaction settled which booking/sale, who recorded it, what amount remains, and whether a refund has happened.</p></article>
+            <article class="card bad"><span class="tag bad">Repair first</span><h3>Provider identity is mixed with idempotency</h3><p><code>sales.payment_ref</code> contains <code>idem:&lt;key&gt;</code> for create replay. Reusing it for Razorpay would make retry safety and provider reconciliation fight each other.</p></article>
+            <article class="card bad"><span class="tag bad">Repair</span><h3>Booking online payment is false-complete</h3><p>The UI feature flag is correctly false. The stub intent and legacy webhook test can make a reader think Razorpay works, but no safe end-to-end online journey exists.</p></article>
+            <article class="card bad"><span class="tag bad">Repair</span><h3>Reporting is business-state based</h3><p>Finance counts confirmed/completed Booking rows as revenue and paid/fulfilled sales as income. That is useful operational reporting, but it is not a complete cash collection or refund ledger.</p></article>
+            <article class="card missing"><span class="tag missing">Missing</span><h3>Provider connection management</h3><p>Per-tenant credentials, write-only settings, encrypted secret storage, connection health, environment key rotation and audit records do not exist.</p></article>
+            <article class="card missing"><span class="tag missing">Missing</span><h3>Webhooks as an inbox</h3><p>There is no durable event table, provider event uniqueness constraint, processing status, retry path, late-event policy or staff reconciliation queue.</p></article>
+            <article class="card missing"><span class="tag missing">Missing</span><h3>Partial payment and refunds</h3><p>One transaction needs to allocate to an obligation; a negative refund must point back to the original transaction. Neither is a cross-module primitive today.</p></article>
+            <article class="card missing"><span class="tag missing">Missing</span><h3>Operations and support</h3><p>Staff need a payment timeline, receipt references, exceptions, stale checkout expiry, “customer paid but order pending” recovery and provider outage guidance.</p></article>
+          </div>
+          <div class="callout danger"><strong>Non-negotiable rule:</strong> the browser’s Razorpay “payment successful” callback is advisory only. It may navigate a customer to a receipt screen, but it must never be accepted as proof of money. Only a verified provider event or an authorized staff-recorded offline receipt can create a successful transaction.</div>
+        </section>
+
+        <section id="architecture">
+          <div class="eyebrow" style="color:var(--green)">Connection map</div>
+          <h2>How the codebase should connect a click to a money record</h2>
+          <p>The pattern is deliberately boring: a screen calls a typed API wrapper; a function validates/authenticates; a server-only Payments service writes the ledger; then a narrow outcome is returned to the source module. Booking and POS never import each other’s internals, and a payment provider never talks directly to the browser as the authority.</p>
+          <div class="flow"><div data-n="1"><strong>Booking or POS</strong><br />Owns the appointment or sale and sends a tenant-scoped source ID plus its server-authoritative amount snapshot.</div><div data-n="2"><strong>Payments API</strong><br />Creates a payment request and, for online flow, an attempt with a dedicated provider order ID.</div><div data-n="3"><strong>Hosted provider Checkout</strong><br />Customer enters card/UPI data at Razorpay. ExSol handles no card data and only displays pending/verified state.</div><div data-n="4"><strong>Verified webhook inbox</strong><br />Raw body → resolve tenant connection → HMAC signature → unique provider event → amount/currency check.</div><div data-n="5"><strong>Transaction and allocation</strong><br />Write immutable capture/refund/cash transaction and apply its amount to the booking or sale request.</div><div data-n="6"><strong>Source outcome and readers</strong><br />Booking may confirm a held visit; POS may transition paid. Finance, Analytics and Marketing read documented outcomes.</div></div>
+          <details><summary>What happens when a receptionist clicks “Record cash”?</summary><div><p>The booking page calls <code>paymentsApi.recordCash(...)</code>, not a custom inline fetch. The handler validates the request and <code>payments.customers.create</code> permission, checks the visit belongs to the staff member’s tenant, calculates outstanding balance from allocations, inserts one immutable <code>cash_received</code> transaction and allocation in a database transaction, records audit evidence, and returns the new payment summary. Booking uses that result to update its own payment display and only changes appointment state if its policy explicitly says that a satisfied deposit confirms the visit.</p></div></details>
+        </section>
+
+        <section id="data">
+          <div class="eyebrow" style="color:var(--green)">Storage design</div>
+          <h2>What is stored, and what should be stored next</h2>
+          <p>Postgres is the system of record. Use Netlify Blobs only for an optional receipt file later; do not put payment state, secrets, card data or raw credentials in Blobs. The first migration needs a human-coordinator-assigned number. The historical “051 Payments” reservation is not available now: later migrations already run through 157.</p>
+          <table><thead><tr><th>Proposed record</th><th>Why it exists</th><th>Core fields</th></tr></thead><tbody>
+            <tr><td><code>payment_provider_connections</code></td><td>One tenant’s connection to Razorpay or a future provider.</td><td><code>client_id</code>, provider, enabled, public key ID, encrypted API/webhook secrets, key version, timestamps; unique tenant + provider.</td></tr>
+            <tr><td><code>payment_requests</code></td><td>The exact obligation a customer may settle.</td><td>Tenant, <code>source_type</code>, <code>source_id</code>, purpose, requested amount, currency, expiry, status, idempotency key, source snapshot.</td></tr>
+            <tr><td><code>payment_attempts</code></td><td>Every hosted checkout try, including failed/retried attempts.</td><td>Request ID, provider, unique provider order ID, state, amount, safe checkout metadata, error code, timestamps.</td></tr>
+            <tr><td><code>payment_transactions</code></td><td>Immutable evidence of cash received, provider capture, refund or adjustment.</td><td>Tenant, optional attempt, kind/state, amount/currency, provider payment/refund ID, occurred/recorded time, safe reference, actor, original transaction link.</td></tr>
+            <tr><td><code>payment_allocations</code></td><td>Connects transaction money to an obligation and enables partial payment safely.</td><td>Transaction ID, request ID, allocated amount; database/service checks prevent over-allocation.</td></tr>
+            <tr><td><code>payment_webhook_events</code></td><td>Durable inbox for replay safety and investigation.</td><td>Provider, unique provider event ID, connection ID, event type, verified time, safe payload/metadata, processing state/error, processed time.</td></tr>
+            <tr><td><code>payment_reconciliation_cases</code></td><td>Visible human work queue for mismatches and late events.</td><td>Tenant, severity/type, related event/transaction, expected/observed amount, assignee, resolution, timestamps.</td></tr>
+          </tbody></table>
+          <details><summary>Storage rules that make the ledger trustworthy</summary><div><ul><li>Store integer minor units and ISO currency. Never use JavaScript decimal/float math for money.</li><li>Never delete a transaction. Correct it with a compensating adjustment, void state or refund.</li><li>Provider event ID is unique; provider transaction ID is unique per provider. Both make duplicate delivery/retry harmless.</li><li>Keep the source snapshot because a product/service price may change after checkout was created.</li><li>Use one database transaction for event processing, transaction creation, allocation and the source outcome write.</li><li>Encrypt provider secrets using AES-256-GCM with an environment-held key-encryption key. Secrets are write-only in the UI and never logged.</li></ul></div></details>
+          <details><summary>Why not put payment columns directly on <code>sales</code> and <code>booking_visits</code>?</summary><div><p>Those tables may still hold fast summary fields for display, but they cannot represent a retry, a deposit plus a cash balance, a provider capture plus a partial refund, an event that arrived twice, or an amount linked to several obligations. A separate ledger is not abstraction for its own sake; it is the minimum shape that preserves evidence and supports normal payment behaviour.</p></div></details>
+        </section>
+
+        <section id="systems">
+          <div class="eyebrow" style="color:var(--green)">Target product model</div>
+          <h2>The systems a production Payments module needs</h2>
+          <table><thead><tr><th>System</th><th>What it is responsible for</th><th>First-release scope</th></tr></thead><tbody>
+            <tr><td>Provider settings</td><td>Methods on/off, encrypted tenant credentials, connection readiness, webhook URL, safe audit history.</td><td>Razorpay + cash; owner configuration only.</td></tr>
+            <tr><td>Payment requests</td><td>Quote a known due amount for a source, expiry and policy purpose.</td><td>Booking deposit/balance and POS sale total.</td></tr>
+            <tr><td>Attempts and Checkout</td><td>Create provider orders and provide browser-safe hosted Checkout data; track retries/failures.</td><td>One Razorpay attempt per request, safely retryable.</td></tr>
+            <tr><td>Transaction ledger</td><td>Cash, capture and refund evidence; immutable references/timestamps.</td><td>Cash + captured; refund follows stable capture.</td></tr>
+            <tr><td>Allocation</td><td>Apply a transaction to what it settles; calculate outstanding/refundable balance.</td><td>One request may be paid in parts; one transaction initially maps to one request.</td></tr>
+            <tr><td>Webhook inbox</td><td>Verify, deduplicate, process, retry, and expose exceptions.</td><td>Captured and failed Razorpay events, with late/mismatch case.</td></tr>
+            <tr><td>Refunds</td><td>Validate remaining refundable amount and track provider async result.</td><td>Original rail refund; no automatic refund policy until approved.</td></tr>
+            <tr><td>Reconciliation/reporting</td><td>Explain differences and provide cash collection truth to other modules.</td><td>Exception list first; provider payout matching later.</td></tr>
+          </tbody></table>
+          <div class="callout"><strong>Deliberately out of first release:</strong> subscriptions, saved payment methods, marketplace/platform commission, split payment between tenants, international currencies, chargebacks, payouts, tips, instalment plans and loyalty wallets. These are real products, not small options.</div>
+        </section>
+
+        <section id="integrations">
+          <div class="eyebrow" style="color:var(--green)">Platform map</div>
+          <h2>Which ExSol modules Payments needs, and who needs Payments</h2>
+          <div class="grid">
+            <article class="card"><span class="tag info">Payments consumes</span><h3>Dependencies</h3><ul><li><strong>Booking:</strong> visit ID, payment policy, server amount, hold expiry and customer snapshot.</li><li><strong>POS / Storefront:</strong> sale ID, authoritative total, channel, price/tax snapshot, customer snapshot.</li><li><strong>Orders:</strong> approved refund request; it keeps customer-service workflow ownership.</li><li><strong>Platform auth:</strong> tenant session, product enablement, L1 Owner bypass, permission matrix and audit helper.</li><li><strong>Email:</strong> safe notification request after verified outcomes; Email owns delivery/retries.</li><li><strong>Client settings:</strong> tenant identity and base currency; provider connection is Payments-owned.</li></ul></article>
+            <article class="card"><span class="tag info">Payments produces</span><h3>Downstream data</h3><ul><li><strong>Booking:</strong> paid/outstanding/refunded summary and receipt/reference; Booking decides its own confirmation/cancellation rule.</li><li><strong>POS:</strong> payment result; POS decides paid/fulfilled state and inventory timing.</li><li><strong>Orders:</strong> refund provider state and immutable refund transaction link.</li><li><strong>Finance:</strong> gross captured, refunds, net collected, outstanding and later settlement data.</li><li><strong>Analytics / Marketing:</strong> documented paid conversion/refund metrics, never payment credentials or sensitive instrument data.</li><li><strong>CRM:</strong> safe customer timeline events, not secret payment payloads.</li></ul></article>
+          </div>
+          <div class="callout warn"><strong>Boundary rule:</strong> modules never import another module’s internal files. Browser types can live in <code>src/lib/payments-contract.ts</code>; server orchestration lives in <code>netlify/functions/_shared/payments-service.ts</code>. Booking and POS call that stable seam rather than copying payment logic.</div>
+        </section>
+
+        <section id="structure">
+          <div class="eyebrow" style="color:var(--green)">Code organization</div>
+          <h2>Current shape and recommended shape</h2>
+          <p>The existing Payments registry stub needs the standard complete module shape. The following is a proposed file layout, not files already in the repository. Keep Netlify Functions flat and keep provider-specific code behind a small adapter seam.</p>
+          <pre>
+src/modules/payments/
+  PaymentsRouteMounts.tsx       # Client enable-gate → Owner bypass → permission gate
+  payments.css                  # .pay-* styles; dark theme tokens only
+  shared/
+    types.ts                    # Request/response and payment timeline wire types
+    api.ts                      # Typed browser fetch wrappers
+    permissions.ts              # One Payments permission list for UI/server use
+  workspace/
+    PaymentsDashboardPage.tsx   # Collected, outstanding and recent activity
+    PaymentDetailPage.tsx       # Request, attempts, transactions, allocations timeline
+    PaymentSettingsPage.tsx     # Write-only provider credentials and enabled methods
+    ReconciliationPage.tsx      # Failed / late / mismatch event queue
+  components/
+    PaymentStatusPill.tsx
+    RecordCashDrawer.tsx
+    RefundDrawer.tsx
+    PaymentTimeline.tsx
+
+netlify/functions/
+  _payments-authz.ts            # Thin makeModuleAuthz wrapper
+  _shared/payments-service.ts   # Source-neutral request/transaction/allocation logic
+  _shared/payment-crypto.ts     # AES-GCM provider secret encryption
+  _shared/payment-provider.ts   # Adapter interface and safe provider result types
+  _shared/razorpay-payments.ts  # Razorpay HTTP and payload mapping only
+  payments-dashboard.ts
+  payments-list.ts
+  payments-detail.ts
+  payments-cash-receipt.ts
+  payments-refund.ts
+  payments-settings.ts
+  payments-razorpay-webhook.ts  # Public raw-body receiver, explicit POST config
+
+db/migrations/
+  NNN_payments_core.sql         # NNN allocated by human coordinator
+
+tests/payments/
+  *.test.ts                     # Unit, handler, DB, webhook replay and auth tests</pre>
+          <div class="callout"><strong>Platform integration checklist:</strong> update the Payments manifest with <code>hasDedicatedNav: true</code> and a real nav link; add a ProductManifest entry (already present through <code>saloon-booking</code>); add <code>_payments-authz.ts</code>; add route mounts and router entries; then add CSS and shared API/types/permissions. The server and UI must both apply: session → enable gate → L1 Owner bypass → permission check.</div>
+          <details><summary>What does “provider-neutral” actually mean?</summary><div><p>It does not mean invent a huge universal gateway framework. It means business logic calls a small internal shape such as “create order,” “verify webhook” and “request refund.” <code>_shared/razorpay-payments.ts</code> knows Razorpay field names; <code>payments-service.ts</code> knows requests, transactions and allocations. Adding Stripe later should require a second adapter, not a rewrite of Booking, POS, the database or the dashboard.</p></div></details>
+        </section>
+
+        <section id="roadmap">
+          <div class="eyebrow" style="color:var(--green)">Click-by-click plan</div>
+          <h2>The order to tackle it, with concrete work at every step</h2>
+          <p>The target is a <strong>tenant-owned, provider-neutral money record</strong>, not a Razorpay button bolted onto Booking. Each phase gives a demonstrable safety property before the next one adds more moving parts.</p>
+          <div class="callout"><strong>Recommended operating model:</strong> each client connects its own Razorpay account, and funds settle directly to that client. ExSol does not custody money or collect marketplace commission in v1. This is much simpler operationally and avoids turning the platform into a marketplace/payout product.</div>
+          <div class="roadmap">
+            <article class="phase"><h3>Write the Payment v1 contract and freeze unsafe paths</h3><p><span class="key">Do:</span> keep <code>ONLINE_PAYMENTS_ENABLED = false</code> and do not configure a live provider webhook to the existing Booking handler. Write the definitions for request, attempt, transaction, allocation, payment status, refund, expiry, late event, and manual cash receipt.</p><p class="small"><strong>Acceptance:</strong> every team member agrees that current Booking/POS fields are source summaries, not the ledger; the human coordinator assigns a new migration number before schema work starts.</p></article>
+            <article class="phase"><h3>Build the canonical module shell and permissions</h3><p><span class="key">Do:</span> create the Payments folder, shared layer, thin authz wrapper, route mount, dedicated navigation and empty dashboard/settings screens. Map existing bucket×verb permissions to practical actions; do not add action-shaped keys.</p><p class="small"><strong>Acceptance:</strong> an enabled Owner can visit a real Payments screen; disabled product users redirect safely; non-Owner access is exactly the permission matrix; generic module rail duplicate disappears.</p></article>
+            <article class="phase"><h3>Build the internal ledger with Booking cash receipts first</h3><p><span class="key">Do:</span> add requests, transactions and allocations. Implement a staff “record cash” flow against one booking visit, including reference, actor, partial payment, outstanding balance and overpayment prevention.</p><p class="small"><strong>Acceptance:</strong> a ₹500 cash receipt creates immutable evidence and allocation; retry cannot create a second receipt; Booking shows a derived payment summary without becoming the authoritative ledger.</p></article>
+            <article class="phase"><h3>Add secure tenant provider configuration</h3><p><span class="key">Do:</span> use the available Razorpay <strong>Test-mode</strong> Key ID/Key Secret only in local or staging server configuration while this phase is built. Store the Key ID plus encrypted API/webhook secrets per tenant. Make settings write-only, audit changed field names not values, and reject online enablement until all required credentials are present. Create a distinct Test-mode webhook secret in the Razorpay Dashboard; it is not the API Key Secret.</p><p class="small"><strong>Acceptance:</strong> secrets are never returned or logged; missing/wrong encryption key fails closed; different tenants cannot read or use each other’s connection; Test credentials cannot accidentally enable a Live-mode collection path.</p></article>
+            <article class="phase"><h3>Implement one online Booking deposit flow end to end</h3><p><span class="key">Do:</span> create a request from a pending Booking visit, create one Razorpay order/attempt, launch hosted Checkout and process the raw signed webhook into event → capture transaction → allocation → Booking outcome.</p><p class="small"><strong>Acceptance:</strong> duplicate webhook deliveries create one capture; wrong amount/currency is quarantined; browser success does not confirm the visit; an expired hold with late payment is visible to staff rather than silently reopening capacity.</p></article>
+            <article class="phase"><h3>Reuse the core for POS and public storefront sales</h3><p><span class="key">Do:</span> after existing sale code has calculated price/coupon/tax server-side, create a Payments request for the sale. Keep POS sale FSM and inventory timing as their own domain rules; do not put provider IDs in <code>payment_ref</code>.</p><p class="small"><strong>Acceptance:</strong> an online sale has one provider order, one captured transaction and one allowed <code>pending_payment → paid</code> result; fulfilment remains a separate staff event.</p></article>
+            <article class="phase"><h3>Connect Orders refunds to actual money movement</h3><p><span class="key">Do:</span> retain the Orders approval workflow, but have an approved request call Payments. Payments validates remaining refundable amount, creates a pending refund transaction and waits for provider confirmation.</p><p class="small"><strong>Acceptance:</strong> partial refunds are supported; duplicate requests cannot over-refund; a sale/booking status does not pretend to be refunded until the payment outcome is known.</p></article>
+            <article class="phase"><h3>Build reconciliation, reporting and operations</h3><p><span class="key">Do:</span> add payment timeline, exception queue, stale attempt expiry, webhook reprocess path, alerting and staff runbook. Define Finance views for captured/refunded/net/outstanding and decide separately whether P&amp;L uses cash or accrual recognition.</p><p class="small"><strong>Acceptance:</strong> support can answer “customer paid but order is pending” from one screen; Finance numbers identify their basis; every exception has an owner and resolution trail.</p></article>
+          </div>
+        </section>
+
+        <section id="questions">
+          <div class="eyebrow" style="color:var(--green)">Product decisions</div>
+          <h2>Decisions to make before implementation</h2>
+          <p>These are product and operating decisions, not implementation trivia. Each answer affects schema, permissions, customer copy and support obligations.</p>
+          <ul class="checklist">
+            <li><strong>Money flow:</strong> does every tenant use its own Razorpay account (recommended), or does ExSol collect and distribute funds? The latter creates marketplace, payout, tax and compliance work.</li>
+            <li><strong>Currency:</strong> is INR-only acceptable for v1? If not, what determines foreign exchange, quote expiry and refund amount?</li>
+            <li><strong>Methods:</strong> which methods are supported at launch: cash, Razorpay card/UPI, physical terminal, bank transfer? Which require provider verification versus staff evidence?</li>
+            <li><strong>Booking deposits:</strong> are deposits credited to the balance, forfeited on no-show, refundable under policy, or convertible to account credit?</li>
+            <li><strong>Expiry:</strong> how long does a payment-required appointment hold capacity? What happens if a verified payment arrives after the slot is released?</li>
+            <li><strong>Refund authority:</strong> who can request, approve and execute a refund? Is a second approval required over a threshold?</li>
+            <li><strong>Partial payment:</strong> may a customer pay deposit online and balance cash? Can a single payment cover more than one appointment/order in v1?</li>
+            <li><strong>Tax and receipts:</strong> what invoice/receipt obligations apply to the target businesses, and does Finance need cash basis, accrual basis or both?</li>
+            <li><strong>Data retention:</strong> how long are transaction references, webhook evidence and customer details retained? Which privacy/export/deletion requests must be supported?</li>
+            <li><strong>Support:</strong> what is the script for provider outage, duplicate charge, “debited but pending,” late webhook and chargeback? Who owns the reconciliation queue?</li>
+          </ul>
+          <div class="callout"><strong>Adopted security default:</strong> ExSol never receives or stores card number, CVV, UPI PIN or bank login. Hosted provider Checkout collects sensitive payment data. Provider secrets are per-tenant, encrypted at rest, write-only in settings and never placed in browser responses, audit detail or logs. A downloaded Test-mode CSV is a temporary secret-delivery mechanism, not application configuration: move its values into an ignored local/staging secret store, then remove the local download when it is no longer needed.</div>
+          <div class="callout"><strong>Adopted external-failure default:</strong> a signed provider event is stored and deduplicated before it changes business state. A duplicate becomes a no-op. A late event after a Booking hold expires never silently resurrects a potentially conflicting appointment; it opens a reconciliation case for staff. Provider failure leaves a visible pending request with a safe retry/expiry path.</div>
+        </section>
+
+        <section id="definition">
+          <div class="eyebrow" style="color:var(--green)">Release bar</div>
+          <h2>When can we call Payments production-ready?</h2>
+          <div class="grid">
+            <article class="card"><h3>Correctness</h3><ul><li>Every successful payment/refund has an immutable transaction and allocation.</li><li>Amount, currency, tenant and source ownership are server validated.</li><li>Duplicate/out-of-order webhook and browser retry behaviours are deterministic.</li><li>Partial payment and refund caps are correct.</li></ul></article>
+            <article class="card"><h3>Security</h3><ul><li>Raw webhook body and timing-safe per-tenant signature verification are tested.</li><li>Secrets are encrypted, write-only and rotation-ready.</li><li>Every handler follows enable gate then Owner bypass then permission matrix.</li><li>Public errors do not reveal another tenant/order.</li></ul></article>
+            <article class="card"><h3>Operations</h3><ul><li>Staff have receipt, timeline, pending/failed/late event and reconciliation views.</li><li>Expiry and reprocess jobs have clear idempotent behaviour.</li><li>Provider outage and manual recovery runbooks exist.</li><li>Refund result is observable, not assumed.</li></ul></article>
+            <article class="card"><h3>Platform quality</h3><ul><li>Module conforms to manifest/product/authz/mount/shared/CSS pattern.</li><li>Booking, POS and Orders use one payment core rather than copied logic.</li><li>Finance/Analytics use documented payment outcomes.</li><li><code>npm run typecheck</code>, full <code>npm test</code>, docs generation and real-browser checks are green.</li></ul></article>
+          </div>
+          <div class="callout"><strong>Recommended next engineering task:</strong> write the narrow Payments v1 technical design for ledger tables, transaction/allocation invariants, Booking cash receipt API and test matrix. Do not start Razorpay integration until that review is agreed, the human coordinator assigns a migration number and the shared source-outcome contract is explicit.</div>
+          <p class="small">Evidence reviewed: Payments registry/product entries; Booking visit, policy, cash and Razorpay-stub code; POS/public-sale state and checkout code; Orders refund workflow; Finance/Analytics/Marketing revenue reads; migrations through 157; generated endpoint, permission, schema and conformance references; platform module rules. Historical Razorpay design documents were treated as design input, not evidence that online collection is shipped.</p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
