@@ -51,4 +51,17 @@ describe('inventory lifecycle', () => {
     const vis = (await sql`SELECT storefront_visible FROM public.products WHERE id = ${p}`) as Array<{ storefront_visible: boolean }>;
     expect(vis[0]!.storefront_visible).toBe(false);
   });
+
+  it('reactivating does not re-publish a product hidden by the lifecycle policy', async () => {
+    const ctx = await seedInventoryClient();
+    const p = (await seedProducts(ctx.clientId, [{ name: 'P' }]))[0]!;
+    await seedStock(ctx, p, 5, 2);
+    await setState(ctx, { product_id: p, state: 'discontinued' });
+
+    const res = await setState(ctx, { product_id: p, state: 'active' });
+    expect(res.status).toBe(200);
+    expect((await res.json()).storefront_hidden).toBe(false);
+    const vis = (await sql`SELECT storefront_visible FROM public.products WHERE id = ${p}`) as Array<{ storefront_visible: boolean }>;
+    expect(vis[0]!.storefront_visible).toBe(false);
+  });
 });

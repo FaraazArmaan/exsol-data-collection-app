@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { userChangePassword } from '../api';
 import { useUserAuth } from '../user-auth-context';
 import { PageShell } from './UserLogin';
+import { Button } from '../../../components/ui/Button';
+import { InlineNotice } from '../../../components/ui/Feedback';
+import { Field, Input } from '../../../components/ui/Field';
 
 export default function UserChangePassword() {
   const { slug } = useParams<{ slug: string }>();
@@ -15,14 +18,18 @@ export default function UserChangePassword() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    if (newPassword.length < 8) { setError('New password must be at least 8 characters.'); return; }
-    if (newPassword !== confirm) { setError('Passwords do not match.'); return; }
-    if (newPassword === currentPassword) { setError('New password must differ from current.'); return; }
+    const values = new FormData(e.currentTarget);
+    const current = String(values.get('current-password') ?? '');
+    const next = String(values.get('new-password') ?? '');
+    const confirmation = String(values.get('confirm-password') ?? '');
+    if (next.length < 8) { setError('New password must be at least 8 characters.'); return; }
+    if (next !== confirmation) { setError('Passwords do not match.'); return; }
+    if (next === current) { setError('New password must differ from current.'); return; }
     setSubmitting(true);
-    const r = await userChangePassword(currentPassword, newPassword);
+    const r = await userChangePassword(current, next);
     setSubmitting(false);
     if (!r.ok) {
       setError(r.error.code === 'current_password_incorrect'
@@ -43,20 +50,20 @@ export default function UserChangePassword() {
           : 'Update your password.'}
       </p>
       <form onSubmit={handleSubmit}>
-        <label>Current password
-          <input type="password" autoFocus required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-        </label>
-        <label>New password
-          <input type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        </label>
-        <label>Confirm new password
-          <input type="password" required minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </label>
-        {error && <p className="error">{error}</p>}
+        <div style={{ display: 'grid', gap: 12 }}>
+          <Field label="Current password" required>
+            {(props) => <Input {...props} name="current-password" type="password" autoComplete="current-password" autoFocus required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />}
+          </Field>
+          <Field label="New password" required>
+            {(props) => <Input {...props} name="new-password" type="password" autoComplete="new-password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />}
+          </Field>
+          <Field label="Confirm new password" required>
+            {(props) => <Input {...props} name="confirm-password" type="password" autoComplete="new-password" required minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} />}
+          </Field>
+        </div>
+        {error && <InlineNotice tone="danger" title="Password was not updated">{error}</InlineNotice>}
         <div style={{ marginTop: 12 }}>
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Update password'}
-          </button>
+          <Button type="submit" variant="primary" loading={submitting} loadingLabel="Saving…">Update password</Button>
         </div>
       </form>
     </PageShell>

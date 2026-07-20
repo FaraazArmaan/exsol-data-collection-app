@@ -31,18 +31,18 @@ export function SideCartPanel(props: {
         <div className="pos-side-cart__lines">
           {props.lines.map((l) => (
             <CartLineRow
-              key={l.productId}
+              key={l.key}
               line={l}
-              onQty={(q) => onQty!(l.productId, q)}
-              onRemove={() => onRemove!(l.productId)}
+              onQty={(q) => onQty!(l.key, q)}
+              onRemove={() => onRemove!(l.key)}
             />
           ))}
         </div>
       ) : (
         <ul>
           {props.lines.map((l) => (
-            <li key={l.productId}>
-              {l.productNameSnap} ×{l.qty} — {formatRupees(l.unitPriceCentsSnap * l.qty)}
+            <li key={l.key}>
+              {l.productNameSnap}{l.variantNameSnap ? ` — ${l.variantNameSnap}` : ''} ×{l.qty} — {formatRupees(l.unitPriceCentsSnap * l.qty)}
             </li>
           ))}
         </ul>

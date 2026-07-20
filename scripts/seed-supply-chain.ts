@@ -63,7 +63,7 @@ async function main(): Promise<void> {
     await sql`
       INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, reorder_level)
       VALUES (${clientId}::uuid, ${products[i]!.id}::uuid, ${onHand}::int, 10)
-      ON CONFLICT (client_id, product_id) DO NOTHING
+      ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO NOTHING
     `;
   }
 

@@ -13,7 +13,7 @@ const sql = neon(process.env.DATABASE_URL!);
 // Insert sale_lines for a sale. Returns line ids in insertion order.
 async function seedSaleLines(
   saleId: string,
-  lines: Array<{ productId: string; productName: string; qty: number; unitPriceCents: number }>,
+  lines: Array<{ productId: string; productName: string; qty: number; unitPriceCents: number; variantId?: string; variantName?: string; variantSku?: string }>,
 ): Promise<string[]> {
   const ids: string[] = [];
   let position = 1;
@@ -21,9 +21,9 @@ async function seedSaleLines(
     const lineTotalCents = l.unitPriceCents * l.qty;
     const rows = (await sql`
       INSERT INTO public.sale_lines
-        (sale_id, product_id, product_name_snap, unit_price_cents, qty, line_total_cents, position)
+        (sale_id, product_id, variant_id, product_name_snap, variant_name_snap, variant_sku_snap, unit_price_cents, qty, line_total_cents, position)
       VALUES
-        (${saleId}::uuid, ${l.productId}::uuid, ${l.productName},
+        (${saleId}::uuid, ${l.productId}::uuid, ${l.variantId ?? null}::uuid, ${l.productName}, ${l.variantName ?? null}, ${l.variantSku ?? null},
          ${l.unitPriceCents}, ${l.qty}, ${lineTotalCents}, ${position})
       RETURNING id
     `) as Array<{ id: string }>;
@@ -55,6 +55,20 @@ async function seedPaidSaleWithPhone(
 }
 
 describe('orders split', () => {
+  it('rejects an in-store sale because POS completes it immediately', async () => {
+    const ctx = await seedOrdersClient();
+    const { saleId } = await seedSale(ctx, { status: 'paid', channel: 'instore' });
+
+    const res = await splitHandler(
+      makeBucketUserRequest(ctx, 'POST', `/api/orders/split/${saleId}`, {
+        fulfillments: [{ label: 'Not an Orders shipment', lines: [] }],
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe('orders_fulfillment_not_required');
+  });
+
   it('POST split → 201, returns fulfillment_ids array (valid 2+3 / 3 partition of qty-5 line)', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'paid', total: 4000 });
@@ -317,6 +331,72 @@ describe('orders fulfillments list', () => {
 });
 
 describe('orders fulfillment-advance', () => {
+  it('consumes a variant reservation across split fulfillments and closes the sale only after the final shipment', async () => {
+    const ctx = await seedOrdersClient();
+    const { saleId } = await seedSale(ctx, { status: 'paid', channel: 'pickup', total: 5000 });
+    const [productId] = await seedProducts(ctx.clientId, [{ name: `Variant fulfil ${Math.random().toString(36).slice(2)}`, price_cents: 1000 }]);
+    const variants = await sql`
+      INSERT INTO public.product_variants (client_id, product_id, title, option_values, sku, status)
+      VALUES (${ctx.clientId}::uuid, ${productId}::uuid, 'Large / Blue', '{"size":"L","color":"Blue"}'::jsonb, 'FULFIL-L-BLUE', 'active')
+      RETURNING id
+    ` as Array<{ id: string }>;
+    const variantId = variants[0]!.id;
+    const [lineId] = await seedSaleLines(saleId, [{
+      productId: productId!, productName: 'Variant fulfil', variantId, variantName: 'Large / Blue', variantSku: 'FULFIL-L-BLUE', qty: 5, unitPriceCents: 1000,
+    }]);
+    await sql`
+      INSERT INTO public.inventory_stock (client_id, product_id, variant_id, qty_on_hand, qty_reserved)
+      VALUES (${ctx.clientId}::uuid, ${productId}::uuid, ${variantId}::uuid, 5, 5)
+    `;
+    await sql`
+      INSERT INTO public.inventory_reservations (client_id, sale_id, sale_line_id, product_id, variant_id, qty)
+      VALUES (${ctx.clientId}::uuid, ${saleId}::uuid, ${lineId}::uuid, ${productId}::uuid, ${variantId}::uuid, 5)
+    `;
+
+    const split = await splitHandler(makeBucketUserRequest(ctx, 'POST', `/api/orders/split/${saleId}`, {
+      fulfillments: [
+        { label: 'First shipment', lines: [{ sale_line_id: lineId, qty: 2 }] },
+        { label: 'Final shipment', lines: [{ sale_line_id: lineId, qty: 3 }] },
+      ],
+    }));
+    expect(split.status).toBe(201);
+    const { fulfillment_ids: [firstId, finalId] } = await split.json() as { fulfillment_ids: string[] };
+
+    for (const to of ['picked', 'packed', 'shipped', 'fulfilled']) {
+      expect((await fulfillmentAdvanceHandler(makeBucketUserRequest(ctx, 'POST', `/api/orders/fulfillment-advance/${firstId}`, { to }))).status).toBe(200);
+    }
+    const afterFirst = await sql`
+      SELECT qty_on_hand, qty_reserved FROM public.inventory_stock
+      WHERE client_id = ${ctx.clientId}::uuid AND variant_id = ${variantId}::uuid
+    ` as Array<{ qty_on_hand: number; qty_reserved: number }>;
+    expect(afterFirst[0]).toMatchObject({ qty_on_hand: 3, qty_reserved: 3 });
+    const reservationAfterFirst = await sql`
+      SELECT qty, qty_consumed, status FROM public.inventory_reservations WHERE sale_line_id = ${lineId}::uuid
+    ` as Array<{ qty: number; qty_consumed: number; status: string }>;
+    expect(reservationAfterFirst[0]).toMatchObject({ qty: 5, qty_consumed: 2, status: 'reserved' });
+    expect((await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid` as Array<{ status: string }>)[0]!.status).toBe('paid');
+
+    for (const to of ['picked', 'packed', 'shipped', 'fulfilled']) {
+      expect((await fulfillmentAdvanceHandler(makeBucketUserRequest(ctx, 'POST', `/api/orders/fulfillment-advance/${finalId}`, { to }))).status).toBe(200);
+    }
+    const afterFinal = await sql`
+      SELECT qty_on_hand, qty_reserved FROM public.inventory_stock
+      WHERE client_id = ${ctx.clientId}::uuid AND variant_id = ${variantId}::uuid
+    ` as Array<{ qty_on_hand: number; qty_reserved: number }>;
+    expect(afterFinal[0]).toMatchObject({ qty_on_hand: 0, qty_reserved: 0 });
+    const reservationAfterFinal = await sql`
+      SELECT qty_consumed, status FROM public.inventory_reservations WHERE sale_line_id = ${lineId}::uuid
+    ` as Array<{ qty_consumed: number; status: string }>;
+    expect(reservationAfterFinal[0]).toMatchObject({ qty_consumed: 5, status: 'consumed' });
+    expect((await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid` as Array<{ status: string }>)[0]!.status).toBe('fulfilled');
+    const movements = await sql`
+      SELECT variant_id, qty_delta FROM public.stock_movements
+      WHERE client_id = ${ctx.clientId}::uuid AND ref IN (${`fulfillment:${firstId}`}, ${`fulfillment:${finalId}`})
+      ORDER BY created_at
+    ` as Array<{ variant_id: string; qty_delta: number }>;
+    expect(movements).toMatchObject([{ variant_id: variantId, qty_delta: -2 }, { variant_id: variantId, qty_delta: -3 }]);
+  });
+
   it('pending→picked→packed→shipped→fulfilled: stock consumed, movement ref=fulfillment:<id>', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'paid', total: 2000 });

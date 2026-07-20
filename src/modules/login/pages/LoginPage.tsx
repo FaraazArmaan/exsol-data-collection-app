@@ -2,6 +2,9 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../lib/auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
+import { Button } from '../../../components/ui/Button';
+import { InlineNotice } from '../../../components/ui/Feedback';
+import { Field, Input } from '../../../components/ui/Field';
 import { completeAdminMfa, unifiedLogin, unifiedGoogleLogin, forgotPassword, type UnifiedLoginResponse } from '../api';
 
 const LOGIN_TIMEOUT_MS = 30_000;
@@ -55,7 +58,13 @@ export default function LoginPage() {
           ? 'Too many attempts. Try again in a few minutes.'
           : r.error.code === 'request_timeout'
             ? 'Login timed out. Try again.'
-            : 'Invalid email or password.');
+            : r.error.code === 'network_error'
+              ? 'Could not reach the sign-in service. Check the local preview and try again.'
+              : r.error.code.startsWith('csrf_')
+                ? 'Sign-in was blocked by a security check. Refresh the local preview and try again.'
+              : r.error.code === 'http_error'
+                ? 'The sign-in service returned an unexpected response. Try again.'
+                : 'Invalid email or password.');
         return;
       }
       await handleSuccess(r.data);
@@ -88,9 +97,10 @@ export default function LoginPage() {
     setPickerClients(data.clients);
   }
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    await attempt(email.trim(), password);
+    const values = new FormData(e.currentTarget);
+    await attempt(String(values.get('email') ?? '').trim(), String(values.get('password') ?? ''));
   }
 
   async function attemptGoogle(idToken: string, clientSlug?: string) {
@@ -305,12 +315,14 @@ export default function LoginPage() {
         <h1 style={{ marginBottom: 4 }}>Sign in</h1>
         <p className="muted" style={{ marginTop: 0 }}>Admins, owners, employees, and customers all sign in here.</p>
         <form onSubmit={onSubmit}>
-          <label>Email
-            <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label>Password
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Email" required>
+              {(props) => <Input {...props} name="email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />}
+            </Field>
+            <Field label="Password" required>
+              {(props) => <Input {...props} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}
+            </Field>
+          </div>
           <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
             <button
               type="button"
@@ -321,11 +333,9 @@ export default function LoginPage() {
               Forgot password?
             </button>
           </div>
-          {error && <p className="error">{error}</p>}
+          {error && <InlineNotice tone="danger" title="Sign in failed">{error}</InlineNotice>}
           <div style={{ marginTop: 12 }}>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
-            </button>
+            <Button type="submit" variant="primary" loading={submitting} loadingLabel="Signing in…">Sign in</Button>
           </div>
         </form>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>

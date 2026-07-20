@@ -8,6 +8,7 @@ import { createCartStore } from '../store/cart';
 
 const sampleProduct = (id = 'p1', price = 22000, name = 'Cap') =>
   ({ id, name, categoryId: null, salePriceCents: price, thumbKey: null });
+const quote = { quoteId: 'signed-quote-token-which-is-long-enough', lines: [], subtotalCents: 22000, discountCents: 0, taxCents: 0, taxLabel: 'Tax', taxInclusive: false, totalCents: 22000 };
 
 function setup(initial: (s: any) => void) {
   localStorage.clear();
@@ -24,16 +25,19 @@ function setup(initial: (s: any) => void) {
 }
 
 describe('CartPage', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify(quote), { status: 200 }));
+  });
 
   it('submit disabled when phone empty', () => {
     setup((s) => { s.addLine(sampleProduct()); s.setCustomer({ name: 'R' }); });
     expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
   });
 
-  it('submit enabled when name + phone present + line present', () => {
+  it('enables submit only after the server quote returns', async () => {
     setup((s) => { s.addLine(sampleProduct()); s.setCustomer({ name: 'R', phone: '9' }); });
-    expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled());
   });
 
   it('does NOT render discount/tax rows when zero', () => {
@@ -43,9 +47,10 @@ describe('CartPage', () => {
   });
 
   it('clicking submit POSTs and navigates to /sales/:id (cart cleared)', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ id: 'sale-xyz' }), { status: 201 }));
+    const fetchSpy = vi.spyOn(global, 'fetch');
     setup((s) => { s.addLine(sampleProduct()); s.setCustomer({ name: 'R', phone: '9' }); });
+    await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled());
+    fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'sale-xyz' }), { status: 201 }));
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(screen.getByText('Sale landed')).toBeInTheDocument());
     // Store should be cleared post-success
@@ -54,9 +59,10 @@ describe('CartPage', () => {
   });
 
   it('shows error and keeps cart on API error', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ error: { code: 'invalid_body' } }), { status: 400 }));
+    const fetchSpy = vi.spyOn(global, 'fetch');
     setup((s) => { s.addLine(sampleProduct()); s.setCustomer({ name: 'R', phone: '9' }); });
+    await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled());
+    fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'invalid_body' } }), { status: 400 }));
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() =>
       expect(screen.getByText(/invalid_body/i)).toBeInTheDocument()

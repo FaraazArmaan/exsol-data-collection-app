@@ -42,7 +42,7 @@ async function seedStock(
   await sql`
     INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, reorder_level)
     VALUES (${clientId}::uuid, ${productId}::uuid, ${qtyOnHand}::int, ${reorderLevel}::int)
-    ON CONFLICT (client_id, product_id) DO UPDATE SET qty_on_hand = ${qtyOnHand}::int, reorder_level = ${reorderLevel}::int
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO UPDATE SET qty_on_hand = ${qtyOnHand}::int, reorder_level = ${reorderLevel}::int
   `;
 }
 

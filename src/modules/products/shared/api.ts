@@ -5,7 +5,7 @@
 
 import type {
   Product, ProductWithImages, ProductCategory, ProductListResponse,
-  ProductFilters, BulkAction, BulkResult, ImportDryRun,
+  ProductFilters, ProductVariant, BulkAction, BulkResult, ImportDryRun,
 } from './types';
 
 export interface ScopeOpts {
@@ -81,7 +81,7 @@ export const productsApi = {
     jsonFetch(withScope(`/api/u-products-detail/${id}`, opts)),
   create: (body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
     jsonFetch(withScope('/api/u-products', opts), { method: 'POST', body: JSON.stringify(body) }),
-  update: (id: string, body: Partial<Product>, opts?: ScopeOpts): Promise<Product> =>
+  update: (id: string, body: Partial<Product> & { expected_updated_at?: string }, opts?: ScopeOpts): Promise<Product> =>
     jsonFetch(withScope(`/api/u-products-detail/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string, opts?: ScopeOpts): Promise<void> =>
     jsonFetch<void>(withScope(`/api/u-products-detail/${id}`, opts), { method: 'DELETE' }),
@@ -106,6 +106,17 @@ export const productsApi = {
     fd.append('file', file);
     return formFetch(withScope('/api/u-products-import', opts), fd);
   },
+};
+
+// ─── Variants ────────────────────────────────────────────────────────────────
+
+export const variantsApi = {
+  list: (productId: string, opts?: ScopeOpts): Promise<{ items: ProductVariant[] }> =>
+    jsonFetch(withScope(`/api/u-product-variants?product_id=${encodeURIComponent(productId)}`, opts)),
+  create: (body: Partial<ProductVariant> & { product_id: string; title: string }, opts?: ScopeOpts): Promise<ProductVariant> =>
+    jsonFetch(withScope('/api/u-product-variants', opts), { method: 'POST', body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<ProductVariant> & { expected_updated_at?: string }, opts?: ScopeOpts): Promise<ProductVariant> =>
+    jsonFetch(withScope(`/api/u-product-variants/${id}`, opts), { method: 'PATCH', body: JSON.stringify(body) }),
 };
 
 // ─── Categories ──────────────────────────────────────────────────────────────

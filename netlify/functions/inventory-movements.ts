@@ -26,6 +26,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.stock_movements m
     WHERE m.client_id = ${a.ctx.clientId}::uuid
       AND m.product_id = ${productId}::uuid
+      AND m.variant_id IS NULL
     ORDER BY m.created_at DESC
     LIMIT 200
   `) as unknown[];

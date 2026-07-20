@@ -127,6 +127,14 @@ export default function BookingSetupPage({ slug, perms }: Props) {
               ? 'Workforce shifts and leave'
               : 'Manual business hours'}
           </p>
+          {setup.availability_source === 'workforce' &&
+          setup.booking_party_mode !== 'nobody_specific' ? (
+            <p className="muted">
+              Before customers can see times, create active shifts for each bookable team member in{' '}
+              <Link to={`/c/${slug}/workforce`}>Staff &amp; Schedule</Link>. Booking business hours
+              also need to cover those shifts.
+            </p>
+          ) : null}
           <p className="muted">
             Turn customer booking on or off in{' '}
             <Link to={`/c/${slug}/pos/settings`}>Storefront</Link>. It appears beside online

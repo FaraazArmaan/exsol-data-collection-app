@@ -73,13 +73,15 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Load fulfillment scoped to client.
   const fulfRows = (await sql`
-    SELECT id, sale_id, status
-    FROM public.orders_fulfillments
-    WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
+    SELECT fulfillment.id, fulfillment.sale_id, fulfillment.status, sale.channel
+    FROM public.orders_fulfillments AS fulfillment
+    JOIN public.sales AS sale ON sale.id = fulfillment.sale_id
+    WHERE fulfillment.id = ${id}::uuid AND fulfillment.client_id = ${a.ctx.clientId}::uuid
     LIMIT 1
-  `) as Array<{ id: string; sale_id: string; status: string }>;
+  `) as Array<{ id: string; sale_id: string; status: string; channel: string }>;
   if (!fulfRows[0]) return jsonError(404, 'not_found');
   const fulfillment = fulfRows[0];
+  if (fulfillment.channel === 'instore') return jsonError(409, 'orders_fulfillment_not_required');
 
   // FSM guard.
   if (!(LEGAL[fulfillment.status] ?? []).includes(to)) {
@@ -118,27 +120,49 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Fulfilling transition: pre-check stock then atomic commit.
   const lineRows = (await sql`
-    SELECT fl.sale_line_id, fl.qty, p.id AS product_id, sl.product_name_snap AS name
+    SELECT fl.sale_line_id, SUM(fl.qty)::int AS qty, sl.product_id, sl.variant_id,
+           sl.product_name_snap AS name, r.id AS reservation_id, r.qty AS reservation_qty,
+           r.qty_consumed AS reservation_qty_consumed, r.status AS reservation_status
     FROM public.orders_fulfillment_lines fl
     JOIN public.sale_lines sl ON sl.id = fl.sale_line_id
-    JOIN public.products p ON p.id = sl.product_id
+    LEFT JOIN public.inventory_reservations r ON r.sale_line_id = sl.id
     WHERE fl.fulfillment_id = ${id}::uuid
-  `) as Array<{ sale_line_id: string; qty: number; product_id: string; name: string }>;
+    GROUP BY fl.sale_line_id, sl.product_id, sl.variant_id, sl.product_name_snap,
+             r.id, r.qty, r.qty_consumed, r.status
+  `) as Array<{
+    sale_line_id: string; qty: number; product_id: string; variant_id: string | null; name: string;
+    reservation_id: string | null; reservation_qty: number | null; reservation_qty_consumed: number | null;
+    reservation_status: 'reserved' | 'released' | 'consumed' | null;
+  }>;
 
   const productIds = lineRows.map((l) => l.product_id);
   const stockRows = (await sql`
-    SELECT product_id, qty_on_hand
+    SELECT product_id, variant_id, qty_on_hand, qty_reserved
     FROM public.inventory_stock
     WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ANY(${productIds}::uuid[])
-  `) as Array<{ product_id: string; qty_on_hand: number }>;
-  const stockMap = new Map(stockRows.map((r) => [r.product_id, Number(r.qty_on_hand)]));
+  `) as Array<{ product_id: string; variant_id: string | null; qty_on_hand: number; qty_reserved: number }>;
+  const stockKey = (productId: string, variantId: string | null) => `${productId}:${variantId ?? 'base'}`;
+  const stockMap = new Map(stockRows.map((r) => [stockKey(r.product_id, r.variant_id), { onHand: Number(r.qty_on_hand), reserved: Number(r.qty_reserved) }]));
+  const stockNeeds = new Map<string, number>();
+  for (const line of lineRows) {
+    const key = stockKey(line.product_id, line.variant_id);
+    stockNeeds.set(key, (stockNeeds.get(key) ?? 0) + Number(line.qty));
+  }
 
   const shortfalls = lineRows
-    .filter((l) => (stockMap.get(l.product_id) ?? 0) < l.qty)
+    .filter((line) => {
+      const stock = stockMap.get(stockKey(line.product_id, line.variant_id));
+      const remainingReservation = line.reservation_id && line.reservation_status === 'reserved'
+        ? Number(line.reservation_qty) - Number(line.reservation_qty_consumed)
+        : null;
+      const neededFromStock = stockNeeds.get(stockKey(line.product_id, line.variant_id)) ?? 0;
+      return !stock || stock.onHand < neededFromStock || (remainingReservation != null && (stock.reserved < neededFromStock || remainingReservation < line.qty));
+    })
     .map((l) => ({
       product_id: l.product_id,
+      variant_id: l.variant_id,
       name: l.name,
-      have: stockMap.get(l.product_id) ?? 0,
+      have: stockMap.get(stockKey(l.product_id, l.variant_id))?.onHand ?? 0,
       need: l.qty,
     }));
   if (shortfalls.length > 0) return jsonError(409, 'insufficient_stock', { shortfalls });
@@ -149,15 +173,48 @@ export default async function handler(req: Request): Promise<Response> {
   const ref = `fulfillment:${id}`;
 
   for (const l of lineRows) {
-    queries.push(sql`
-      UPDATE public.inventory_stock
-      SET qty_on_hand = qty_on_hand - ${l.qty}::int, updated_at = now()
-      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${l.product_id}::uuid
-    `);
-    queries.push(sql`
-      INSERT INTO public.stock_movements (client_id, product_id, qty_delta, type, ref, created_by)
-      VALUES (${a.ctx.clientId}::uuid, ${l.product_id}::uuid, ${-l.qty}::int, 'sale', ${ref}, ${a.ctx.userNodeId}::uuid)
-    `);
+    if (l.reservation_id) {
+      queries.push(sql`
+        WITH consumed_stock AS (
+          UPDATE public.inventory_stock AS stock
+          SET qty_on_hand = stock.qty_on_hand - ${l.qty}::int,
+              qty_reserved = stock.qty_reserved - ${l.qty}::int,
+              updated_at = now()
+          FROM public.inventory_reservations AS reservation
+          WHERE reservation.id = ${l.reservation_id}::uuid
+            AND reservation.status = 'reserved'
+            AND stock.client_id = ${a.ctx.clientId}::uuid
+            AND stock.product_id = reservation.product_id
+            AND stock.variant_id IS NOT DISTINCT FROM reservation.variant_id
+          RETURNING reservation.id, reservation.product_id, reservation.variant_id
+        ), consumed_reservation AS (
+          UPDATE public.inventory_reservations AS reservation
+          SET qty_consumed = reservation.qty_consumed + ${l.qty}::int,
+              status = CASE WHEN reservation.qty_consumed + ${l.qty}::int = reservation.qty THEN 'consumed'::inventory_reservation_status ELSE reservation.status END,
+              consumed_at = CASE WHEN reservation.qty_consumed + ${l.qty}::int = reservation.qty THEN now() ELSE reservation.consumed_at END
+          FROM consumed_stock
+          WHERE reservation.id = consumed_stock.id
+          RETURNING consumed_stock.product_id, consumed_stock.variant_id
+        )
+        INSERT INTO public.stock_movements (client_id, product_id, variant_id, qty_delta, type, ref, created_by)
+        SELECT ${a.ctx.clientId}::uuid, product_id, variant_id, ${-l.qty}::int, 'sale', ${ref}, ${a.ctx.userNodeId}::uuid
+        FROM consumed_reservation
+      `);
+    } else {
+      queries.push(sql`
+        WITH consumed_stock AS (
+          UPDATE public.inventory_stock
+          SET qty_on_hand = qty_on_hand - ${l.qty}::int, updated_at = now()
+          WHERE client_id = ${a.ctx.clientId}::uuid
+            AND product_id = ${l.product_id}::uuid
+            AND variant_id IS NOT DISTINCT FROM ${l.variant_id}::uuid
+          RETURNING product_id, variant_id
+        )
+        INSERT INTO public.stock_movements (client_id, product_id, variant_id, qty_delta, type, ref, created_by)
+        SELECT ${a.ctx.clientId}::uuid, product_id, variant_id, ${-l.qty}::int, 'sale', ${ref}, ${a.ctx.userNodeId}::uuid
+        FROM consumed_stock
+      `);
+    }
   }
 
   queries.push(sql`
@@ -169,6 +226,28 @@ export default async function handler(req: Request): Promise<Response> {
   queries.push(sql`
     INSERT INTO public.orders_stage_events (client_id, sale_id, stage, source)
     VALUES (${a.ctx.clientId}::uuid, ${saleId}::uuid, 'delivered'::order_stage, 'orders')
+  `);
+
+  // Only the final completed fulfillment closes the customer-facing sale. A
+  // partial shipment stays paid while its remaining reservation is still held.
+  queries.push(sql`
+    UPDATE public.sales AS sale
+    SET status = 'fulfilled'::sale_status, fulfilled_at = now()
+    WHERE sale.id = ${saleId}::uuid
+      AND sale.bucket_id = ${a.ctx.clientId}::uuid
+      AND sale.status = 'paid'::sale_status
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.sale_lines AS sale_line
+        LEFT JOIN (
+          SELECT fulfillment_line.sale_line_id, SUM(fulfillment_line.qty)::int AS fulfilled_qty
+          FROM public.orders_fulfillment_lines AS fulfillment_line
+          JOIN public.orders_fulfillments AS fulfilled_group ON fulfilled_group.id = fulfillment_line.fulfillment_id
+          WHERE fulfilled_group.sale_id = ${saleId}::uuid AND fulfilled_group.status = 'fulfilled'::fulfillment_status
+          GROUP BY fulfillment_line.sale_line_id
+        ) AS completed ON completed.sale_line_id = sale_line.id
+        WHERE sale_line.sale_id = sale.id AND COALESCE(completed.fulfilled_qty, 0) < sale_line.qty
+      )
   `);
 
   try {

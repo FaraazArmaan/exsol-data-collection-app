@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+export interface MenuVariant { id: string; title: string; salePriceCents: number; }
+
 export interface MenuProduct {
   id: string;
   name: string;
@@ -12,11 +14,15 @@ export interface MenuProduct {
   isBundle?: boolean;
   bundleInStock?: boolean;
   bundleComponents?: { name: string; qty: number }[];
+  variants?: MenuVariant[];
 }
 
 export interface CartLine {
+  key: string;
   productId: string;
+  variantId?: string;
   productNameSnap: string;
+  variantNameSnap?: string;
   unitPriceCentsSnap: number;
   qty: number;
 }
@@ -27,9 +33,9 @@ export interface CartState {
   channel: 'instore' | 'online' | 'pickup';
   idempotencyKey: string;
 
-  addLine(p: MenuProduct): void;
-  setQty(productId: string, qty: number): void;
-  removeLine(productId: string): void;
+  addLine(p: MenuProduct, variant?: MenuVariant): void;
+  setQty(key: string, qty: number): void;
+  removeLine(key: string): void;
   setCustomer(patch: Partial<CartState['customer']>): void;
   setChannel(c: CartState['channel']): void;
   clear(): void;
@@ -59,13 +65,14 @@ function makeCartStore(
         channel: defaultChannel,
         idempotencyKey: newKey(),
 
-        addLine(p) {
+        addLine(p, variant) {
           set((s) => {
-            const existing = s.lines.find((l) => l.productId === p.id);
+            const key = `${p.id}:${variant?.id ?? 'base'}`;
+            const existing = s.lines.find((l) => l.key === key);
             if (existing) {
               return {
                 lines: s.lines.map((l) =>
-                  l.productId === p.id ? { ...l, qty: l.qty + 1 } : l,
+                  l.key === key ? { ...l, qty: l.qty + 1 } : l,
                 ),
               };
             }
@@ -73,28 +80,32 @@ function makeCartStore(
               lines: [
                 ...s.lines,
                 {
+                  key,
                   productId: p.id,
+                  variantId: variant?.id,
                   productNameSnap: p.name,
-                  unitPriceCentsSnap: p.salePriceCents,
+                  variantNameSnap: variant?.title,
+                  unitPriceCentsSnap: variant?.salePriceCents ?? p.salePriceCents,
                   qty: 1,
                 },
               ],
             };
           });
         },
-        setQty(productId, qty) {
+        setQty(key, qty) {
+          const lineKey = get().lines.find((line) => line.key === key || (line.productId === key && !line.variantId))?.key ?? key;
           if (qty <= 0) {
-            get().removeLine(productId);
+            get().removeLine(lineKey);
             return;
           }
           set((s) => ({
             lines: s.lines.map((l) =>
-              l.productId === productId ? { ...l, qty } : l,
+              l.key === lineKey ? { ...l, qty } : l,
             ),
           }));
         },
-        removeLine(productId) {
-          set((s) => ({ lines: s.lines.filter((l) => l.productId !== productId) }));
+        removeLine(key) {
+          set((s) => ({ lines: s.lines.filter((l) => l.key !== key && !(l.productId === key && !l.variantId)) }));
         },
         setCustomer(patch) {
           set((s) => ({ customer: { ...s.customer, ...patch } }));
@@ -131,7 +142,18 @@ function makeCartStore(
           return { ok: true };
         },
       }),
-      { name: storageKey, storage: createJSONStorage(() => storage) },
+      {
+        name: storageKey,
+        storage: createJSONStorage(() => storage),
+        version: 2,
+        migrate: (persisted) => {
+          const state = persisted as Partial<CartState>;
+          return {
+            ...state,
+            lines: (state.lines ?? []).map((line) => ({ ...line, key: line.key ?? `${line.productId}:${line.variantId ?? 'base'}` })),
+          } as CartState;
+        },
+      },
     ),
   );
 }

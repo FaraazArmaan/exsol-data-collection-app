@@ -8,7 +8,7 @@ export function CartLineRow(props: {
 }) {
   return (
     <div className="pos-cart-line">
-      <div className="pos-cart-line__name">{props.line.productNameSnap}</div>
+      <div className="pos-cart-line__name">{props.line.productNameSnap}{props.line.variantNameSnap ? ` — ${props.line.variantNameSnap}` : ''}</div>
       <div className="pos-cart-line__qty">
         <button onClick={() => props.onQty(props.line.qty - 1)} aria-label="Decrease">−</button>
         <span>{props.line.qty}</span>

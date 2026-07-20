@@ -82,4 +82,53 @@ describe('LoginPage workspace intent', () => {
       expect.any(AbortSignal),
     );
   });
+
+  it('submits values populated by the browser password manager', async () => {
+    renderLogin('/login');
+
+    const email = screen.getByLabelText(/email/i) as HTMLInputElement;
+    const password = screen.getByLabelText(/password/i) as HTMLInputElement;
+    expect(email).toHaveClass('ui-input');
+    expect(screen.getByRole('button', { name: /sign in/i })).toHaveClass('ui-button');
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    setValue.call(email, 'autofill@example.com');
+    setValue.call(password, 'autofill-secret');
+
+    fireEvent.submit(email.form!);
+
+    await waitFor(() => expect(unifiedLogin).toHaveBeenCalledWith(
+      'autofill@example.com',
+      'autofill-secret',
+      undefined,
+      expect.any(AbortSignal),
+    ));
+  });
+
+  it('does not label a network error as invalid credentials', async () => {
+    vi.mocked(unifiedLogin).mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'network_error', message: 'Failed to fetch' },
+    });
+    renderLogin('/login');
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'admin@example.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText(/could not reach the sign-in service/i)).toBeInTheDocument();
+  });
+
+  it('explains a CSRF rejection without blaming the credentials', async () => {
+    vi.mocked(unifiedLogin).mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'csrf_origin_mismatch', message: 'csrf_origin_mismatch' },
+    });
+    renderLogin('/login');
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'admin@example.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText(/blocked by a security check/i)).toBeInTheDocument();
+  });
 });

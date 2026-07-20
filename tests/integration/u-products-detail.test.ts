@@ -10,6 +10,7 @@ import userNodesHandler from '../../netlify/functions/user-nodes';
 import uLoginHandler from '../../netlify/functions/u-login';
 import uProductsHandler from '../../netlify/functions/u-products';
 import uProductsDetailHandler from '../../netlify/functions/u-products-detail';
+import uProductVariantsHandler from '../../netlify/functions/u-product-variants';
 import { assertLastAudit } from '../helpers/audit';
 
 const CTX = {} as Context;
@@ -107,6 +108,45 @@ describe('u-products-detail', () => {
     expect(body.images).toEqual([]);
   });
 
+  test('GET exposes Inventory quantities instead of the legacy stock snapshot', async () => {
+    const p = await makeProduct({ type: 'physical', name: 'Inventory read model', price_cents: 100, stock_qty: 99 });
+    await sql`
+      INSERT INTO public.client_enabled_products (client_id, product_key)
+      VALUES (${clientId}::uuid, 'inventory')
+      ON CONFLICT DO NOTHING
+    `;
+    await sql`
+      INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, qty_reserved)
+      VALUES (${clientId}::uuid, ${p.id}::uuid, 12, 3)
+    `;
+    const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, { method: 'GET', headers: { cookie: buCookie } }), CTX);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({
+      stock_qty: 99,
+      inventory_qty_on_hand: 12,
+      inventory_qty_reserved: 3,
+      inventory_qty_available: 9,
+      inventory_enabled: true,
+    });
+  });
+
+  test('PATCH rejects a legacy stock write once Inventory is enabled', async () => {
+    const p = await makeProduct({ type: 'physical', name: 'No parallel stock write', price_cents: 100, stock_qty: 1 });
+    await sql`
+      INSERT INTO public.client_enabled_products (client_id, product_key)
+      VALUES (${clientId}::uuid, 'inventory')
+      ON CONFLICT DO NOTHING
+    `;
+    const r = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ stock_qty: 2 }),
+    }), CTX);
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: { code: 'inventory_stock_managed' } });
+    const rows = await sql`SELECT stock_qty FROM public.products WHERE id = ${p.id}::uuid` as Array<{ stock_qty: number | null }>;
+    expect(rows[0]!.stock_qty).toBe(1);
+  });
+
   test('GET 404 for non-existent id', async () => {
     const r = await uProductsDetailHandler(new Request('http://localhost/api/u-products/00000000-0000-0000-0000-000000000000', { method: 'GET', headers: { cookie: buCookie } }), CTX);
     expect(r.status).toBe(404);
@@ -121,6 +161,48 @@ describe('u-products-detail', () => {
     expect(r.status).toBe(200);
     expect(((await r.json()) as { name: string }).name).toBe('New');
     await assertLastAudit(sql, { op: 'products.updated', targetId: p.id });
+  });
+
+  test('PATCH rejects a stale product version without overwriting the newer edit', async () => {
+    const p = await makeProduct({ type: 'physical', name: 'Versioned', price_cents: 100 });
+    const loaded = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, {
+      method: 'GET', headers: { cookie: buCookie },
+    }), CTX);
+    const version = ((await loaded.json()) as { updated_at: string }).updated_at;
+    const first = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ name: 'Newer', expected_updated_at: version }),
+    }), CTX);
+    expect(first.status).toBe(200);
+    const stale = await uProductsDetailHandler(new Request(`http://localhost/api/u-products/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ name: 'Lost update', expected_updated_at: version }),
+    }), CTX);
+    expect(stale.status).toBe(409);
+    expect((await stale.json()) as { error: { code: string } }).toMatchObject({ error: { code: 'stale_product' } });
+    const row = (await sql`SELECT name FROM public.products WHERE id = ${p.id}::uuid`) as Array<{ name: string }>;
+    expect(row[0]!.name).toBe('Newer');
+  });
+
+  test('variants are tenant-scoped, reserve SKU values, and retain their parent product', async () => {
+    const p = await makeProduct({ type: 'physical', name: 'Variant Shirt', price_cents: 1200 });
+    const created = await uProductVariantsHandler(new Request('http://localhost/api/u-product-variants', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ product_id: p.id, title: 'Medium / Blue', option_values: { size: 'M', color: 'Blue' }, sku: 'VAR-M-BLUE' }),
+    }), CTX);
+    expect(created.status).toBe(201);
+    const variant = (await created.json()) as { id: string; product_id: string; sku: string };
+    expect(variant.product_id).toBe(p.id);
+    expect(variant.sku).toBe('VAR-M-BLUE');
+    const listed = await uProductVariantsHandler(new Request(`http://localhost/api/u-product-variants?product_id=${p.id}`, {
+      method: 'GET', headers: { cookie: buCookie },
+    }), CTX);
+    expect((await listed.json()) as { items: Array<{ id: string }> }).toMatchObject({ items: [{ id: variant.id }] });
+    const productCollision = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ type: 'physical', name: 'Conflicting SKU', price_cents: 1200, sku: 'VAR-M-BLUE' }),
+    }), CTX);
+    expect(productCollision.status).toBe(409);
   });
 
   test('PATCH status change emits products.status_changed', async () => {

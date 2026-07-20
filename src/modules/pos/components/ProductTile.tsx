@@ -1,9 +1,9 @@
-import type { MenuProduct } from '../store/cart';
+import type { MenuProduct, MenuVariant } from '../store/cart';
 import { formatRupees } from '../lib/money';
 
 // onAdd optional: when omitted (Catalog Website reuse), the tile renders as a
 // non-interactive card with no add-to-cart affordance.
-export function ProductTile(props: { product: MenuProduct; inCartQty: number; onAdd?: () => void }) {
+export function ProductTile(props: { product: MenuProduct; inCartQty: number; onAdd?: (variant?: MenuVariant) => void }) {
   const p = props.product;
   // Bundle sold-out is only meaningful on storefront/catalog payloads that carry
   // the flag; undefined (staff menu) → treated as available.
@@ -34,9 +34,23 @@ export function ProductTile(props: { product: MenuProduct; inCartQty: number; on
   if (!props.onAdd) {
     return <div className="pos-tile pos-tile--static">{inner}</div>;
   }
+  if (!soldOut && p.variants && p.variants.length > 0) {
+    return <div className="pos-tile">
+      {inner}
+      <div className="pos-tile__variants" role="group" aria-label={`Choose ${p.name} option`}>
+        <span className="pos-tile__variant-label">Choose an option</span>
+        {p.variants.map((variant) => (
+          <button type="button" className="pos-tile__variant" key={variant.id}
+            onClick={() => props.onAdd!(variant)} aria-label={`Add ${p.name}, ${variant.title}`}>
+            <span>{variant.title}</span><span>{formatRupees(variant.salePriceCents)}</span>
+          </button>
+        ))}
+      </div>
+    </div>;
+  }
   return (
     <button
-      onClick={props.onAdd}
+      onClick={() => props.onAdd!()}
       className="pos-tile"
       aria-label={`Add ${p.name}`}
       disabled={soldOut}

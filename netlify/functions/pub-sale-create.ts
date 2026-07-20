@@ -29,6 +29,8 @@ import { computeTax, type TaxConfig } from './_shared/tax';
 import { createSaleRazorpayCheckout } from './_payments-checkout';
 import { razorpayTestConnectionReady, RazorpayProviderError } from './_payments-razorpay';
 import { PaymentsEncryptionUnavailable } from './_payments-secrets';
+import { isCatalogSellable } from './_shared/catalog-read-model';
+import { reserveSaleInventory } from './_shared/inventory-reservations';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 export const config = { path: '/api/public/sales', method: 'POST' };
@@ -88,21 +90,34 @@ export default async function handler(req: Request): Promise<Response> {
 
   // 6. hydrate with storefront visibility filter
   const productIds = body.lines.map((l) => l.productId);
+  const variantIds = body.lines.flatMap((line) => line.variantId ? [line.variantId] : []);
   const rows = (await sql`
     SELECT id, name,
-           COALESCE(sale_price_cents, price_cents)::bigint AS unit_price_cents,
-           client_id, storefront_visible, deleted_at, status
+           COALESCE(CASE WHEN sale_price_cents IS NOT NULL AND (sale_starts_at IS NULL OR sale_starts_at <= now()) AND (sale_ends_at IS NULL OR sale_ends_at > now()) THEN sale_price_cents END, price_cents)::bigint AS unit_price_cents,
+           client_id, pos_visible, storefront_visible, deleted_at, status
     FROM public.products
     WHERE id = ANY(${productIds}::uuid[])
   `) as Array<{
     id: string; name: string; unit_price_cents: number | string;
-    client_id: string; storefront_visible: boolean; deleted_at: string | null; status: string;
+    client_id: string; pos_visible: boolean; storefront_visible: boolean; deleted_at: string | null; status: string;
   }>;
   if (rows.length !== productIds.length) return jsonError(400, 'unknown_product');
   if (rows.some((p) => p.client_id !== clientId)) return jsonError(404, 'product_not_found');
-  if (rows.some((p) => p.deleted_at || p.status !== 'active' || !p.storefront_visible)) {
+  if (rows.some((p) => !isCatalogSellable(p, 'storefront'))) {
     return jsonError(400, 'product_not_visible');
   }
+
+  const variants = variantIds.length === 0 ? [] : (await sql`
+    SELECT id, product_id, title, sku,
+           CASE WHEN sale_price_cents IS NOT NULL AND (sale_starts_at IS NULL OR sale_starts_at <= now()) AND (sale_ends_at IS NULL OR sale_ends_at > now()) THEN sale_price_cents ELSE price_cents END AS unit_price_cents,
+           client_id, storefront_visible, status, availability
+    FROM public.product_variants
+    WHERE id = ANY(${variantIds}::uuid[])
+  `) as Array<{ id: string; product_id: string; title: string; sku: string | null; unit_price_cents: number | string | null; client_id: string; storefront_visible: boolean; status: string; availability: string }>;
+  if (variants.length !== variantIds.length) return jsonError(400, 'unknown_variant');
+  if (variants.some((variant) => variant.client_id !== clientId)) return jsonError(404, 'variant_not_found');
+  if (variants.some((variant) => variant.status !== 'active' || !variant.storefront_visible)) return jsonError(400, 'variant_not_visible');
+  if (variants.some((variant) => variant.availability === 'out_of_stock' || variant.availability === 'discontinued')) return jsonError(400, 'variant_not_available');
 
   // Bundle stock guard — a bundle whose components can't cover the order is not
   // sellable. Same derivation the storefront used to grey the tile out.
@@ -112,13 +127,18 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const byId = new Map(rows.map((p) => [p.id, p]));
+  const variantsById = new Map(variants.map((variant) => [variant.id, variant]));
+  if (body.lines.some((line) => line.variantId && variantsById.get(line.variantId)?.product_id !== line.productId)) {
+    return jsonError(400, 'variant_parent_mismatch');
+  }
   let subtotal = 0;
   const lineSpecs = body.lines.map((l, idx) => {
     const p = byId.get(l.productId)!;
-    const unit = Number(p.unit_price_cents);
+    const variant = l.variantId ? variantsById.get(l.variantId) : undefined;
+    const unit = variant?.unit_price_cents == null ? Number(p.unit_price_cents) : Number(variant.unit_price_cents);
     const lineTotal = unit * l.qty;
     subtotal += lineTotal;
-    return { productId: p.id, productName: p.name, unitPriceCents: unit, qty: l.qty, lineTotalCents: lineTotal, position: idx };
+    return { productId: p.id, variantId: variant?.id, productName: p.name, variantName: variant?.title, variantSku: variant?.sku ?? undefined, unitPriceCents: unit, qty: l.qty, lineTotalCents: lineTotal, position: idx };
   });
   // ── Coupon (optional) ──────────────────────────────────────────────────────
   // Re-evaluated here against server prices and the live redeemed_count — the
@@ -211,11 +231,26 @@ export default async function handler(req: Request): Promise<Response> {
   for (const ls of lineSpecs) {
     await sql`
       INSERT INTO public.sale_lines
-        (sale_id, product_id, product_name_snap, unit_price_cents, qty, line_total_cents, position)
+        (sale_id, product_id, variant_id, product_name_snap, variant_name_snap, variant_sku_snap, unit_price_cents, qty, line_total_cents, position)
       VALUES
-        (${saleId}::uuid, ${ls.productId}::uuid, ${ls.productName}, ${ls.unitPriceCents},
+        (${saleId}::uuid, ${ls.productId}::uuid, ${ls.variantId ?? null}::uuid, ${ls.productName}, ${ls.variantName ?? null}, ${ls.variantSku ?? null}, ${ls.unitPriceCents},
          ${ls.qty}, ${ls.lineTotalCents}, ${ls.position})
     `;
+  }
+
+  // Storefront and staff checkout share the same stock boundary: a pending
+  // order reserves tracked inventory, while a product without an Inventory row
+  // remains a non-stock-tracked catalogue item.
+  let inventoryReserved = false;
+  try {
+    inventoryReserved = await reserveSaleInventory(sql, clientId, saleId);
+  } catch (error) {
+    await removeFailedSale(sql, clientId, saleId, redemption?.couponId);
+    throw error;
+  }
+  if (!inventoryReserved) {
+    await removeFailedSale(sql, clientId, saleId, redemption?.couponId);
+    return jsonError(409, 'insufficient_stock');
   }
 
   // Record the coupon redemption against the sale (the slot was reserved above).
@@ -267,6 +302,16 @@ export default async function handler(req: Request): Promise<Response> {
   });
 
   return paymentResponse(clientId, saleId, body.channel, 201);
+}
+
+async function removeFailedSale(sql: NeonQueryFunction<false, false>, clientId: string, saleId: string, couponId?: string): Promise<void> {
+  await sql`DELETE FROM public.sales WHERE id = ${saleId}::uuid AND bucket_id = ${clientId}::uuid`;
+  if (couponId) {
+    await sql`
+      UPDATE public.coupons SET redeemed_count = GREATEST(0, redeemed_count - 1)
+      WHERE id = ${couponId}::uuid AND client_id = ${clientId}::uuid
+    `;
+  }
 }
 
 async function paymentResponse(clientId: string, saleId: string, channel: PublicSaleCreateBody['channel'], status: number): Promise<Response> {

@@ -62,6 +62,14 @@ export default async function handler(req: Request): Promise<Response> {
   if (dryRun) return jsonOk({ valid: validRows.length, errors, summary });
   if (errors.length > 0) return jsonOk({ committed: false, errors, summary });
 
+  const inventory = (await sql`
+    SELECT EXISTS (
+      SELECT 1 FROM public.client_enabled_products
+      WHERE client_id = ${clientId}::uuid AND product_key = 'inventory'
+    ) AS enabled
+  `) as Array<{ enabled: boolean }>;
+  const inventoryEnabled = Boolean(inventory[0]?.enabled);
+
   // Consume the token atomically — the `used_at IS NULL` guard makes it single-use
   // against a double-submit race. If it's already gone, don't import twice.
   const consumed = (await sql`
@@ -80,7 +88,7 @@ export default async function handler(req: Request): Promise<Response> {
       VALUES (
         ${clientId}::uuid, ${r.type}::product_type, ${r.name}, ${r.description}, ${r.brand},
         ${r.tags}::text[], ${r.price_cents},
-        ${isService ? null : r.sku}, ${isService ? null : r.stock_qty}, ${isService ? null : r.unit},
+        ${isService ? null : r.sku}, ${isService || inventoryEnabled ? null : r.stock_qty}, ${isService ? null : r.unit},
         ${r.status}::product_status
       )
     `;

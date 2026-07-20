@@ -45,7 +45,7 @@ describe('PATCH/GET /api/client-settings/storefront', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { enabled: boolean; publicUrl: string };
     expect(body.enabled).toBe(true);
-    expect(body.publicUrl).toBe(`https://exsoldatacollectionapp.netlify.app/storefront/${slug}/Order`);
+    expect(body.publicUrl).toBe(`http://localhost/storefront/${slug}/Order`);
 
     const row = (await sql`SELECT storefront_enabled FROM public.clients WHERE id = ${ctx.clientId}`) as Array<{ storefront_enabled: boolean }>;
     expect(row[0]!.storefront_enabled).toBe(true);

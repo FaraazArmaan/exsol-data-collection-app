@@ -30,6 +30,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.inventory_stock s
     JOIN public.products p ON p.id = s.product_id
     WHERE s.client_id = ${a.ctx.clientId}::uuid
+      AND s.variant_id IS NULL
       AND p.deleted_at IS NULL
       AND (${q} = '' OR p.name ILIKE ${like} OR coalesce(p.sku, '') ILIKE ${like})
       AND (${state} = '' OR s.lifecycle_state = ${state})

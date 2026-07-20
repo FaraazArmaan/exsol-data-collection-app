@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { neon } from '@neondatabase/serverless';
 import handler from '../../netlify/functions/pos-sale-create';
 import {
   seedClientWithProductsEnabled,
@@ -7,6 +8,8 @@ import {
   makeBucketUserRequest,
   seedSubordinateUser,
 } from './_helpers';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 let ctx: Awaited<ReturnType<typeof seedClientWithProductsEnabled>>;
 let capId: string;
@@ -44,6 +47,60 @@ describe('POST /api/pos/sales', () => {
     expect(Number(body.order_no)).toBeGreaterThanOrEqual(1);
     expect(body.lines).toHaveLength(2);
     expect(Number(body.lines[0].unit_price_cents)).toBe(22000);
+  });
+
+  it('persists no tax or coupon discount for a POS sale', async () => {
+    const res = await handler(makeBucketUserRequest(ctx, 'POST', '/api/pos/sales', validBody()));
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; subtotal_cents: number | string; total_cents: number | string };
+    const rows = (await sql`
+      SELECT discount_cents, tax_cents, total_cents
+      FROM public.sales WHERE id = ${body.id}::uuid
+    `) as Array<{ discount_cents: number | string; tax_cents: number | string; total_cents: number | string }>;
+    expect(Number(rows[0]!.discount_cents)).toBe(0);
+    expect(Number(rows[0]!.tax_cents)).toBe(0);
+    expect(Number(rows[0]!.total_cents)).toBe(Number(body.subtotal_cents));
+    expect(Number(body.total_cents)).toBe(Number(body.subtotal_cents));
+  });
+
+  it('applies an eligible POS coupon before client tax and records the redemption', async () => {
+    const code = `POS${Math.random().toString(36).slice(2, 9).toUpperCase()}`;
+    await sql`
+      INSERT INTO public.coupons (client_id, code, discount_type, discount_value, min_order_cents, active)
+      VALUES (${ctx.clientId}::uuid, ${code}, 'fixed', 1000, 0, true)
+    `;
+    await sql`
+      INSERT INTO public.client_tax_config (client_id, enabled, rate_bps, label, inclusive)
+      VALUES (${ctx.clientId}::uuid, true, 1000, 'GST', false)
+      ON CONFLICT (client_id) DO UPDATE SET enabled = true, rate_bps = 1000, label = 'GST', inclusive = false
+    `;
+    const res = await handler(makeBucketUserRequest(ctx, 'POST', '/api/pos/sales', {
+      ...validBody(), lines: [{ productId: capId, qty: 1 }], couponCode: code,
+    }));
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; subtotal_cents: number | string; discount_cents: number | string; tax_cents: number | string; total_cents: number | string };
+    expect(Number(body.subtotal_cents)).toBe(22000);
+    expect(Number(body.discount_cents)).toBe(1000);
+    expect(Number(body.tax_cents)).toBe(2100);
+    expect(Number(body.total_cents)).toBe(23100);
+    const redemptions = await sql`SELECT count(*)::int AS n FROM public.coupon_redemptions WHERE sale_id = ${body.id}::uuid` as Array<{ n: number }>;
+    expect(redemptions[0]!.n).toBe(1);
+  });
+
+  it('uses price_cents at checkout before a future sale starts', async () => {
+    const [productId] = await seedProducts(ctx.clientId, [
+      { name: 'Future checkout sale', price_cents: 20000, sale_price_cents: 15000 },
+    ]);
+    await sql`
+      UPDATE public.products SET sale_starts_at = '2099-01-01T00:00:00.000Z'::timestamptz
+      WHERE id = ${productId}
+    `;
+    const res = await handler(makeBucketUserRequest(ctx, 'POST', '/api/pos/sales', {
+      ...validBody(), lines: [{ productId, qty: 1 }],
+    }));
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { lines: Array<{ unit_price_cents: number | string }> };
+    expect(Number(body.lines[0]!.unit_price_cents)).toBe(20000);
   });
 
   it('rejects empty lines with 400', async () => {

@@ -6,20 +6,13 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { checkLimit, clientIp } from './_pub-ratelimit';
 import { loadBundles } from './_shared/bundles';
+import { loadCatalogMenuProducts } from './_shared/catalog-read-model';
 
 export const config = { path: '/api/public/catalog/:slug', method: 'GET' };
 
 function slugFromUrl(req: Request): string {
   const segs = new URL(req.url).pathname.split('/').filter(Boolean);
   return decodeURIComponent(segs[segs.length - 1] ?? '');
-}
-
-interface ProductRow {
-  id: string;
-  name: string;
-  category_id: string | null;
-  sale_price_cents: number;
-  hero_image_key: string | null;
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -44,14 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
   `) as Array<{ product_key: string }>;
   if (!enabled.some((e) => e.product_key === 'catalog')) return jsonError(404, 'catalog_unavailable');
 
-  const products = (await sql`
-    SELECT id, name, category_id,
-           COALESCE(sale_price_cents, price_cents) AS sale_price_cents,
-           hero_image_key
-    FROM public.products
-    WHERE client_id = ${c.id}::uuid AND deleted_at IS NULL AND status = 'active'
-    ORDER BY category_id NULLS LAST, name
-  `) as ProductRow[];
+  const products = await loadCatalogMenuProducts(sql, c.id, 'catalog');
 
   const cats = (await sql`
     SELECT id, name FROM public.product_categories

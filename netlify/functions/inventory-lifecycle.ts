@@ -1,11 +1,11 @@
 // POST /api/inventory/lifecycle — set a product's inventory lifecycle state.
 // Body: { product_id, state: 'active' | 'seasonal' | 'discontinued' }.
-// Discontinuing an item also hides it from the storefront
-// (products.storefront_visible = false) — the "storefront visibility hook".
+// Discontinuing an item requests Product Manager's catalog-publication policy.
 // Re-activating does NOT auto-show (an owner may have hidden it deliberately).
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireInventory } from './_inventory-authz';
+import { applyInventoryLifecyclePublicationPolicy } from './_shared/catalog-publication-policy';
 
 export const config = { path: '/api/inventory/lifecycle', method: 'POST' };
 
@@ -38,18 +38,13 @@ export default async function handler(req: Request): Promise<Response> {
   await sql`
     INSERT INTO public.inventory_stock (client_id, product_id, lifecycle_state)
     VALUES (${a.ctx.clientId}::uuid, ${productId}::uuid, ${state})
-    ON CONFLICT (client_id, product_id)
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL
     DO UPDATE SET lifecycle_state = ${state}, updated_at = now()
   `;
 
-  let storefrontHidden = false;
-  if (state === 'discontinued') {
-    await sql`
-      UPDATE public.products SET storefront_visible = false
-      WHERE id = ${productId}::uuid AND client_id = ${a.ctx.clientId}::uuid
-    `;
-    storefrontHidden = true;
-  }
+  const storefrontHidden = await applyInventoryLifecyclePublicationPolicy(
+    sql, a.ctx.clientId, productId, state,
+  );
 
   return jsonOk({ product_id: productId, lifecycle_state: state, storefront_hidden: storefrontHidden });
 }

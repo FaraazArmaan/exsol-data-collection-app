@@ -11,8 +11,8 @@ export const config = { path: '/api/booking/publication', method: ['GET', 'PUT']
 
 const PublicationPut = z.object({ enabled: z.boolean() });
 
-function publicUrl(slug: string) {
-  return publicBookingUrl(slug, process.env.PUBLIC_BASE_URL);
+function publicUrl(req: Request, slug: string) {
+  return publicBookingUrl(slug, new URL(req.url).origin);
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -42,7 +42,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (read)
     return jsonOk({
       enabled: current.public_enabled,
-      publicUrl: publicUrl(current.slug),
+      publicUrl: publicUrl(req, current.slug),
       ready: !!current.completed_at && current.has_active_services,
     });
 
@@ -66,7 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
   });
   return jsonOk({
     enabled: body.data.enabled,
-    publicUrl: publicUrl(current.slug),
+    publicUrl: publicUrl(req, current.slug),
     ready: !!current.completed_at && current.has_active_services,
   });
 }

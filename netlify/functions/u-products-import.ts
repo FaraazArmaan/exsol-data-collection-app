@@ -66,6 +66,13 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const sql = db();
+  const inventory = (await sql`
+    SELECT EXISTS (
+      SELECT 1 FROM public.client_enabled_products
+      WHERE client_id = ${clientId}::uuid AND product_key = 'inventory'
+    ) AS enabled
+  `) as Array<{ enabled: boolean }>;
+  const inventoryEnabled = Boolean(inventory[0]?.enabled);
   const existingCats = (await sql`
     SELECT id, name FROM public.product_categories
     WHERE client_id = ${clientId}::uuid AND deleted_at IS NULL
@@ -117,6 +124,14 @@ export default async (req: Request, _ctx: Context) => {
     }
 
     if (r.errors.length > 0) continue;
+
+    // A catalog CSV remains useful after Inventory is enabled, but it must not
+    // become a second stock-adjustment mechanism. Preserve the ledger value
+    // (or leave new products untracked) and make that decision visible in the
+    // dry-run warnings.
+    if (inventoryEnabled && r.stock_qty != null) {
+      warnings.push({ row: r.row_index, message: 'stock_qty ignored because Inventory manages stock' });
+    }
 
     // Determine action: create vs update
     let action: 'create' | 'update' = 'create';
@@ -190,7 +205,7 @@ export default async (req: Request, _ctx: Context) => {
         ) VALUES (
           ${clientId}::uuid, ${r.type}, ${r.name}, ${r.description},
           ${category_id}::uuid, ${r.brand}, ${r.tags}::text[], ${r.price_cents},
-          ${r.sku}, ${r.stock_qty}, ${r.unit}, ${r.status}, ${userNodeId}::uuid,
+          ${r.sku}, ${inventoryEnabled ? null : r.stock_qty}, ${r.unit}, ${r.status}, ${userNodeId}::uuid,
           ${r.gtin}, ${r.mpn},
           ${r.condition ?? 'new'}, ${r.availability ?? 'in_stock'},
           ${r.discount_percent}, ${effectiveSalePriceCents}, ${r.sale_starts_at}::timestamptz, ${r.sale_ends_at}::timestamptz,
@@ -212,7 +227,7 @@ export default async (req: Request, _ctx: Context) => {
           tags        = ${r.tags}::text[],
           price_cents = ${r.price_cents},
           sku         = ${r.sku},
-          stock_qty   = ${r.stock_qty},
+          stock_qty   = CASE WHEN ${inventoryEnabled}::boolean THEN stock_qty ELSE ${r.stock_qty} END,
           unit        = ${r.unit},
           status      = ${r.status}::product_status,
           gtin              = CASE WHEN ${present.has('gtin')}::boolean              THEN ${r.gtin}              ELSE gtin              END,

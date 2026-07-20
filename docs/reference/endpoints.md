@@ -6,7 +6,7 @@
 
 # API endpoints
 
-312 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+315 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -17,7 +17,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | admin-client-products.ts | `/api/admin-client-products (name-routed)` | any | admin | — |
-| admin-impersonate.ts | `/api/admin-impersonate` | POST | public | — |
+| admin-impersonate.ts | `/api/admin-impersonate (name-routed)` | any | public | — |
 | admin-impersonation-exit.ts | `/api/admin-impersonation-exit (name-routed)` | any | public | — |
 | admin-self.ts | `/api/admin-self (name-routed)` | any | admin | — |
 | admin-team-detail.ts | `/api/admin-team-detail (name-routed)` | any | public | — |
@@ -287,6 +287,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | onboard-import.ts | `/api/onboard-import/:token` | POST | public | — |
 | onboard-public.ts | `/api/onboard-public/:token` | GET | public | — |
 | payments-razorpay-webhook.ts | `/api/payments/razorpay-webhook` | POST | public | — |
+| sale-payment-expiry.ts | `/api/sale-payment-expiry (name-routed)` | any | public | — |
 | u-credential-token.ts | `/api/u-credential-token (name-routed)` | any | public | — |
 | webhook-example.ts | `/api/webhook-example` | POST | public | — |
 
@@ -310,6 +311,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | pos-reviews.ts | `/api/pos/reviews` | any | bucket-user | `pos.history.viewAll` |
 | pos-sale-create.ts | `/api/pos/sales` | POST | bucket-user | `pos.sale.create`, `pos.sale.created` |
 | pos-sale-detail.ts | `/api/pos/sales/:id` | any | bucket-user | `pos.history.view`, `pos.history.viewAll` |
+| pos-sale-quote.ts | `/api/pos/sale-quote` | POST | bucket-user | `pos.sale.create` |
 | pos-sale-state.ts | `/api/pos/sales/:id/state` | any | bucket-user | `pos.history.view`, `pos.sale.fulfill` |
 | pos-sales-list.ts | `/api/pos/sales` | GET | bucket-user | `pos.history.view`, `pos.history.viewAll` |
 | pos-storefront-cms.ts | `/api/pos/storefront-cms` | any | bucket-user | `pos.sale.refund` |
@@ -356,6 +358,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | function | path | methods | auth | permission keys checked |
 |---|---|---|---|---|
 | u-product-categories.ts | `/api/u-product-categories (name-routed)` | any | bucket-user | `products.products.create`, `products.products.delete`, `products.products.edit`, `products.products.view` |
+| u-product-variants.ts | `/api/u-product-variants (name-routed)` | any | bucket-user | `products.products.create`, `products.products.edit`, `products.products.view` |
 | u-products-bulk.ts | `/api/u-products-bulk (name-routed)` | any | bucket-user | `products.products.delete`, `products.products.edit` |
 | u-products-detail.ts | `/api/u-products-detail (name-routed)` | any | bucket-user | `products.products.delete`, `products.products.edit`, `products.products.view` |
 | u-products-export.ts | `/api/u-products-export (name-routed)` | any | bucket-user | `products.products.view` |

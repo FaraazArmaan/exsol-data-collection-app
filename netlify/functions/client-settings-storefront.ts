@@ -5,8 +5,8 @@
 // by the existing `_platform.settings.edit` permission (L1 Owners always hold
 // it via the requirePermission bypass) — no storefront-specific permission key.
 // Single function handles both methods on a unique path (no config.method
-// collision). publicUrl = `${PUBLIC_BASE_URL}/storefront/<slug>/Order` (env per Netlify
-// context; relative when unset).
+// collision). The public URL uses the request origin so preview aliases and custom
+// domains cannot accidentally direct workspace users to production.
 
 import { z } from 'zod';
 import { jsonOk, jsonError } from './_shared/http';
@@ -22,8 +22,8 @@ export const config = { path: '/api/client-settings/storefront' };
 
 const PatchBody = z.object({ enabled: z.boolean() });
 
-function publicUrlFor(slug: string): string {
-  return publicOrderingUrl(slug, process.env.PUBLIC_BASE_URL);
+function publicUrlFor(req: Request, slug: string): string {
+  return publicOrderingUrl(slug, new URL(req.url).origin);
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -46,7 +46,7 @@ export default async function handler(req: Request): Promise<Response> {
       SELECT slug, storefront_enabled FROM public.clients WHERE id = ${clientId}::uuid LIMIT 1
     `) as Array<{ slug: string; storefront_enabled: boolean }>;
     if (!rows[0]) return jsonError(404, 'client_not_found');
-    return jsonOk({ enabled: rows[0].storefront_enabled, publicUrl: publicUrlFor(rows[0].slug) });
+    return jsonOk({ enabled: rows[0].storefront_enabled, publicUrl: publicUrlFor(req, rows[0].slug) });
   }
 
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
@@ -68,5 +68,5 @@ export default async function handler(req: Request): Promise<Response> {
     detail: { enabled: parsed.data.enabled },
   });
 
-  return jsonOk({ enabled: updated[0].storefront_enabled, publicUrl: publicUrlFor(updated[0].slug) });
+  return jsonOk({ enabled: updated[0].storefront_enabled, publicUrl: publicUrlFor(req, updated[0].slug) });
 }

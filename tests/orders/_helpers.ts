@@ -18,7 +18,7 @@ export async function seedStock(ctx: PosTestCtx, productId: string, qty: number)
   await sql`
     INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand)
     VALUES (${ctx.clientId}::uuid, ${productId}::uuid, ${qty})
-    ON CONFLICT (client_id, product_id) DO UPDATE SET qty_on_hand = ${qty}, updated_at = now()
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO UPDATE SET qty_on_hand = ${qty}, updated_at = now()
   `;
 }
 
@@ -59,7 +59,9 @@ export async function seedSale(
   opts: SeedSaleInput = {},
 ): Promise<SeedSaleResult> {
   const status = opts.status ?? 'pending_payment';
-  const channel = opts.channel ?? 'instore';
+  // Orders owns the physical completion of pickup/online work. In-store sales
+  // are fulfilled immediately by POS and therefore are not Orders fixtures.
+  const channel = opts.channel ?? 'pickup';
   const total = opts.total ?? 1000;
   const customerName = `Test Customer ${Math.random().toString(36).slice(2, 8)}`;
   const customerPhone = `+1${Math.floor(1000000000 + Math.random() * 9000000000)}`;

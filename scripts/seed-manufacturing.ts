@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     await sql`
       INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, reorder_level)
       VALUES (${clientId}::uuid, ${id}::uuid, ${c.stock}, 20)
-      ON CONFLICT (client_id, product_id) DO UPDATE SET qty_on_hand = ${c.stock}
+      ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO UPDATE SET qty_on_hand = ${c.stock}
     `;
   }
 
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
   await sql`
     INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, reorder_level)
     VALUES (${clientId}::uuid, ${outputId}::uuid, 0, 5)
-    ON CONFLICT (client_id, product_id) DO NOTHING
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO NOTHING
   `;
 
   // 4. One BOM (idempotent by name — boms has no unique constraint on name,
@@ -148,7 +148,7 @@ async function main(): Promise<void> {
              150 + (abs(hashtext(p.id::text)) % 400))
     FROM public.products p
     WHERE p.client_id = ${clientId}::uuid AND p.sku LIKE 'MFG-%' AND p.deleted_at IS NULL
-    ON CONFLICT (client_id, product_id) DO NOTHING
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO NOTHING
   `;
 
   // 5b. Kanban demo: give planned orders a priority + near-term due date so the

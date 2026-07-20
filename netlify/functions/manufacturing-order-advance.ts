@@ -84,7 +84,7 @@ export default async function handler(req: Request): Promise<Response> {
   for (const n of need) {
     queries.push(sql`
       UPDATE public.inventory_stock SET qty_on_hand = qty_on_hand - ${n.need}::int, updated_at = now()
-      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${n.product_id}::uuid
+      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${n.product_id}::uuid AND variant_id IS NULL
     `);
     queries.push(sql`
       INSERT INTO public.stock_movements (client_id, product_id, qty_delta, type, ref, created_by)
@@ -94,7 +94,7 @@ export default async function handler(req: Request): Promise<Response> {
   queries.push(sql`
     INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand)
     VALUES (${a.ctx.clientId}::uuid, ${order.output_product_id}::uuid, ${order.qty}::int)
-    ON CONFLICT (client_id, product_id)
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL
     DO UPDATE SET qty_on_hand = public.inventory_stock.qty_on_hand + ${order.qty}::int, updated_at = now()
   `);
   queries.push(sql`

@@ -11,6 +11,7 @@ import { formatTime, isoDatePlus } from '../format';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
 import { ManualBookingDrawer } from './ManualBookingDrawer';
 import { BookingTabs } from './BookingTabs';
+import { DateField } from '../../../components/ui/DateTimeField';
 
 interface Props {
   slug: string;
@@ -157,7 +158,7 @@ export default function CalendarPage({ slug, perms }: Props) {
               Week
             </button>
           </div>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField label="Calendar date" value={date} onChange={setDate} />
           <Link className="btn btn-ghost" to="list">
             List view
           </Link>

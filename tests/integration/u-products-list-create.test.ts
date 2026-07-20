@@ -151,6 +151,20 @@ describe('u-products list + create', () => {
     await assertLastAudit(sql, { op: 'products.created', targetId: p.id });
   });
 
+  test('POST rejects legacy stock writes once Inventory is enabled', async () => {
+    await sql`
+      INSERT INTO public.client_enabled_products (client_id, product_key)
+      VALUES (${clientId}::uuid, 'inventory')
+      ON CONFLICT DO NOTHING
+    `;
+    const r = await uProductsHandler(new Request('http://localhost/api/u-products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', cookie: buCookie },
+      body: JSON.stringify({ type: 'physical', name: 'Ledger-managed', price_cents: 100, stock_qty: 5 }),
+    }), CTX);
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: { code: 'inventory_stock_managed' } });
+  });
+
   test('POST service product allows null sku/stock/unit', async () => {
     const p = await createProduct({ type: 'service', name: 'Repair', price_cents: 8000 });
     expect(p.id).toMatch(/^[0-9a-f-]{36}$/);

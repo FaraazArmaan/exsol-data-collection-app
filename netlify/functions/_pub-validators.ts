@@ -18,6 +18,7 @@ export const PublicSaleCreateBody = z.object({
   lines: z
     .array(z.object({
       productId: z.string().uuid(),
+      variantId: z.string().uuid().optional(),
       qty: z.number().int().positive().max(99),
     }))
     .min(1)

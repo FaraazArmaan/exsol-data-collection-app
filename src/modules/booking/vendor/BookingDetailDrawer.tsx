@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { bookingApi, type VendorBooking, type BookingAction } from '../shared/api';
+import { Overlay } from '../../../components/ui/Overlay';
+import { Button } from '../../../components/ui/Button';
+import { InlineNotice, LoadingState } from '../../../components/ui/Feedback';
+import { DateField, TimeField } from '../../../components/ui/DateTimeField';
 import { formatRupees, formatTime, formatDateLong } from '../format';
 import { BookingStatusPill } from '../components/BookingStatusPill';
 
@@ -25,10 +29,10 @@ const LABEL: Record<BookingAction, string> = {
   unblock: 'Unblock',
 };
 const canReschedule = (status: string) => status === 'pending' || status === 'confirmed';
-function toLocalInput(iso: string) {
+function toLocalParts(iso: string) {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  return { date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, time: `${p(d.getHours())}:${p(d.getMinutes())}` };
 }
 
 export function BookingDetailDrawer({ bookingId, perms, onClose, onChanged }: Props) {
@@ -36,7 +40,7 @@ export function BookingDetailDrawer({ bookingId, perms, onClose, onChanged }: Pr
   const [b, setB] = useState<VendorBooking | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newStart, setNewStart] = useState<string | null>(null);
+  const [newStart, setNewStart] = useState<{ date: string; time: string } | null>(null);
 
   useEffect(() => {
     bookingApi
@@ -58,11 +62,11 @@ export function BookingDetailDrawer({ bookingId, perms, onClose, onChanged }: Pr
     }
   }
   async function reschedule() {
-    if (!newStart) return;
+    if (!newStart?.date || !newStart.time) return;
     setBusy(true);
     setError(null);
     try {
-      await bookingApi.reschedule(bookingId, new Date(newStart).toISOString());
+      await bookingApi.reschedule(bookingId, new Date(`${newStart.date}T${newStart.time}`).toISOString());
       onChanged();
       onClose();
     } catch (e: any) {
@@ -96,102 +100,90 @@ export function BookingDetailDrawer({ bookingId, perms, onClose, onChanged }: Pr
   }
 
   return (
-    <aside role="dialog" aria-label="Booking detail" className="pos-drawer booking-drawer">
-      <div className="booking-drawer-head">
-        <h2 className="section-title">Booking</h2>
-        <button className="btn btn-ghost" onClick={onClose}>
-          ✕
-        </button>
-      </div>
+    <Overlay open title="Booking detail" onClose={onClose} variant="drawer">
       {error === 'not_found' ? (
-        <p className="error">Not found.</p>
+        <InlineNotice tone="danger" title="This booking is no longer available." />
       ) : !b ? (
-        <div className="muted">Loading…</div>
+        <LoadingState title="Loading booking…" />
       ) : (
-        <>
-          <BookingStatusPill status={b.status} />
-          <div className="muted">
-            {formatDateLong(b.start_at)} · {formatTime(b.start_at)}–{formatTime(b.end_at)}
-          </div>
-          {b.customer_name ? (
-            <div>
-              <strong>{b.customer_name}</strong>
-              {b.customer_phone ? ` · ${b.customer_phone}` : ''}
-            </div>
-          ) : (
-            <div className="muted">Blocked time</div>
-          )}
-          <div>{formatRupees(b.price_cents)}</div>
-          {b.payment_status ? (
-            <div className="muted">Payment: {b.payment_status.replaceAll('_', ' ')}</div>
-          ) : null}
+        <div className="ui-detail">
+          <section className="ui-detail__summary" aria-label="Booking summary">
+            <BookingStatusPill status={b.status} />
+            <p className="ui-detail__meta">{formatDateLong(b.start_at)} · {formatTime(b.start_at)}–{formatTime(b.end_at)}</p>
+            {b.customer_name ? <div className="ui-detail__customer">{b.customer_name}{b.customer_phone ? ` · ${b.customer_phone}` : ''}</div> : <div className="ui-detail__customer">Blocked time</div>}
+            <div className="ui-detail__amount">{formatRupees(b.price_cents)}</div>
+            {b.payment_status ? <p className="ui-detail__supporting">Payment: {b.payment_status.replaceAll('_', ' ')}</p> : null}
+          </section>
           {error && error !== 'not_found' ? (
-            <p className="error">Couldn’t apply ({error}).</p>
+            <InlineNotice tone="danger" title="Couldn’t update this booking.">{error}</InlineNotice>
           ) : null}
           {canEdit ? (
-            <div className="booking-actions">
+            <section className="ui-detail__section" aria-labelledby="booking-actions-heading">
+              <h3 id="booking-actions-heading">Appointment actions</h3>
+              <div className="ui-action-group">
               {allowedActions(b.status).map((a) => (
-                <button
+                <Button
                   key={a}
-                  className={`btn ${a === 'cancel' ? 'btn-danger' : 'btn-secondary'}`}
+                  variant={a === 'complete' ? 'primary' : a === 'cancel' ? 'danger' : 'secondary'}
                   disabled={busy}
                   onClick={() => act(a)}
                 >
                   {LABEL[a]}
-                </button>
+                </Button>
               ))}
               {canReschedule(b.status) && newStart === null ? (
-                <button
-                  className="btn btn-secondary"
+                <Button
+                  variant="secondary"
                   disabled={busy}
-                  onClick={() => setNewStart(toLocalInput(b.start_at))}
+                  onClick={() => setNewStart(toLocalParts(b.start_at))}
                 >
                   Reschedule
-                </button>
+                </Button>
               ) : null}
               {b.status === 'confirmed' ? (
-                <button className="btn btn-secondary" disabled={busy} onClick={checkIn}>
+                <Button variant="secondary" disabled={busy} onClick={checkIn}>
                   Check in
-                </button>
+                </Button>
               ) : null}
-              {b.payment_status && !['paid', 'refunded', 'waived'].includes(b.payment_status) ? (
-                <button className="btn btn-secondary" disabled={busy} onClick={recordCash}>
-                  Record cash received
-                </button>
-              ) : null}
-            </div>
+              </div>
+            </section>
+          ) : null}
+          {canEdit && b.payment_status && !['paid', 'refunded', 'waived'].includes(b.payment_status) ? (
+            <section className="ui-detail__section" aria-labelledby="booking-payment-heading">
+              <h3 id="booking-payment-heading">Payment</h3>
+              <div className="ui-action-group">
+                <Button variant="secondary" disabled={busy} onClick={recordCash}>Record cash received</Button>
+              </div>
+            </section>
           ) : null}
           {canEdit && newStart !== null ? (
-            <div className="booking-form-inline">
-              <input
-                type="datetime-local"
-                value={newStart}
-                onChange={(e) => setNewStart(e.target.value)}
-              />
-              <button className="btn btn-primary" disabled={busy} onClick={reschedule}>
-                Move
-              </button>
-              <button className="btn btn-ghost" disabled={busy} onClick={() => setNewStart(null)}>
-                Cancel
-              </button>
-            </div>
+            <section className="ui-detail__section ui-inline-form" aria-labelledby="booking-reschedule-heading">
+              <h3 id="booking-reschedule-heading">Reschedule appointment</h3>
+              <div className="booking-date-time-fields">
+                <DateField label="New appointment date" value={newStart.date} onChange={(date) => setNewStart((current) => current && { ...current, date })} required />
+                <TimeField label="New appointment time" value={newStart.time} onChange={(time) => setNewStart((current) => current && { ...current, time })} required stepMinutes={15} />
+              </div>
+              <div className="ui-inline-form__actions">
+                <Button variant="primary" disabled={busy} onClick={reschedule}>Save time</Button>
+                <Button variant="quiet" disabled={busy} onClick={() => setNewStart(null)}>Cancel</Button>
+              </div>
+            </section>
           ) : null}
           {b.events?.length ? (
-            <div className="booking-event-history">
-              <h3 className="section-title">History</h3>
-              <ul className="booking-list-plain">
+            <section className="ui-detail__section" aria-labelledby="booking-history-heading">
+              <h3 id="booking-history-heading">History</h3>
+              <ul className="ui-timeline">
                 {b.events.map((event) => (
                   <li key={event.id}>
-                    <strong>{event.event_type.replaceAll('_', ' ')}</strong> ·{' '}
-                    {new Date(event.created_at).toLocaleString()}
-                    {event.reason ? ` · ${event.reason}` : ''}
+                    <strong>{event.event_type.replaceAll('_', ' ')}</strong>
+                    <span className="ui-timeline__meta">{new Date(event.created_at).toLocaleString()}{event.reason ? ` · ${event.reason}` : ''}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           ) : null}
-        </>
+        </div>
       )}
-    </aside>
+    </Overlay>
   );
 }

@@ -22,8 +22,6 @@ const Body = z.object({
 //
 // The FE sets a separate, non-HttpOnly imp_ctx cookie (client name) to drive the
 // "viewing as admin" banner, and clears it + bu_session (via u-logout) on exit.
-export const config = { path: '/api/admin-impersonate', method: 'POST' };
-
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return jsonError(405, 'method_not_allowed');
   const csrf = rejectCrossSiteMutation(req);

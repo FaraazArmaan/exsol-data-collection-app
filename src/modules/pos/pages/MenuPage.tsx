@@ -83,7 +83,7 @@ export default function MenuPage(props: MenuPageProps) {
             key={p.id}
             product={p}
             inCartQty={catalogMode ? 0 : (qtyById[p.id] ?? 0)}
-            onAdd={catalogMode ? undefined : () => addLine(p)}
+            onAdd={catalogMode ? undefined : (variant) => addLine(p, variant)}
           />
         ))}
       </main>

@@ -30,6 +30,7 @@ import { logAudit } from './_shared/audit';
 import { requirePos } from './_pos-authz';
 import { SaleStateBody } from './_pos-validators';
 import { applyTransition, FSM_ERROR, type SaleStatus, type SaleChannel } from './_pos-fsm';
+import { consumeSaleInventory, releaseSaleInventory } from './_shared/inventory-reservations';
 
 export const config = { path: '/api/pos/sales/:id/state' };
 
@@ -75,12 +76,26 @@ export default async function handler(req: Request): Promise<Response> {
   if (body.action === 'markPaid' && !body.paymentMethod) {
     return jsonError(422, 'payment_method_required');
   }
+  if (body.action === 'fulfill' && sale.channel !== 'instore') {
+    return jsonError(409, 'orders_fulfillment_required');
+  }
 
   const nowIso = new Date().toISOString();
   const wantPaid = body.action === 'markPaid';
   const wantFulfill = body.action === 'fulfill' || (wantPaid && result.alsoPaid);
   const wantCancel = body.action === 'cancel';
   const wantRefund = body.action === 'refund';
+
+  // Move stock before making the state transition visible. A pending order
+  // holds quantity in qty_reserved; fulfilment converts that hold to a sale
+  // movement, and cancellation releases it. A failed conversion must not leave
+  // an order marked fulfilled without the matching stock fact.
+  if (wantFulfill && !(await consumeSaleInventory(sql, a.ctx.clientId, id, a.ctx.userNodeId))) {
+    return jsonError(409, 'inventory_reservation_unavailable');
+  }
+  if (wantCancel && !(await releaseSaleInventory(sql, a.ctx.clientId, id))) {
+    return jsonError(409, 'inventory_reservation_unavailable');
+  }
 
   // Single UPDATE sets new status + only the timestamps relevant to this action.
   // COALESCE preserves prior timestamps for unrelated columns.
@@ -94,41 +109,6 @@ export default async function handler(req: Request): Promise<Response> {
       payment_method = COALESCE(${wantPaid ? body.paymentMethod ?? null : null}, payment_method)
     WHERE id = ${id}::uuid
   `;
-
-  // Inventory hook: on fulfillment, decrement stock-tracked line items and append
-  // a 'sale' movement per line. Opt-in per client (clients.inventory_tracking_enabled)
-  // so legacy tenants are unaffected. A sale can only be fulfilled once (the FSM
-  // rejects re-fulfilling), so this fires at most once per sale — no double-decrement.
-  // FAIL-OPEN: any inventory error is swallowed so it can never break a sale.
-  if (wantFulfill) {
-    try {
-      const flag = (await sql`
-        SELECT inventory_tracking_enabled FROM public.clients WHERE id = ${a.ctx.clientId}::uuid LIMIT 1
-      `) as Array<{ inventory_tracking_enabled: boolean }>;
-      if (flag[0]?.inventory_tracking_enabled) {
-        const lines = (await sql`
-          SELECT product_id, qty FROM public.sale_lines WHERE sale_id = ${id}::uuid
-        `) as Array<{ product_id: string; qty: number }>;
-        for (const ln of lines) {
-          // Only decrement products that are actually stock-tracked (have a row).
-          const upd = (await sql`
-            UPDATE public.inventory_stock
-            SET qty_on_hand = GREATEST(0, qty_on_hand - ${ln.qty}::int), updated_at = now()
-            WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${ln.product_id}::uuid
-            RETURNING product_id
-          `) as Array<{ product_id: string }>;
-          if (upd.length > 0) {
-            await sql`
-              INSERT INTO public.stock_movements (client_id, product_id, qty_delta, type, ref, created_by)
-              VALUES (${a.ctx.clientId}::uuid, ${ln.product_id}::uuid, ${-ln.qty}::int, 'sale', ${`sale:${id}`}, ${a.ctx.userNodeId}::uuid)
-            `;
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[inventory] stock decrement failed for sale', id, err);
-    }
-  }
 
   // Audit primary action; instore+markPaid also writes the auto-fulfill row.
   // logAudit only reads kind + user_node_id (no level column), so we don't

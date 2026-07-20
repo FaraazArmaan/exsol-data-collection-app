@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExSol Mobile Navigation Options</title>
+  <link rel="stylesheet" href="/exsol-uiux-lab.css">
+  <style>
+    .intro { max-width: 76ch; color: var(--muted); }
+    .choices { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; margin: 24px 0; }
+    .choice { min-height: 102px; padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); text-align: left; }
+    .choice small { display: block; margin-top: 5px; color: var(--muted); }
+    .choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+    .decision { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, .7fr); gap: 16px; }
+    .preview-card { padding: 16px; }
+    .preview-label { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .desktop { min-height: 530px; overflow: hidden; border: 1px solid var(--line); background: #121711; }
+    .desktop-shell { display: grid; min-height: 528px; grid-template-columns: 180px 1fr; }
+    .desktop-rail { padding: 16px 12px; border-right: 1px solid var(--line); background: #20281f; }
+    .brand { margin: 0 0 20px; font-weight: 800; }
+    .nav-link, .phone-nav-link { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); text-align: left; font: inherit; }
+    .nav-link.active, .phone-nav-link.active { background: #303b2f; color: var(--text); }
+    .desktop-main { min-width: 0; }
+    .desktop-head { display: flex; height: 52px; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--line); background: #20281f; }
+    .desktop-content { max-width: 760px; padding: 24px; }
+    .desktop-content h2 { margin: 0 0 8px; font-size: 25px; }
+    .tab-row { display: flex; gap: 4px; overflow: auto; padding: 2px 0 14px; }
+    .tab { flex: none; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; }
+    .tab.active { border-color: var(--accent); color: var(--text); }
+    .sample-card { display: grid; gap: 7px; padding: 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .sample-card strong { font-size: 17px; }
+    .sample-card span { color: var(--muted); }
+    .phone-frame { width: min(100%, 375px); min-height: 612px; margin: auto; padding: 9px; border: 1px solid var(--line); border-radius: 30px; background: #070907; box-shadow: 0 16px 34px rgba(0,0,0,.3); }
+    .phone { position: relative; min-height: 592px; overflow: hidden; border-radius: 22px; background: #121711; }
+    .phone-head { display: flex; min-height: 52px; align-items: center; gap: 8px; padding: 0 11px; border-bottom: 1px solid var(--line); background: #20281f; }
+    .phone-head strong { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .icon { width: 42px; min-height: 42px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 19px; }
+    .icon:focus-visible, .choice:focus-visible, .phone-nav-link:focus-visible { outline: 3px solid #b6d6ff; outline-offset: 2px; }
+    .phone-content { padding: 16px; }
+    .phone-content h2 { margin: 0 0 8px; font-size: 22px; }
+    .phone-tabs { display: flex; gap: 5px; margin: 14px -16px 15px; padding: 0 16px 8px; overflow: auto; border-bottom: 1px solid var(--line); }
+    .phone-tabs button { flex: none; padding: 7px 9px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; }
+    .phone-tabs .active { border-color: var(--accent); color: var(--text); }
+    .agenda { display: grid; gap: 8px; }
+    .agenda article { padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .agenda span { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; }
+    .floating { position: absolute; right: 16px; bottom: 16px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 800; }
+    .scrim { position: absolute; z-index: 4; inset: 0; border: 0; background: rgba(0,0,0,.54); }
+    .drawer, .fullscreen-menu, .top-menu { position: absolute; z-index: 5; background: #20281f; }
+    .drawer { inset: 0 auto 0 0; width: min(86%, 320px); padding: 12px; border-right: 1px solid var(--line); }
+    .fullscreen-menu { inset: 0; padding: 15px; }
+    .top-menu { top: 52px; right: 10px; left: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 30px rgba(0,0,0,.4); }
+    .drawer-head { display: flex; min-height: 40px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .drawer-head strong { font-size: 17px; }
+    .nav-group { margin: 15px 0 5px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .bottom-bar { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, 1fr); min-height: 62px; border-top: 1px solid var(--line); background: #20281f; }
+    .bottom-bar button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; }
+    .bottom-bar button.active { color: var(--accent); font-weight: 800; }
+    .compact-rail { position: absolute; z-index: 2; top: 52px; bottom: 0; left: 0; width: 58px; padding-top: 8px; border-right: 1px solid var(--line); background: #20281f; }
+    .compact-rail button { display: block; width: 100%; min-height: 46px; border: 0; background: transparent; color: var(--muted); font-size: 18px; }
+    .compact-rail button.active { color: var(--accent); }
+    .compact-rail + .phone-content { padding-left: 70px; }
+    .implication { margin-top: 14px; padding: 14px; border-left: 3px solid var(--accent); background: color-mix(in srgb,var(--accent) 10%,transparent); }
+    .implication p { margin: 6px 0 0; color: var(--muted); }
+    .recommendation { color: var(--success); font-weight: 800; }
+    @media (max-width: 980px) { .choices { grid-template-columns: repeat(2, 1fr); } .decision { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .lab { padding: 22px 12px 48px; } .choices { grid-template-columns: 1fr; } .desktop { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="lab">
+    <p class="lab-eyebrow">EXSOL · MOBILE FOUNDATION DECISION</p>
+    <h1>How should global navigation work on a phone?</h1>
+    <p class="intro">The current permanent rail consumes too much phone width. Choose an approach below; each option immediately updates the same realistic Booking preview. This decision controls only global product/workspace navigation. Booking’s own tabs remain local task navigation.</p>
+
+    <section class="choices" aria-label="Mobile navigation options">
+      <button class="choice" data-choice="drawer" aria-pressed="true"><strong>1. Navigation drawer</strong><small>On-demand left sheet</small></button>
+      <button class="choice" data-choice="full"><strong>2. Full-screen menu</strong><small>Focused navigation takeover</small></button>
+      <button class="choice" data-choice="switcher"><strong>3. Workspace switcher</strong><small>Top menu, minimal chrome</small></button>
+      <button class="choice" data-choice="bottom"><strong>4. Universal bottom bar</strong><small>Four fixed global destinations</small></button>
+      <button class="choice" data-choice="rail"><strong>5. Compact icon rail</strong><small>Current rail, only narrower</small></button>
+    </section>
+
+    <section class="decision">
+      <article class="lab-card preview-card">
+        <p class="preview-label">Desktop reference · unchanged by this decision</p>
+        <div id="desktop" class="desktop"></div>
+      </article>
+      <article class="lab-card preview-card">
+        <p class="preview-label">Phone preview · interact with the menu</p>
+        <div class="phone-frame"><div id="phone" class="phone"></div></div>
+      </article>
+    </section>
+    <section id="implication" class="implication"></section>
+  </main>
+  <script>
+    const desktop = document.getElementById('desktop');
+    const phone = document.getElementById('phone');
+    const implication = document.getElementById('implication');
+    const choices = [...document.querySelectorAll('[data-choice]')];
+    let current = 'drawer';
+    let open = false;
+    const links = ['Dashboard', 'Booking', 'Payments', 'Inventory', 'Workforce', 'Settings'];
+    const localTabs = ['Calendar', 'Bookings', 'Services', 'Setup'];
+    const copy = {
+      drawer: ['Recommended · navigation drawer', 'A labelled 86%-width drawer opens only on request, dims the current task, closes on tap-outside or Escape, and returns focus to the menu button. It scales to ExSol’s long module list without stealing screen space.'],
+      full: ['Full-screen menu', 'Very clear and reachable, but it interrupts the task more than necessary. Best reserved for simple consumer apps or a short destination list, not ExSol’s many products.'],
+      switcher: ['Workspace switcher menu', 'Keeps chrome minimal, but a long mixed list of products and settings becomes hard to scan and hides global navigation too deeply.'],
+      bottom: ['Universal bottom bar', 'Fast for four destinations, but ExSol has many permission-dependent modules. “More” becomes a second drawer and duplicates Booking’s own task navigation.'],
+      rail: ['Compact icon rail', 'It saves some pixels but preserves the original problem: icons are harder to recognise, labels disappear, and permanent navigation still distracts from the mobile task.']
+    };
+    function navLinks() { return `<p class="nav-group">Workspace</p>${links.map((link, i) => `<button class="phone-nav-link ${i === 1 ? 'active' : ''}" type="button">${link}</button>`).join('')}`; }
+    function menu(mode) {
+      const head = `<div class="drawer-head"><strong>Navigation</strong><button class="icon" data-close aria-label="Close navigation">×</button></div>`;
+      if (mode === 'full') return `<section class="fullscreen-menu" role="dialog" aria-label="Navigation">${head}${navLinks()}</section>`;
+      if (mode === 'switcher') return `<section class="top-menu" role="dialog" aria-label="Navigation">${head}${navLinks()}</section>`;
+      return `<section class="drawer" role="dialog" aria-label="Navigation">${head}${navLinks()}</section>`;
+    }
+    function phoneContent(mode) {
+      const headerButton = mode === 'switcher' ? '<button class="icon" data-open aria-label="Open navigation">⌄</button>' : '<button class="icon" data-open aria-label="Open navigation">☰</button>';
+      const core = `<header class="phone-head">${headerButton}<strong>Papa’s Saloon</strong><button class="icon" aria-label="Account">◉</button></header><main class="phone-content"><h2>Calendar</h2><div class="phone-tabs">${localTabs.map((tab, i) => `<button class="${i === 0 ? 'active' : ''}">${tab}</button>`).join('')}</div><div class="agenda"><article><strong>10:00 · Consultation</strong><span>Mira Shah · Aditya</span></article><article><strong>11:30 · Audit</strong><span>Walk-in slot available</span></article><article><strong>14:00 · Consultation</strong><span>Rohan Patel · Aisha</span></article></div></main><button class="floating">+ Booking</button>`;
+      if (mode === 'bottom') return `${core}<nav class="bottom-bar" aria-label="Primary"><button>Home</button><button class="active">Booking</button><button>Files</button><button data-open>More</button></nav>${open ? menu('drawer') : ''}`;
+      if (mode === 'rail') return `${core.replace('<main class="phone-content">', '<nav class="compact-rail" aria-label="Primary"><button>⌂</button><button class="active">▣</button><button>□</button><button data-open>•••</button></nav><main class="phone-content">')}${open ? `<button class="scrim" data-close aria-label="Close navigation"></button>${menu('drawer')}` : ''}`;
+      return `${core}${open ? `<button class="scrim" data-close aria-label="Close navigation"></button>${menu(mode)}` : ''}`;
+    }
+    function desktopContent() { desktop.innerHTML = `<div class="desktop-shell"><aside class="desktop-rail"><p class="brand">ExSol</p>${links.map((link, i) => `<button class="nav-link ${i === 1 ? 'active' : ''}">${link}</button>`).join('')}</aside><section class="desktop-main"><header class="desktop-head"><strong>Papa’s Saloon</strong><span>Faraaz ⌄</span></header><main class="desktop-content"><div class="tab-row">${localTabs.map((tab, i) => `<button class="tab ${i === 0 ? 'active' : ''}">${tab}</button>`).join('')}</div><h2>Calendar</h2><p class="intro">A local Booking task surface stays visible while global navigation remains separate.</p><article class="sample-card"><strong>Today’s appointments</strong><span>10:00 Consultation · 11:30 Audit · 14:00 Consultation</span></article></main></section></div>`; }
+    function render() { desktopContent(); phone.innerHTML = phoneContent(current); implication.innerHTML = `<strong>${copy[current][0]}</strong><p>${copy[current][1]}</p>${current === 'drawer' ? '<p class="recommendation">Recommended foundation: use this shared drawer for global navigation; let modules choose limited local mobile task navigation only where a distinct field workflow requires it.</p>' : ''}`; choices.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.choice === current))); phone.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', () => { open = true; render(); })); phone.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => { open = false; render(); })); }
+    choices.forEach(button => button.addEventListener('click', () => { current = button.dataset.choice; open = false; render(); }));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && open) { open = false; render(); } });
+    render();
+  </script>
+</body>
+</html>

@@ -48,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
       SELECT DISTINCT p.id
       FROM public.products p
       LEFT JOIN public.inventory_stock inv
-        ON inv.product_id = p.id AND inv.client_id = ${clientId}::uuid
+        ON inv.product_id = p.id AND inv.client_id = ${clientId}::uuid AND inv.variant_id IS NULL
       LEFT JOIN public.purchase_order_items poi ON poi.product_id = p.id
       LEFT JOIN public.purchase_orders po
         ON po.id = poi.purchase_order_id AND po.client_id = ${clientId}::uuid
@@ -63,7 +63,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.products p
     JOIN active_products ap ON ap.id = p.id
     LEFT JOIN supplier_counts sc ON sc.product_id = p.id
-    LEFT JOIN public.inventory_stock inv ON inv.product_id = p.id AND inv.client_id = ${clientId}::uuid
+    LEFT JOIN public.inventory_stock inv ON inv.product_id = p.id AND inv.client_id = ${clientId}::uuid AND inv.variant_id IS NULL
     WHERE COALESCE(sc.cnt, 0) <= 1
     ORDER BY p.name
   `) as Array<{
@@ -108,7 +108,7 @@ export default async function handler(req: Request): Promise<Response> {
       AND ps.client_id = ${clientId}::uuid
       AND ps.is_primary = true
     JOIN public.suppliers sup ON sup.id = ps.supplier_id AND sup.deleted_at IS NULL
-    JOIN public.inventory_stock s ON s.product_id = p.id AND s.client_id = ${clientId}::uuid
+    JOIN public.inventory_stock s ON s.product_id = p.id AND s.client_id = ${clientId}::uuid AND s.variant_id IS NULL
     WHERE p.client_id = ${clientId}::uuid
       AND p.type = 'physical'
       AND p.deleted_at IS NULL

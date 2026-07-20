@@ -1,19 +1,13 @@
 import { Outlet } from 'react-router-dom';
+import { AppShell } from '../../../components/ui/AppShell';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { ImpersonationBanner } from './ImpersonationBanner';
 
 export function UserDashboardLayout() {
   return (
-    <div className="app-shell">
-      <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <ImpersonationBanner />
-        <TopBar />
-        <main className="main">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+    <AppShell navigation={<Sidebar />} banner={<ImpersonationBanner />} header={<TopBar />}>
+      <Outlet />
+    </AppShell>
   );
 }

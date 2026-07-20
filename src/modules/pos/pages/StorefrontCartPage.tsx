@@ -33,10 +33,10 @@ export default function StorefrontCartPage() {
             <div className="pos-cart-page__lines">
               {lines.map((l) => (
                 <CartLineRow
-                  key={l.productId}
+                  key={l.key}
                   line={l}
-                  onQty={(q) => setQty(l.productId, q)}
-                  onRemove={() => removeLine(l.productId)}
+                  onQty={(q) => setQty(l.key, q)}
+                  onRemove={() => removeLine(l.key)}
                 />
               ))}
             </div>

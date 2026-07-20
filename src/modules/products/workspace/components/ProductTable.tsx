@@ -63,7 +63,7 @@ export function ProductTable(props: {
           <th>Category</th>
           <th>Brand</th>
           <th>Price</th>
-          <th>Stock</th>
+          <th>Available</th>
           <th>Status</th>
           <th>Created</th>
           <th></th>
@@ -104,7 +104,7 @@ export function ProductTable(props: {
             <td>{p.category_id ? (categoriesById.get(p.category_id) ?? '—') : '—'}</td>
             <td>{p.brand ?? '—'}</td>
             <td>{formatPrice(p.price_cents, p.unit, p.type)}</td>
-            <td>{p.type === 'service' ? '—' : (p.stock_qty ?? 0)}</td>
+            <td>{p.type === 'service' ? '—' : (p.inventory_enabled ? (p.inventory_qty_available == null ? 'Not tracked' : p.inventory_qty_available) : (p.stock_qty ?? 0))}</td>
             <td><span className={`pm-status pm-status-${p.status}`}>{p.status}</span></td>
             <td className="pm-muted">{p.created_at.slice(0, 10)}</td>
             <td className="pm-ops">

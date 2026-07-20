@@ -1,5 +1,6 @@
 import './lib/theme.css';
 import './lib/components.css';
+import './components/ui/ui.css';
 import './modules/pos/pos.css';
 import './modules/files/files.css';
 import './modules/inventory/inventory.css';

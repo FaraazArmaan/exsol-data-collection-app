@@ -19,6 +19,7 @@ export default async function handler(req: Request): Promise<Response> {
     SELECT COUNT(*)::int AS cnt
     FROM public.inventory_stock
     WHERE client_id = ${clientId}::uuid
+      AND variant_id IS NULL
       AND qty_on_hand <= reorder_level
   `) as Array<{ cnt: number | string }>;
   const lowStockCount = Number(lowStockRows[0]?.cnt ?? 0);

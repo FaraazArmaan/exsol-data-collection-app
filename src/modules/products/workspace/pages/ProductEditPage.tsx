@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { productsApi, categoriesApi, imagesApi } from '../../shared/api';
+import { ProductsApiError, productsApi, categoriesApi, imagesApi } from '../../shared/api';
 import type {
   ProductCategory, ProductStatus, ProductWithImages,
 } from '../../shared/types';
@@ -9,6 +9,7 @@ import {
 } from '../../shared/permissions';
 import { useProductsScope } from '../../shared/scope';
 import { ProductForm, emptyDraft, type ProductDraft } from '../components/ProductForm';
+import { ProductVariantsSection } from '../components/ProductVariantsSection';
 
 export default function ProductEditPage() {
   const params = useParams<{ slug: string; productId?: string }>();
@@ -24,6 +25,7 @@ export default function ProductEditPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [inventoryEnabled, setInventoryEnabled] = useState<boolean | null>(null);
 
   const reloadProduct = useCallback(async () => {
     if (!params.productId) return;
@@ -75,6 +77,7 @@ export default function ProductEditPage() {
 
   useEffect(() => {
     categoriesApi.list({ clientId: clientQuery }).then((c) => setCats(c.items)).catch(() => {/* non-fatal */});
+    productsApi.list({ page_size: 1 }, { clientId: clientQuery }).then((p) => setInventoryEnabled(p.inventory_enabled)).catch(() => setInventoryEnabled(null));
     if (mode === 'edit') {
       reloadProduct().catch((e) => setError(e instanceof Error ? e.message : String(e)));
     }
@@ -94,6 +97,7 @@ export default function ProductEditPage() {
     setError(null);
     try {
       const payload: Partial<ProductDraft> = { ...draft, ...(targetStatus ? { status: targetStatus } : {}) };
+      if (inventoryEnabled !== false) delete payload.stock_qty;
       if (mode === 'create') {
         const saved = await productsApi.create(payload, { clientId: clientQuery });
         // Upload any buffered images now that we have a product_id.
@@ -107,10 +111,18 @@ export default function ProductEditPage() {
         }
         nav(`${basePath}/${saved.id}/edit`, { replace: true });
       } else {
-        await productsApi.update(params.productId!, payload, { clientId: clientQuery });
+        await productsApi.update(params.productId!, {
+          ...payload,
+          expected_updated_at: loaded?.updated_at,
+        }, { clientId: clientQuery });
         await reloadProduct();
       }
     } catch (e) {
+      if (e instanceof ProductsApiError && e.code === 'stale_product') {
+        await reloadProduct();
+        setError('This product changed in another session. The latest version was reloaded; review it before saving again.');
+        return;
+      }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
@@ -154,6 +166,7 @@ export default function ProductEditPage() {
       <ProductForm
         draft={draft}
         loaded={loaded}
+        inventoryEnabled={inventoryEnabled}
         categories={cats}
         pendingImages={pendingImages}
         onPendingImagesChange={setPendingImages}
@@ -162,6 +175,14 @@ export default function ProductEditPage() {
         canManageCategories={canManageCategories(permissions, levelNumber)}
         onCreateCategory={createCategory}
       />
+
+      {draft.type === 'physical' && (
+        <ProductVariantsSection
+          productId={loaded?.id ?? null}
+          clientId={clientQuery}
+          canEdit={canEdit}
+        />
+      )}
     </div>
   );
 }

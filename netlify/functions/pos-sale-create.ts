@@ -11,8 +11,8 @@
 //     AND status='active' AND deleted_at IS NULL. Cross-bucket leak → 404
 //     (treat as not-found), missing entirely → 400 (client sent garbage),
 //     hidden/archived → 400.
-//   - Unit price snapshot = COALESCE(sale_price_cents, price_cents), matching
-//     the menu read so prices are consistent across surfaces.
+//   - Unit price snapshot uses the active sale price only inside its database-time
+//     window, matching the menu read so prices are consistent across surfaces.
 //   - order_no allocation: SELECT MAX+1 inside same INSERT via CTE. The unique
 //     constraint (bucket_id, order_no) catches concurrent racers; we retry up
 //     to MAX_ATTEMPTS times on 23505 before giving up.
@@ -34,6 +34,8 @@ import { SaleCreateBody } from './_pos-validators';
 import { createSaleRazorpayCheckout } from './_payments-checkout';
 import { razorpayTestConnectionReady, RazorpayProviderError } from './_payments-razorpay';
 import { PaymentsEncryptionUnavailable } from './_payments-secrets';
+import { loadPosSaleQuote, matchesPosQuote, quoteResponse, reservePosQuoteCoupon, signPosQuote } from './_shared/pos-sale-quote';
+import { reserveSaleInventory } from './_shared/inventory-reservations';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 
 // `method` disambiguates from sales-list.ts which declares the same path with GET.
@@ -75,52 +77,15 @@ export default async function handler(req: Request): Promise<Response> {
     return paymentResponse(clientId, existing[0].id, body.channel, 200);
   }
 
-  // Hydrate products with full visibility check (mirrors /menu).
-  const productIds = body.lines.map((l) => l.productId);
-  const allProducts = (await sql`
-    SELECT id, name,
-           COALESCE(sale_price_cents, price_cents)::bigint AS unit_price_cents,
-           client_id, pos_visible, deleted_at, status
-    FROM public.products
-    WHERE id = ANY(${productIds}::uuid[])
-  `) as Array<{
-    id: string;
-    name: string;
-    unit_price_cents: number | string;
-    client_id: string;
-    pos_visible: boolean;
-    deleted_at: string | null;
-    status: string;
-  }>;
-
-  if (allProducts.length !== productIds.length) {
-    return jsonError(400, 'unknown_product');
+  const quote = await loadPosSaleQuote(sql, clientId, body);
+  if ('code' in quote) return jsonError(quote.status, quote.code);
+  if (body.quoteId && !(await matchesPosQuote(body.quoteId, quote, clientId, userNodeId))) {
+    return jsonError(409, 'quote_changed', { quote: quoteResponse(quote, await signPosQuote(quote, clientId, userNodeId)) });
   }
-  if (allProducts.some((p) => p.client_id !== clientId)) {
-    return jsonError(404, 'product_not_found');
+  if (!(await reservePosQuoteCoupon(sql, quote))) {
+    return jsonError(409, 'quote_changed', { reason: 'coupon_exhausted' });
   }
-  if (allProducts.some((p) => p.deleted_at || p.status !== 'active' || !p.pos_visible)) {
-    return jsonError(400, 'product_not_visible');
-  }
-
-  const byId = new Map(allProducts.map((p) => [p.id, p]));
-
-  let subtotal = 0;
-  const lineSpecs = body.lines.map((l, idx) => {
-    const p = byId.get(l.productId)!;
-    const unit = Number(p.unit_price_cents);
-    const lineTotal = unit * l.qty;
-    subtotal += lineTotal;
-    return {
-      productId: p.id,
-      productName: p.name,
-      unitPriceCents: unit,
-      qty: l.qty,
-      lineTotalCents: lineTotal,
-      position: idx,
-    };
-  });
-  const total = subtotal; // discount/tax 0 in v1
+  const { lines: lineSpecs, subtotalCents: subtotal, discountCents: discount, taxCents, taxAddToTotalCents, totalCents: total } = quote;
 
   // Allocate order_no + insert sale header in one statement (CTE picks MAX+1).
   // Retry on 23505 (unique-constraint race from concurrent writers).
@@ -136,12 +101,12 @@ export default async function handler(req: Request): Promise<Response> {
         INSERT INTO public.sales (
           bucket_id, order_no, status, channel,
           customer_name, customer_phone, customer_email,
-          subtotal_cents, total_cents,
+          subtotal_cents, discount_cents, tax_cents, total_cents,
           created_by_user_node, payment_ref
         )
         SELECT ${clientId}::uuid, n, 'pending_payment'::sale_status, ${body.channel}::sale_channel,
                ${body.customer.name}, ${body.customer.phone}, ${body.customer.email ?? null},
-               ${subtotal}, ${total},
+               ${subtotal}, ${discount}, ${taxAddToTotalCents}, ${total},
                ${userNodeId}::uuid, ${IDEM_PREFIX + body.idempotencyKey}
         FROM next_no
         RETURNING id
@@ -162,10 +127,32 @@ export default async function handler(req: Request): Promise<Response> {
   for (const ls of lineSpecs) {
     await sql`
       INSERT INTO public.sale_lines
-        (sale_id, product_id, product_name_snap, unit_price_cents, qty, line_total_cents, position)
+        (sale_id, product_id, variant_id, product_name_snap, variant_name_snap, variant_sku_snap, unit_price_cents, qty, line_total_cents, position)
       VALUES
-        (${saleId}::uuid, ${ls.productId}::uuid, ${ls.productName}, ${ls.unitPriceCents},
+        (${saleId}::uuid, ${ls.productId}::uuid, ${ls.variantId ?? null}::uuid, ${ls.productName}, ${ls.variantName ?? null}, ${ls.variantSku ?? null}, ${ls.unitPriceCents},
          ${ls.qty}, ${ls.lineTotalCents}, ${ls.position})
+    `;
+  }
+
+  // Pending orders hold stock but do not reduce on-hand yet. The helper leaves
+  // non-stock-tracked catalogue items alone, and atomically refuses a tracked
+  // row when another checkout already holds the remaining quantity.
+  let inventoryReserved = false;
+  try {
+    inventoryReserved = await reserveSaleInventory(sql, clientId, saleId);
+  } catch (error) {
+    await removeFailedSale(sql, clientId, saleId, quote.couponId);
+    throw error;
+  }
+  if (!inventoryReserved) {
+    await removeFailedSale(sql, clientId, saleId, quote.couponId);
+    return jsonError(409, 'insufficient_stock');
+  }
+
+  if (quote.couponId && quote.couponCustomerKey) {
+    await sql`
+      INSERT INTO public.coupon_redemptions (coupon_id, sale_id, customer_key, discount_cents)
+      VALUES (${quote.couponId}::uuid, ${saleId}::uuid, ${quote.couponCustomerKey}, ${discount})
     `;
   }
 
@@ -175,10 +162,22 @@ export default async function handler(req: Request): Promise<Response> {
     clientId,
     targetType: 'sale',
     targetId: saleId,
-    detail: { total_cents: total, channel: body.channel, lines: lineSpecs.length },
+    detail: { total_cents: total, discount_cents: discount, tax_cents: taxCents, channel: body.channel, lines: lineSpecs.length },
   });
 
   return paymentResponse(clientId, saleId, body.channel, 201);
+}
+
+// A reservation failure happens before any payment intent is created. Remove
+// the provisional sale and give back the coupon slot that was reserved earlier.
+async function removeFailedSale(sql: NeonQueryFunction<false, false>, clientId: string, saleId: string, couponId?: string): Promise<void> {
+  await sql`DELETE FROM public.sales WHERE id = ${saleId}::uuid AND bucket_id = ${clientId}::uuid`;
+  if (couponId) {
+    await sql`
+      UPDATE public.coupons SET redeemed_count = GREATEST(0, redeemed_count - 1)
+      WHERE id = ${couponId}::uuid AND client_id = ${clientId}::uuid
+    `;
+  }
 }
 
 async function paymentResponse(clientId: string, saleId: string, channel: SaleCreateBody['channel'], status: number): Promise<Response> {

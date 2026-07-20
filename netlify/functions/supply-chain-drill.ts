@@ -37,6 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
       FROM public.stock_movements
       WHERE product_id = ${id}::uuid
         AND client_id = ${clientId}::uuid
+        AND variant_id IS NULL
       ORDER BY created_at DESC
       LIMIT 20
     `) as Array<{ date: string; type: string; qtyDelta: number | string; ref: string | null }>;

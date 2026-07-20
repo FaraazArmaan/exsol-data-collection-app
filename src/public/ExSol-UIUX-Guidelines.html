@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExSol UI/UX Guidelines</title>
+  <link rel="stylesheet" href="/exsol-uiux-lab.css">
+  <style>
+    .guide { max-width: 1040px; margin: 0 auto; padding: 48px 24px 84px; }
+    h1 { font-size: clamp(2.3rem, 6vw, 4.5rem); max-width: 15ch; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: 1.55rem; }
+    h3 { margin: 0 0 7px; font-size: 1.05rem; }
+    .lede, .rule, li { color: var(--muted); }
+    .lede { max-width: 72ch; font-size: 1.05rem; }
+    .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0; }
+    .principle { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .principle b { display: block; margin-bottom: 6px; }
+    .section { margin-top: 34px; }
+    .section-intro { margin: 8px 0 14px; color: var(--muted); }
+    .decisions { display: grid; gap: 10px; }
+    .decision { padding: 16px; border: 1px solid var(--line); border-left: 3px solid var(--success); background: var(--surface); }
+    .decision.pending { border-left-color: #e6bd69; }
+    .status { display: inline-block; margin-bottom: 8px; padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .pending .status { background: color-mix(in srgb, #e6bd69 16%, transparent); color: #e6bd69; }
+    .decision p { margin: 0; color: var(--muted); }
+    .decision strong { color: var(--text); }
+    .system-note { margin-top: 28px; padding: 18px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    @media (max-width: 720px) { .guide { padding: 32px 16px 60px; } .principles { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="guide">
+    <p class="lab-eyebrow">EXSOL · SHARED PRODUCT REFERENCE</p>
+    <h1>UI/UX Guidelines</h1>
+    <p class="lede">This is the living design-and-system decision record for every ExSol module. It explains the rule, why it exists, and what it means for desktop, phone, accessibility, data, permissions, and implementation. Modules may extend a rule when their domain genuinely needs it; they may not silently contradict it.</p>
+
+    <section class="principles" aria-label="How to apply this guide">
+      <article class="principle"><b>One shared truth</b><span class="rule">Desktop and phone may use different layouts, but they must use the same records, business rules, permissions, and audit history.</span></article>
+      <article class="principle"><b>Adapt, do not duplicate</b><span class="rule">Phone can have a focused workflow when the role’s job is different; it must not become a disconnected second product.</span></article>
+      <article class="principle"><b>Preview before implementation</b><span class="rule">Every future decision must update realistic desktop and phone previews side by side, including relevant loading, error, empty, and recovery states.</span></article>
+    </section>
+
+    <section class="section">
+      <p class="lab-eyebrow">FOUNDATION · DECISIONS 01–12</p>
+      <h2>Visual language and everyday interaction</h2>
+      <p class="section-intro">The shared base prevents each module from inventing its own look, hierarchy, or navigation behaviour.</p>
+      <div class="decisions">
+        <article class="decision"><span class="status">Accepted · 01</span><h3>Graphite &amp; moss colour system</h3><p>Use graphite surfaces with moss as the primary accent; light mode uses the matching ink-and-moss family. Moss is never the only success signal—text and icon meaning remain required.</p></article>
+        <article class="decision"><span class="status">Accepted · 01 implementation contract</span><h3>Forest Ledger light and dark palette</h3><p>Use Forest Ledger for the shared platform foundation. Light: base <code>#F7F8F4</code>, surface <code>#FFFFFF</code>, elevated <code>#EEF2EA</code>, primary text <code>#1E261F</code>, secondary text <code>#566258</code>, border <code>#D5DDD1</code>, moss accent <code>#496B43</code>, accent text <code>#F5FAF1</code>, focus <code>#7A5A19</code>. Dark: base <code>#161B17</code>, surface <code>#202820</code>, elevated <code>#2B352B</code>, primary text <code>#EEF2EB</code>, secondary text <code>#B1BAAF</code>, border <code>#3C483C</code>, moss accent <code>#B8D5A9</code>, accent text <code>#142014</code>, focus <code>#E8C66A</code>. Verify all rendered text, component, and focus combinations before release.</p></article>
+        <article class="decision"><span class="status">Accepted · 02</span><h3>Follow device on first use</h3><p>Use the operating-system appearance initially. A stored user override, once provided, takes precedence. Both themes are first-class and must be tested.</p></article>
+        <article class="decision"><span class="status">Accepted · 03</span><h3>Poppins as the shared UI voice</h3><p>Buttons, navigation, labels, and content use Poppins consistently. Tables, schedules, and finance retain compact type, padding, and tabular numerals so personality never costs operational density.</p></article>
+        <article class="decision"><span class="status">Accepted · 04</span><h3>Balanced information density</h3><p>Use comfortable scanning space by default. Dense data surfaces may be compact when the work demands it, without reducing accessible targets.</p></article>
+        <article class="decision"><span class="status">Accepted · 05</span><h3>Tiered shape language</h3><p>Cards, forms, and drawers use soft 8px corners; selected emphasis can be rounder; tables, grids, finance, and schedules stay crisp (0–4px). Pills are reserved for filters and statuses.</p></article>
+        <article class="decision"><span class="status">Accepted · 06</span><h3>One clear next action</h3><p>Each context has one filled primary action. Secondary actions recede; destructive actions are distinct and confirmed.</p></article>
+        <article class="decision"><span class="status">Accepted · 07</span><h3>Nearby result plus toast feedback</h3><p>Show the outcome and recovery close to the action, with a brief cross-app toast when useful. Modals are for irreversible risk, not routine success.</p></article>
+        <article class="decision"><span class="status">Accepted · 08</span><h3>Global rail, local workspace</h3><p>Global navigation changes products; each module owns local navigation. Permissions hide inaccessible destinations rather than creating dead links.</p></article>
+        <article class="decision"><span class="status">Accepted · 09</span><h3>Validate on blur and submit</h3><p>Validate a completed field, then validate all fields on submit. Explain the fix beside the field and move focus to the first invalid field after failed submission.</p></article>
+        <article class="decision"><span class="status">Accepted · 10</span><h3>Explain failure or emptiness and offer the next action</h3><p>Loading, no results, permissions, and request failure are different states. Name the actual state and provide a relevant, reversible recovery path.</p></article>
+        <article class="decision"><span class="status">Accepted · 11</span><h3>Context-based task containers</h3><p>Use drawers for contextual edits, modals for destructive confirmation, and full pages for complex multi-step work. Drawers promote to full screens on small devices.</p></article>
+        <article class="decision"><span class="status">Accepted · 12</span><h3>Visible search and active filters</h3><p>Keep search, current filters, and default sort visible. Advanced panels and saved views are introduced only when data complexity justifies them.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="lab-eyebrow">OPERATIONAL WORK · DECISIONS 13–20</p>
+      <h2>Selection, mobile execution, and recovery</h2>
+      <p class="section-intro">These rules make repetitive work fast without hiding consequences or splitting phone work from the authoritative platform.</p>
+      <div class="decisions">
+        <article class="decision"><span class="status">Accepted · 13</span><h3>Contextual bulk-action bar</h3><p>Keep ordinary tables calm. After selection, reveal the exact selected count and available batch actions. On phone, the action bar becomes a reachable sticky bottom area; destructive batches name the affected count.</p></article>
+        <article class="decision"><span class="status">Accepted · 14</span><h3>Mobile data: focused workflow where justified</h3><p>For a different, repeated field role, phone may use its own focused flow. Otherwise prioritise the essential scan and reveal detail on demand. In either case share data, permission, language, and audit state.</p></article>
+        <article class="decision"><span class="status">Accepted · 15</span><h3>Focused mobile navigation</h3><p>Use a limited task-focused bottom navigation inside the shared product model when mobile work is distinct. Keep safe areas, labels, and a small number of destinations; do not invent a disconnected app.</p></article>
+        <article class="decision"><span class="status">Accepted · 16</span><h3>Next-task queue as field home</h3><p>Field workers open on the next actionable task and a short ordered queue. Full schedules remain one navigation step away; scheduling roles retain their desktop calendar workspace.</p></article>
+        <article class="decision"><span class="status">Accepted · 17</span><h3>Brief readiness checks</h3><p>For preparation-dependent tasks, show a short role-specific checklist before start. Do not turn it into a long form; use immediate start for genuinely safe, reversible work.</p></article>
+        <article class="decision"><span class="status">Accepted · 18</span><h3>Checklist with visible progress</h3><p>Repeatable work uses a short checklist and progress count. Use a strict wizard only when sequence or compliance truly requires it. Desktop shows richer context; phone keeps execution focused.</p></article>
+        <article class="decision"><span class="status">Accepted · 19</span><h3>Completion confirms, then offers the next task</h3><p>Confirm the saved outcome and offer the next relevant task without auto-starting it. The completed record remains recoverable from history.</p></article>
+        <article class="decision"><span class="status">Accepted · 20</span><h3>Structured exception and recovery</h3><p>Capture a short reason, actor, timestamp, and valid recovery path rather than an ambiguous “incomplete” state. The same exception state is stored centrally for desktop and phone.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="lab-eyebrow">SHARED SYSTEM PATTERNS · DECISIONS 21–33</p>
+      <h2>Data, forms, resilience, access, and time</h2>
+      <p class="section-intro">These decisions are reusable across Booking, Workforce, L+AMS, Payments, Product Manager, POS, ecommerce, and future modules.</p>
+      <div class="decisions">
+        <article class="decision"><span class="status">Accepted · 21</span><h3>Status means text + icon + colour</h3><p>Every status remains understandable without colour. Centralise status names and meanings; modules may change density, not semantic meaning.</p></article>
+        <article class="decision"><span class="status">Accepted · 22</span><h3>Grouped sections with one save boundary</h3><p>Related fields are edited together in one form. Phone opens the same groups as focused edit surfaces. Use a wizard only for genuine dependency chains.</p></article>
+        <article class="decision"><span class="status">Accepted · 23</span><h3>Content-shaped skeletons for initial loading</h3><p>Preserve expected layout while initial data loads, then resolve in place. Clearly distinguish initial loading, refreshing known data, stale cached data, and error.</p></article>
+        <article class="decision"><span class="status">Accepted · 24</span><h3>Plain-language errors with targeted retry</h3><p>Preserve safe filters, location, and entered context; explain impact and offer recovery. Diagnostics are safe support data, not the main message.</p></article>
+        <article class="decision"><span class="status">Accepted · 25</span><h3>Empty states name scope and correction</h3><p>Distinguish “no results for these filters” from “no records exist.” Preserve active filters and provide one relevant corrective action.</p></article>
+        <article class="decision"><span class="status">Accepted · 26</span><h3>Contextual destructive confirmation</h3><p>Name the record and impact, offer the safe alternative, and provide undo when valid. Typed confirmation is reserved for permanent or high-blast-radius actions.</p></article>
+        <article class="decision"><span class="status">Accepted · 27</span><h3>Action queue plus supporting metrics</h3><p>Operational homes lead with work that needs attention, then compact performance context. Executive reporting can use a separate metrics-first view.</p></article>
+        <article class="decision"><span class="status">Accepted · 28</span><h3>Context-aware permission visibility</h3><p>Hide sensitive destinations; explain a relevant restriction inside permitted work. UI visibility is guidance only—routes, functions, and queries still enforce authority server-side.</p></article>
+        <article class="decision"><span class="status">Accepted · 29</span><h3>Adaptive cross-device action target density</h3><p>Use context-adaptive targets: dense desktop data work may use compact controls only when every pointer target meets WCAG’s 24px size-or-spacing rule; comfortable desktop controls use the shared standard size; primary phone task controls are 44px. This keeps schedules, tables, and finance practical without making repeated touch work unreliable.</p></article>
+        <article class="decision"><span class="status">Accepted · 30</span><h3>Quiet integrated focus treatment</h3><p>No external focus ring. The focused component itself changes border and surface contrast so keyboard and assistive users can still locate focus reliably.</p></article>
+        <article class="decision"><span class="status">Accepted · 31</span><h3>Context-aware drafts and unsaved-change protection</h3><p>Retain safe local drafts and ask only when leaving could discard meaningful work. Drafts are not committed records and cannot silently commit financial or destructive decisions.</p></article>
+        <article class="decision"><span class="status">Accepted · 32</span><h3>Shared presets plus personal saved views</h3><p>Store filters, sort, columns, and a name—not copied data. Recheck permissions every run; shared views need ownership and a change policy.</p></article>
+        <article class="decision"><span class="status">Accepted · 33</span><h3>Contextual time-zone visibility</h3><p>Establish the business schedule zone once, then reveal exact or alternate local time only when relevant. Store unambiguous moments plus scheduling zone where audit semantics matter.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="lab-eyebrow">INTEGRATION AND GOVERNANCE · DECISIONS 34–50</p>
+      <h2>How the product stays coherent as it grows</h2>
+      <p class="section-intro">These rules connect the UI to auditability, file storage, offline work, product enablement, and shared platform data.</p>
+      <div class="decisions">
+        <article class="decision"><span class="status">Accepted · 34</span><h3>Human activity timeline, audit detail on demand</h3><p>Routine users see an actor/action/time timeline with meaningful before/after context. Authorised reviewers can open the immutable raw audit events; the timeline is a projection, not the source of truth.</p></article>
+        <article class="decision"><span class="status">Accepted · 35</span><h3>Contextual evidence capture</h3><p>Attach files or photos from the work that needs them, then retain them in record history with owner, purpose, uploader, retention, scan status, and permission scope. Phone can promote camera capture; desktop can prioritise existing files.</p></article>
+        <article class="decision"><span class="status">Accepted · 36</span><h3>Minimum necessary sensitive data</h3><p>Show task-relevant context by default; reveal protected fields only for an authorised purpose. Field-level policy applies in APIs, exports, logs, and attachments—not merely the UI.</p></article>
+        <article class="decision"><span class="status">Accepted · 37</span><h3>Progressive advanced filtering</h3><p>Keep common filters visible, then open a focused advanced builder when needed. Translate it into an allow-listed typed query model; saved views store that model, never raw query text.</p></article>
+        <article class="decision"><span class="status">Accepted · 38</span><h3>Scoped, queued, secure exports</h3><p>Review export scope before queuing a durable server job. Notify the requester when a short-lived secure download is ready; snapshot scope, log access, and recheck permission at creation and download.</p></article>
+        <article class="decision"><span class="status">Accepted · 39</span><h3>Explicit offline queue and sync state</h3><p>Allow only explicitly supported local work, display pending changes and network-only limits, then reconcile centrally. A local queue is not permission bypass or final acceptance.</p></article>
+        <article class="decision"><span class="status">Accepted · 40</span><h3>Field-level sync conflict resolution</h3><p>Preserve authored competing values, merge non-conflicting changes, and resolve only the affected field visibly. Use server-side version checks and audit the policy and resolution.</p></article>
+        <article class="decision"><span class="status">Accepted · 41</span><h3>Staged import with explicit commit</h3><p>Upload to staging, map and validate data, preview creates/updates/skips/errors, and require an explicit production commit. Imports need deduplication, idempotency, row results, and an audit record.</p></article>
+        <article class="decision"><span class="status">Accepted · 42</span><h3>Resumable module setup</h3><p>Guide new owners with required/optional setup outcomes and deep links into real settings pages. Completion derives from validated configuration, not a cosmetic tutorial checklist.</p></article>
+        <article class="decision"><span class="status">Accepted · 43</span><h3>Contextual help plus deeper learning</h3><p>Explain the next meaningful action at the point of work, then link to searchable help when needed. Help content is versioned with behaviour and never compensates for bad information architecture.</p></article>
+        <article class="decision"><span class="status">Accepted · 44</span><h3>Notification persistence by consequence</h3><p>Keep outcome near its action, use a brief toast for cross-app awareness, and create a durable notification only for consequential, asynchronous, expiring, or later-actionable events.</p></article>
+        <article class="decision"><span class="status">Accepted · 45</span><h3>Canonical money, time, and locale formatting</h3><p>Store money as minor-unit integer plus ISO currency, and temporal values canonically. Render them through one shared formatter with declared business/user context; official financial surfaces name currency.</p></article>
+        <article class="decision"><span class="status">Accepted · 46</span><h3>Visible, explicit workspace switching</h3><p>Show the active organisation/location whenever it changes data meaning. A deliberate switch refreshes scope and never carries selections or drafts across contexts.</p></article>
+        <article class="decision"><span class="status">Accepted · 47</span><h3>Hide unenabled products; recover direct links for owners</h3><p>Default navigation hides unenabled products. If an eligible owner reaches a direct, stale, or bookmarked link, show a recovery gate to the actual enablement flow; routes and APIs remain gated.</p></article>
+        <article class="decision"><span class="status">Accepted · 48</span><h3>Canonical cross-module references</h3><p>Show an authorised summary and link to the owning customer, staff, payment, or other canonical record. Use stable references rather than copied mutable facts or raw IDs.</p></article>
+        <article class="decision"><span class="status">Accepted · 49</span><h3>Contextual plus authorised global search</h3><p>Everyday search stays within the active module; global command search returns only authorised records, identifies the owning module, and rechecks authority on open.</p></article>
+        <article class="decision"><span class="status">Accepted · 50</span><h3>Central shared preferences, local workflow preferences</h3><p>Appearance, accessibility, and notification choices live in one versioned profile. Calendar view, saved views, map state, and other workflow settings stay in their owning module namespace.</p></article>
+      </div>
+    </section>
+
+    <section class="system-note">
+      <h2>Implementation checklist for every module</h2>
+      <ul>
+        <li>Use the shared theme tokens and Poppins system; do not invent a private colour or interaction language.</li>
+        <li>Model loading, stale, empty, denied, error, success, destructive, and recovery states before calling a surface complete.</li>
+        <li>Keep desktop and phone previews, handlers, permissions, and audit transitions tied to the same domain state.</li>
+        <li>Test real keyboard focus, touch target size, text contrast, narrow layouts, and the complete failure/recovery path in a browser.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

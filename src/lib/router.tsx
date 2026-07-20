@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
 import { useAuth } from './auth-context';
+import { AppShell } from '../components/ui/AppShell';
 import LoginPage from '../modules/login/pages/LoginPage';
 import SetPasswordPage from '../modules/login/pages/SetPasswordPage';
 import StorefrontLayout from '../modules/pos/pages/StorefrontLayout';
@@ -79,12 +80,7 @@ import { BrandSiteMount } from '../modules/portfolio/BrandSiteRouteMounts';
 import { HrMount } from '../modules/hr/HrRouteMounts';
 
 function ShellLayout() {
-  return (
-    <div className="app-shell">
-      <Sidebar />
-      <main className="main"><Outlet /></main>
-    </div>
-  );
+  return <AppShell navigation={<Sidebar />}><Outlet /></AppShell>;
 }
 
 function RequireAdmin() {

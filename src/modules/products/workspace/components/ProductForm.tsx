@@ -11,7 +11,7 @@ import { ProductPhysicalAttrsSection } from './ProductPhysicalAttrsSection';
 import { ProductTaxonomySection } from './ProductTaxonomySection';
 
 export interface ProductDraft
-  extends Omit<Product, 'id' | 'created_at' | 'updated_at' | 'currency'> {}
+  extends Omit<Product, 'id' | 'created_at' | 'updated_at' | 'currency' | 'inventory_qty_on_hand' | 'inventory_qty_reserved' | 'inventory_qty_available' | 'inventory_enabled'> {}
 
 export const emptyDraft = (): ProductDraft => ({
   type: 'physical',
@@ -59,6 +59,7 @@ export const emptyDraft = (): ProductDraft => ({
 export function ProductForm(props: {
   draft: ProductDraft;
   loaded: ProductWithImages | null;
+  inventoryEnabled: boolean | null;
   categories: ProductCategory[];
   pendingImages: File[];
   onPendingImagesChange: (files: File[]) => void;
@@ -71,8 +72,8 @@ export function ProductForm(props: {
   // leak in the PATCH payload. The server also validates this, but doing it
   // client-side keeps the UX honest (no "ghost SKU" after toggling).
   useEffect(() => {
-    if (props.draft.type === 'service' && (props.draft.sku || props.draft.stock_qty || props.draft.unit)) {
-      props.onChange({ sku: null, stock_qty: null, unit: null });
+    if (props.draft.type === 'service' && (props.draft.sku || props.draft.unit)) {
+      props.onChange({ sku: null, unit: null });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.draft.type]);
@@ -93,6 +94,8 @@ export function ProductForm(props: {
             sku={props.draft.sku}
             stock_qty={props.draft.stock_qty}
             unit={props.draft.unit}
+            inventory={props.loaded}
+            inventoryEnabled={props.inventoryEnabled}
             onChange={(p) => props.onChange(p as Partial<ProductDraft>)}
           />
         </div>

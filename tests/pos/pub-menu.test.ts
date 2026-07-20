@@ -51,10 +51,48 @@ describe('GET /api/public/menu/:slug', () => {
     expect(JSON.stringify(body)).not.toContain(clientId);
   });
 
+  it('returns only storefront-sellable variants', async () => {
+    const { clientId, slug } = await seedStorefrontClient();
+    const [productId] = await seedProducts(clientId, [{ name: 'Variant mug', price_cents: 1200, status: 'active' }]);
+    await sql`
+      INSERT INTO public.product_variants (client_id, product_id, title, option_values, price_cents, status, availability, storefront_visible)
+      VALUES
+        (${clientId}::uuid, ${productId}::uuid, 'Large', '{"size":"L"}'::jsonb, 1600, 'active', 'in_stock', true),
+        (${clientId}::uuid, ${productId}::uuid, 'Preorder', '{"size":"XL"}'::jsonb, 1700, 'active', 'preorder', true),
+        (${clientId}::uuid, ${productId}::uuid, 'Sold out', '{"size":"S"}'::jsonb, 1100, 'active', 'out_of_stock', true)
+    `;
+    const res = await handler(pubReq(slug));
+    expect(res.status).toBe(200);
+    const body = await res.json() as { products: Array<{ id: string; variants?: Array<{ title: string; salePriceCents: number }> }> };
+    const variants = body.products.find((product) => product.id === productId)?.variants;
+    expect(variants).toHaveLength(2);
+    expect(variants).toMatchObject([
+      { title: 'Large', salePriceCents: 1600 },
+      { title: 'Preorder', salePriceCents: 1700 },
+    ]);
+  });
+
   it('sets a short public Cache-Control', async () => {
     const { slug } = await seedStorefrontClient();
     const res = await handler(pubReq(slug));
     expect(res.headers.get('Cache-Control')).toContain('max-age=30');
+  });
+
+  it('uses price_cents when the configured sale window has ended', async () => {
+    const { clientId, slug } = await seedStorefrontClient();
+    const [productId] = await seedProducts(clientId, [
+      { name: 'Past sale', price_cents: 20000, sale_price_cents: 15000, status: 'active' },
+    ]);
+    await sql`
+      UPDATE public.products
+      SET sale_starts_at = '2000-01-01T00:00:00.000Z'::timestamptz,
+          sale_ends_at = '2000-01-31T23:59:59.000Z'::timestamptz
+      WHERE id = ${productId}
+    `;
+
+    const res = await handler(pubReq(slug));
+    const body = (await res.json()) as { products: Array<{ id: string; salePriceCents: number }> };
+    expect(body.products.find((product) => product.id === productId)?.salePriceCents).toBe(20000);
   });
 
   it('404 storefront_unavailable for an unknown slug', async () => {

@@ -4,6 +4,9 @@ import { getClientBySlug, userLogin } from '../api';
 import { useUserAuth } from '../user-auth-context';
 import { GoogleSignInButton } from '../../../lib/google-signin';
 import { unifiedGoogleLogin, forgotPassword } from '../../login/api';
+import { Button } from '../../../components/ui/Button';
+import { InlineNotice } from '../../../components/ui/Feedback';
+import { Field, Input } from '../../../components/ui/Field';
 
 export default function UserLogin() {
   const { slug } = useParams<{ slug: string }>();
@@ -37,12 +40,13 @@ export default function UserLogin() {
     navigate(user.must_change_password ? `/c/${slug}/change-password` : `/c/${slug}`, { replace: true });
   }, [user, authLoading, slug, navigate]);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!slug) return;
     setError(null);
     setSubmitting(true);
-    const r = await userLogin(slug, email.trim(), password);
+    const values = new FormData(e.currentTarget);
+    const r = await userLogin(slug, String(values.get('email') ?? '').trim(), String(values.get('password') ?? ''));
     setSubmitting(false);
     if (!r.ok) {
       if (r.error.code === 'too_many_attempts') {
@@ -79,13 +83,15 @@ export default function UserLogin() {
     navigate(dest, { replace: true });
   }, [slug, navigate, refresh]);
 
-  async function onForgotSubmit(e: FormEvent) {
+  async function onForgotSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!email.trim() || !slug) return;
+    const submittedEmail = String(new FormData(e.currentTarget).get('email') ?? '').trim();
+    if (!submittedEmail || !slug) return;
     setForgotSubmitting(true);
     // Scope to this client's slug — server only flips the flag on credentials
     // matching the email within this client, not across the whole org.
-    await forgotPassword(email.trim(), slug);
+    await forgotPassword(submittedEmail, slug);
+    setEmail(submittedEmail);
     setForgotSubmitting(false);
     setForgotMode('sent');
   }
@@ -105,9 +111,7 @@ export default function UserLogin() {
         <p className="muted" style={{ fontSize: 12 }}>
           Contact your administrator if you don't hear back shortly.
         </p>
-        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => { setForgotMode(null); setPassword(''); }}>
-          ← Back to sign in
-        </button>
+        <Button variant="primary" style={{ marginTop: 12 }} onClick={() => { setForgotMode(null); setPassword(''); }}>← Back to sign in</Button>
       </PageShell>
     );
   }
@@ -120,16 +124,12 @@ export default function UserLogin() {
           Enter your email and we'll let your admin know to issue a new temporary password.
         </p>
         <form onSubmit={onForgotSubmit}>
-          <label>Email
-            <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
+          <Field label="Email" required>
+            {(props) => <Input {...props} name="email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />}
+          </Field>
           <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-            <button type="submit" className="btn btn-primary" disabled={forgotSubmitting || !email.trim()}>
-              {forgotSubmitting ? 'Sending…' : 'Send request'}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={() => setForgotMode(null)} disabled={forgotSubmitting}>
-              Cancel
-            </button>
+            <Button type="submit" variant="primary" disabled={!email.trim()} loading={forgotSubmitting} loadingLabel="Sending…">Send request</Button>
+            <Button type="button" variant="quiet" onClick={() => setForgotMode(null)} disabled={forgotSubmitting}>Cancel</Button>
           </div>
         </form>
       </PageShell>
@@ -141,12 +141,14 @@ export default function UserLogin() {
       <h1 style={{ marginBottom: 4 }}>{clientName ?? 'Loading…'}</h1>
       <p className="muted" style={{ marginTop: 0 }}>Sign in to your account</p>
       <form onSubmit={handleSubmit}>
-        <label>Email
-          <input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label>Password
-          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <Field label="Email" required>
+            {(props) => <Input {...props} name="email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />}
+          </Field>
+          <Field label="Password" required>
+            {(props) => <Input {...props} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}
+          </Field>
+        </div>
         <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
           <button
             type="button"
@@ -157,11 +159,9 @@ export default function UserLogin() {
             Forgot password?
           </button>
         </div>
-        {error && <p className="error">{error}</p>}
+        {error && <InlineNotice tone="danger" title="Sign in failed">{error}</InlineNotice>}
         <div style={{ marginTop: 12 }}>
-          <button type="submit" className="btn btn-primary" disabled={submitting || !clientName}>
-            {submitting ? 'Signing in…' : 'Sign in'}
-          </button>
+          <Button type="submit" variant="primary" disabled={!clientName} loading={submitting} loadingLabel="Signing in…">Sign in</Button>
         </div>
       </form>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>

@@ -45,4 +45,19 @@ describe('pub-catalog', () => {
     expect(body.tenant.contactEmail).toBe('shop@example.test');
     expect((body.products as CatProduct[]).some((p) => p.name === 'Catalog Product')).toBe(true);
   });
+
+  it('includes an active product even when it is hidden from the storefront', async () => {
+    const ctx = await seedClientWithProductsEnabled();
+    await enableCatalog(ctx);
+    const [productId] = await seedProducts(ctx.clientId, [
+      { name: 'Catalog-only visibility', status: 'active' },
+    ]);
+    await sql`UPDATE public.products SET storefront_visible = false WHERE id = ${productId}`;
+    const slug = await slugOf(ctx);
+
+    const res = await catalogHandler(publicGet(`/api/public/catalog/${slug}`));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { products: CatProduct[] };
+    expect(body.products.some((product) => product.id === productId)).toBe(true);
+  });
 });

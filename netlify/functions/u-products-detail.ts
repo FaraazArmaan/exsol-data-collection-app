@@ -27,6 +27,10 @@ function idFromUrl(req: Request): string | null {
 }
 
 const PatchBody = z.object({
+  // A caller that supplies the version it read receives a conflict instead of
+  // overwriting a newer edit. Optional only for existing API integrations;
+  // Product Manager's browser client always sends it.
+  expected_updated_at: z.string().datetime().optional(),
   type: z.enum(['physical', 'service']).optional(),
   name: z.string().min(1).max(120).optional(),
   description: z.string().nullable().optional(),
@@ -66,7 +70,7 @@ const PatchBody = z.object({
   meta_category: z.string().max(120).nullable().optional(),
   product_url: z.string().url().max(500).nullable().optional(),
   platform_extras: z.record(z.unknown()).optional(),
-}).refine((v) => Object.keys(v).length > 0, { message: 'empty patch' });
+}).refine((v) => Object.keys(v).some((key) => key !== 'expected_updated_at'), { message: 'empty patch' });
 
 export default async (req: Request, _ctx: Context) => {
   const id = idFromUrl(req);
@@ -89,7 +93,10 @@ async function handleGet(req: Request, id: string): Promise<Response> {
   const rows = (await sql`
     SELECT p.id, p.type, p.name, p.description, p.category_id, p.brand, p.tags, p.price_cents, p.currency,
            p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
-           p.created_at, p.updated_at,
+           inv.qty_on_hand AS inventory_qty_on_hand, inv.qty_reserved AS inventory_qty_reserved,
+           (inv.qty_on_hand - inv.qty_reserved) AS inventory_qty_available,
+           EXISTS (SELECT 1 FROM public.client_enabled_products cep WHERE cep.client_id = p.client_id AND cep.product_key = 'inventory') AS inventory_enabled,
+           p.created_at, to_char(p.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
            p.gtin, p.mpn, p.condition, p.availability,
            p.discount_percent, p.sale_price_cents, p.sale_starts_at, p.sale_ends_at,
            p.weight_grams, p.length_mm, p.width_mm, p.height_mm,
@@ -99,6 +106,8 @@ async function handleGet(req: Request, id: string): Promise<Response> {
     FROM public.products p
     LEFT JOIN public.product_images pi_hero
       ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key
+    LEFT JOIN public.inventory_stock inv
+      ON inv.client_id = p.client_id AND inv.product_id = p.id AND inv.variant_id IS NULL
     WHERE p.id = ${id}::uuid AND p.client_id = ${scope.clientId}::uuid AND p.deleted_at IS NULL
     LIMIT 1
   `) as Array<Record<string, unknown>>;
@@ -124,7 +133,7 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'validation_failed', parsed.error.flatten());
-  const v = parsed.data;
+  const { expected_updated_at, ...v } = parsed.data;
 
   if (v.discount_percent != null && (v.discount_percent <= 0 || v.discount_percent >= 100)) {
     return jsonError(400, 'discount_percent_invalid', 'must be > 0 and < 100');
@@ -132,10 +141,10 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 
   const sql = db();
   const cur = (await sql`
-    SELECT type, status, category_id, price_cents, discount_percent, sale_price_cents FROM public.products
+    SELECT type, status, category_id, price_cents, discount_percent, sale_price_cents, updated_at FROM public.products
     WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND deleted_at IS NULL
     LIMIT 1
-  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null; price_cents: number; discount_percent: string | null; sale_price_cents: number | null }>;
+  `) as Array<{ type: 'physical' | 'service'; status: string; category_id: string | null; price_cents: number; discount_percent: string | null; sale_price_cents: number | null; updated_at: string }>;
   if (cur.length === 0) return jsonError(404, 'not_found');
 
   const oldPrice = cur[0]!.price_cents as number;
@@ -148,12 +157,28 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   const tErrs = validateTypeFields({ type: effectiveType, sku: v.sku, stock_qty: v.stock_qty, unit: v.unit });
   if (tErrs.length) return jsonError(422, 'invalid_input', tErrs);
 
+  // Keep the old scalar writable only for tenants without Inventory. This is
+  // deliberately server-enforced as API callers do not pass through the UI.
+  if (v.stock_qty !== undefined) {
+    const inventory = (await sql`
+      SELECT EXISTS (
+        SELECT 1 FROM public.client_enabled_products
+        WHERE client_id = ${clientId}::uuid AND product_key = 'inventory'
+      ) AS enabled
+    `) as Array<{ enabled: boolean }>;
+    if (inventory[0]?.enabled) return jsonError(409, 'inventory_stock_managed');
+  }
+
   // SKU uniqueness (skip self).
   if (v.sku !== undefined && v.sku !== null && v.sku !== '') {
     const dup = (await sql`
       SELECT id FROM public.products
       WHERE client_id = ${clientId}::uuid AND sku = ${v.sku}
-        AND deleted_at IS NULL AND id <> ${id}::uuid LIMIT 1
+        AND deleted_at IS NULL AND id <> ${id}::uuid
+      UNION ALL
+      SELECT id FROM public.product_variants
+      WHERE client_id = ${clientId}::uuid AND sku = ${v.sku}
+      LIMIT 1
     `) as Array<{ id: string }>;
     if (dup.length) return jsonError(409, 'sku_in_use');
   }
@@ -240,14 +265,18 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   const idIdx = params.length;
   params.push(clientId);
   const cidIdx = params.length;
+  if (expected_updated_at) params.push(expected_updated_at);
+  const versionIdx = params.length;
 
   try {
     const rows = (await sql(
       `UPDATE public.products
          SET ${sets.join(', ')}, updated_at = now()
-       WHERE id = $${idIdx}::uuid AND client_id = $${cidIdx}::uuid AND deleted_at IS NULL
+       WHERE id = $${idIdx}::uuid AND client_id = $${cidIdx}::uuid AND deleted_at IS NULL${expected_updated_at ? ` AND updated_at = $${versionIdx}::timestamptz` : ''}
        RETURNING id, type, name, description, category_id, brand, tags, price_cents, currency,
-                 sku, stock_qty, unit, status, hero_image_key, created_at, updated_at,
+                 sku, stock_qty, unit, status, hero_image_key,
+                 NULL::int AS inventory_qty_on_hand, NULL::int AS inventory_qty_reserved, NULL::int AS inventory_qty_available,
+                 created_at, updated_at,
                  gtin, mpn, condition, availability,
                  discount_percent, sale_price_cents, sale_starts_at, sale_ends_at,
                  weight_grams, length_mm, width_mm, height_mm,
@@ -256,7 +285,17 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
                  google_category, meta_category, product_url, platform_extras`,
       params,
     )) as Array<Record<string, unknown>>;
-    if (rows.length === 0) return jsonError(404, 'not_found');
+    if (rows.length === 0) {
+      if (expected_updated_at) {
+        const current = (await sql`
+          SELECT updated_at FROM public.products
+          WHERE id = ${id}::uuid AND client_id = ${clientId}::uuid AND deleted_at IS NULL
+          LIMIT 1
+        `) as Array<{ updated_at: string }>;
+        if (current[0]) return jsonError(409, 'stale_product', { current_updated_at: current[0].updated_at });
+      }
+      return jsonError(404, 'not_found');
+    }
 
     await logAudit(sql, {
       session, op: 'products.updated',

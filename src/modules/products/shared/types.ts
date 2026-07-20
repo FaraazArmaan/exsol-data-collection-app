@@ -21,6 +21,12 @@ export interface Product {
   currency: string;
   sku: string | null;
   stock_qty: number | null;
+  // Inventory is the operational source of truth. `stock_qty` remains only
+  // for legacy API/import compatibility during the staged transition.
+  inventory_qty_on_hand: number | null;
+  inventory_qty_reserved: number | null;
+  inventory_qty_available: number | null;
+  inventory_enabled?: boolean;
   unit: string | null;
   status: ProductStatus;
   hero_image_key: string | null;
@@ -60,6 +66,28 @@ export interface ProductWithImages extends Product {
   images: ProductImage[];
 }
 
+// A variant keeps product marketing content while owning the fields a scanner,
+// stock ledger, and receipt must distinguish.
+export interface ProductVariant {
+  id: string;
+  client_id: string;
+  product_id: string;
+  title: string;
+  option_values: Record<string, unknown>;
+  sku: string | null;
+  barcode: string | null;
+  price_cents: number | null;
+  sale_price_cents: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  status: ProductStatus;
+  availability: Availability;
+  pos_visible: boolean;
+  storefront_visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ProductCategory {
   id: string;
   name: string;
@@ -74,6 +102,7 @@ export interface ProductListResponse {
   page: number;
   page_size: number;
   counts: { all: number; active: number; draft: number; archived: number };
+  inventory_enabled: boolean;
 }
 
 export interface ProductFilters {

@@ -24,6 +24,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.inventory_stock s
     JOIN public.products p ON p.id = s.product_id AND p.deleted_at IS NULL
     WHERE s.client_id = ${clientId}::uuid
+      AND s.variant_id IS NULL
       AND s.qty_on_hand <= s.reorder_level
     ORDER BY (s.reorder_level - s.qty_on_hand) DESC
     LIMIT 100
@@ -45,6 +46,7 @@ export default async function handler(req: Request): Promise<Response> {
              sum(abs(qty_delta))::int AS volume
       FROM public.stock_movements
       WHERE client_id = ${clientId}::uuid
+        AND variant_id IS NULL
         AND created_at >= (now() - interval '30 days')
       GROUP BY 1
     )

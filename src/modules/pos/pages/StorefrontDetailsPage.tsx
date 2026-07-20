@@ -97,7 +97,7 @@ export default function StorefrontDetailsPage() {
         sessionKey: sessionId,
         channel: publicChannel,
         customer: { name: customer.name || undefined, email },
-        lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+        lines: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty })),
       })
       .catch(() => { /* ignore — persistence is opportunistic */ });
   }
@@ -120,7 +120,7 @@ export default function StorefrontDetailsPage() {
         idempotencyKey: sessionId,
         honeypot,
         customer: { ...customer, email: customer.email || undefined },
-        lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+        lines: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty })),
         couponCode: coupon?.valid ? coupon.code : undefined,
       });
       if (sale.payment_intent) {

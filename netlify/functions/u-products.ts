@@ -122,6 +122,9 @@ async function handleList(req: Request): Promise<Response> {
   const items = (await sql(
     `SELECT p.id, p.type, p.name, p.description, p.category_id, p.brand, p.tags, p.price_cents, p.currency,
             p.sku, p.stock_qty, p.unit, p.status, p.hero_image_key, pi_hero.id AS hero_image_id,
+            inv.qty_on_hand AS inventory_qty_on_hand, inv.qty_reserved AS inventory_qty_reserved,
+            (inv.qty_on_hand - inv.qty_reserved) AS inventory_qty_available,
+            EXISTS (SELECT 1 FROM public.client_enabled_products cep WHERE cep.client_id = p.client_id AND cep.product_key = 'inventory') AS inventory_enabled,
             p.created_at, p.updated_at,
             p.gtin, p.mpn, p.condition, p.availability,
             p.sale_price_cents, p.discount_percent, p.sale_starts_at, p.sale_ends_at,
@@ -132,6 +135,8 @@ async function handleList(req: Request): Promise<Response> {
      FROM public.products p
      LEFT JOIN public.product_images pi_hero
        ON pi_hero.product_id = p.id AND pi_hero.blob_key = p.hero_image_key
+     LEFT JOIN public.inventory_stock inv
+       ON inv.client_id = p.client_id AND inv.product_id = p.id AND inv.variant_id IS NULL
      WHERE p.client_id = $1::uuid
        AND p.deleted_at IS NULL
        AND ($2::product_type IS NULL OR p.type = $2::product_type)
@@ -164,7 +169,13 @@ async function handleList(req: Request): Promise<Response> {
   `) as Array<{ total: number }>;
   const total = totalRows[0]?.total ?? 0;
 
-  return jsonOk({ items, total, page, page_size, counts });
+  const inventory = (await sql`
+    SELECT EXISTS (
+      SELECT 1 FROM public.client_enabled_products
+      WHERE client_id = ${clientId}::uuid AND product_key = 'inventory'
+    ) AS enabled
+  `) as Array<{ enabled: boolean }>;
+  return jsonOk({ items, total, page, page_size, counts, inventory_enabled: Boolean(inventory[0]?.enabled) });
 }
 
 async function handleCreate(req: Request): Promise<Response> {
@@ -187,11 +198,28 @@ async function handleCreate(req: Request): Promise<Response> {
   const sql = db();
   const userNodeId = session.kind === 'bucket_user' ? session.user_node_id : null;
 
+  // The legacy scalar is the stock-entry path only while Inventory is absent.
+  // Once Inventory is enabled, its ledger is authoritative; accepting a second
+  // write path here would make the two quantities silently disagree.
+  if (v.stock_qty !== undefined) {
+    const inventory = (await sql`
+      SELECT EXISTS (
+        SELECT 1 FROM public.client_enabled_products
+        WHERE client_id = ${clientId}::uuid AND product_key = 'inventory'
+      ) AS enabled
+    `) as Array<{ enabled: boolean }>;
+    if (inventory[0]?.enabled) return jsonError(409, 'inventory_stock_managed');
+  }
+
   // SKU uniqueness (physical only)
   if (v.type === 'physical' && v.sku) {
     const dup = (await sql`
       SELECT id FROM public.products
-      WHERE client_id = ${clientId}::uuid AND sku = ${v.sku} AND deleted_at IS NULL LIMIT 1
+      WHERE client_id = ${clientId}::uuid AND sku = ${v.sku} AND deleted_at IS NULL
+      UNION ALL
+      SELECT id FROM public.product_variants
+      WHERE client_id = ${clientId}::uuid AND sku = ${v.sku}
+      LIMIT 1
     `) as Array<{ id: string }>;
     if (dup.length) return jsonError(409, 'sku_in_use');
   }
@@ -227,7 +255,9 @@ async function handleCreate(req: Request): Promise<Response> {
         ${JSON.stringify(v.platform_extras ?? {})}::jsonb
       )
       RETURNING id, type, name, description, category_id, brand, tags, price_cents, currency,
-                sku, stock_qty, unit, status, hero_image_key, created_at, updated_at,
+                sku, stock_qty, unit, status, hero_image_key,
+                NULL::int AS inventory_qty_on_hand, NULL::int AS inventory_qty_reserved, NULL::int AS inventory_qty_available,
+                created_at, updated_at,
                 gtin, mpn, condition, availability,
                 sale_price_cents, discount_percent, sale_starts_at, sale_ends_at,
                 weight_grams, length_mm, width_mm, height_mm,

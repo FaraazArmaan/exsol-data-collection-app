@@ -4,6 +4,9 @@ import { formatRupees } from '../format';
 import { ONLINE_PAYMENTS_ENABLED } from '../config';
 import { BookingTabs } from './BookingTabs';
 import { ServiceEditDrawer } from './ServiceEditDrawer';
+import { Button } from '../../../components/ui/Button';
+import { InlineNotice } from '../../../components/ui/Feedback';
+import { Field, Input, Select } from '../../../components/ui/Field';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
@@ -21,6 +24,7 @@ export default function ServicesPage({ slug, perms }: Props) {
   const [mode, setMode] = useState<PaymentMode>('pay_at_venue');
   const [deposit, setDeposit] = useState(0);
   const [eligible, setEligible] = useState<string[]>([]);
+  const [resourceScope, setResourceScope] = useState<'all' | 'selected'>('all');
   const [saving, setSaving] = useState(false);
 
   function reload() { bookingApi.listServices().then((r) => setServices(r.services)).catch(() => setError('load_error')); }
@@ -31,9 +35,9 @@ export default function ServicesPage({ slug, perms }: Props) {
     try {
       await bookingApi.createService({
         name: name.trim(), duration_min: duration, price_cents: price, payment_mode: mode,
-        deposit_cents: mode === 'deposit' ? deposit : undefined, eligible_resource_ids: eligible,
+        deposit_cents: mode === 'deposit' ? deposit : undefined, eligible_resource_ids: resourceScope === 'selected' ? eligible : [],
       } as any);
-      setName(''); setPrice(0); setEligible([]); reload();
+      setName(''); setPrice(0); setEligible([]); setResourceScope('all'); reload();
     } catch (e2) { setError(e2 instanceof BookingApiError ? e2.code : 'save_error'); }
     finally { setSaving(false); }
   }
@@ -66,29 +70,39 @@ export default function ServicesPage({ slug, perms }: Props) {
       {canEdit ? (
         <form className="card booking-form" onSubmit={create}>
           <h2 className="section-title">Add a service</h2>
-          <label>Name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-          <label>Duration (min)<input type="number" min={5} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></label>
-          <label>Price (₹)<input type="number" min={0} value={price / 100} onChange={(e) => setPrice(Math.round(Number(e.target.value) * 100))} /></label>
-          <label>Payment<select value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
-            <option value="pay_at_venue">Pay at venue</option>
-            {ONLINE_PAYMENTS_ENABLED ? <><option value="deposit">Deposit</option><option value="full_upfront">Full upfront</option></> : null}
-          </select></label>
-          {!ONLINE_PAYMENTS_ENABLED ? <p className="muted">Online payment (deposit / upfront) needs payment setup — coming soon.</p> : null}
-          {ONLINE_PAYMENTS_ENABLED && mode === 'deposit' ? <label>Deposit (₹)<input type="number" min={0} value={deposit / 100} onChange={(e) => setDeposit(Math.round(Number(e.target.value) * 100))} /></label> : null}
-          {resources.length ? (
-            <fieldset className="booking-eligible">
-              <legend className="muted">Eligible resources (none = all)</legend>
-              {resources.map((r) => (
-                <label key={r.id} className="booking-consent">
-                  <input type="checkbox" checked={eligible.includes(r.id)}
-                    onChange={(e) => setEligible((prev) => e.target.checked ? [...prev, r.id] : prev.filter((x) => x !== r.id))} />
-                  <span>{r.name}</span>
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
-          {error ? <p className="error">Couldn’t save ({error}).</p> : null}
-          <button className="btn btn-primary" type="submit" disabled={saving || !name.trim()}>{saving ? 'Adding…' : 'Add service'}</button>
+          <div className="ui-form-grid ui-form-grid--two">
+            <div className="ui-form-grid__full"><Field label="Name" required>{(props) => <Input {...props} value={name} onChange={(e) => setName(e.target.value)} />}</Field></div>
+            <Field label="Duration (minutes)">{(props) => <Input {...props} type="number" min={5} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />}</Field>
+            <Field label="Price (₹)">{(props) => <Input {...props} type="number" min={0} value={price / 100} onChange={(e) => setPrice(Math.round(Number(e.target.value) * 100))} />}</Field>
+            <div className="ui-form-grid__full"><Field label="Payment">{(props) => <Select {...props} value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
+              <option value="pay_at_venue">Pay at venue</option>
+              {ONLINE_PAYMENTS_ENABLED ? <><option value="deposit">Deposit</option><option value="full_upfront">Full upfront</option></> : null}
+            </Select>}</Field></div>
+            {!ONLINE_PAYMENTS_ENABLED ? <p className="muted ui-form-grid__full">Online payment (deposit / upfront) needs payment setup — coming soon.</p> : null}
+            {ONLINE_PAYMENTS_ENABLED && mode === 'deposit' ? <div className="ui-form-grid__full"><Field label="Deposit (₹)">{(props) => <Input {...props} type="number" min={0} value={deposit / 100} onChange={(e) => setDeposit(Math.round(Number(e.target.value) * 100))} />}</Field></div> : null}
+            {resources.length ? (
+              <fieldset className="ui-choice-group ui-form-grid__full">
+                <legend>Eligible resources</legend>
+                <div className="ui-choice-switch" aria-label="Eligible resource scope">
+                  <Button type="button" size="compact" variant={resourceScope === 'all' ? 'primary' : 'secondary'} aria-pressed={resourceScope === 'all'} onClick={() => setResourceScope('all')}>All resources</Button>
+                  <Button type="button" size="compact" variant={resourceScope === 'selected' ? 'primary' : 'secondary'} aria-pressed={resourceScope === 'selected'} onClick={() => setResourceScope('selected')}>Choose resources</Button>
+                </div>
+                {resourceScope === 'all' ? <p className="muted">This service can be booked with any available resource.</p> : (
+                  <>
+                    <p className="muted">Choose at least one resource for this service.</p>
+                    <div className="ui-choice-grid">
+                      {resources.map((r) => {
+                        const selected = eligible.includes(r.id);
+                        return <Button key={r.id} type="button" size="compact" variant={selected ? 'primary' : 'secondary'} aria-pressed={selected} onClick={() => setEligible((prev) => selected ? prev.filter((id) => id !== r.id) : [...prev, r.id])}>{selected ? '✓ ' : ''}{r.name}</Button>;
+                      })}
+                    </div>
+                  </>
+                )}
+              </fieldset>
+            ) : null}
+          </div>
+          {error ? <InlineNotice tone="danger" title="Couldn’t add this service.">{error}</InlineNotice> : null}
+          <Button type="submit" variant="primary" loading={saving} loadingLabel="Adding service…" disabled={!name.trim() || (resourceScope === 'selected' && eligible.length === 0)}>Add service</Button>
         </form>
       ) : null}
 

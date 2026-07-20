@@ -51,6 +51,20 @@ describe('MenuPage', () => {
     );
   });
 
+  it('adds the chosen variant as a distinct cart line', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      categories: [],
+      products: [{
+        id: 'shirt', name: 'Tee', categoryId: null, salePriceCents: 20000, thumbKey: null,
+        variants: [{ id: 'shirt-l', title: 'Large', salePriceCents: 24000 }],
+      }],
+    }), { status: 200 }));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Tee, Large' }));
+    await waitFor(() => expect(screen.getByText('Tee — Large')).toBeInTheDocument());
+    expect(screen.getByTestId('side-cart-total')).toHaveTextContent('₹240');
+  });
+
   it('shows empty-state side cart when nothing added', async () => {
     renderPage();
     await screen.findByText('Cappuccino');

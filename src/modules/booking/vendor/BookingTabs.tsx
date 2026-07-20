@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { SectionSwitcher } from '../../../components/ui/SectionSwitcher';
 
 interface Props {
   slug: string;
@@ -10,18 +11,27 @@ interface Props {
 export function BookingTabs({ slug, perms }: Props) {
   const canView = perms.has('booking.customers.view');
   const canConfig = perms.has('booking.employees.view') || perms.has('booking.employees.edit');
+  const { pathname } = useLocation();
+  const items = [
+    ...(canView ? [{ label: 'Calendar', to: `/c/${slug}/booking`, end: true }, { label: 'Bookings', to: `/c/${slug}/booking/list` }] : []),
+    ...(canConfig ? [
+      { label: 'Services', to: `/c/${slug}/booking/services` },
+      { label: 'Booking Setup', to: `/c/${slug}/booking/setup` },
+      { label: 'Booking Rules', to: `/c/${slug}/booking/policy` },
+      { label: 'Settings', to: `/c/${slug}/booking/settings` },
+    ] : []),
+  ];
+  const activeLabel = items.find((item) => pathname === item.to)?.label ?? 'Booking';
   return (
-    <nav className="booking-tabs" aria-label="Booking sections">
-      {canView && (
-        <NavLink end to={`/c/${slug}/booking`}>
-          Calendar
-        </NavLink>
-      )}
-      {canView && <NavLink to={`/c/${slug}/booking/list`}>Bookings</NavLink>}
-      {canConfig && <NavLink to={`/c/${slug}/booking/services`}>Services</NavLink>}
-      {canConfig && <NavLink to={`/c/${slug}/booking/setup`}>Booking Setup</NavLink>}
-      {canConfig && <NavLink to={`/c/${slug}/booking/policy`}>Booking Rules</NavLink>}
-      {canConfig && <NavLink to={`/c/${slug}/booking/settings`}>Settings</NavLink>}
-    </nav>
+    <>
+      <nav className="booking-tabs ui-section-tabs" aria-label="Booking sections">
+        {items.map((item) => <NavLink key={item.to} end={item.end} to={item.to}>{item.label}</NavLink>)}
+      </nav>
+      <SectionSwitcher label="Booking sections" activeLabel={activeLabel}>
+        <nav aria-label="Booking sections">
+          {items.map((item) => <NavLink key={item.to} end={item.end} to={item.to}>{item.label}</NavLink>)}
+        </nav>
+      </SectionSwitcher>
+    </>
   );
 }

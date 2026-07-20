@@ -50,7 +50,10 @@ export default async function handler(req: Request): Promise<Response> {
       fl.fulfillment_id,
       fl.sale_line_id,
       fl.qty,
+      sl.variant_id,
       sl.product_name_snap,
+      sl.variant_name_snap,
+      sl.variant_sku_snap,
       sl.unit_price_cents,
       sl.qty AS line_qty
     FROM public.orders_fulfillment_lines fl
@@ -62,7 +65,10 @@ export default async function handler(req: Request): Promise<Response> {
     fulfillment_id: string;
     sale_line_id: string;
     qty: number;
+    variant_id: string | null;
     product_name_snap: string;
+    variant_name_snap: string | null;
+    variant_sku_snap: string | null;
     unit_price_cents: number;
     line_qty: number;
   }>;
@@ -81,7 +87,10 @@ export default async function handler(req: Request): Promise<Response> {
       id: l.id,
       sale_line_id: l.sale_line_id,
       qty: l.qty,
+      variant_id: l.variant_id,
       product_name_snap: l.product_name_snap,
+      variant_name_snap: l.variant_name_snap,
+      variant_sku_snap: l.variant_sku_snap,
       unit_price_cents: Number(l.unit_price_cents),
       line_qty: l.line_qty,
     })),

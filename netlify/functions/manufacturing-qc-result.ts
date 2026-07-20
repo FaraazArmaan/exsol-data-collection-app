@@ -48,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
     // Pre-check available output stock; the qty>=0 CHECK is the concurrency backstop.
     const stock = (await sql`
       SELECT qty_on_hand FROM public.inventory_stock
-      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${outputId}::uuid LIMIT 1
+      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${outputId}::uuid AND variant_id IS NULL LIMIT 1
     `) as Array<{ qty_on_hand: number }>;
     if ((stock[0]?.qty_on_hand ?? 0) < scrapQty) return jsonError(400, 'insufficient_stock');
   }
@@ -57,7 +57,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (doScrap) {
     queries.push(sql`
       UPDATE public.inventory_stock SET qty_on_hand = qty_on_hand - ${scrapQty}::int, updated_at = now()
-      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${outputId}::uuid
+      WHERE client_id = ${a.ctx.clientId}::uuid AND product_id = ${outputId}::uuid AND variant_id IS NULL
     `);
     queries.push(sql`
       INSERT INTO public.stock_movements (client_id, product_id, qty_delta, type, ref, created_by)

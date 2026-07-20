@@ -20,7 +20,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const stock = (await sql`
     SELECT qty_on_hand FROM public.inventory_stock
-    WHERE client_id = ${cid}::uuid AND product_id = ${productId}::uuid LIMIT 1
+    WHERE client_id = ${cid}::uuid AND product_id = ${productId}::uuid AND variant_id IS NULL LIMIT 1
   `) as Array<{ qty_on_hand: number }>;
 
   const byLocation = (await sql`

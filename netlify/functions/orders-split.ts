@@ -45,11 +45,13 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Load sale scoped by bucket_id (= clientId) → 404 if not owned.
   const saleRows = (await sql`
-    SELECT id FROM public.sales
+    SELECT id, status, channel FROM public.sales
     WHERE id = ${saleId}::uuid AND bucket_id = ${a.ctx.clientId}::uuid
     LIMIT 1
-  `) as Array<{ id: string }>;
+  `) as Array<{ id: string; status: string; channel: string }>;
   if (!saleRows[0]) return jsonError(404, 'not_found');
+  if (saleRows[0].channel === 'instore') return jsonError(409, 'orders_fulfillment_not_required');
+  if (saleRows[0].status !== 'paid') return jsonError(409, 'sale_not_paid');
 
   // Load all sale_lines for this sale — used for validation.
   const saleLineRows = (await sql`

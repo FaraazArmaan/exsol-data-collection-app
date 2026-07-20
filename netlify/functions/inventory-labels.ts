@@ -47,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
       SELECT p.name, p.sku, s.qty_on_hand, s.reorder_level
       FROM public.inventory_stock s
       JOIN public.products p ON p.id = s.product_id
-      WHERE s.client_id = ${cid}::uuid AND p.deleted_at IS NULL
+      WHERE s.client_id = ${cid}::uuid AND s.variant_id IS NULL AND p.deleted_at IS NULL
       ORDER BY p.name ASC
     `) as Array<{ name: string; sku: string | null; qty_on_hand: number; reorder_level: number }>;
     rows = items.map((i) => ({

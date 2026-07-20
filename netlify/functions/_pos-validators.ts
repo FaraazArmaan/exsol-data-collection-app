@@ -17,12 +17,18 @@ export const SaleCreateBody = z.object({
     .array(
       z.object({
         productId: Uuid,
+        variantId: Uuid.optional(),
         qty: z.number().int().positive(),
       }),
     )
     .min(1),
+  couponCode: z.string().trim().min(1).max(40).optional(),
+  quoteId: z.string().min(20).max(2048).optional(),
 });
 export type SaleCreateBody = z.infer<typeof SaleCreateBody>;
+
+export const SaleQuoteBody = SaleCreateBody.omit({ idempotencyKey: true, quoteId: true });
+export type SaleQuoteBody = z.infer<typeof SaleQuoteBody>;
 
 export const SaleStateBody = z.object({
   action: z.enum(['markPaid', 'fulfill', 'cancel', 'refund']),

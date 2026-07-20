@@ -134,6 +134,27 @@ describe('u-products-import', () => {
     expect(cats.map((c) => c.name)).toEqual(['Electronics', 'Services']);
   });
 
+  test('keeps catalog import but ignores stock_qty once Inventory is enabled', async () => {
+    await sql`
+      INSERT INTO public.client_enabled_products (client_id, product_key)
+      VALUES (${clientId}::uuid, 'inventory')
+      ON CONFLICT DO NOTHING
+    `;
+    const preview = await postFile('?dry_run=1', 'import-valid.csv');
+    expect((await preview.json() as { warnings: Array<{ message: string }> }).warnings)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ message: 'stock_qty ignored because Inventory manages stock' }),
+      ]));
+
+    const committed = await postFile('', 'import-valid.csv');
+    expect(committed.status).toBe(200);
+    const rows = await sql`
+      SELECT stock_qty FROM public.products
+      WHERE client_id = ${clientId}::uuid AND sku = 'WH-1'
+    ` as Array<{ stock_qty: number | null }>;
+    expect(rows[0]!.stock_qty).toBeNull();
+  });
+
   test('mixed-errors fixture surfaces per-row errors and does not commit', async () => {
     const r = await postFile('', 'import-mixed-errors.csv');
     const body = (await r.json()) as { committed?: boolean; errors: Array<{ row: number; field?: string; message: string }> };

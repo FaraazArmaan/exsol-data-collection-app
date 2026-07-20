@@ -39,6 +39,7 @@ export interface MenuProductDto {
   isBundle?: boolean;
   bundleInStock?: boolean;
   bundleComponents?: { name: string; qty: number }[];
+  variants?: { id: string; title: string; salePriceCents: number }[];
 }
 
 export interface MenuResponse {
@@ -50,7 +51,28 @@ export interface SaleCreateInput {
   channel: 'instore' | 'online' | 'pickup';
   idempotencyKey: string;
   customer: { name: string; phone: string; email?: string };
-  lines: { productId: string; qty: number }[];
+  lines: { productId: string; variantId?: string; qty: number }[];
+  couponCode?: string;
+  quoteId: string;
+}
+
+export interface SaleQuoteInput {
+  channel: SaleCreateInput['channel'];
+  customer: SaleCreateInput['customer'];
+  lines: SaleCreateInput['lines'];
+  couponCode?: string;
+}
+
+export interface SaleQuote {
+  quoteId: string;
+  lines: Array<{ productId: string; variantId?: string; productName: string; variantName?: string; variantSku?: string; unitPriceCents: number; qty: number; lineTotalCents: number; position: number }>;
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
+  taxLabel: string;
+  taxInclusive: boolean;
+  totalCents: number;
+  couponCode?: string;
 }
 
 export type FsmAction = 'markPaid' | 'fulfill' | 'cancel' | 'refund';
@@ -89,7 +111,7 @@ export interface PublicSaleInput {
   idempotencyKey: string;
   honeypot: string;
   customer: { name: string; phone: string; email?: string };
-  lines: { productId: string; qty: number }[];
+  lines: { productId: string; variantId?: string; qty: number }[];
   couponCode?: string;
 }
 
@@ -202,6 +224,13 @@ export const posApi = {
 
   createSale: (body: SaleCreateInput) =>
     call<SaleCheckoutResponse>('/api/pos/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+
+  quoteSale: (body: SaleQuoteInput) =>
+    call<SaleQuote>('/api/pos/sale-quote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

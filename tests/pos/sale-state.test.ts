@@ -76,7 +76,7 @@ describe('POST /api/pos/sales/:id/state', () => {
     expect(body.fulfilled_at).toBeNull();
   });
 
-  it('pickup + fulfill (after markPaid) → fulfilled', async () => {
+  it('pickup fulfillment is owned by Orders after markPaid', async () => {
     await grantPerms(ctx.clientId, 1, [
       'pos.sale.create',
       'pos.sale.markPaid',
@@ -95,8 +95,8 @@ describe('POST /api/pos/sales/:id/state', () => {
         action: 'fulfill',
       }),
     );
-    expect(res.status).toBe(200);
-    expect((await res.json()).status).toBe('fulfilled');
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: { code: 'orders_fulfillment_required' } });
   });
 
   it('error precedence: missing perm wins over illegal state (403, not 409)', async () => {

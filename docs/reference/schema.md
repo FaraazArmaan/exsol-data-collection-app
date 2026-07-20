@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-149 tables across 139 forward-only migrations.
+151 tables across 143 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -209,6 +209,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ## inventory
 
+### `inventory_reservations`
+
+- created in `165_inventory_stock_reservations.sql`; altered in `166_inventory_reservation_partial_consumption.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `sale_line_id uuid`, `product_id uuid`, `variant_id uuid`, `qty int`, `status inventory_reservation_status`, `released_at timestamptz`, `consumed_at timestamptz`, `created_at timestamptz`
+
 ### `inventory_returns`
 
 - created in `080_inventory_returns.sql`
@@ -216,7 +221,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `inventory_stock`
 
-- created in `053_inventory.sql`
+- created in `053_inventory.sql`; altered in `164_product_variants_and_sale_snapshots.sql`, `165_inventory_stock_reservations.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `product_id uuid`, `qty_on_hand int`, `reorder_level int`, `created_at timestamptz`, `updated_at timestamptz`
 
 ## login (user-portal auth)
@@ -549,7 +554,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `stock_movements`
 
-- created in `053_inventory.sql`
+- created in `053_inventory.sql`; altered in `164_product_variants_and_sale_snapshots.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `product_id uuid`, `qty_delta int`, `type stock_movement_type`, `ref text`, `created_by uuid`, `created_at timestamptz`
 
 ### `storefront_cms`
@@ -608,7 +613,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `sale_lines`
 
-- created in `041_sale_lines.sql`
+- created in `041_sale_lines.sql`; altered in `164_product_variants_and_sale_snapshots.sql`
 - columns at creation: `id uuid`, `sale_id uuid`, `product_id uuid`, `product_name_snap text`, `unit_price_cents bigint`, `qty int`, `line_total_cents bigint`, `position int`, `created_at timestamptz`
 
 ### `sales`
@@ -642,6 +647,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `097_product_suppliers.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `product_id uuid`, `supplier_id uuid`, `lead_time_days int`, `unit_cost_cents bigint`, `is_primary boolean`, `created_at timestamptz`, `updated_at timestamptz`
+
+### `product_variants`
+
+- created in `164_product_variants_and_sale_snapshots.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `product_id uuid`, `title text`, `option_values jsonb`, `sku text`, `barcode text`, `price_cents int`, `sale_price_cents int`, `sale_starts_at timestamptz`, `sale_ends_at timestamptz`, `status product_status`, `availability text`, `pos_visible boolean`, `storefront_visible boolean`, `created_at timestamptz`, `updated_at timestamptz`
 
 ### `products`
 

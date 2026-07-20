@@ -167,6 +167,35 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+.pos-tile__variants {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+.pos-tile__variant-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pos-tile__variant {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.pos-tile__variant:hover { border-color: var(--accent); }
+.pos-tile__variant:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .pos-tile__badge {
   position: absolute;
   top: 8px;
@@ -323,6 +352,12 @@
 .pos-cart-page__customer > button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.pos-cart-page__customer > .pos-cart-page__refresh {
+  margin-top: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
 }
 
 /* ── Cart line row (name · qty stepper · price · remove) ───────────────── */

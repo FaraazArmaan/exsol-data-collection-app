@@ -61,7 +61,7 @@ export async function seedStock(
   await sql`
     INSERT INTO public.inventory_stock (client_id, product_id, qty_on_hand, reorder_level)
     VALUES (${ctx.clientId}, ${productId}, ${qtyOnHand}, ${reorderLevel})
-    ON CONFLICT (client_id, product_id)
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL
     DO UPDATE SET qty_on_hand = ${qtyOnHand}, reorder_level = ${reorderLevel}
   `;
 }
@@ -69,11 +69,11 @@ export async function seedStock(
 export async function readStock(
   ctx: PosTestCtx,
   productId: string,
-): Promise<{ qty_on_hand: number; reorder_level: number } | null> {
+): Promise<{ qty_on_hand: number; qty_reserved: number; reorder_level: number } | null> {
   const rows = (await sql`
-    SELECT qty_on_hand, reorder_level FROM public.inventory_stock
+    SELECT qty_on_hand, qty_reserved, reorder_level FROM public.inventory_stock
     WHERE client_id = ${ctx.clientId} AND product_id = ${productId} LIMIT 1
-  `) as Array<{ qty_on_hand: number; reorder_level: number }>;
+  `) as Array<{ qty_on_hand: number; qty_reserved: number; reorder_level: number }>;
   return rows[0] ?? null;
 }
 

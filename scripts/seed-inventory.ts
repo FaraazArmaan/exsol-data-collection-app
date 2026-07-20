@@ -74,7 +74,7 @@ async function main(): Promise<void> {
     WHERE p.client_id = ${clientId}::uuid
       AND p.type = 'physical'
       AND p.deleted_at IS NULL
-    ON CONFLICT (client_id, product_id) DO NOTHING
+    ON CONFLICT (client_id, product_id) WHERE variant_id IS NULL DO NOTHING
     RETURNING product_id
   `) as Array<{ product_id: string }>;
 

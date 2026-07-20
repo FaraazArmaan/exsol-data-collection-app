@@ -18,17 +18,17 @@ export default async function handler(req: Request): Promise<Response> {
 
   const kpiRows = (await sql`
     SELECT
-      (SELECT count(*)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid) AS total_skus,
-      (SELECT coalesce(sum(qty_on_hand), 0)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid) AS total_units,
-      (SELECT count(*)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid AND qty_on_hand <= reorder_level) AS low_stock_count,
-      (SELECT count(*)::int FROM public.stock_movements WHERE client_id = ${cid}::uuid AND created_at >= now() - interval '30 days') AS movement_volume_30d
+      (SELECT count(*)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid AND variant_id IS NULL) AS total_skus,
+      (SELECT coalesce(sum(qty_on_hand), 0)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid AND variant_id IS NULL) AS total_units,
+      (SELECT count(*)::int FROM public.inventory_stock WHERE client_id = ${cid}::uuid AND variant_id IS NULL AND qty_on_hand <= reorder_level) AS low_stock_count,
+      (SELECT count(*)::int FROM public.stock_movements WHERE client_id = ${cid}::uuid AND variant_id IS NULL AND created_at >= now() - interval '30 days') AS movement_volume_30d
   `) as Array<Record<string, number>>;
 
   const lowStock = (await sql`
     SELECT s.product_id, p.name, p.sku, s.qty_on_hand, s.reorder_level
     FROM public.inventory_stock s
     JOIN public.products p ON p.id = s.product_id
-    WHERE s.client_id = ${cid}::uuid AND p.deleted_at IS NULL AND s.qty_on_hand <= s.reorder_level
+    WHERE s.client_id = ${cid}::uuid AND s.variant_id IS NULL AND p.deleted_at IS NULL AND s.qty_on_hand <= s.reorder_level
     ORDER BY (s.reorder_level - s.qty_on_hand) DESC, p.name ASC
     LIMIT 8
   `) as unknown[];
@@ -37,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
     SELECT m.id, m.type, m.qty_delta, m.created_at, p.name AS product_name
     FROM public.stock_movements m
     JOIN public.products p ON p.id = m.product_id
-    WHERE m.client_id = ${cid}::uuid
+    WHERE m.client_id = ${cid}::uuid AND m.variant_id IS NULL
     ORDER BY m.created_at DESC
     LIMIT 8
   `) as unknown[];
@@ -49,7 +49,7 @@ export default async function handler(req: Request): Promise<Response> {
     WITH purch AS (
       SELECT product_id, qty_delta, (substring(ref from 4))::uuid AS po_id
       FROM public.stock_movements
-      WHERE client_id = ${cid}::uuid AND type = 'purchase' AND ref ~ '^po:[0-9a-fA-F-]{36}$'
+      WHERE client_id = ${cid}::uuid AND variant_id IS NULL AND type = 'purchase' AND ref ~ '^po:[0-9a-fA-F-]{36}$'
     ),
     avg_cost AS (
       SELECT pu.product_id,
@@ -65,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.inventory_stock s
     JOIN public.products p ON p.id = s.product_id
     LEFT JOIN avg_cost ac ON ac.product_id = s.product_id
-    WHERE s.client_id = ${cid}::uuid AND p.deleted_at IS NULL
+    WHERE s.client_id = ${cid}::uuid AND s.variant_id IS NULL AND p.deleted_at IS NULL
     ORDER BY value_minor DESC
   `) as Array<{ product_id: string; name: string; qty_on_hand: number; unit_cost_minor: string; value_minor: string }>;
 

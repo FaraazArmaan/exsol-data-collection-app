@@ -17,6 +17,10 @@ vi.mock('react-router-dom', async () => {
 const signOutMock = vi.fn(async () => {
   expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true });
 });
+const setAppearanceMock = vi.fn();
+vi.mock('../../../lib/appearance', () => ({
+  useAppearance: () => ({ appearance: 'system', setAppearance: setAppearanceMock }),
+}));
 vi.mock('../user-auth-context', () => ({
   useUserAuth: () => ({
     user: { display_name: 'Faraaz' },
@@ -40,5 +44,12 @@ describe('TopBar', () => {
 
     await waitFor(() => expect(signOutMock).toHaveBeenCalled());
     expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true });
+  });
+
+  it('offers system, light, and dark appearance choices from the account disclosure', () => {
+    render(<MemoryRouter><TopBar /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /faraaz/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    expect(setAppearanceMock).toHaveBeenCalledWith('dark');
   });
 });
