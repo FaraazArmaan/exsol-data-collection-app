@@ -1,4 +1,4 @@
-.pay-shell { max-width: 900px; margin: 0 auto; color: var(--text-primary); }
+.pay-shell { width: 100%; max-width: var(--content-readable); color: var(--text-primary); }
 .pay-header, .pay-panel { border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); }
 .pay-header { padding: 24px; }.pay-header h1, .pay-panel h2 { margin: 0; }
 .pay-eyebrow { margin: 0 0 8px; color: var(--accent); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

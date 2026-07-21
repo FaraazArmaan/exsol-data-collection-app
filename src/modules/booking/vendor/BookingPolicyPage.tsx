@@ -30,7 +30,7 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
 
   if (!policy) {
     return (
-      <div className="page booking-vendor">
+      <div className="page page-readable booking-vendor">
         <BookingTabs slug={slug} perms={perms} />
         <h1 className="page-title">Booking Rules</h1>
         {message ? (
@@ -71,15 +71,16 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
   }
 
   return (
-    <div className="page booking-vendor">
+    <div className="page page-readable booking-vendor">
       <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Booking Rules</h1>
       <p className="muted">
         Changes apply to new visits only. Existing visits keep the rules accepted when they were
         created.
       </p>
-      <div className="card">
-        <h2 className="section-title">Customer changes</h2>
+      <div className="booking-policy-grid">
+        <section className="card">
+          <h2 className="section-title">Customer changes</h2>
         <label>
           Cancellation cutoff (minutes before start)
           <input
@@ -137,9 +138,9 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
             onChange={number('late_reschedule_fee_cents')}
           />
         </label>
-      </div>
-      <div className="card">
-        <h2 className="section-title">Attendance and settlement</h2>
+        </section>
+        <section className="card">
+          <h2 className="section-title">Attendance and settlement</h2>
         <label>
           Late-arrival grace (minutes)
           <input
@@ -201,10 +202,11 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
           Payment collection, fees, refunds and credits are recorded by the Payments module when it
           is integrated.
         </p>
+        </section>
       </div>
       {message ? <p className="muted">{message}</p> : null}
       {canEdit ? (
-        <button className="btn btn-primary" onClick={save} disabled={saving}>
+        <button className="btn btn-primary booking-policy-save" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save booking rules'}
         </button>
       ) : (

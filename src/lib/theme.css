@@ -48,6 +48,12 @@
   --target-comfortable: 32px;
   --target-touch: 44px;
 
+  /* Workspace layout bands */
+  --layout-gutter: clamp(16px, 2.5vw, 32px);
+  --content-readable: 900px;
+  --content-standard: 1280px;
+  --content-canvas: 1600px;
+
   /* Type and motion */
   --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;

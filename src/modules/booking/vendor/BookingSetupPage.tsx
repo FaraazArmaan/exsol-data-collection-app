@@ -82,7 +82,7 @@ export default function BookingSetupPage({ slug, perms }: Props) {
 
   if (!setup || !draft) {
     return (
-      <div className="page booking-vendor">
+      <div className="page page-readable booking-vendor">
         <BookingTabs slug={slug} perms={perms} />
         <h1 className="page-title">Booking Setup</h1>
         {error ? (
@@ -107,7 +107,7 @@ export default function BookingSetupPage({ slug, perms }: Props) {
 
   if (step === STEPS.length) {
     return (
-      <div className="page booking-vendor">
+      <div className="page page-readable booking-vendor">
         <BookingTabs slug={slug} perms={perms} />
         <h1 className="page-title">Booking Setup</h1>
         <div className="card">
@@ -116,6 +116,14 @@ export default function BookingSetupPage({ slug, perms }: Props) {
             Customers will see booking choices based on the setup below. Internal technical names
             are never shown.
           </p>
+          <ol className="booking-setup-checklist" aria-label="Booking setup checklist">
+            {STEPS.map((label, index) => (
+              <li key={label}>
+                <span aria-hidden="true">✓</span>
+                <strong>{index + 1}. {label}</strong>
+              </li>
+            ))}
+          </ol>
           <ul className="booking-list-plain">
             {setup.visible_sections.map((section) => (
               <li key={section.key}>{section.label}</li>
@@ -151,12 +159,25 @@ export default function BookingSetupPage({ slug, perms }: Props) {
   }
 
   return (
-    <div className="page booking-vendor">
+    <div className="page page-readable booking-vendor">
       <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Booking Setup</h1>
-      <p className="muted">
-        Step {step + 1} of {STEPS.length} · {STEPS[step]}
-      </p>
+      <div className="booking-setup-workbench">
+      <nav className="booking-setup-progress" aria-label="Booking setup progress">
+        {STEPS.map((label, index) => (
+          <button
+            key={label}
+            className={index === step ? 'is-active' : index < step ? 'is-complete' : ''}
+            disabled={index > step || saving}
+            aria-current={index === step ? 'step' : undefined}
+            onClick={() => setStep(index)}
+          >
+            <span>{index + 1}</span>{label}
+          </button>
+        ))}
+      </nav>
+      <div className="booking-setup-active">
+      <p className="muted">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
       <div className="card booking-form">
         {step === 0 ? (
           <>
@@ -373,6 +394,8 @@ export default function BookingSetupPage({ slug, perms }: Props) {
             </button>
           )}
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

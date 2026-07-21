@@ -28,7 +28,7 @@ a:hover { color: var(--accent-hover); }
 .imp-banner__timer { font-family: var(--font-mono); font-size: 12px; border-left: 1px solid color-mix(in srgb, var(--text-on-accent) 24%, transparent); padding-left: 16px; }
 .imp-banner__exit { background: var(--text-on-accent); color: var(--accent); border: none; border-radius: var(--radius-sm); padding: 4px 12px; font: inherit; font-weight: 600; cursor: pointer; }
 .imp-banner__exit:disabled { opacity: 0.6; cursor: default; }
-.main { flex: 1; padding: 32px; overflow-y: auto; }
+.main { flex: 1; padding: var(--layout-gutter); overflow-y: auto; }
 
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; border: 1px solid transparent; background: none; color: var(--text-primary); }
@@ -73,9 +73,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .sidebar-nav-grow { flex: 1; }
 .sidebar-nav-footer { margin-top: auto; }
 
-/* Page-level layout primitives */
-.page { max-width: 960px; }
-.page-narrow { max-width: 720px; }
+/* Page-level layout primitives: every workspace page starts at the same left gutter.
+   Modules choose the band that matches their task, not an arbitrary local max-width. */
+.page { width: 100%; max-width: var(--content-standard); }
+.page-readable { max-width: var(--content-readable); }
+.page-standard { max-width: var(--content-standard); }
+.page-canvas { max-width: var(--content-canvas); }
+.page-narrow { width: 100%; max-width: 720px; }
 .page-tight { max-width: 640px; }
 .page-title { margin: 0; font-size: 24px; }
 .page-header { margin-bottom: 24px; }
@@ -353,7 +357,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* ─── Product Manager ─────────────────────────────────────────────────────── */
 
-.pm-shell { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; }
+.pm-shell { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: var(--content-canvas); }
 .pm-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .pm-header h1 { margin: 0 0 4px; font-size: 22px; }
 .pm-muted { color: var(--text-muted); }

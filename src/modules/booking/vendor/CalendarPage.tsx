@@ -12,6 +12,7 @@ import { BookingDetailDrawer } from './BookingDetailDrawer';
 import { ManualBookingDrawer } from './ManualBookingDrawer';
 import { BookingTabs } from './BookingTabs';
 import { DateField } from '../../../components/ui/DateTimeField';
+import { Button } from '../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 const PX_PER_MIN = 1.4; // ~84px/hour
+const RESOURCE_PAGE_SIZE = 8;
 const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const pad = (n: number) => String(n).padStart(2, '0');
 const localMin = (iso: string) => {
@@ -76,6 +78,8 @@ export default function CalendarPage({ slug, perms }: Props) {
   const [settings, setSettings] = useState<BookingSettings | null>(null);
   const [bookings, setBookings] = useState<VendorBooking[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [mobileResourceId, setMobileResourceId] = useState<string | null>(null);
+  const [resourcePage, setResourcePage] = useState(0);
   const [creating, setCreating] = useState<{ resourceId?: string; defaultStart?: string } | null>(
     null,
   );
@@ -143,9 +147,24 @@ export default function CalendarPage({ slug, perms }: Props) {
     width: `calc(${100 / lanes}% - 6px)`,
     right: 'auto' as const,
   });
+  const mobileDays = Array.from({ length: 7 }, (_, index) => {
+    const d = new Date(`${date}T12:00:00`);
+    d.setDate(d.getDate() + index - 3);
+    return localDate(d.toISOString());
+  });
+  const mobileBookings = (bookings ?? [])
+    .filter((booking) => localDate(booking.start_at) === date)
+    .filter((booking) => !mobileResourceId || booking.resource_id === mobileResourceId)
+    .sort((a, b) => a.start_at.localeCompare(b.start_at));
+  const resourcePageCount = Math.max(1, Math.ceil(resources.length / RESOURCE_PAGE_SIZE));
+  const safeResourcePage = Math.min(resourcePage, resourcePageCount - 1);
+  const visibleResources = resources.slice(
+    safeResourcePage * RESOURCE_PAGE_SIZE,
+    safeResourcePage * RESOURCE_PAGE_SIZE + RESOURCE_PAGE_SIZE,
+  );
 
   return (
-    <div className="page booking-vendor">
+    <div className="page page-canvas booking-vendor">
       <BookingTabs slug={slug} perms={perms} />
       <div className="booking-cal-head">
         <h1 className="page-title">Calendar</h1>
@@ -169,6 +188,64 @@ export default function CalendarPage({ slug, perms }: Props) {
           ) : null}
         </div>
       </div>
+
+      {bookings && settings && resources.length > 0 ? (
+        <section className="booking-mobile-agenda" aria-label="Daily booking agenda">
+          <div className="booking-mobile-agenda__days" aria-label="Choose calendar day">
+            {mobileDays.map((day) => {
+              const dayDate = new Date(`${day}T12:00:00`);
+              return (
+                <button
+                  key={day}
+                  className={day === date ? 'is-active' : ''}
+                  aria-pressed={day === date}
+                  onClick={() => setDate(day)}
+                >
+                  <span>{dayDate.toLocaleDateString([], { weekday: 'short' })}</span>
+                  <strong>{dayDate.getDate()}</strong>
+                </button>
+              );
+            })}
+          </div>
+          <div className="booking-mobile-agenda__filters" aria-label="Filter by staff member">
+            <button
+              className={mobileResourceId === null ? 'is-active' : ''}
+              aria-pressed={mobileResourceId === null}
+              onClick={() => setMobileResourceId(null)}
+            >
+              All staff
+            </button>
+            {resources.map((resource) => (
+              <button
+                key={resource.id}
+                className={mobileResourceId === resource.id ? 'is-active' : ''}
+                aria-pressed={mobileResourceId === resource.id}
+                onClick={() => setMobileResourceId(resource.id)}
+              >
+                {resource.name}
+              </button>
+            ))}
+          </div>
+          {mobileBookings.length ? (
+            <ol className="booking-mobile-agenda__list">
+              {mobileBookings.map((booking) => (
+                <li key={booking.id}>
+                  <time>{formatTime(booking.start_at)}</time>
+                  <button
+                    className={`booking-mobile-agenda__booking block-${booking.status}`}
+                    onClick={() => setOpenId(booking.id)}
+                  >
+                    <strong>{booking.customer_name ?? 'Blocked time'}</strong>
+                    <span>{resName(booking.resource_id)} · {formatTime(booking.start_at)}–{formatTime(booking.end_at)}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="booking-mobile-agenda__empty">No bookings for this day.</p>
+          )}
+        </section>
+      ) : null}
 
       {!bookings || !settings ? (
         <div className="muted">Loading…</div>
@@ -259,12 +336,42 @@ export default function CalendarPage({ slug, perms }: Props) {
           )}
         </p>
       ) : (
-        <div
-          className="booking-grid"
-          style={{ gridTemplateColumns: `56px repeat(${resources.length}, minmax(140px, 1fr))` }}
-        >
+        <>
+          {resources.length > RESOURCE_PAGE_SIZE ? (
+            <div className="booking-resource-pager" aria-label="Visible staff in calendar">
+              <div>
+                <strong>Staff</strong>
+                <span aria-live="polite">
+                  Showing {safeResourcePage * RESOURCE_PAGE_SIZE + 1}–
+                  {Math.min((safeResourcePage + 1) * RESOURCE_PAGE_SIZE, resources.length)} of {resources.length}
+                </span>
+              </div>
+              <div className="booking-resource-pager__actions">
+                <Button
+                  size="compact"
+                  variant="secondary"
+                  disabled={safeResourcePage === 0}
+                  onClick={() => setResourcePage((page) => Math.max(0, page - 1))}
+                >
+                  Previous staff
+                </Button>
+                <Button
+                  size="compact"
+                  variant="secondary"
+                  disabled={safeResourcePage === resourcePageCount - 1}
+                  onClick={() => setResourcePage((page) => Math.min(resourcePageCount - 1, page + 1))}
+                >
+                  Next staff
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <div
+            className="booking-grid"
+            style={{ gridTemplateColumns: `56px repeat(${visibleResources.length}, minmax(140px, 1fr))` }}
+          >
           <div className="booking-grid-corner" />
-          {resources.map((r) => (
+          {visibleResources.map((r) => (
             <div key={r.id} className="booking-grid-colhead">
               {r.name}
             </div>
@@ -280,7 +387,7 @@ export default function CalendarPage({ slug, perms }: Props) {
               </span>
             ))}
           </div>
-          {resources.map((r) => (
+          {visibleResources.map((r) => (
             <div
               key={r.id}
               className="booking-grid-col"
@@ -323,6 +430,7 @@ export default function CalendarPage({ slug, perms }: Props) {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {openId ? (

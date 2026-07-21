@@ -28,9 +28,19 @@ export default function BookingsListPage({ slug, perms }: Props) {
     bookingApi.list(p.toString()).then((r) => setBookings(r.bookings)).catch(() => setLoadError(true));
   }
   useEffect(reload, [from, to, status]);
+  const mobileGroups = (bookings ?? []).reduce<Array<{ date: string; bookings: VendorBooking[] }>>(
+    (groups, booking) => {
+      const date = formatDateLong(booking.start_at);
+      const group = groups.find((item) => item.date === date);
+      if (group) group.bookings.push(booking);
+      else groups.push({ date, bookings: [booking] });
+      return groups;
+    },
+    [],
+  );
 
   return (
-    <div className="page booking-vendor">
+    <div className="page page-canvas booking-vendor">
       <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Bookings</h1>
       <div className="booking-filters">
@@ -41,10 +51,54 @@ export default function BookingsListPage({ slug, perms }: Props) {
         </Select>}</Field>
       </div>
 
+      <div className="booking-mobile-status-filters" aria-label="Booking status filters">
+        {[
+          ['', 'All'],
+          ['confirmed', 'Confirmed'],
+          ['pending', 'Pending'],
+          ['completed', 'Completed'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            className={status === value ? 'is-active' : ''}
+            aria-pressed={status === value}
+            onClick={() => setStatus(value ?? '')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {loadError ? <TableErrorState title="Could not load bookings." action={<Button variant="secondary" onClick={reload}>Retry</Button>}>Check your connection and try again.</TableErrorState>
         : !bookings ? <TableLoadingState title="Loading bookings…" />
           : bookings.length === 0 ? <TableEmptyState title="No bookings in this range.">Change the dates or status to see other bookings.</TableEmptyState>
-            : <TableFrame caption="Bookings in the selected date range" density="compact">
+            : <>
+          <div className="booking-mobile-booking-list" aria-label="Bookings in the selected date range">
+            {mobileGroups.map((group) => (
+              <section key={group.date} aria-labelledby={`booking-day-${group.date.replaceAll(' ', '-')}`}>
+                <h2 id={`booking-day-${group.date.replaceAll(' ', '-')}`}>{group.date}</h2>
+                {group.bookings.sort((a, b) => a.start_at.localeCompare(b.start_at)).map((booking) => (
+                  <Button
+                    key={booking.id}
+                    variant="secondary"
+                    className={`booking-mobile-booking-card booking-mobile-booking-card--${booking.status}`}
+                    onClick={() => setOpenId(booking.id)}
+                    aria-label={`View details for ${booking.customer_name ?? 'blocked time'} on ${formatDateLong(booking.start_at)}`}
+                  >
+                    <span className="booking-mobile-booking-card__main">
+                      <strong>{booking.customer_name ?? 'Blocked time'}</strong>
+                      <span>{formatTime(booking.start_at)}–{formatTime(booking.end_at)}</span>
+                    </span>
+                    <span className="booking-mobile-booking-card__meta">
+                      <span>{booking.status.replaceAll('_', ' ')}</span>
+                      <span>{formatRupees(booking.price_cents)}</span>
+                    </span>
+                  </Button>
+                ))}
+              </section>
+            ))}
+          </div>
+          <div className="booking-desktop-table"><TableFrame caption="Bookings in the selected date range" density="compact">
           <thead><tr><th>Date</th><th>Time</th><th>Customer</th><th>Status</th><th>Price</th><th>Actions</th></tr></thead>
           <tbody>
             {bookings.map((b) => (
@@ -58,7 +112,8 @@ export default function BookingsListPage({ slug, perms }: Props) {
               </tr>
             ))}
           </tbody>
-        </TableFrame>}
+        </TableFrame></div>
+        </>}
 
       {openId ? <BookingDetailDrawer bookingId={openId} perms={perms} onClose={() => setOpenId(null)} onChanged={reload} /> : null}
     </div>

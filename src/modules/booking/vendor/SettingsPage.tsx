@@ -108,11 +108,11 @@ export default function SettingsPage({ slug, perms }: Props) {
   }
 
   return (
-    <div className="page booking-vendor">
+    <div className="page page-readable booking-vendor booking-settings-page">
       <BookingTabs slug={slug} perms={perms} />
       <h1 className="page-title">Booking settings</h1>
 
-      <div className="card">
+      <div className="card booking-settings-timing">
         <h2 className="section-title">Grid & timing</h2>
         <label>
           Slot interval (min)
@@ -147,7 +147,7 @@ export default function SettingsPage({ slug, perms }: Props) {
         </label>
       </div>
 
-      <div className="card">
+      <div className="card booking-settings-business">
         <h2 className="section-title">Business hours</h2>
         {setup?.availability_source === 'workforce' &&
         setup.booking_party_mode !== 'nobody_specific' ? (
@@ -188,7 +188,7 @@ export default function SettingsPage({ slug, perms }: Props) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card booking-settings-holidays">
         <h2 className="section-title">Closed dates (holidays)</h2>
         <ul className="booking-list-plain">
           {s.date_overrides
@@ -235,7 +235,7 @@ export default function SettingsPage({ slug, perms }: Props) {
       {error ? <p className="error">Couldn’t save ({error}).</p> : null}
       {saved ? <p className="muted">Saved.</p> : null}
       {canEdit ? (
-        <button className="btn btn-primary" onClick={save} disabled={saving}>
+        <button className="btn btn-primary booking-settings-save" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save settings'}
         </button>
       ) : (
