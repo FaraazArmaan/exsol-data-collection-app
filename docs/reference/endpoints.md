@@ -6,7 +6,7 @@
 
 # API endpoints
 
-333 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+337 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -268,6 +268,10 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | orders-queue.ts | `/api/orders/queue` | GET | bucket-user | `orders.business.view` |
 | orders-refund-advance.ts | `/api/orders/refund-advance/:id` | POST | bucket-user | `orders.business.edit` |
 | orders-refunds.ts | `/api/orders/refunds` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-return-advance.ts | `/api/orders/returns/:id/advance` | POST | bucket-user | `orders.business.edit` |
+| orders-return-receipt-link.ts | `/api/orders/returns/:id/receipt-link` | POST | bucket-user | `orders.business.edit` |
+| orders-return-refund-request.ts | `/api/orders/returns/:id/refund-request` | POST | bucket-user | `orders.business.create` |
+| orders-returns.ts | `/api/orders/returns` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
 | orders-sale-lines.ts | `/api/orders/sale-lines/:saleId` | GET | bucket-user | `orders.business.view` |
 | orders-shipment-detail.ts | `/api/orders/shipment-detail/:id` | GET, PUT | bucket-user | `orders.business.edit`, `orders.business.view` |
 | orders-shipments.ts | `/api/orders/shipments` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
