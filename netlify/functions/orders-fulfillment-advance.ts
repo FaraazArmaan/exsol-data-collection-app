@@ -1,7 +1,7 @@
 // POST /api/orders/fulfillment-advance/:id — drive the fulfillment FSM.
 //
-// FSM: pending→picked→packed→shipped→fulfilled; any-non-terminal→cancelled.
-// fulfilled and cancelled are terminal states.
+// FSM: pending→picked→packed→shipped→fulfilled; only a not-yet-shipped
+// fulfillment can be cancelled. Shipped stock is never reversed here.
 //
 // Side effects by transition:
 //   picked  → orders_stage_events(stage='picking', source='orders')
@@ -42,7 +42,7 @@ const LEGAL: Readonly<Record<string, readonly string[]>> = {
   pending:   ['picked', 'cancelled'],
   picked:    ['packed', 'cancelled'],
   packed:    ['shipped', 'cancelled'],
-  shipped:   ['fulfilled', 'cancelled'],
+  shipped:   ['fulfilled'],
   fulfilled: [],
   cancelled: [],
 };

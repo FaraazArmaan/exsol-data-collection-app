@@ -123,6 +123,17 @@
       </div>
     </section>
 
+    <section class="section">
+      <p class="lab-eyebrow">ORDERS · ACCEPTED DECISIONS</p>
+      <h2>Orders operational workflow decisions</h2>
+      <p class="section-intro">These decisions came from the Orders desktop-and-phone decision lab. They refine the shared rules for post-sale operations; they do not change source-of-truth ownership or authorise unrelated module work.</p>
+      <div class="decisions">
+        <article class="decision"><span class="status">Accepted · Orders 01</span><h3>Queue-first Orders home</h3><p><strong>Decision:</strong> B, queue first. The home begins with an authorised, filterable “needs action” queue and follows it with compact metrics. Metrics-first (A) is rejected for operational work because urgent fulfilment, refund, and SLA tasks become an extra navigation step; Kanban-first (C) is deferred because it is weaker for dense search and exception detail. <strong>Accessibility:</strong> visible search, active filters, keyboard-operable rows, text-plus-colour risks, and 24px-or-spaced desktop targets. <strong>Implementation:</strong> build an Orders queue/read model with saved views later; retain metrics as supporting context, not the primary workflow.</p></article>
+        <article class="decision"><span class="status">Accepted · Orders 02</span><h3>Focused fulfilment flow with compact line-table visual language</h3><p><strong>Decision:</strong> B workflow with the useful visual discipline of A. A worker completes one focused fulfilment task with line progress, scan/confirm actions, retry, and shared history; desktop may use compact table-like line rows. The “same dense table on phone” behaviour in A is rejected because horizontal scrolling and small targets make repeated picking unsafe, and the long wizard in C is rejected for routine work. <strong>Accessibility:</strong> phone rows remain vertical, labelled, and touch-safe (44px primary controls); scanner and keyboard focus stay visible; progress is text as well as colour. <strong>Implementation:</strong> one fulfilment record and handler contract; responsive presentation changes only, never the permissions, audit trail, or completion rules.</p></article>
+        <article class="decision"><span class="status">Accepted · Orders 03</span><h3>Named confirmation for remaining cancellation</h3><p><strong>Decision:</strong> B, named confirmation. Before cancelling an unfulfilled remainder, show ordered, fulfilled, remaining, and shipped quantities; the reason; the refund-intent outcome; and an explicit confirmation. Immediate cancellation (A) is rejected because it hides a high-impact quantity decision; the multi-page form (C) is rejected because it adds friction without better evidence. <strong>Accessibility:</strong> the destructive action names the affected quantity, keeps the safe alternative available, returns a nearby outcome, and announces pending/failed/completed refund status in text. <strong>Implementation:</strong> keep Orders as the owner of cancellation and refund intent, with Payments as the owner of refund execution/evidence; never reverse shipped stock.</p></article>
+      </div>
+    </section>
+
     <section class="system-note">
       <h2>Implementation checklist for every module</h2>
       <ul>

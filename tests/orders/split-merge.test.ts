@@ -287,6 +287,15 @@ describe('orders fulfillments list', () => {
       }),
     );
     expect(splitRes.status).toBe(201);
+    await seedStock(ctx, prodId!, 2);
+    await sql`
+      UPDATE public.inventory_stock SET qty_reserved = 1
+      WHERE client_id = ${ctx.clientId}::uuid AND product_id = ${prodId!}::uuid AND variant_id IS NULL
+    `;
+    await sql`
+      INSERT INTO public.inventory_reservations (client_id, sale_id, sale_line_id, product_id, qty, qty_consumed)
+      VALUES (${ctx.clientId}::uuid, ${saleId}::uuid, ${lineId}::uuid, ${prodId!}::uuid, 2, 1)
+    `;
 
     const res = await fulfillmentsHandler(
       makeBucketUserRequest(ctx, 'GET', `/api/orders/fulfillments?sale_id=${saleId}`),
@@ -301,6 +310,7 @@ describe('orders fulfillments list', () => {
     expect(Array.isArray(found.lines)).toBe(true);
     expect(found.lines).toHaveLength(1);
     expect(found.lines[0].qty).toBe(2);
+    expect(found.lines[0]).toMatchObject({ fulfilled_qty: 1, remaining_qty: 1, shipped_qty: 0 });
   });
 
   it('GET fulfillments (no sale_id filter) → 200 array scoped to client', async () => {

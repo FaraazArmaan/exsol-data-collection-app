@@ -97,7 +97,9 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
   async function handleAdvance(id: string, to: string) {
     setAdvanceMsg(null);
     try {
-      const res = await ordersApi.advanceRefund(id, to);
+      const res = to === 'approved'
+        ? await ordersApi.submitRefundToPayments(id)
+        : await ordersApi.advanceRefund(id, to);
       let msg = to === 'approved' && res.provider_pending
         ? 'Refund submitted to the payment provider; awaiting confirmation.'
         : `Refund ${to}.`;
@@ -178,9 +180,13 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
                 <td>{r.reason ?? '—'}</td>
                 <td>
                   <span className={`ord-badge ord-badge-${r.state}`}>
-                    {r.state === 'approved' && r.provider_refund_status === 'pending'
-                      ? 'Processing'
-                      : (REFUND_STATE_LABEL[r.state] ?? r.state)}
+                    {r.provider_refund_status === 'failed'
+                      ? 'Refund failed — retry'
+                      : r.state === 'approved' && r.provider_refund_status === 'pending'
+                        ? 'Refund pending'
+                        : r.state === 'completed'
+                          ? 'Refund completed'
+                          : (REFUND_STATE_LABEL[r.state] ?? r.state)}
                   </span>
                 </td>
                 {canEdit && (

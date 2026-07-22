@@ -137,7 +137,7 @@ export default function OrdersDashboardPage({ perms }: Props) {
       )}
 
       {activeTab === 'fulfillments' && (
-        <FulfillmentsTab perms={perms} />
+        <FulfillmentsTab perms={perms} currency={data?.base_currency ?? 'USD'} />
       )}
 
       {activeTab === 'overview' && loading && <LoadingState title="Loading orders overview" />}

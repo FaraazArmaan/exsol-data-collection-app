@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import refunds from '../../netlify/functions/orders-refunds';
-import advanceRefund from '../../netlify/functions/orders-refund-advance';
+import submitRefund from '../../netlify/functions/payments-orders-refund-submit';
 import webhook from '../../netlify/functions/payments-razorpay-webhook';
 import { encryptPaymentSecret } from '../../netlify/functions/_payments-secrets';
 import { makeBucketUserRequest, seedOrdersClient, seedSale } from '../orders/_helpers';
@@ -35,6 +35,7 @@ function refundEvent(event: string, eventId: string, refundId: string, paymentId
 
 async function capturedSale(total: number) {
   const ctx = await seedOrdersClient();
+  await sql`INSERT INTO public.client_enabled_products (client_id, product_key, enabled_by_admin) VALUES (${ctx.clientId}::uuid, 'saloon-booking', ${ctx.adminId}::uuid) ON CONFLICT (client_id, product_key) DO NOTHING`;
   const { saleId } = await seedSale(ctx, { status: 'paid', channel: 'online', total });
   const paymentId = `pay_refund_${prefix}_${++paymentNo}`;
   await sql`
@@ -93,9 +94,9 @@ describe('Orders Razorpay refunds', () => {
   it('creates immutable pending evidence and completes only after one signed provider webhook', async () => {
     const { ctx, saleId, paymentId, captureTransactionId } = await capturedSale(5000);
     const refund = await requestRefund(ctx, saleId, 2000);
-    const approved = await advanceRefund(makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${refund.id}`, { to: 'approved' }));
+    const approved = await submitRefund(makeBucketUserRequest(ctx, 'POST', `/api/payments/orders-refunds/${refund.id}/submit`));
     expect(await approved.json()).toMatchObject({ id: refund.id, state: 'approved', provider_pending: true });
-    expect((await advanceRefund(makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${refund.id}`, { to: 'completed' }))).status).toBe(409);
+    expect((await submitRefund(makeBucketUserRequest(ctx, 'POST', `/api/payments/orders-refunds/${refund.id}/submit`))).status).toBe(409);
 
     const pending = await sql`
       SELECT r.state, t.status, t.refund_of_transaction_id, t.orders_refund_id, t.provider_transaction_id
@@ -124,7 +125,7 @@ describe('Orders Razorpay refunds', () => {
   it('marks a fully refunded paid sale refunded only after the provider webhook', async () => {
     const { ctx, saleId, paymentId } = await capturedSale(3000);
     const refund = await requestRefund(ctx, saleId, 3000);
-    await advanceRefund(makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${refund.id}`, { to: 'approved' }));
+    await submitRefund(makeBucketUserRequest(ctx, 'POST', `/api/payments/orders-refunds/${refund.id}/submit`));
     const row = await sql`SELECT provider_transaction_id FROM public.payment_transactions WHERE orders_refund_id = ${refund.id}::uuid` as Array<{ provider_transaction_id: string }>;
     await webhook(refundEvent('refund.processed', `evt_refund_${prefix}_full`, row[0]!.provider_transaction_id, paymentId, 3000, refund.id, saleId));
     const sale = await sql`SELECT status FROM public.sales WHERE id = ${saleId}::uuid` as Array<{ status: string }>;
@@ -134,7 +135,7 @@ describe('Orders Razorpay refunds', () => {
   it('returns a failed provider refund to requested without changing the sale', async () => {
     const { ctx, saleId, paymentId } = await capturedSale(2500);
     const refund = await requestRefund(ctx, saleId, 1000);
-    await advanceRefund(makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${refund.id}`, { to: 'approved' }));
+    await submitRefund(makeBucketUserRequest(ctx, 'POST', `/api/payments/orders-refunds/${refund.id}/submit`));
     const row = await sql`SELECT provider_transaction_id FROM public.payment_transactions WHERE orders_refund_id = ${refund.id}::uuid` as Array<{ provider_transaction_id: string }>;
     await webhook(refundEvent('refund.failed', `evt_refund_${prefix}_failed`, row[0]!.provider_transaction_id, paymentId, 1000, refund.id, saleId));
     const result = await sql`
