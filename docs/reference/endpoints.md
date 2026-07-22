@@ -6,7 +6,7 @@
 
 # API endpoints
 
-315 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+316 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -290,6 +290,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | sale-payment-expiry.ts | `/api/sale-payment-expiry (name-routed)` | any | public | — |
 | u-credential-token.ts | `/api/u-credential-token (name-routed)` | any | public | — |
 | webhook-example.ts | `/api/webhook-example` | POST | public | — |
+| workspace-layouts.ts | `/api/workspace-layouts` | any | bucket-user | — |
 
 ## portfolio
 

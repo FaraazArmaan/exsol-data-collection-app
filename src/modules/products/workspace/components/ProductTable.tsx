@@ -30,6 +30,7 @@ export function ProductTable(props: {
   const allSelected = items.length > 0 && items.every((p) => selected.has(p.id));
 
   return (
+    <div className="pm-table-frame">
     <table className="pm-table">
       <colgroup>
         <col style={{ width: 36 }} />
@@ -133,5 +134,6 @@ export function ProductTable(props: {
         )}
       </tbody>
     </table>
+    </div>
   );
 }

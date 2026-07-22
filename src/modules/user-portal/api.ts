@@ -17,6 +17,7 @@ export interface UserPortalClient {
   id: string;
   slug: string;
   name: string;
+  timezone?: string;
 }
 
 export interface UserPortalEnabledModule {

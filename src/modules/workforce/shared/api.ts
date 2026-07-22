@@ -395,6 +395,8 @@ export interface EmployeeDirectoryEntry {
   custom_fields: Record<string, unknown> | null;
   profile_created_at: string | null;
   profile_updated_at: string | null;
+  active_work_location_count: number;
+  has_recurring_shift: boolean;
 }
 
 export interface SchedulePlanRow {

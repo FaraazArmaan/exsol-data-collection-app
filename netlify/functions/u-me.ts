@@ -34,7 +34,7 @@ export default async (req: Request, _ctx: Context) => {
     SELECT n.id, n.client_id, n.parent_id, n.level_number, n.role_id,
            n.display_name, n.email, n.phone, n.notes, n.fields,
            r.key AS role_key, r.label AS role_label, r.color AS role_color,
-           c.slug AS client_slug, c.name AS client_name
+           c.slug AS client_slug, c.name AS client_name, c.timezone AS client_timezone
     FROM public.user_nodes n
     JOIN public.client_roles r ON r.id = n.role_id
     JOIN public.clients c ON c.id = n.client_id
@@ -45,7 +45,7 @@ export default async (req: Request, _ctx: Context) => {
     role_id: string; display_name: string; email: string | null; phone: string | null;
     notes: string | null; fields: Record<string, unknown>;
     role_key: string; role_label: string; role_color: string;
-    client_slug: string; client_name: string;
+    client_slug: string; client_name: string; client_timezone: string;
   }>;
   if (rows.length === 0) return jsonError(404, 'user_node_not_found');
   const row = rows[0]!;
@@ -95,7 +95,7 @@ export default async (req: Request, _ctx: Context) => {
       must_change_password: actor.credential.must_change_password,
       has_google: hasGoogle,
     },
-    client: { id: row.client_id, slug: row.client_slug, name: row.client_name },
+    client: { id: row.client_id, slug: row.client_slug, name: row.client_name, timezone: row.client_timezone },
     permissions,
     enabled_modules: enabledModules,
   }, { headers });

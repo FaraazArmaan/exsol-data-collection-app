@@ -325,6 +325,14 @@
   border-bottom: 1px solid var(--border-default);
   margin-bottom: 4px;
 }
+.booking-tabs-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.booking-tabs-toolbar .booking-tabs { flex: 1; margin-bottom: 0; }
 .booking-tabs a {
   padding: 8px 14px;
   color: var(--text-secondary);

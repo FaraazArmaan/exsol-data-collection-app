@@ -31,13 +31,18 @@ function req(ctx: Awaited<ReturnType<typeof seedWorkforceClient>>, method: strin
 }
 
 describe('workforce self-service geofenced time clock', () => {
-  it('auto-creates an employee profile link before exposing dashboard status', async () => {
+  it('does not create an employment record solely because a Team user opens attendance', async () => {
     const ctx = await seedWorkforceClient();
     const res = await statusHandler(req(ctx, 'GET', '/api/workforce/me/time-status'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.employee.user_node_id).toBe(ctx.userNodeId);
-    expect(body.employee.resource_id).toEqual(expect.any(String));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('employee_profile_not_linked');
+    const profiles = await sql`
+      SELECT id
+      FROM public.workforce_employee_profiles
+      WHERE client_id = ${ctx.clientId}::uuid
+        AND user_node_id = ${ctx.userNodeId}::uuid
+    `;
+    expect(profiles).toHaveLength(0);
   });
 
   it('blocks clock-in until a work location is assigned', async () => {

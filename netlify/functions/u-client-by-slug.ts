@@ -13,8 +13,8 @@ export default async (req: Request, _ctx: Context) => {
 
   const sql = db();
   const rows = (await sql`
-    SELECT id, slug, name FROM public.clients WHERE slug = ${slug} LIMIT 1
-  `) as { id: string; slug: string; name: string }[];
+    SELECT id, slug, name, timezone FROM public.clients WHERE slug = ${slug} LIMIT 1
+  `) as { id: string; slug: string; name: string; timezone: string }[];
   const client = rows[0];
   if (!client) return jsonError(404, 'not_found');
   return jsonOk({ client });

@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-151 tables across 143 forward-only migrations.
+153 tables across 144 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -601,6 +601,16 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `141_login_ams_invite_reset_tokens.sql`
 - columns at creation: `id uuid`, `token_hash text`, `purpose text`, `client_id uuid`, `user_node_id uuid`, `credential_id uuid`, `email citext`, `created_by_admin uuid`, `created_by_user_node uuid`, `created_at timestamptz`, `expires_at timestamptz`, `consumed_at timestamptz`
+
+### `user_workspace_layout_preferences`
+
+- created in `167_workspace_layout_preferences.sql`
+- columns at creation: `client_id UUID`, `user_node_id UUID`, `namespace TEXT`, `layout JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workspace_layout_defaults`
+
+- created in `167_workspace_layout_preferences.sql`
+- columns at creation: `client_id UUID`, `namespace TEXT`, `layout JSONB`, `updated_by_user_node_id UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ## portfolio
 

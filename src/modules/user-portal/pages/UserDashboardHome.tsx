@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useUserAuth } from '../user-auth-context';
 import { useNavItems } from '../nav/useNavItems';
+import { formatWorkforceTime } from '../../workforce/shared/time';
 import {
   workforceMeActOnShiftSwap,
   workforceMeCancelLeaveRequest,
@@ -37,10 +38,6 @@ function StubTile({ title, description }: { title: string; description: string }
   );
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 function formatDate(value: string | null): string {
   if (!value) return 'No date';
   return new Date(`${value}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
@@ -74,7 +71,7 @@ function browserLocation(): Promise<{ latitude: number; longitude: number; accur
   });
 }
 
-function WorkforceTimeCard({ enabled }: { enabled: boolean }) {
+function WorkforceTimeCard({ enabled, timeZone }: { enabled: boolean; timeZone: string | null | undefined }) {
   const [status, setStatus] = useState<WorkforceMeTimeStatus | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [busy, setBusy] = useState('');
@@ -89,7 +86,7 @@ function WorkforceTimeCard({ enabled }: { enabled: boolean }) {
       setMessage('');
     } else if (res.error.code === 'employee_profile_not_linked') {
       setStatus(null);
-      setMessage('Your Team user is not linked to an active employee profile.');
+      setMessage('Workforce setup is pending. Ask a manager to create your employee profile before using attendance.');
     } else {
       setMessage(res.error.message || res.error.code);
     }
@@ -153,11 +150,11 @@ function WorkforceTimeCard({ enabled }: { enabled: boolean }) {
         <div className="dash-time-body">
           <div className="dash-time-metric">
             <span>Clock in</span>
-            <strong>{openPunch ? formatTime(openPunch.punched_in_at) : '--'}</strong>
+            <strong>{openPunch ? formatWorkforceTime(openPunch.punched_in_at, timeZone) : '--'}</strong>
           </div>
           <div className="dash-time-metric">
             <span>Break</span>
-            <strong>{openBreak ? formatTime(openBreak.started_at) : 'None open'}</strong>
+            <strong>{openBreak ? formatWorkforceTime(openBreak.started_at, timeZone) : 'None open'}</strong>
           </div>
           <div className="dash-time-metric">
             <span>Worksites</span>
@@ -525,7 +522,7 @@ export default function UserDashboardHome() {
         <StatTile label="Workspace" value={client.name} />
       </section>
 
-      <WorkforceTimeCard enabled={workforceEnabled} />
+      <WorkforceTimeCard enabled={workforceEnabled} timeZone={client.timezone} />
       <WorkforceSelfService enabled={workforceEnabled} />
 
       <section>

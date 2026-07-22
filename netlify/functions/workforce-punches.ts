@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { workforceClientTimeZone } from './_workforce-depth-utils';
 
 export const config = { path: '/api/workforce/punches' };
 
@@ -23,6 +24,7 @@ async function handleGet(req: Request): Promise<Response> {
   const to = url.searchParams.get('to');
 
   const sql = db();
+  const timeZone = await workforceClientTimeZone(a.ctx.clientId);
 
   const punches = (await sql`
     SELECT
@@ -39,8 +41,8 @@ async function handleGet(req: Request): Promise<Response> {
     FROM public.workforce_punches p
     WHERE p.client_id = ${a.ctx.clientId}::uuid
       AND (${resourceId}::uuid IS NULL OR p.resource_id = ${resourceId}::uuid)
-      AND (${from}::date IS NULL OR p.punched_in_at::date >= ${from}::date)
-      AND (${to}::date IS NULL OR p.punched_in_at::date <= ${to}::date)
+      AND (${from}::date IS NULL OR (p.punched_in_at AT TIME ZONE ${timeZone}::text)::date >= ${from}::date)
+      AND (${to}::date IS NULL OR (p.punched_in_at AT TIME ZONE ${timeZone}::text)::date <= ${to}::date)
     ORDER BY p.punched_in_at DESC
   `) as unknown[];
 
@@ -68,6 +70,7 @@ async function handlePost(req: Request): Promise<Response> {
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null;
 
   const sql = db();
+  const timeZone = await workforceClientTimeZone(a.ctx.clientId);
 
   // Validate resource belongs to this client.
   const resource = (await sql`
@@ -83,7 +86,7 @@ async function handlePost(req: Request): Promise<Response> {
     WHERE resource_id = ${resourceId}::uuid
       AND client_id = ${a.ctx.clientId}::uuid
       AND punched_out_at IS NULL
-      AND punched_in_at::date = CURRENT_DATE
+      AND (punched_in_at AT TIME ZONE ${timeZone}::text)::date = (NOW() AT TIME ZONE ${timeZone}::text)::date
     LIMIT 1
   `) as Array<{ id: string }>;
   if (openPunch.length > 0) return jsonError(409, 'already_clocked_in');
@@ -92,11 +95,14 @@ async function handlePost(req: Request): Promise<Response> {
   const shiftRows = (await sql`
     SELECT
       id,
-      GREATEST(0, EXTRACT(EPOCH FROM (NOW() - (CURRENT_DATE + start_time)))::int / 60)::smallint AS late_minutes
+      GREATEST(0, EXTRACT(EPOCH FROM (
+        (NOW() AT TIME ZONE ${timeZone}::text)
+        - ((NOW() AT TIME ZONE ${timeZone}::text)::date + start_time)
+      ))::int / 60)::smallint AS late_minutes
     FROM public.workforce_shifts
     WHERE resource_id = ${resourceId}::uuid
       AND client_id = ${a.ctx.clientId}::uuid
-      AND weekday = EXTRACT(DOW FROM NOW())::int
+      AND weekday = EXTRACT(DOW FROM (NOW() AT TIME ZONE ${timeZone}::text))::int
     ORDER BY start_time ASC
     LIMIT 1
   `) as Array<{ id: string; late_minutes: number }>;

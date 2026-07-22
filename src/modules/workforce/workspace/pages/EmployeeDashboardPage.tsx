@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { WorkforceNav } from '../components/WorkforceNav';
 import {
   workforceApi,
@@ -208,6 +209,22 @@ function completeness(master: EmployeeMasterProfile | null): { done: number; tot
   };
 }
 
+function operationalReadiness(employee: EmployeeDirectoryEntry): {
+  clockInReady: boolean;
+  scheduleReady: boolean;
+  blockers: string[];
+} {
+  const master = profileFromEmployee(employee);
+  const clockInReady = employee.employment_status === 'active' && employee.active_work_location_count > 0;
+  const scheduleReady = employee.has_recurring_shift;
+  const blockers: string[] = [];
+  if (!master) blockers.push('Create Workforce profile');
+  else if (employee.employment_status !== 'active') blockers.push('Employment is not active');
+  if (master && employee.active_work_location_count === 0) blockers.push('Assign work location');
+  if (master && !employee.has_recurring_shift) blockers.push('Add recurring shift');
+  return { clockInReady, scheduleReady, blockers };
+}
+
 export default function EmployeeDashboardPage({ slug, perms }: Props) {
   const [employees, setEmployees] = useState<EmployeeDirectoryEntry[]>([]);
   const [selectedEmployeeKey, setSelectedEmployeeKey] = useState('');
@@ -230,9 +247,10 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
   const selectedTeamMember = teamMembers.find(member => member.id === (selectedMaster?.user_node_id ?? form.user_node_id)) ?? null;
   const managerMember = teamMembers.find(member => member.id === (selectedMaster?.manager_user_node_id ?? form.manager_user_node_id)) ?? null;
   const completion = completeness(selectedMaster);
-  const readyCount = employees.filter(employee => completeness(profileFromEmployee(employee)).missing.length === 0).length;
-  const activeCount = employees.filter(employee => employee.employment_status === 'active').length;
+  const profileCount = employees.filter(employee => !!employee.profile_id).length;
+  const readyCount = employees.filter(employee => operationalReadiness(employee).clockInReady).length;
   const selectedDisplayName = selectedEmployee ? employeeDisplayName(selectedEmployee) : '';
+  const selectedReadiness = selectedEmployee ? operationalReadiness(selectedEmployee) : null;
 
   async function loadEmployeesDirectory() {
     const data = await workforceApi.listEmployeesDirectory();
@@ -332,12 +350,12 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
           <span className="wf-emp-kpi-label">Team employees</span>
         </div>
         <div className="wf-emp-kpi">
-          <span className="wf-emp-kpi-value">{activeCount}</span>
-          <span className="wf-emp-kpi-label">Active profiles</span>
+          <span className="wf-emp-kpi-value">{profileCount}</span>
+          <span className="wf-emp-kpi-label">Workforce profiles</span>
         </div>
         <div className="wf-emp-kpi">
           <span className="wf-emp-kpi-value">{readyCount}</span>
-          <span className="wf-emp-kpi-label">Ready records</span>
+          <span className="wf-emp-kpi-label">Clock-in ready</span>
         </div>
       </div>
 
@@ -380,6 +398,7 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                 const isSelected = key === selectedEmployeeKey;
                 const displayName = employeeDisplayName(employee);
                 const rowCompletion = completeness(profileFromEmployee(employee));
+                const readiness = operationalReadiness(employee);
                 return (
                   <button
                     key={key}
@@ -394,8 +413,8 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                       <span className="wf-emp-roster-meta">{employeeSubtitle(employee)}</span>
                     </span>
                     <span className="wf-emp-roster-side">
-                      <span className={employee.employment_status === 'active' ? 'wf-emp-status-dot active' : 'wf-emp-status-dot'} aria-hidden="true" />
-                      <span className="wf-emp-readiness">{rowCompletion.done}/{rowCompletion.total}</span>
+                      <span className={readiness.clockInReady ? 'wf-emp-status-dot active' : 'wf-emp-status-dot'} aria-hidden="true" />
+                      <span className="wf-emp-readiness">{readiness.clockInReady ? 'Ready' : rowCompletion.done === 0 ? 'Set up' : `${rowCompletion.done}/${rowCompletion.total}`}</span>
                     </span>
                   </button>
                 );
@@ -421,6 +440,10 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                 </div>
                 <div className="wf-emp-selected-status">
                   <span className={selectedEmployee.employment_status === 'active' ? 'wf-badge-ontime' : 'wf-badge'}>{selectedEmployee.employment_status ? STATUS_LABELS[selectedEmployee.employment_status] : 'Profile pending'}</span>
+                  {!selectedReadiness?.clockInReady && <span className="wf-badge">Setup needed</span>}
+                  {selectedEmployee.resource_id && (
+                    <Link className="wf-btn wf-btn-secondary wf-emp-attendance-link" to={`/c/${slug}/workforce/punching?employee=${encodeURIComponent(selectedEmployee.resource_id)}`}>View attendance</Link>
+                  )}
                 </div>
               </div>
 
@@ -450,6 +473,31 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                   ) : (
                     <span className="wf-badge-ontime">Ready</span>
                   )}
+                </section>
+
+                <section className="wf-emp-card">
+                  <div className="wf-emp-card-title">Operational Readiness</div>
+                  <div className="wf-emp-stats-grid">
+                    <div className="wf-emp-stat">
+                      <span className="wf-emp-state-value">{selectedReadiness?.clockInReady ? 'Ready' : 'Blocked'}</span>
+                      <span className="wf-emp-stat-label">Clock in</span>
+                    </div>
+                    <div className="wf-emp-stat">
+                      <span className="wf-emp-state-value">{selectedReadiness?.scheduleReady ? 'Added' : 'Missing'}</span>
+                      <span className="wf-emp-stat-label">Recurring shift</span>
+                    </div>
+                  </div>
+                  {(selectedReadiness?.blockers.length ?? 0) > 0 ? (
+                    <div className="wf-emp-balance-row">
+                      {selectedReadiness?.blockers.map(item => <span key={item} className="wf-emp-balance-chip">{item}</span>)}
+                    </div>
+                  ) : (
+                    <span className="wf-badge-ontime">Operational setup complete</span>
+                  )}
+                  <div className="wf-asset-actions">
+                    {selectedResourceId && <Link className="wf-btn wf-btn-secondary" to={`/c/${slug}/workforce/punching?employee=${encodeURIComponent(selectedResourceId)}`}>Manage worksite</Link>}
+                    {selectedResourceId && <Link className="wf-btn wf-btn-secondary" to={`/c/${slug}/workforce`}>Manage schedule</Link>}
+                  </div>
                 </section>
 
                 <section className="wf-emp-card">

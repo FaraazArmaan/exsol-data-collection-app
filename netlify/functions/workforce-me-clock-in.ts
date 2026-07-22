@@ -1,6 +1,7 @@
 // /api/workforce/me/clock-in — self-service geofenced clock-in.
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
+import { workforceClientTimeZone } from './_workforce-depth-utils';
 import {
   appendClockEvent,
   geoFromBody,
@@ -21,6 +22,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!a.ok) return a.res;
   const employee = await resolveSelfEmployee(a.ctx);
   if (employee instanceof Response) return employee;
+  const timeZone = await workforceClientTimeZone(a.ctx.clientId);
 
   const body = await readJsonObject(req);
   if (body instanceof Response) return body;
@@ -44,11 +46,14 @@ export default async function handler(req: Request): Promise<Response> {
   const shiftRows = await db()`
     SELECT
       id,
-      GREATEST(0, EXTRACT(EPOCH FROM (NOW() - (CURRENT_DATE + start_time)))::int / 60)::smallint AS late_minutes
+      GREATEST(0, EXTRACT(EPOCH FROM (
+        (NOW() AT TIME ZONE ${timeZone}::text)
+        - ((NOW() AT TIME ZONE ${timeZone}::text)::date + start_time)
+      ))::int / 60)::smallint AS late_minutes
     FROM public.workforce_shifts
     WHERE resource_id = ${employee.resource_id}::uuid
       AND client_id = ${a.ctx.clientId}::uuid
-      AND weekday = EXTRACT(DOW FROM NOW())::int
+      AND weekday = EXTRACT(DOW FROM (NOW() AT TIME ZONE ${timeZone}::text))::int
     ORDER BY start_time ASC
     LIMIT 1
   ` as Array<{ id: string; late_minutes: number }>;

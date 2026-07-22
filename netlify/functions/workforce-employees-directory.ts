@@ -4,7 +4,6 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
-import { ensureEmployeeProfilesForTeam } from './_workforce-employee-sync';
 
 export const config = { path: '/api/workforce/employees-directory' };
 
@@ -13,8 +12,6 @@ export default async function handler(req: Request): Promise<Response> {
 
   const a = await requireWorkforce(req, ['workforce.employees.view']);
   if (!a.ok) return a.res;
-
-  await ensureEmployeeProfilesForTeam(a.ctx.clientId);
 
   const sql = db();
   const teamRows = await sql`
@@ -46,7 +43,26 @@ export default async function handler(req: Request): Promise<Response> {
       p.emergency_contact,
       p.custom_fields,
       p.created_at AS profile_created_at,
-      p.updated_at AS profile_updated_at
+      p.updated_at AS profile_updated_at,
+      (
+        SELECT COUNT(*)::int
+        FROM public.workforce_work_location_assignments wa
+        JOIN public.workforce_work_locations wl ON wl.id = wa.work_location_id
+        WHERE wa.client_id = un.client_id
+          AND wa.active = true
+          AND wl.active = true
+          AND (
+            wa.applies_to_all = true
+            OR wa.resource_id = p.resource_id
+            OR wa.user_node_id = un.id
+          )
+      ) AS active_work_location_count,
+      EXISTS (
+        SELECT 1
+        FROM public.workforce_shifts ws
+        WHERE ws.client_id = un.client_id
+          AND ws.resource_id = p.resource_id
+      ) AS has_recurring_shift
     FROM public.user_nodes un
     LEFT JOIN public.client_roles cr
       ON cr.id = un.role_id
@@ -91,7 +107,26 @@ export default async function handler(req: Request): Promise<Response> {
       p.emergency_contact,
       p.custom_fields,
       p.created_at AS profile_created_at,
-      p.updated_at AS profile_updated_at
+      p.updated_at AS profile_updated_at,
+      (
+        SELECT COUNT(*)::int
+        FROM public.workforce_work_location_assignments wa
+        JOIN public.workforce_work_locations wl ON wl.id = wa.work_location_id
+        WHERE wa.client_id = p.client_id
+          AND wa.active = true
+          AND wl.active = true
+          AND (
+            wa.applies_to_all = true
+            OR wa.resource_id = p.resource_id
+            OR wa.user_node_id = p.user_node_id
+          )
+      ) AS active_work_location_count,
+      EXISTS (
+        SELECT 1
+        FROM public.workforce_shifts ws
+        WHERE ws.client_id = p.client_id
+          AND ws.resource_id = p.resource_id
+      ) AS has_recurring_shift
     FROM public.workforce_employee_profiles p
     JOIN public.booking_resources br
       ON br.id = p.resource_id

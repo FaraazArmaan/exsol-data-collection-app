@@ -51,24 +51,37 @@ export default function PaymentProviderSettingsCard() {
           {connection?.configured ? 'Credentials saved' : 'Not configured'}
         </span>
       </div>
-      <p>Use Test-mode credentials only. Secrets are encrypted before storage and are never shown again.</p>
-      <form className="pay-form" onSubmit={save}>
-        <label>Test Key ID
-          <input value={keyId} onChange={(event) => setKeyId(event.target.value)} placeholder="rzp_test_…" autoComplete="off" />
-        </label>
-        <label>Test Key Secret
-          <input type="password" value={apiSecret} onChange={(event) => setApiSecret(event.target.value)} placeholder="Leave blank to keep saved value" autoComplete="new-password" />
-        </label>
-        <label>Test webhook secret
-          <input type="password" value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="Create this separately in Razorpay" autoComplete="new-password" />
-        </label>
-        <label className="pay-toggle">
-          <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
-          Mark this Test-mode connection ready for the future checkout integration
-        </label>
-        {error ? <p className="pay-error">Could not save provider settings: {error}.</p> : null}
-        <button className="pay-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Test connection'}</button>
-      </form>
+      <div className="pay-provider-layout">
+        <div>
+          <p>Use Test-mode credentials only. Secrets are encrypted before storage and are never shown again.</p>
+          <form className="pay-form" onSubmit={save}>
+            <label>Test Key ID
+              <input value={keyId} onChange={(event) => setKeyId(event.target.value)} placeholder="rzp_test_…" autoComplete="off" />
+            </label>
+            <label>Test Key Secret
+              <input type="password" value={apiSecret} onChange={(event) => setApiSecret(event.target.value)} placeholder="Leave blank to keep saved value" autoComplete="new-password" />
+            </label>
+            <label>Test webhook secret
+              <input type="password" value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="Create this separately in Razorpay" autoComplete="new-password" />
+            </label>
+            <label className="pay-toggle">
+              <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+              Mark this Test-mode connection ready for the future checkout integration
+            </label>
+            {error ? <p className="pay-error">Could not save provider settings: {error}.</p> : null}
+            <button className="pay-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Test connection'}</button>
+          </form>
+        </div>
+        <aside className="pay-provider-context" aria-label="Provider connection readiness">
+          <h3>Connection readiness</h3>
+          <dl>
+            <div><dt>Credentials</dt><dd>{connection?.configured ? 'Saved' : 'Not configured'}</dd></div>
+            <div><dt>Webhook verification</dt><dd>Required before collection</dd></div>
+            <div><dt>Checkout</dt><dd>Unavailable until verification</dd></div>
+          </dl>
+          <p>Test-mode setup is safe to prepare now. It does not enable customer payment collection.</p>
+        </aside>
+      </div>
     </section>
   );
 }

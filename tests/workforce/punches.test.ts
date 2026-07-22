@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { neon } from '@neondatabase/serverless';
 import handler from '../../netlify/functions/workforce-punches';
 import punchHandler from '../../netlify/functions/workforce-punch';
 import { seedWorkforceClient } from './_helpers';
 
 let ctx: Awaited<ReturnType<typeof seedWorkforceClient>>;
+const sql = neon(process.env.DATABASE_URL!);
 
 beforeAll(async () => { ctx = await seedWorkforceClient(); });
 
@@ -44,6 +46,39 @@ describe('workforce punches', () => {
     expect(res.status).toBe(200);
     const data = await res.json() as { punches: unknown[] };
     expect(data.punches.length).toBeGreaterThan(0);
+  });
+
+  it('GET filters punch dates in the workspace timezone', async () => {
+    await sql`UPDATE public.clients SET timezone = 'Asia/Kolkata' WHERE id = ${ctx.clientId}::uuid`;
+    const rows = await sql`
+      INSERT INTO public.workforce_punches (client_id, resource_id, punched_in_at, punched_out_at)
+      VALUES (
+        ${ctx.clientId}::uuid,
+        ${ctx.resourceId}::uuid,
+        '2026-07-20T19:30:00.000Z'::timestamptz,
+        '2026-07-20T20:30:00.000Z'::timestamptz
+      )
+      RETURNING id
+    ` as Array<{ id: string }>;
+    const punchId = rows[0]!.id;
+
+    const localDay = await handler(makeReq(
+      'GET',
+      `http://localhost/api/workforce/punches?resource_id=${ctx.resourceId}&from=2026-07-21&to=2026-07-21`,
+      undefined,
+      ctx.cookie,
+    ));
+    const localDayBody = await localDay.json() as { punches: Array<{ id: string }> };
+    expect(localDayBody.punches.map(punch => punch.id)).toContain(punchId);
+
+    const utcDay = await handler(makeReq(
+      'GET',
+      `http://localhost/api/workforce/punches?resource_id=${ctx.resourceId}&from=2026-07-20&to=2026-07-20`,
+      undefined,
+      ctx.cookie,
+    ));
+    const utcDayBody = await utcDay.json() as { punches: Array<{ id: string }> };
+    expect(utcDayBody.punches.map(punch => punch.id)).not.toContain(punchId);
   });
 
   it('PATCH clock out sets punched_out_at', async () => {

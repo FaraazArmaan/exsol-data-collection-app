@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { WorkforceNav } from '../components/WorkforceNav';
+import { useUserAuth } from '../../../user-portal/user-auth-context';
 import {
   workforceApi,
   type Punch,
@@ -9,6 +11,13 @@ import {
   type TimeCorrection,
   type WorkLocation,
 } from '../../shared/api';
+import {
+  formatWorkforceDate,
+  formatWorkforceDateKey,
+  formatWorkforceTime,
+  workforceDateKey,
+  workforceTimeZone,
+} from '../../shared/time';
 import '../../workforce.css';
 
 interface Props {
@@ -16,15 +25,11 @@ interface Props {
   perms: ReadonlySet<string>;
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
 export default function SmartPunchingPage({ slug, perms }: Props) {
+  const { client } = useUserAuth();
+  const [searchParams] = useSearchParams();
+  const timeZone = workforceTimeZone(client?.timezone);
+  const employeeParam = searchParams.get('employee') ?? '';
   const [punches, setPunches] = useState<Punch[] | null>(null);
   const [events, setEvents] = useState<TimeClockEvent[]>([]);
   const [corrections, setCorrections] = useState<TimeCorrection[]>([]);
@@ -55,6 +60,12 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   useEffect(() => {
     workforceApi.listStaff().then(d => setStaff(d.resources)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (employeeParam && staff.some(member => member.id === employeeParam)) {
+      setSelectedResourceId(employeeParam);
+    }
+  }, [employeeParam, staff]);
 
   async function loadWorkLocations() {
     if (!canManageLocations) return;
@@ -87,8 +98,8 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
 
   useEffect(() => { load(); }, [selectedResourceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayPunches = (punches ?? []).filter(p => p.punched_in_at.startsWith(today));
+  const today = workforceDateKey(new Date(), timeZone);
+  const todayPunches = (punches ?? []).filter(p => workforceDateKey(p.punched_in_at, timeZone) === today);
 
   function openPunchForResource(resourceId: string): Punch | undefined {
     return todayPunches.find(p => p.resource_id === resourceId && p.punched_out_at === null);
@@ -140,7 +151,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   // Group punches by date for the history list.
   const punchesByDate: Map<string, Punch[]> = new Map();
   for (const p of punches ?? []) {
-    const dateKey = p.punched_in_at.slice(0, 10);
+    const dateKey = workforceDateKey(p.punched_in_at, timeZone);
     const bucket = punchesByDate.get(dateKey) ?? [];
     bucket.push(p);
     punchesByDate.set(dateKey, bucket);
@@ -213,18 +224,23 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
       <WorkforceNav slug={slug} active="punching" />
 
       <div className="wf-punch-layout">
-        {/* Resource filter */}
-        <select
-          className="wf-select"
-          value={selectedResourceId}
-          onChange={e => setSelectedResourceId(e.target.value)}
-          style={{ maxWidth: 260 }}
-        >
-          <option value="">All staff</option>
-          {staff.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        <div className="wf-page-heading wf-attendance-heading">
+          <div>
+            <h1>Attendance</h1>
+            <p>Review clock activity, breaks, and corrections. Times are shown in {timeZone}.</p>
+          </div>
+          <div className="wf-page-heading__actions">
+            <span className="wf-timezone-badge">{timeZone}</span>
+            <Link className="wf-btn wf-btn-secondary" to={`/c/${slug}/workforce/timesheets`}>Manual time entries</Link>
+          </div>
+        </div>
+
+        <label className="wf-label wf-attendance-filter">Employee
+          <select className="wf-select" value={selectedResourceId} onChange={e => setSelectedResourceId(e.target.value)}>
+            <option value="">All staff</option>
+            {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
 
         {error && <div className="wf-error">{error}</div>}
 
@@ -304,7 +320,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                   <div className="wf-punch-name">{s.name}</div>
                   {openPunch ? (
                     <>
-                      <div className="wf-punch-time">In: {formatTime(openPunch.punched_in_at)}</div>
+                      <div className="wf-punch-time">In: {formatWorkforceTime(openPunch.punched_in_at, timeZone)}</div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                         {openPunch.late_minutes === null && (
                           <span className="wf-badge-noshift">No shift</span>
@@ -346,7 +362,8 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           </div>
         )}
 
-        {/* Punch history */}
+        <section className="wf-attendance-history">
+          <h2>Attendance history</h2>
         {punches === null && !error && (
           <div className="wf-empty">Loading punch records…</div>
         )}
@@ -359,13 +376,13 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           <div className="wf-punch-list">
             {sortedDates.map(dateKey => (
               <div key={dateKey}>
-                <div className="wf-punch-date-heading">{formatDate(dateKey + 'T12:00:00')}</div>
+                <div className="wf-punch-date-heading">{formatWorkforceDateKey(dateKey)}</div>
                 {punchesByDate.get(dateKey)!.map(p => (
                   <div key={p.id} className="wf-punch-row">
                     <span className="wf-punch-row-resource">{staffNameForResource(p.resource_id)}</span>
                     <span className="wf-punch-row-times">
-                      {formatTime(p.punched_in_at)}
-                      {p.punched_out_at ? ` → ${formatTime(p.punched_out_at)}` : ' → open'}
+                      {formatWorkforceTime(p.punched_in_at, timeZone)}
+                      {p.punched_out_at ? ` → ${formatWorkforceTime(p.punched_out_at, timeZone)}` : ' → open'}
                     </span>
                     {p.late_minutes === null && <span className="wf-badge-noshift">No shift</span>}
                     {p.late_minutes === 0 && <span className="wf-badge-ontime">On time</span>}
@@ -378,6 +395,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
             ))}
           </div>
         )}
+        </section>
 
         <section className="wf-ledger-grid">
           <div className="wf-ledger-panel">
@@ -390,7 +408,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                   <div key={event.id} className="wf-ledger-row">
                     <span>{staffNameForResource(event.resource_id)}</span>
                     <span>{event.event_type.replaceAll('_', ' ')}</span>
-                    <span>{formatDate(event.occurred_at)} {formatTime(event.occurred_at)}</span>
+                    <span>{formatWorkforceDate(event.occurred_at, timeZone)} {formatWorkforceTime(event.occurred_at, timeZone)}</span>
                     <span>{event.source}</span>
                   </div>
                 ))}
@@ -408,7 +426,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                   <div key={correction.id} className="wf-ledger-row">
                     <span>{staffNameForResource(correction.resource_id)}</span>
                     <span>{correction.correction_type.replaceAll('_', ' ')}</span>
-                    <span>{formatDate(correction.created_at)}</span>
+                    <span>{formatWorkforceDate(correction.created_at, timeZone)}</span>
                     <span className="wf-status-badge wf-status-pending">Pending</span>
                   </div>
                 ))}

@@ -1,6 +1,7 @@
 // /api/workforce/me/time-status — self-service employee clock status.
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
+import { workforceClientTimeZone } from './_workforce-depth-utils';
 import {
   listAssignedWorkLocations,
   openBreak,
@@ -19,6 +20,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const employee = await resolveSelfEmployee(a.ctx);
   if (employee instanceof Response) return employee;
+  const timeZone = await workforceClientTimeZone(a.ctx.clientId);
 
   const punch = await openPunch(a.ctx, employee);
   const currentBreak = punch ? await openBreak(a.ctx, String(punch.id)) : null;
@@ -28,7 +30,7 @@ export default async function handler(req: Request): Promise<Response> {
     FROM public.workforce_time_clock_events
     WHERE client_id = ${a.ctx.clientId}::uuid
       AND resource_id = ${employee.resource_id}::uuid
-      AND occurred_at::date = CURRENT_DATE
+      AND (occurred_at AT TIME ZONE ${timeZone}::text)::date = (NOW() AT TIME ZONE ${timeZone}::text)::date
     ORDER BY occurred_at DESC
     LIMIT 20
   ` as unknown[];

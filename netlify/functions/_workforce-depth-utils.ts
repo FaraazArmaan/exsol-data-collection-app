@@ -70,3 +70,13 @@ export async function resourceExists(clientId: string, resourceId: string): Prom
 export function dateOrToday(value: string | null): string {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : new Date().toISOString().slice(0, 10);
 }
+
+export async function workforceClientTimeZone(clientId: string): Promise<string> {
+  const rows = await db()`
+    SELECT timezone
+    FROM public.clients
+    WHERE id = ${clientId}::uuid
+    LIMIT 1
+  ` as Array<{ timezone: string | null }>;
+  return rows[0]?.timezone || 'UTC';
+}

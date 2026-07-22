@@ -2,12 +2,21 @@ import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import { workforceApi, type TimesheetEntry, type StaffResource } from '../../shared/api';
+import { WorkspaceLayoutControl, useWorkspaceLayout } from '../../../../components/ui/WorkspaceLayout';
 import '../../workforce.css';
 
 interface Props {
   slug: string;
   perms: ReadonlySet<string>;
 }
+
+const TIMESHEETS_LAYOUT = {
+  namespace: 'workforce.timesheets',
+  blocks: [
+    { id: 'entries', label: 'Timesheet entries', defaultSize: 'wide' as const, sizes: ['wide'] as const },
+    { id: 'log-entry', label: 'Log entry', defaultSize: 'wide' as const, sizes: ['wide'] as const },
+  ],
+};
 
 // ---------- Week helpers (Monday-anchored) ----------
 
@@ -228,21 +237,24 @@ export default function TimesheetsPage({ slug, perms }: Props) {
   const canCreate = perms.has('workforce.employees.create');
   const canApprove = perms.has('workforce.employees.edit');
   const canDelete = perms.has('workforce.employees.delete');
+  const workspaceLayout = useWorkspaceLayout(TIMESHEETS_LAYOUT);
 
   const [monday, setMonday] = useState<Date>(() => getMonday(new Date()));
   const [entries, setEntries] = useState<TimesheetEntry[] | null>(null);
   const [resources, setResources] = useState<StaffResource[]>([]);
   const [error, setError] = useState('');
+  const [entriesState, setEntriesState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const weekStart = toISODate(monday);
   const weekEnd = toISODate(addDays(monday, 6));
 
   function loadEntries() {
     setEntries(null);
+    setEntriesState('loading');
     setError('');
     workforceApi.listTimesheets({ from: weekStart, to: weekEnd })
-      .then((r) => setEntries(r.entries))
-      .catch(() => { setEntries([]); setError('Failed to load timesheet entries.'); });
+      .then((r) => { setEntries(r.entries); setEntriesState('ready'); })
+      .catch(() => { setEntries([]); setError('Could not load timesheet entries.'); setEntriesState('error'); });
   }
 
   useEffect(() => {
@@ -269,23 +281,31 @@ export default function TimesheetsPage({ slug, perms }: Props) {
     <div className="wf-page">
       <WorkforceNav slug={slug} active="timesheets" />
 
-      <h1>Timesheets</h1>
-
-      <div className="wf-ts-week-nav">
-        <button onClick={prevWeek}>&#8249;</button>
-        <span>{formatWeekLabel(monday)}</span>
-        <button onClick={nextWeek}>&#8250;</button>
+      <div className="wf-page-heading wf-ts-heading">
+        <h1>Timesheets</h1>
+        <div className="wf-page-heading__actions">
+          <div className="wf-ts-week-nav" aria-label="Timesheet week">
+            <button type="button" onClick={prevWeek} aria-label="Previous week">&#8249;</button>
+            <span>{formatWeekLabel(monday)}</span>
+            <button type="button" onClick={nextWeek} aria-label="Next week">&#8250;</button>
+          </div>
+          <WorkspaceLayoutControl definition={TIMESHEETS_LAYOUT} layout={workspaceLayout} />
+        </div>
       </div>
 
-      {error && <p className="wf-error">{error}</p>}
+      <div className="ui-workspace-blocks wf-workspace-blocks">
+      <div className="ui-workspace-block" style={workspaceLayout.blockStyle('entries')}>
+      {entriesState === 'loading' && <p className="wf-empty">Loading timesheet entries…</p>}
 
-      {entries === null && <p>Loading…</p>}
+      {entriesState === 'error' && <div className="wf-inline-state wf-inline-state--error" role="alert">
+        <span>{error}</span><button className="wf-btn" type="button" onClick={loadEntries}>Retry</button>
+      </div>}
 
-      {entries !== null && grouped.size === 0 && (
+      {entriesState === 'ready' && grouped.size === 0 && (
         <p className="wf-empty">No entries this week.</p>
       )}
 
-      {entries !== null && grouped.size > 0 && (
+      {entriesState === 'ready' && grouped.size > 0 && (
         <div className="wf-ts-entries">
           {[...grouped.entries()].map(([resourceId, { label, entries: rowEntries }]) => (
             <div key={resourceId} className="wf-ts-resource-section">
@@ -308,8 +328,10 @@ export default function TimesheetsPage({ slug, perms }: Props) {
           ))}
         </div>
       )}
+      </div>
 
-      {canCreate && <LogEntryForm resources={resources} onLogged={loadEntries} />}
+      {canCreate && <div className="ui-workspace-block" style={workspaceLayout.blockStyle('log-entry')}><LogEntryForm resources={resources} onLogged={loadEntries} /></div>}
+      </div>
     </div>
   );
 }

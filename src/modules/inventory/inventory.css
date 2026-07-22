@@ -2,9 +2,8 @@
    Uses the shared theme tokens (see src/lib/theme.css) so it tracks dark/light. */
 
 .inv-shell {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  max-width: var(--content-standard);
 }
 
 .inv-header {

@@ -49,8 +49,8 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   const clientRows = (await sql`
-    SELECT id, name FROM public.clients WHERE slug = ${slug} LIMIT 1
-  `) as { id: string; name: string }[];
+    SELECT id, name, timezone FROM public.clients WHERE slug = ${slug} LIMIT 1
+  `) as { id: string; name: string; timezone: string }[];
   const client = clientRows[0];
   if (!client) {
     await logAttempt(sql, { email: parsed.data.email, ip, outcome: 'failed' });
@@ -93,7 +93,7 @@ export default async (req: Request, _ctx: Context) => {
         email: credential.email,
         must_change_password: credential.must_change_password,
       },
-      client: { id: client.id, slug, name: client.name },
+      client: { id: client.id, slug, name: client.name, timezone: client.timezone },
     },
     { headers: { 'Set-Cookie': buCookieHeader(token) } },
   );

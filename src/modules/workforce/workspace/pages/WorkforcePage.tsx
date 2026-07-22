@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
-import { Link, useParams } from 'react-router-dom';
 import {
   workforceApi,
   type ScheduleFinding,
@@ -9,6 +8,7 @@ import {
   type Shift,
 } from '../../shared/api';
 import { TeamEmployeePicker } from '../components/TeamBridge';
+import { WorkspaceLayoutControl, useWorkspaceLayout } from '../../../../components/ui/WorkspaceLayout';
 import '../../workforce.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -114,6 +114,13 @@ function AddShiftForm({
 export default function WorkforcePage({ slug, perms }: Props) {
   const canCreate = perms.has('workforce.employees.create');
   const canDelete = perms.has('workforce.employees.delete');
+  const workspaceLayout = useWorkspaceLayout({
+    namespace: 'workforce.schedule',
+    blocks: [
+      { id: 'planner', label: 'Compliance planner', defaultSize: 'wide', sizes: ['wide'] },
+      { id: 'staff', label: 'Staff schedule', defaultSize: 'wide', sizes: ['wide'] },
+    ],
+  });
 
   const [resources, setResources] = useState<StaffResource[] | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -201,13 +208,21 @@ export default function WorkforcePage({ slug, perms }: Props) {
           <h1>Staff & Schedule</h1>
           <p>Planner-grade schedule checks with Team-linked staff and compliance warnings before the week is published.</p>
         </div>
-        <label className="wf-label wf-date-filter">Planner date
-          <input className="wf-input" type="date" value={plannerDate} onChange={e => setPlannerDate(e.target.value)} />
-        </label>
+        <div className="wf-page-heading__actions">
+          <label className="wf-label wf-date-filter">Planner date
+            <input className="wf-input" type="date" value={plannerDate} onChange={e => setPlannerDate(e.target.value)} />
+          </label>
+          <WorkspaceLayoutControl definition={{ namespace: 'workforce.schedule', blocks: [
+            { id: 'planner', label: 'Compliance planner', defaultSize: 'wide', sizes: ['wide'] },
+            { id: 'staff', label: 'Staff schedule', defaultSize: 'wide', sizes: ['wide'] },
+          ] }} layout={workspaceLayout} />
+        </div>
       </div>
       {error && <p className="wf-error">{error}</p>}
       {plannerError && <p className="wf-error">{plannerError}</p>}
 
+      <div className="ui-workspace-blocks wf-workspace-blocks">
+      <div className="ui-workspace-block" style={workspaceLayout.blockStyle('planner')}>
       <section className="wf-planner-grid">
         <div className="wf-planner-panel">
           <div className="wf-section-title">Compliance Planner</div>
@@ -264,18 +279,21 @@ export default function WorkforcePage({ slug, perms }: Props) {
           </form>
         )}
       </section>
+      </div>
 
-      {resources.length === 0 && (
-        <p className="wf-empty">No resources found. Add booking resources to see staff here.</p>
-      )}
+      <div className="ui-workspace-block" style={workspaceLayout.blockStyle('staff')}>
+        {resources.length === 0 && (
+          <p className="wf-empty">No resources found. Add booking resources to see staff here.</p>
+        )}
 
-      <div className="wf-resource-list">
+      <div className={`wf-resource-list${shifts.length === 0 ? ' wf-resource-list--compact' : ''}`}>
         {resources.map((r) => {
           const resourceShifts = shifts.filter((s) => s.resource_id === r.id);
           const plannerRow = plannerByResource.get(r.id);
+          const isEmpty = resourceShifts.length === 0 && addingFor !== r.id;
 
           return (
-            <div key={r.id} className="wf-resource-card">
+            <div key={r.id} className={`wf-resource-card${isEmpty ? ' wf-resource-card--empty' : ''}`}>
               <h3>
                 {r.name}
                 {!r.active && <span className="inactive-badge">Inactive</span>}
@@ -288,8 +306,7 @@ export default function WorkforcePage({ slug, perms }: Props) {
                 </div>
               )}
 
-              {/* Weekly grid — one column per day */}
-              <div className="wf-week-grid">
+              {isEmpty ? <p className="wf-resource-empty">No shifts this week.</p> : <div className="wf-week-grid">
                 {DAYS.map((day, dayIdx) => {
                   const dayShifts = resourceShifts.filter((s) => s.weekday === dayIdx);
                   return (
@@ -304,13 +321,11 @@ export default function WorkforcePage({ slug, perms }: Props) {
                           onDelete={() => deleteShift(s.id)}
                         />
                       ))}
-                      {dayShifts.length === 0 && (
-                        <span className="wf-day-empty">-</span>
-                      )}
+                      {dayShifts.length === 0 && <span className="wf-day-empty">-</span>}
                     </div>
                   );
                 })}
-              </div>
+              </div>}
 
               {canCreate && (
                 addingFor === r.id
@@ -333,6 +348,8 @@ export default function WorkforcePage({ slug, perms }: Props) {
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );

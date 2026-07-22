@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { WorkspaceLayoutControl, orderedWorkspaceItems, useWorkspaceLayout } from '../../../../components/ui/WorkspaceLayout';
 
 // Single source of truth for the workforce sub-nav. Every workforce page renders
 // <WorkforceNav slug active="…" /> so the v1 pages (Staff & Schedule, Timesheets,
@@ -9,7 +10,7 @@ const TABS = [
   { key: 'schedule', label: 'Staff & Schedule', path: '' },
   { key: 'timesheets', label: 'Timesheets', path: '/timesheets' },
   { key: 'leave', label: 'Leave', path: '/leave' },
-  { key: 'punching', label: 'Punching', path: '/punching' },
+  { key: 'punching', label: 'Attendance', path: '/punching' },
   { key: 'overtime', label: 'Overtime', path: '/overtime' },
   { key: 'swaps', label: 'Swaps', path: '/swaps' },
   { key: 'payroll', label: 'Payroll', path: '/payroll' },
@@ -22,17 +23,25 @@ const TABS = [
 export type WorkforceTab = (typeof TABS)[number]['key'];
 
 export function WorkforceNav({ slug, active }: { slug: string; active: WorkforceTab }) {
+  const workspaceLayout = useWorkspaceLayout({
+    namespace: 'workforce.tabs',
+    tabs: TABS.map((tab) => ({ id: tab.key, label: tab.label })),
+  });
+  const tabs = orderedWorkspaceItems(TABS.map((tab) => ({ ...tab, id: tab.key })), workspaceLayout.effective.tabs);
   return (
-    <nav className="wf-tabs">
-      {TABS.map((t) =>
-        t.key === active ? (
-          <span key={t.key} className="wf-tab-link wf-tab-active">{t.label}</span>
-        ) : (
-          <Link key={t.key} className="wf-tab-link" to={`/c/${slug}/workforce${t.path}`}>
-            {t.label}
-          </Link>
-        ),
-      )}
-    </nav>
+    <div className="wf-tabs-toolbar">
+      <nav className="wf-tabs ui-scroll-x" aria-label="Workforce sections">
+        {tabs.map((t) =>
+          t.key === active ? (
+            <span key={t.key} className="wf-tab-link wf-tab-active">{t.label}</span>
+          ) : (
+            <Link key={t.key} className="wf-tab-link" to={`/c/${slug}/workforce${t.path}`}>
+              {t.label}
+            </Link>
+          ),
+        )}
+      </nav>
+      <WorkspaceLayoutControl definition={{ namespace: 'workforce.tabs', tabs: TABS.map((tab) => ({ id: tab.key, label: tab.label })) }} layout={workspaceLayout} label="Arrange tabs" />
+    </div>
   );
 }
