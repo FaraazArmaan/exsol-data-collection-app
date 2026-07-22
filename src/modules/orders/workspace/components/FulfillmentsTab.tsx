@@ -8,12 +8,14 @@
 //      advance buttons (pending→picked→packed→shipped→fulfilled or →cancelled).
 //   3. Merge picker     — select two or more open same-customer sales and link
 //      them into a merge group.
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { FulfillmentRow, FulfillmentStatus } from '../../shared/types';
+import { formatMoney } from '../../../../lib/currency';
 
 interface Props {
   perms: ReadonlySet<string>;
+  currency: string;
 }
 
 const STATUS_LABEL: Record<FulfillmentStatus, string> = {
@@ -29,7 +31,7 @@ const STATUS_NEXT: Partial<Record<FulfillmentStatus, FulfillmentStatus[]>> = {
   pending:  ['picked', 'cancelled'],
   picked:   ['packed', 'cancelled'],
   packed:   ['shipped', 'cancelled'],
-  shipped:  ['fulfilled', 'cancelled'],
+  shipped:  ['fulfilled'],
 };
 
 function humanError(e: unknown): string {
@@ -39,6 +41,9 @@ function humanError(e: unknown): string {
     if (e.status === 409 && e.code === 'illegal_transition') return 'That transition is not allowed.';
     if (e.status === 409 && e.code === 'sale_not_open') return 'One or more sales are not open.';
     if (e.status === 409 && e.code === 'customer_mismatch') return 'Sales have different customer phones.';
+    if (e.status === 409 && e.code === 'fulfillment_already_shipped') return 'A shipped line cannot be cancelled. Its stock movement is preserved.';
+    if (e.status === 409 && e.code === 'no_cancellable_quantity') return 'There is no reserved quantity left to cancel.';
+    if (e.status === 409 && e.code === 'duplicate_request') return 'This cancellation was already submitted.';
     if (e.status === 412) return 'Orders module not enabled.';
     if (e.status === 403) return 'Permission denied.';
     if (e.status === 404) return 'Sale not found.';
@@ -51,14 +56,18 @@ function humanError(e: unknown): string {
 
 interface FulfillmentListProps {
   canEdit: boolean;
+  currency: string;
 }
 
-function FulfillmentList({ canEdit }: FulfillmentListProps) {
+function FulfillmentList({ canEdit, currency }: FulfillmentListProps) {
   const [rows, setRows] = useState<FulfillmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState<Record<string, string | null>>({});
   const [advError, setAdvError] = useState<Record<string, string | null>>({});
+  const [confirming, setConfirming] = useState<FulfillmentRow | null>(null);
+  const [cancelReason, setCancelReason] = useState('Remaining quantity cancelled');
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -83,13 +92,34 @@ function FulfillmentList({ canEdit }: FulfillmentListProps) {
       setAdvancing((prev) => ({ ...prev, [id]: null }));
     }
   };
+  const cancelRemaining = async (f: FulfillmentRow) => {
+    setAdvancing((prev) => ({ ...prev, [f.id]: 'cancelled' }));
+    setAdvError((prev) => ({ ...prev, [f.id]: null }));
+    try {
+      const result = await ordersApi.cancelRemaining(
+        f.sale_id,
+        f.lines.map((line) => line.sale_line_id),
+        cancelReason.trim() || undefined,
+      );
+      setConfirming(null);
+      setNotice(`Remaining quantity cancelled. Refund request for ${formatMoney(result.refund_amount_cents, currency)} is pending Payments evidence.`);
+      load();
+    } catch (e) {
+      setAdvError((prev) => ({ ...prev, [f.id]: humanError(e) }));
+    } finally {
+      setAdvancing((prev) => ({ ...prev, [f.id]: null }));
+    }
+  };
 
   if (loading) return <p className="ord-muted">Loading fulfillments…</p>;
   if (error) return <p className="ord-error">{error}</p>;
   if (rows.length === 0) return <p className="ord-muted">No fulfillments yet. Use Split to create one.</p>;
 
   return (
-    <table className="ord-table">
+    <>
+      {notice && <p className="ord-advance-msg" role="status">{notice}</p>}
+      <div className="ord-table-wrap">
+        <table className="ord-table ord-fulfillment-table">
       <thead>
         <tr>
           <th>Label</th>
@@ -104,23 +134,34 @@ function FulfillmentList({ canEdit }: FulfillmentListProps) {
           const nextOptions = STATUS_NEXT[f.status] ?? [];
           const isAdvancing = advancing[f.id] != null;
           const rowError = advError[f.id];
+          const isConfirming = confirming?.id === f.id;
           return (
+            <Fragment key={f.id}>
             <tr key={f.id}>
-              <td>{f.label}</td>
-              <td>
+              <td data-label="Fulfilment">{f.label}</td>
+              <td data-label="Status">
                 <span className={`ord-badge ord-badge-${f.status}`}>
                   {STATUS_LABEL[f.status]}
                 </span>
               </td>
-              <td className="ord-num">{f.lines.length}</td>
-              <td>{f.fulfilled_at ? new Date(f.fulfilled_at).toLocaleString() : '—'}</td>
+              <td className="ord-num" data-label="Lines">{f.lines.length}</td>
+              <td data-label="Fulfilled">{f.fulfilled_at ? new Date(f.fulfilled_at).toLocaleString() : '—'}</td>
               {canEdit && (
-                <td className="ord-actions">
+                <td className="ord-actions" data-label="Actions">
                   {rowError && <span className="ord-form-error">{rowError}</span>}
-                  {nextOptions.map((to) => (
+                  {nextOptions.map((to) => to === 'cancelled' ? (
                     <button
                       key={to}
-                      className={`ord-btn ord-btn-sm${to === 'cancelled' ? '' : ' ord-btn-primary'}`}
+                      className="ord-btn ord-btn-sm ord-btn-danger"
+                      disabled={isAdvancing}
+                      onClick={() => { setConfirming(f); setCancelReason('Remaining quantity cancelled'); setNotice(null); }}
+                    >
+                      Cancel remaining
+                    </button>
+                  ) : (
+                    <button
+                      key={to}
+                      className="ord-btn ord-btn-sm ord-btn-primary"
                       disabled={isAdvancing}
                       onClick={() => advance(f.id, to)}
                     >
@@ -130,10 +171,48 @@ function FulfillmentList({ canEdit }: FulfillmentListProps) {
                 </td>
               )}
             </tr>
+            {isConfirming && (
+              <tr key={`${f.id}-confirmation`} className="ord-confirmation-row">
+                <td colSpan={canEdit ? 5 : 4}>
+                  <section className="ord-cancel-confirmation" aria-labelledby={`cancel-title-${f.id}`}>
+                    <h3 id={`cancel-title-${f.id}`}>Cancel the unfulfilled remainder from {f.label}?</h3>
+                    <p>Only the still-reserved quantity is released. Already shipped stock is never reversed.</p>
+                    <ul className="ord-cancel-lines">
+                      {f.lines.map((line) => (
+                        <li key={line.id}>
+                          <strong>{line.product_name_snap}</strong>: {line.line_qty} ordered · {line.fulfilled_qty} fulfilled · {line.remaining_qty} remaining · {line.shipped_qty} shipped.
+                        </li>
+                      ))}
+                    </ul>
+                    <label className="ord-confirm-reason">
+                      Cancellation reason
+                      <input
+                        className="ord-input"
+                        value={cancelReason}
+                        onChange={(event) => setCancelReason(event.target.value)}
+                        disabled={isAdvancing}
+                      />
+                    </label>
+                    <p className="ord-muted">Submitting creates an Orders refund request. Payments verifies and records the money outcome.</p>
+                    <div className="ord-actions">
+                      <button className="ord-btn ord-btn-danger" disabled={isAdvancing} onClick={() => cancelRemaining(f)}>
+                        {isAdvancing ? 'Cancelling…' : 'Confirm cancellation'}
+                      </button>
+                      <button className="ord-btn" disabled={isAdvancing} onClick={() => setConfirming(null)}>
+                        Keep fulfilment open
+                      </button>
+                    </div>
+                  </section>
+                </td>
+              </tr>
+            )}
+            </Fragment>
           );
         })}
       </tbody>
-    </table>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -364,7 +443,7 @@ function MergePanel({ onDone }: { onDone: () => void }) {
 
 type SubTab = 'list' | 'split' | 'merge';
 
-export default function FulfillmentsTab({ perms }: Props) {
+export default function FulfillmentsTab({ perms, currency }: Props) {
   const canEdit = perms.has('orders.business.edit');
   const [sub, setSub] = useState<SubTab>('list');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -398,7 +477,7 @@ export default function FulfillmentsTab({ perms }: Props) {
         )}
       </div>
 
-      {sub === 'list' && <FulfillmentList key={refreshKey} canEdit={canEdit} />}
+      {sub === 'list' && <FulfillmentList key={refreshKey} canEdit={canEdit} currency={currency} />}
       {sub === 'split' && canEdit && <SplitPanel onDone={done} />}
       {sub === 'merge' && canEdit && <MergePanel onDone={done} />}
     </div>

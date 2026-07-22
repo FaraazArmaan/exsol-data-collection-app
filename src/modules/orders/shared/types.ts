@@ -142,6 +142,9 @@ export interface FulfillmentLineRow {
   product_name_snap: string;
   unit_price_cents: number;
   line_qty: number;
+  fulfilled_qty: number;
+  remaining_qty: number;
+  shipped_qty: number;
 }
 
 export interface FulfillmentRow {

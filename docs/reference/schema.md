@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-151 tables across 143 forward-only migrations.
+151 tables across 144 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -444,7 +444,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `orders_refunds`
 
-- created in `087_orders_refunds_shipments.sql`
+- created in `087_orders_refunds_shipments.sql`; altered in `167_orders_fulfillment_cancellations.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `amount_cents bigint`, `reason text`, `state refund_state`, `requested_by uuid`, `created_at timestamptz`, `updated_at timestamptz`, `completed_at timestamptz`
 
 ### `orders_shipments`

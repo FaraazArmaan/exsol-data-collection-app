@@ -6,7 +6,7 @@
 
 # API endpoints
 
-315 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+317 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -256,6 +256,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | orders-backorder-fulfill.ts | `/api/orders/backorder-fulfill/:id` | POST | bucket-user | `orders.business.edit` |
 | orders-backorders.ts | `/api/orders/backorders` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-cancel-remaining.ts | `/api/orders/cancel-remaining/:saleId` | POST | bucket-user | `orders.business.edit` |
 | orders-dashboard.ts | `/api/orders/dashboard` | GET | bucket-user | `orders.business.view` |
 | orders-fulfillment-advance.ts | `/api/orders/fulfillment-advance/:id` | POST | bucket-user | `orders.business.edit` |
 | orders-fulfillments.ts | `/api/orders/fulfillments` | GET | bucket-user | `orders.business.view` |
@@ -277,6 +278,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 |---|---|---|---|---|
 | payments-cash-receipt.ts | `/api/payments/cash-receipts` | POST | bucket-user | `payments.customers.create` |
 | payments-dashboard.ts | `/api/payments/dashboard` | GET | bucket-user | `payments.customers.view` |
+| payments-orders-refund-submit.ts | `/api/payments/orders-refunds/:id/submit` | POST | bucket-user | `payments.customers.edit` |
 | payments-provider-connection.ts | `/api/payments/provider-connection` | any | bucket-user | `payments.products.edit`, `payments.products.view` |
 
 ## platform

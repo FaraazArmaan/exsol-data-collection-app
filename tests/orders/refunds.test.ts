@@ -58,7 +58,7 @@ describe('orders refunds', () => {
       makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'approved' }),
     );
     expect(r2.status).toBe(409);
-    expect((await r2.json()).error.code).toBe('razorpay_not_configured');
+    expect((await r2.json()).error.code).toBe('payments_refund_submission_required');
   });
 
   it('manual completion is unavailable even for a fully paid sale', async () => {
@@ -96,7 +96,7 @@ describe('orders refunds', () => {
       makeBucketUserRequest(ctx, 'POST', `/api/orders/refund-advance/${id}`, { to: 'approved' }),
     );
     expect(r3.status).toBe(409);
-    expect((await r3.json()).error.code).toBe('razorpay_not_configured');
+    expect((await r3.json()).error.code).toBe('payments_refund_submission_required');
   });
 
   it('amount > total → 400 amount_invalid', async () => {

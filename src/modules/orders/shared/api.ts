@@ -62,6 +62,12 @@ export const ordersApi = {
       method: 'POST',
       body: JSON.stringify({ to }),
     }),
+  cancelRemaining: (saleId: string, saleLineIds: string[], reason?: string) =>
+    jsonFetch<{ cancellation_id: string; refund_amount_cents: number }>(`/api/orders/cancel-remaining/${encodeURIComponent(saleId)}`, {
+      method: 'POST', body: JSON.stringify({ sale_line_ids: saleLineIds, reason, idempotency_key: crypto.randomUUID() }),
+    }),
+  submitRefundToPayments: (id: string) =>
+    jsonFetch<{ id: string; state: string; provider_pending: boolean }>(`/api/payments/orders-refunds/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
 
   // Shipments
   listShipments: () =>

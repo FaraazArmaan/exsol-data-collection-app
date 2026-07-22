@@ -55,9 +55,21 @@ export default async function handler(req: Request): Promise<Response> {
       sl.variant_name_snap,
       sl.variant_sku_snap,
       sl.unit_price_cents,
-      sl.qty AS line_qty
+      sl.qty AS line_qty,
+      reservation.qty AS reserved_qty,
+      reservation.qty_consumed,
+      reservation.status AS reservation_status,
+      COALESCE((
+        SELECT SUM(shipped_line.qty)::int
+        FROM public.orders_fulfillment_lines AS shipped_line
+        JOIN public.orders_fulfillments AS shipped_fulfillment ON shipped_fulfillment.id = shipped_line.fulfillment_id
+        WHERE shipped_fulfillment.sale_id = sl.sale_id
+          AND shipped_fulfillment.status = 'shipped'::fulfillment_status
+          AND shipped_line.sale_line_id = fl.sale_line_id
+      ), 0)::int AS shipped_qty
     FROM public.orders_fulfillment_lines fl
     JOIN public.sale_lines sl ON sl.id = fl.sale_line_id
+    LEFT JOIN public.inventory_reservations AS reservation ON reservation.sale_line_id = sl.id
     WHERE fl.fulfillment_id = ANY(${fulfillmentIds}::uuid[])
     ORDER BY fl.fulfillment_id, fl.id
   `) as Array<{
@@ -71,6 +83,10 @@ export default async function handler(req: Request): Promise<Response> {
     variant_sku_snap: string | null;
     unit_price_cents: number;
     line_qty: number;
+    reserved_qty: number | null;
+    qty_consumed: number | null;
+    reservation_status: 'reserved' | 'released' | 'consumed' | null;
+    shipped_qty: number;
   }>;
 
   // Group lines by fulfillment_id.
@@ -93,6 +109,11 @@ export default async function handler(req: Request): Promise<Response> {
       variant_sku_snap: l.variant_sku_snap,
       unit_price_cents: Number(l.unit_price_cents),
       line_qty: l.line_qty,
+      fulfilled_qty: Number(l.qty_consumed ?? 0),
+      remaining_qty: l.reservation_status === 'reserved'
+        ? Math.max(0, Number(l.reserved_qty ?? 0) - Number(l.qty_consumed ?? 0))
+        : 0,
+      shipped_qty: Number(l.shipped_qty),
     })),
   }));
 
