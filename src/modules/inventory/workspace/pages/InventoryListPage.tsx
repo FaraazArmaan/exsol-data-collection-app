@@ -5,6 +5,8 @@ import { AdjustStockModal } from '../components/AdjustStockModal';
 import { MovementsDrawer } from '../components/MovementsDrawer';
 import { InventoryTabs } from '../components/InventoryTabs';
 import { LocationBreakdownDrawer } from '../components/LocationBreakdownDrawer';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
+import { Button } from '../../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -106,19 +108,12 @@ export default function InventoryListPage({ perms }: Props) {
       </div>
       <InventoryTabs />
 
-      {error && (
-        <div className="inv-error" role="alert">
-          {error}{' '}
-          <button type="button" className="inv-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
-
-      {rows === null ? (
-        <p className="inv-muted">Loading…</p>
+      {error ? (
+        <ErrorState title="Stock list could not load" action={<Button variant="secondary" onClick={() => load(q.trim(), stateFilter)}>Try again</Button>}>{error}</ErrorState>
+      ) : rows === null ? (
+        <LoadingState title="Loading stock" />
       ) : rows.length === 0 ? (
-        <p className="inv-empty">
-          {q ? 'No products match your search.' : 'No stock-tracked products yet.'}
-        </p>
+        <EmptyState title={q ? 'No products match this search.' : 'No stock-tracked products yet.'} />
       ) : (
         <table className="inv-table">
           <thead>

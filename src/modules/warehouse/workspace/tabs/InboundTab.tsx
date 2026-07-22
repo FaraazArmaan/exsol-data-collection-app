@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { warehouseApi } from '../../shared/api';
 import type { AsnDetail, AsnLine, AsnSummary, WarehouseProduct } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -51,17 +53,12 @@ export default function InboundTab({ perms }: Props) {
         )}
       </div>
 
-      {error && (
-        <div className="wh-error" role="alert">
-          {error}{' '}
-          <button type="button" className="wh-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Inbound shipments could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
 
       {asns === null ? (
-        <p className="wh-muted">Loading…</p>
+        <LoadingState title="Loading inbound shipments" />
       ) : asns.length === 0 ? (
-        <p className="wh-empty">No inbound shipments yet. Create an ASN to track an incoming delivery.</p>
+        <EmptyState title="No inbound shipments yet.">Create an ASN to track an incoming delivery.</EmptyState>
       ) : (
         <table className="wh-table">
           <thead>

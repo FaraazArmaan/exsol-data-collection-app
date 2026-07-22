@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { RefundRow, RefundState, ShipmentRow } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState, PermissionState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -150,11 +152,11 @@ function RefundsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: boo
       {advanceMsg && <p className="ord-advance-msg">{advanceMsg}</p>}
 
       {loading ? (
-        <p className="ord-muted">Loading refunds…</p>
+        <LoadingState title="Loading refunds" />
       ) : error ? (
-        <div className="ord-error">{error}</div>
+        <ErrorState title="Refunds could not load" action={<Button variant="secondary" onClick={loadRefunds}>Try again</Button>}>{error}</ErrorState>
       ) : refunds.length === 0 ? (
-        <p className="ord-empty">No refunds yet.</p>
+        <EmptyState title="No refunds yet." />
       ) : (
         <table className="ord-table">
           <thead>
@@ -307,11 +309,11 @@ function ShipmentsPanel({ canCreate, canEdit }: { canCreate: boolean; canEdit: b
       )}
 
       {loading ? (
-        <p className="ord-muted">Loading shipments…</p>
+        <LoadingState title="Loading shipments" />
       ) : error ? (
-        <div className="ord-error">{error}</div>
+        <ErrorState title="Shipments could not load" action={<Button variant="secondary" onClick={loadShipments}>Try again</Button>}>{error}</ErrorState>
       ) : shipments.length === 0 ? (
-        <p className="ord-empty">No shipments yet.</p>
+        <EmptyState title="No shipments yet." />
       ) : (
         <table className="ord-table">
           <thead>
@@ -391,7 +393,7 @@ export default function RefundsShipmentsTab({ perms }: Props) {
   if (!canView) {
     return (
       <div className="ord-shell">
-        <p className="ord-muted">You don&rsquo;t have permission to view this section.</p>
+        <PermissionState />
       </div>
     );
   }

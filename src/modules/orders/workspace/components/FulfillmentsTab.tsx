@@ -11,6 +11,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { FulfillmentRow, FulfillmentStatus } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -84,9 +86,9 @@ function FulfillmentList({ canEdit }: FulfillmentListProps) {
     }
   };
 
-  if (loading) return <p className="ord-muted">Loading fulfillments…</p>;
-  if (error) return <p className="ord-error">{error}</p>;
-  if (rows.length === 0) return <p className="ord-muted">No fulfillments yet. Use Split to create one.</p>;
+  if (loading) return <LoadingState title="Loading fulfilments" />;
+  if (error) return <ErrorState title="Fulfilments could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>;
+  if (rows.length === 0) return <EmptyState title="No fulfilments yet.">Use Split Sale to create one.</EmptyState>;
 
   return (
     <table className="ord-table">

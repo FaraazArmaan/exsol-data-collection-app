@@ -10,6 +10,8 @@ import {
 import { useProductsScope } from '../../shared/scope';
 import { ProductForm, emptyDraft, type ProductDraft } from '../components/ProductForm';
 import { ProductVariantsSection } from '../components/ProductVariantsSection';
+import { Button } from '../../../../components/ui/Button';
+import { ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 
 export default function ProductEditPage() {
   const params = useParams<{ slug: string; productId?: string }>();
@@ -84,7 +86,7 @@ export default function ProductEditPage() {
   }, [mode, reloadProduct]);
 
   if (!canViewProducts(permissions, levelNumber)) {
-    return <p className="pm-shell pm-muted">You don't have access to Products.</p>;
+    return <p className="page page-standard pm-shell pm-muted">You don't have access to Products.</p>;
   }
 
   const canCreate = canCreateProducts(permissions, levelNumber);
@@ -140,30 +142,23 @@ export default function ProductEditPage() {
     : (draft.name || loaded?.name || 'Edit Product');
 
   return (
-    <div className="pm-shell">
+    <div className="page page-canvas pm-shell">
       <div className="pm-edit-header">
-        <button type="button" onClick={() => nav(basePath)}>← Back</button>
+        <Button size="compact" variant="quiet" onClick={() => nav(basePath)}>← Back</Button>
         <h1>{title}</h1>
-        {writeAllowed && (
+        {writeAllowed && (mode === 'create' || loaded) && (
           <>
-            <button type="button" disabled={saving} onClick={() => save('draft')}>
-              {saving ? 'Saving…' : 'Save Draft'}
-            </button>
-            <button
-              type="button"
-              className="pm-primary"
-              disabled={saving || !(draft.name ?? '').trim()}
-              onClick={() => save('active')}
-            >
-              {saving ? 'Saving…' : 'Publish'}
-            </button>
+            <Button size="compact" onClick={() => save('draft')} loading={saving} loadingLabel="Saving draft…">Save Draft</Button>
+            <Button size="compact" variant="primary" disabled={!(draft.name ?? '').trim()} onClick={() => save('active')} loading={saving} loadingLabel="Publishing…">Publish</Button>
           </>
         )}
       </div>
 
-      {error && <div className="pm-error" role="alert">{error}</div>}
+      {mode === 'edit' && !loaded && !error ? <LoadingState title="Loading product…" /> : null}
+      {mode === 'edit' && !loaded && error ? <ErrorState title="Could not load this product." action={<Button size="compact" onClick={() => { setError(null); void reloadProduct().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause))); }}>Try again</Button>}>{error}</ErrorState> : null}
+      {(mode === 'create' || loaded) && error ? <InlineNotice tone="danger" title="The product could not be saved.">{error}</InlineNotice> : null}
 
-      <ProductForm
+      {(mode === 'create' || loaded) ? <ProductForm
         draft={draft}
         loaded={loaded}
         inventoryEnabled={inventoryEnabled}
@@ -174,9 +169,9 @@ export default function ProductEditPage() {
         onReloadImages={reloadProduct}
         canManageCategories={canManageCategories(permissions, levelNumber)}
         onCreateCategory={createCategory}
-      />
+      /> : null}
 
-      {draft.type === 'physical' && (
+      {(mode === 'create' || loaded) && draft.type === 'physical' && (
         <ProductVariantsSection
           productId={loaded?.id ?? null}
           clientId={clientQuery}

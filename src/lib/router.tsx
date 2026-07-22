@@ -71,7 +71,7 @@ import { MarketingListMount, MarketingComposeMount, MarketingDetailMount, Market
 import {
   WorkforceMount, WorkforceProjectsMount, WorkforceProjectDetailMount, WorkforceTimesheetsMount,
   WorkforceLeaveMount, WorkforcePunchingMount, WorkforceOvertimeMount, WorkforceSwapMount,
-  WorkforcePayrollMount, WorkforceTrainingMount, WorkforceAssetsMount, WorkforceEmployeeDashboardMount,
+  WorkforcePayrollMount, WorkforceTrainingMount, WorkforceAssetsMount, WorkforceEmployeeDashboardMount, WorkforceApprovalsMount, WorkforcePrivacyMount,
 } from '../modules/workforce/WorkforceRouteMounts';
 import CatalogPage from '../modules/catalog/CatalogPage';
 import OnboardPage from '../modules/data-collection/OnboardPage';
@@ -295,6 +295,8 @@ export const router = createBrowserRouter([
               ) },
               { path: 'warehouse', element: <WarehouseMount /> },
               { path: 'workforce', element: <WorkforceMount /> },
+              { path: 'workforce/approvals', element: <WorkforceApprovalsMount /> },
+              { path: 'workforce/privacy', element: <WorkforcePrivacyMount /> },
               { path: 'workforce/projects', element: <WorkforceProjectsMount /> },
               { path: 'workforce/projects/:projectId', element: <WorkforceProjectDetailMount /> },
               { path: 'workforce/timesheets', element: <WorkforceTimesheetsMount /> },

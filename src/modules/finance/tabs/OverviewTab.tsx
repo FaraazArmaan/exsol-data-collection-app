@@ -5,10 +5,13 @@ import {
 } from '../shared/types';
 import { currentMonth, formatDay, formatMoney, monthLabel } from '../shared/format';
 import { ExpenseModal } from '../components/ExpenseModal';
+import { Button } from '../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/ui/Feedback';
 
 interface Props {
   month: string;
   perms: ReadonlySet<string>;
+  onOpenApprovals: () => void;
 }
 
 type ModalState =
@@ -32,7 +35,7 @@ export function humanError(e: unknown): string {
 }
 
 // The P&L overview: summary cards, revenue-by-channel, and the expenses ledger.
-export function OverviewTab({ month, perms }: Props) {
+export function OverviewTab({ month, perms, onOpenApprovals }: Props) {
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,15 +130,12 @@ export function OverviewTab({ month, perms }: Props) {
     ? Math.max(channels.pos, channels.storefront, channels.booking, 1)
     : 1;
   const baseCurrency = summary?.base_currency ?? 'INR';
+  const pendingExpenses = expenses?.filter((expense) => expense.approval_status === 'pending') ?? [];
+  const netIsNegative = (summary?.net_cents ?? 0) < 0;
 
   return (
     <>
-      {error && (
-        <div className="fin-banner" role="alert">
-          {error}
-          <button className="fin-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Finance overview could not load" action={<Button variant="secondary" onClick={reload}>Try again</Button>}>{error}</ErrorState>}
 
       {/* P&L summary cards (base currency) */}
       <section className="fin-cards" aria-label="Profit and loss">
@@ -150,12 +150,26 @@ export function OverviewTab({ month, perms }: Props) {
         />
       </section>
 
+      {(pendingExpenses.length > 0 || netIsNegative) && (
+        <section className="fin-priority" aria-label="Finance attention needed">
+          <div>
+            <strong>Needs attention</strong>
+            <p>
+              {pendingExpenses.length > 0 && `${pendingExpenses.length} expense${pendingExpenses.length === 1 ? '' : 's'} awaiting approval`}
+              {pendingExpenses.length > 0 && netIsNegative ? ' · ' : ''}
+              {netIsNegative && 'net cashflow is negative for this month'}
+            </p>
+          </div>
+          {pendingExpenses.length > 0 && <Button variant="secondary" onClick={onOpenApprovals}>Review approvals</Button>}
+        </section>
+      )}
+
       {/* Revenue by channel */}
       <section className="fin-panel" aria-label="Revenue by channel">
         <div className="fin-panel-header">Revenue by channel</div>
-        {loading && <p className="fin-muted fin-pad">Loading…</p>}
+        {loading && <LoadingState title="Loading revenue by channel" />}
         {!loading && channels && summary && summary.revenue_cents === 0 && (
-          <p className="fin-empty">No revenue recorded for {monthLabel(month)} yet.</p>
+          <EmptyState title={`No revenue recorded for ${monthLabel(month)} yet.`} />
         )}
         {!loading && channels && summary && summary.revenue_cents > 0 && (
           <div className="fin-bars">
@@ -186,17 +200,10 @@ export function OverviewTab({ month, perms }: Props) {
           )}
         </div>
 
-        {loading && <p className="fin-muted fin-pad">Loading…</p>}
+        {loading && <LoadingState title="Loading expenses" />}
 
         {!loading && expenses && expenses.length === 0 && (
-          <div className="fin-empty">
-            <p>No expenses recorded for {monthLabel(month)}.</p>
-            {canCreate && (
-              <button className="btn btn-secondary" onClick={() => setModal({ mode: 'new' })}>
-                Add your first expense
-              </button>
-            )}
-          </div>
+          <EmptyState title={`No expenses recorded for ${monthLabel(month)}.`} action={canCreate && <Button variant="secondary" onClick={() => setModal({ mode: 'new' })}>Add your first expense</Button>} />
         )}
 
         {!loading && expenses && expenses.length > 0 && (

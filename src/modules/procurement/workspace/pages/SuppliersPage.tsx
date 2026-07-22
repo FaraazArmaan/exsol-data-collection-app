@@ -5,6 +5,8 @@ import { ProcurementTabs } from '../ProcurementTabs';
 import { SupplierModal } from '../components/SupplierModal';
 import { SupplierContactsModal } from '../components/SupplierContactsModal';
 import { SupplierPricesModal } from '../components/SupplierPricesModal';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   slug: string;
@@ -60,16 +62,12 @@ export default function SuppliersPage({ perms }: Props) {
       </div>
       <ProcurementTabs />
 
-      {error && (
-        <div className="proc-error" role="alert">
-          {error} <button type="button" className="proc-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Suppliers could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
 
       {rows === null ? (
-        <p className="proc-muted">Loading…</p>
+        <LoadingState title="Loading suppliers" />
       ) : rows.length === 0 ? (
-        <p className="proc-empty">No suppliers yet. {canCreate ? 'Add your first supplier to start ordering.' : ''}</p>
+        <EmptyState title="No suppliers yet.">{canCreate ? 'Add your first supplier to start ordering.' : undefined}</EmptyState>
       ) : (
         <table className="proc-table">
           <thead>

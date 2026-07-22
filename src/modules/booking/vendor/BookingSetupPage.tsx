@@ -10,6 +10,8 @@ import {
   type ExtraCapacityNeed,
 } from '../shared/api';
 import { BookingTabs } from './BookingTabs';
+import { Button } from '../../../components/ui/Button';
+import { ErrorState, LoadingState } from '../../../components/ui/Feedback';
 
 interface Props {
   slug: string;
@@ -85,16 +87,7 @@ export default function BookingSetupPage({ slug, perms }: Props) {
       <div className="page page-readable booking-vendor">
         <BookingTabs slug={slug} perms={perms} />
         <h1 className="page-title">Booking Setup</h1>
-        {error ? (
-          <div className="card">
-            <p className="error">Couldn’t load Booking Setup ({error}).</p>
-            <button className="btn btn-secondary" onClick={() => setLoadAttempt((n) => n + 1)}>
-              Try again
-            </button>
-          </div>
-        ) : (
-          <div className="muted">Loading…</div>
-        )}
+        {error ? <ErrorState title={`Couldn’t load Booking Setup (${error}).`} action={<Button size="compact" onClick={() => setLoadAttempt((n) => n + 1)}>Try again</Button>} /> : <LoadingState title="Loading Booking Setup…" />}
       </div>
     );
   }

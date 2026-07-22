@@ -16,6 +16,9 @@ import { ProductTable } from '../components/ProductTable';
 import { ProductTablePager } from '../components/ProductTablePager';
 import { ProductImportModal } from '../components/ProductImportModal';
 import { OnboardingLinkButton } from '../../../data-collection/OnboardingLinkButton';
+import { Button } from '../../../../components/ui/Button';
+import { ErrorState, InlineNotice } from '../../../../components/ui/Feedback';
+import { TableLoadingState } from '../../../../components/ui/Table';
 
 const POLL_MS = 5_000;
 const PAGE_SIZE = 20;
@@ -78,7 +81,7 @@ export default function ProductsListPage() {
   }, [load, filters]);
 
   if (!canViewProducts(permissions, levelNumber)) {
-    return <p className="pm-shell pm-muted">You don't have access to Products.</p>;
+    return <p className="page page-canvas pm-shell pm-muted">You don't have access to Products.</p>;
   }
 
   const editAllowed   = canEditProducts(permissions, levelNumber);
@@ -121,7 +124,7 @@ export default function ProductsListPage() {
   }
 
   return (
-    <div className="pm-shell">
+    <div className="page page-canvas pm-shell">
       <div className="pm-header">
         <div>
           <h1>Product Manager</h1>
@@ -134,17 +137,31 @@ export default function ProductsListPage() {
         <OnboardingLinkButton />
       </div>
 
-      {error && (
-        <div className="pm-error" role="alert">
-          {error} <button type="button" className="pm-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && !data ? <ErrorState title="Could not load products." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState> : null}
+      {error && data ? <InlineNotice tone="danger" title="Some product changes could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError(null)}>Dismiss</Button>}>{error}</InlineNotice> : null}
 
       <ProductStatusTabs
         active={(filters.status ?? 'all') as StatusFilter}
         counts={data?.counts ?? EMPTY_COUNTS}
         onChange={(s) => update({ status: s })}
       />
+
+      {data && (
+        <section className="pm-catalog-scan" aria-label="Catalog health">
+          <div className="pm-catalog-stats">
+            <div><strong>{data.counts.all}</strong><span>Products</span></div>
+            <div><strong>{data.counts.active}</strong><span>Active</span></div>
+            <div><strong>{data.counts.draft}</strong><span>Drafts</span></div>
+            <div><strong>{data.total}</strong><span>Matching results</span></div>
+          </div>
+          {data.counts.draft > 0 && (
+            <div className="pm-catalog-attention">
+              <div><strong>Needs attention</strong><span>{data.counts.draft} draft product{data.counts.draft === 1 ? '' : 's'} need review before publishing.</span></div>
+              <Button size="compact" variant="secondary" onClick={() => update({ status: 'draft' })}>Review drafts</Button>
+            </div>
+          )}
+        </section>
+      )}
 
       <ProductFiltersBar
         filters={filters}
@@ -167,7 +184,8 @@ export default function ProductsListPage() {
         onClear={() => setSelected(new Set())}
       />
 
-      <ProductTable
+      {!data && !error ? <TableLoadingState title="Loading products…" /> : null}
+      {data ? <><ProductTable
         items={data?.items ?? []}
         selected={selected}
         basePath={basePath}
@@ -194,7 +212,7 @@ export default function ProductsListPage() {
         pageSize={data?.page_size ?? PAGE_SIZE}
         total={data?.total ?? 0}
         onPage={(n) => update({ page: n })}
-      />
+      /></> : null}
 
       <ProductImportModal
         open={importOpen}

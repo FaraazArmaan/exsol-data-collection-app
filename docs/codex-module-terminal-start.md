@@ -94,6 +94,51 @@ For new or deep module work, check these files first:
 
 Reference implementation: Inventory is the cleanest complete module pattern.
 
+## Roadmap and Feature-Depth Standard
+
+Before proposing module phases or writing implementation code, make a
+production feature-completeness pass. A main page, endpoint, or happy-path test
+does not mean a module is complete.
+
+The roadmap is the human's system-design learning notes, not a management
+summary or a bare implementation checklist. It must explain ownership,
+trade-offs, lifecycle, data flow, failure handling, and why boundaries exist.
+It must include a prominent annotated file-system tour: a readable terminal-style
+tree of important current and recommended files/directories, why each belongs
+there, and one real request traced through UI, typed API, handler, authz,
+domain/helper logic, database, response, and tests.
+
+Build a feature-completeness map before writing phases. For every relevant
+actor—operator/front desk, manager/owner, customer/public user,
+administrator, support/finance/downstream operator, and mobile/field user where
+applicable—identify the complete job to be done. Go beyond CRUD and include:
+
+- discovery, search, filter, sort, comparison, detail views, and saved views;
+- creation, editing, duplication, archiving/restoring, bulk work, import/export,
+  printing/sharing, and configuration;
+- validation, loading, empty, error, offline/retry, conflict, exception, and
+  recovery states;
+- history/audit, notifications, accessibility, keyboard/scanner/touch use,
+  responsive behaviour, permissions, and support context;
+- customer-safe selection, pricing/availability/status messaging, stable public
+  URLs where relevant, and consistent information through the next lifecycle
+  step.
+
+For each material feature, state its data owner, API contract, permission rule,
+storage/integrity need, UI state, test evidence, downstream consumer, and why
+it is in scope. Separate verified existing features, production gaps,
+quality-of-life improvements, deliberately deferred capabilities, and explicit
+non-goals. Use feature matrices and concrete examples; do not begin a phased
+roadmap until this analysis is complete.
+
+Every module roadmap must therefore include: current inventory; a
+feature-completeness map; good/bad/missing assessment; domain/storage model;
+click-to-database flow; platform dependency and ownership map; stable contracts;
+annotated file-system tour; phased plan with acceptance/tests/migration rationale;
+risks; handoff; and newcomer glossary/learning path. Use the established
+Payment-roadmap design language unless the human provides another visual
+reference, and preserve useful facts if a roadmap already exists.
+
 ## Verification Bar
 
 Before handoff:

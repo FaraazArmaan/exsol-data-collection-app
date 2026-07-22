@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchSection } from '../shared/api';
 import type { SectionKey } from '../shared/types';
 
-interface State<T> { data: T | null; loading: boolean; error: string | null; }
+interface State<T> { data: T | null; loading: boolean; error: string | null; reload: () => void; }
 
 export function useSupplyChain<T>(section: SectionKey): State<T> {
-  const [state, setState] = useState<State<T>>({ data: null, loading: true, error: null });
+  const [state, setState] = useState<Omit<State<T>, 'reload'>>({ data: null, loading: true, error: null });
+  const [request, setRequest] = useState(0);
+  const reload = useCallback(() => setRequest((value) => value + 1), []);
   useEffect(() => {
     let alive = true;
     setState({ data: null, loading: true, error: null });
@@ -13,6 +15,6 @@ export function useSupplyChain<T>(section: SectionKey): State<T> {
       .then((d) => { if (alive) setState({ data: d, loading: false, error: null }); })
       .catch((e) => { if (alive) setState({ data: null, loading: false, error: String(e?.message ?? e) }); });
     return () => { alive = false; };
-  }, [section]);
-  return state;
+  }, [section, request]);
+  return { ...state, reload };
 }

@@ -36,9 +36,10 @@ async function getGoogleClientId(): Promise<string | null> {
 interface Props {
   onCredential: (idToken: string) => void;
   text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+  width?: number;
 }
 
-export function GoogleSignInButton({ onCredential, text = 'signin_with' }: Props) {
+export function GoogleSignInButton({ onCredential, text = 'signin_with', width = 320 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,13 +70,13 @@ export function GoogleSignInButton({ onCredential, text = 'signin_with' }: Props
           size: 'large',
           text,
           shape: 'rectangular',
-          width: 320,
+          width: Math.min(width, ref.current.clientWidth || width),
         });
       }
     })();
 
     return () => { cancelled = true; };
-  }, [onCredential, text]);
+  }, [onCredential, text, width]);
 
   if (error) return <p className="muted" style={{ fontSize: 12 }}>{error}</p>;
   return <div ref={ref} style={{ display: 'flex', justifyContent: 'center' }} />;

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { bookingApi, BookingApiError, type VendorService, type VendorResource } from '../shared/api';
+import { bookingApi, type VendorService, type VendorResource } from '../shared/api';
 import { formatRupees } from '../format';
 import { BookingTabs } from './BookingTabs';
 import { ServiceEditDrawer } from './ServiceEditDrawer';
 import { Button } from '../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/ui/Feedback';
 
 interface Props { slug: string; perms: ReadonlySet<string>; }
 
@@ -14,13 +15,14 @@ export default function ServicesPage({ slug, perms }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<VendorService | 'new' | null>(null);
 
-  function reload() { bookingApi.listServices().then((r) => setServices(r.services)).catch(() => setError('load_error')); }
+  function reload() {
+    setError(null);
+    setServices(null);
+    bookingApi.listServices().then((r) => setServices(r.services)).catch(() => setError('load_error'));
+  }
   useEffect(() => { reload(); bookingApi.listResources().then((r) => setResources(r.resources)).catch(() => {}); }, []);
 
   async function remove(id: string) { await bookingApi.deleteService(id); reload(); }
-
-  if (error === 'load_error') return <p className="error">Couldn’t load services.</p>;
-  if (!services) return <div className="muted">Loading…</div>;
 
   return (
     <div className="page page-standard booking-vendor">
@@ -30,7 +32,10 @@ export default function ServicesPage({ slug, perms }: Props) {
         {canEdit ? <Button variant="primary" onClick={() => setEditing('new')}>+ Add service</Button> : null}
       </div>
 
-      <div className="booking-mobile-service-list" aria-label="Services">
+      {error === 'load_error' ? <ErrorState title="Couldn’t load services." action={<Button size="compact" onClick={reload}>Try again</Button>} /> : null}
+      {!services && !error ? <LoadingState title="Loading services…" /> : null}
+      {services?.length === 0 ? <EmptyState title="No services yet." action={canEdit ? <Button size="compact" variant="primary" onClick={() => setEditing('new')}>Add service</Button> : undefined} /> : null}
+      {services && services.length > 0 ? <><div className="booking-mobile-service-list" aria-label="Services">
         {services.map((service) => (
           <article key={service.id} className="booking-mobile-service-card">
             <div>
@@ -41,7 +46,6 @@ export default function ServicesPage({ slug, perms }: Props) {
             {canEdit ? <Button size="compact" variant="secondary" onClick={() => setEditing(service)}>Edit</Button> : null}
           </article>
         ))}
-        {services.length === 0 ? <p className="muted">No services yet.</p> : null}
       </div>
 
       <table className="booking-table">
@@ -56,9 +60,9 @@ export default function ServicesPage({ slug, perms }: Props) {
               </td> : null}
             </tr>
           ))}
-          {services.length === 0 ? <tr><td colSpan={5} className="muted">No services yet.</td></tr> : null}
         </tbody>
       </table>
+      </> : null}
 
       {editing ? <ServiceEditDrawer service={editing === 'new' ? undefined : editing} resources={resources} onClose={() => setEditing(null)} onSaved={reload} /> : null}
     </div>

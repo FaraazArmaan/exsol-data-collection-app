@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { BackorderRow, BackorderStatus } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState, PermissionState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -123,7 +125,7 @@ export default function BackordersTab({ perms }: Props) {
   if (!canView) {
     return (
       <div className="ord-shell">
-        <p className="ord-muted">You don&rsquo;t have permission to view this section.</p>
+        <PermissionState />
       </div>
     );
   }
@@ -168,11 +170,11 @@ export default function BackordersTab({ perms }: Props) {
         )}
 
         {loading ? (
-          <p className="ord-muted">Loading backorders…</p>
+          <LoadingState title="Loading backorders" />
         ) : error ? (
-          <div className="ord-error">{error}</div>
+          <ErrorState title="Backorders could not load" action={<Button variant="secondary" onClick={loadBackorders}>Try again</Button>}>{error}</ErrorState>
         ) : backorders.length === 0 ? (
-          <p className="ord-empty">No backorders.</p>
+          <EmptyState title="No backorders." />
         ) : (
           <table className="ord-table">
             <thead>

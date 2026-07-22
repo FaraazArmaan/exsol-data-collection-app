@@ -310,12 +310,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div className="card" style={{ width: 'min(420px, 92vw)' }}>
-        <h1 style={{ marginBottom: 4 }}>Sign in</h1>
-        <p className="muted" style={{ marginTop: 0 }}>Admins, owners, employees, and customers all sign in here.</p>
-        <form onSubmit={onSubmit}>
-          <div style={{ display: 'grid', gap: 12 }}>
+    <div className="login-shell login-shell--padded">
+      <div className="card login-card login-card--sign-in">
+        <h1 className="login-card__title">Sign in</h1>
+        <p className="muted login-card__intro">Admins, owners, employees, and customers all sign in here.</p>
+        <form className="login-card__form" onSubmit={onSubmit}>
+          <div className="login-card__fields">
             <Field label="Email" required>
               {(props) => <Input {...props} name="email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />}
             </Field>
@@ -323,7 +323,7 @@ export default function LoginPage() {
               {(props) => <Input {...props} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}
             </Field>
           </div>
-          <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
+          <div className="login-card__forgot">
             <button
               type="button"
               className="btn btn-ghost"
@@ -334,17 +334,17 @@ export default function LoginPage() {
             </button>
           </div>
           {error && <InlineNotice tone="danger" title="Sign in failed">{error}</InlineNotice>}
-          <div style={{ marginTop: 12 }}>
+          <div className="login-card__primary-action">
             <Button type="submit" variant="primary" loading={submitting} loadingLabel="Signing in…">Sign in</Button>
           </div>
         </form>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+        <div className="login-card__divider">
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
           <span className="muted" style={{ fontSize: 11 }}>OR</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, #2a2a2a)' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
         </div>
-        <GoogleSignInButton onCredential={handleGoogleCredential} />
-        <p className="muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+        <GoogleSignInButton onCredential={handleGoogleCredential} width={416} />
+        <p className="muted login-card__google-help">
           Google sign-in only works if your email is already registered as an admin or user.
         </p>
       </div>

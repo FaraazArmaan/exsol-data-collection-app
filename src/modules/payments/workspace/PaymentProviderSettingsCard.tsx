@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { PaymentsApiError, paymentsApi } from '../shared/api';
 import type { PaymentProviderConnection } from '../shared/types';
+import { Button } from '../../../components/ui/Button';
+import { ErrorState, InlineNotice, LoadingState } from '../../../components/ui/Feedback';
+import { Field, Input } from '../../../components/ui/Field';
 
 export default function PaymentProviderSettingsCard() {
   const [connection, setConnection] = useState<PaymentProviderConnection | null>(null);
@@ -11,12 +14,15 @@ export default function PaymentProviderSettingsCard() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  function loadConnection() {
+    setError(null);
+    setConnection(null);
     paymentsApi.providerConnection().then((value) => {
       setConnection(value);
       setEnabled(value.enabled);
     }).catch((cause: unknown) => setError(cause instanceof PaymentsApiError ? cause.code : 'provider_status_unavailable'));
-  }, []);
+  }
+  useEffect(() => { loadConnection(); }, []);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,28 +54,24 @@ export default function PaymentProviderSettingsCard() {
           <h2 id="pay-provider-title">Razorpay Test mode</h2>
         </div>
         <span className={connection?.configured ? 'pay-status pay-status-ready' : 'pay-status'}>
-          {connection?.configured ? 'Credentials saved' : 'Not configured'}
+          {connection === null && !error ? 'Checking connection' : connection?.configured ? 'Credentials saved' : 'Not configured'}
         </span>
       </div>
-      <div className="pay-provider-layout">
+      {error && !connection ? <ErrorState title="Could not load provider status." action={<Button size="compact" onClick={loadConnection}>Try again</Button>}>{error}</ErrorState> : null}
+      {connection === null && !error ? <LoadingState title="Checking provider connection…" /> : null}
+      {connection ? <div className="pay-provider-layout">
         <div>
           <p>Use Test-mode credentials only. Secrets are encrypted before storage and are never shown again.</p>
           <form className="pay-form" onSubmit={save}>
-            <label>Test Key ID
-              <input value={keyId} onChange={(event) => setKeyId(event.target.value)} placeholder="rzp_test_…" autoComplete="off" />
-            </label>
-            <label>Test Key Secret
-              <input type="password" value={apiSecret} onChange={(event) => setApiSecret(event.target.value)} placeholder="Leave blank to keep saved value" autoComplete="new-password" />
-            </label>
-            <label>Test webhook secret
-              <input type="password" value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="Create this separately in Razorpay" autoComplete="new-password" />
-            </label>
+            <Field label="Test Key ID">{(props) => <Input {...props} value={keyId} onChange={(event) => setKeyId(event.target.value)} placeholder="rzp_test_…" autoComplete="off" />}</Field>
+            <Field label="Test Key Secret">{(props) => <Input {...props} type="password" value={apiSecret} onChange={(event) => setApiSecret(event.target.value)} placeholder="Leave blank to keep saved value" autoComplete="new-password" />}</Field>
+            <Field label="Test webhook secret">{(props) => <Input {...props} type="password" value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="Create this separately in Razorpay" autoComplete="new-password" />}</Field>
             <label className="pay-toggle">
               <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
               Mark this Test-mode connection ready for the future checkout integration
             </label>
-            {error ? <p className="pay-error">Could not save provider settings: {error}.</p> : null}
-            <button className="pay-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Test connection'}</button>
+            {error ? <InlineNotice tone="danger" title="Could not save provider settings.">{error}</InlineNotice> : null}
+            <Button className="pay-button" variant="primary" type="submit" loading={saving} loadingLabel="Saving connection…">Save Test connection</Button>
           </form>
         </div>
         <aside className="pay-provider-context" aria-label="Provider connection readiness">
@@ -81,7 +83,7 @@ export default function PaymentProviderSettingsCard() {
           </dl>
           <p>Test-mode setup is safe to prepare now. It does not enable customer payment collection.</p>
         </aside>
-      </div>
+      </div> : null}
     </section>
   );
 }

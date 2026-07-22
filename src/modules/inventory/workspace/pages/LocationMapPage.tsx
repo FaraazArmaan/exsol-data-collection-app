@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { inventoryApi } from '../../shared/api';
 import type { ByLocationData } from '../../shared/types';
 import { InventoryTabs } from '../components/InventoryTabs';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
+import { Button } from '../../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -14,10 +16,18 @@ export default function LocationMapPage(_props: Props) {
   const [data, setData] = useState<ByLocationData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setError(null);
+    setData(null);
     inventoryApi.byLocation()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  };
+
+  useEffect(() => {
+    load();
+    // One initial request; the retry action above deliberately starts another.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -25,14 +35,12 @@ export default function LocationMapPage(_props: Props) {
       <div className="inv-header"><h1 className="inv-title">Inventory</h1></div>
       <InventoryTabs />
 
-      {error && <div className="inv-error" role="alert">{error}</div>}
-
-      {!data && !error ? (
-        <p className="inv-muted">Loading…</p>
+      {error ? (
+        <ErrorState title="Locations could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>
+      ) : !data ? (
+        <LoadingState title="Loading stock by location" />
       ) : data && data.locations.length === 0 ? (
-        <p className="inv-empty">
-          No warehouse locations yet. Add locations in the Warehouse module to map stock by location.
-        </p>
+        <EmptyState title="No warehouse locations yet.">Add locations in Warehouse to map stock by location.</EmptyState>
       ) : data ? (
         <div className="inv-loc-grid">
           {data.locations.map((loc) => {

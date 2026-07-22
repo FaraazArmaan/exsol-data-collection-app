@@ -3,6 +3,8 @@ import { warehouseApi } from '../../shared/api';
 import {
   CADENCES, SEVERITIES, type Cadence, type SafetyChecklist, type SafetyIncident, type Severity,
 } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { ErrorState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -37,14 +39,16 @@ export default function SafetyTab({ perms }: Props) {
     setError(null);
     try { await fn(); load(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
+  const openIncidentCount = incidents?.filter((incident) => incident.status === 'open').length ?? 0;
+  const dueChecklistCount = checklists?.filter((checklist) => checklist.due).length ?? 0;
 
   return (
     <div>
-      {error && (
-        <div className="wh-error" role="alert">
-          {error}{' '}
-          <button type="button" className="wh-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
+      {error && <ErrorState title="Safety information could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
+      {(openIncidentCount > 0 || dueChecklistCount > 0) && (
+        <section className="wh-priority" aria-label="Safety attention needed">
+          <div><strong>Needs attention</strong><p>{openIncidentCount > 0 && `${openIncidentCount} open incident${openIncidentCount === 1 ? '' : 's'}`}{openIncidentCount > 0 && dueChecklistCount > 0 ? ' · ' : ''}{dueChecklistCount > 0 && `${dueChecklistCount} checklist${dueChecklistCount === 1 ? '' : 's'} due`}</p></div>
+        </section>
       )}
 
       <section className="wh-panel">

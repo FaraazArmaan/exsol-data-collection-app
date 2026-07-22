@@ -5,6 +5,8 @@ import type { PurchaseOrderRow } from '../../shared/types';
 import { formatMoney, STATUS_LABEL, STATUS_VARIANT } from '../../shared/format';
 import { ProcurementTabs } from '../ProcurementTabs';
 import { CreatePOModal } from '../components/CreatePOModal';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   slug: string;
@@ -46,6 +48,8 @@ export default function PurchaseOrdersPage({ slug, perms }: Props) {
   };
 
   const onCreated = (id: string) => { setCreating(false); nav(`/c/${slug}/procurement/orders/${id}`); };
+  const awaitingApproval = rows?.filter((po) => po.status === 'pending_approval') ?? [];
+  const overdue = rows?.filter((po) => po.status === 'ordered' && po.expected_on && new Date(`${po.expected_on}T23:59:59`) < new Date()) ?? [];
 
   return (
     <div className="proc-shell">
@@ -86,17 +90,26 @@ export default function PurchaseOrdersPage({ slug, perms }: Props) {
         </div>
       )}
 
-      {error && (
-        <div className="proc-error" role="alert">
-          {error} <button type="button" className="proc-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Purchase orders could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
 
       {rows === null ? (
-        <p className="proc-muted">Loading…</p>
+        <LoadingState title="Loading purchase orders" />
       ) : rows.length === 0 ? (
-        <p className="proc-empty">No purchase orders yet. {canCreate ? 'Create one to restock from a supplier.' : ''}</p>
+        <EmptyState title="No purchase orders yet.">{canCreate ? 'Create one to restock from a supplier.' : undefined}</EmptyState>
       ) : (
+        <>
+        {(awaitingApproval.length > 0 || overdue.length > 0) && (
+          <section className="proc-priority" aria-label="Purchase order attention needed">
+            <div>
+              <strong>Needs attention</strong>
+              <p>{awaitingApproval.length > 0 && `${awaitingApproval.length} awaiting approval`}{awaitingApproval.length > 0 && overdue.length > 0 ? ' · ' : ''}{overdue.length > 0 && `${overdue.length} past the expected date`}</p>
+            </div>
+            <div className="proc-priority-actions">
+              {awaitingApproval.slice(0, 1).map((po) => <Button key={po.id} variant="secondary" onClick={() => nav(`/c/${slug}/procurement/orders/${po.id}`)}>Review approval</Button>)}
+              {awaitingApproval.length === 0 && overdue.slice(0, 1).map((po) => <Button key={po.id} variant="secondary" onClick={() => nav(`/c/${slug}/procurement/orders/${po.id}`)}>Review order</Button>)}
+            </div>
+          </section>
+        )}
         <table className="proc-table">
           <thead>
             <tr>
@@ -118,6 +131,7 @@ export default function PurchaseOrdersPage({ slug, perms }: Props) {
             ))}
           </tbody>
         </table>
+        </>
       )}
 
       {creating && <CreatePOModal onClose={() => setCreating(false)} onCreated={onCreated} />}

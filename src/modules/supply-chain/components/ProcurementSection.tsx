@@ -7,7 +7,7 @@ import { KpiTile } from './KpiTile';
 import { DrillPanel } from './DrillPanel';
 
 export function ProcurementSection() {
-  const { data, loading, error } = useSupplyChain<ProcurementResponse>('procurement');
+  const { data, loading, error, reload } = useSupplyChain<ProcurementResponse>('procurement');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const empty = !!data && data.openPos.length === 0;
   return (
@@ -17,6 +17,7 @@ export function ProcurementSection() {
       error={error}
       empty={empty}
       emptyText="No open purchase orders."
+      onRetry={reload}
     >
       {data && (
         <>

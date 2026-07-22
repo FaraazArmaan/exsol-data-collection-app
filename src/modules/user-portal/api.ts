@@ -65,6 +65,19 @@ export interface WorkforceMeTimeStatus {
     geofence_result: string | null;
     distance_meters: number | string | null;
   }>;
+  recovery_requests: WorkforceMeAttendanceRecovery[];
+}
+
+export interface WorkforceMeAttendanceRecovery {
+  id: string;
+  action: 'clock_in';
+  status: 'pending' | 'approved' | 'denied' | 'cancelled';
+  failure_code: string;
+  employee_reason: string;
+  attempted_at: string;
+  resolution_note: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 }
 
 export interface WorkforceMeLeaveRequest {
@@ -146,8 +159,20 @@ export interface WorkforceMeTimeCorrection {
   correction_type: string;
   status: string;
   notes: string | null;
+  resolution_note: string | null;
   created_at: string;
   reviewed_at: string | null;
+}
+
+export interface WorkforceMePublishedShift {
+  notice_id: string;
+  acknowledgement_required: boolean;
+  acknowledged_at: string | null;
+  week_start: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  resource_name: string;
 }
 
 export interface WorkforceMeComplianceTask {
@@ -171,6 +196,7 @@ export interface WorkforceMeDashboard {
   assets: WorkforceMeAsset[];
   corrections: WorkforceMeTimeCorrection[];
   compliance_tasks: WorkforceMeComplianceTask[];
+  published_schedule: WorkforceMePublishedShift[];
 }
 
 // PermissionMatrix is a flat map: 'module.bucket.verb' → true.
@@ -214,20 +240,38 @@ export const userChangePassword = (current_password: string, new_password: strin
 export const workforceMeTimeStatus = () =>
   apiFetch<WorkforceMeTimeStatus>('/api/workforce/me/time-status');
 
-export const workforceMeClockIn = (location: { latitude: number; longitude: number; accuracy_meters: number }) =>
+export const workforceMeClockIn = (location: { latitude: number; longitude: number; accuracy_meters: number }, idempotencyKey?: string) =>
   apiFetch<{ punch: WorkforceMePunch }>('/api/workforce/me/clock-in', {
     method: 'POST',
-    body: JSON.stringify(location),
+    body: JSON.stringify({ ...location, ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}) }),
   });
 
-export const workforceMeClockOut = () =>
-  apiFetch<{ punch: WorkforceMePunch }>('/api/workforce/me/clock-out', { method: 'POST' });
+export const workforceMeClockOut = (idempotencyKey?: string) =>
+  apiFetch<{ punch: WorkforceMePunch }>('/api/workforce/me/clock-out', {
+    method: 'POST', body: JSON.stringify(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+  });
 
-export const workforceMeStartBreak = () =>
-  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/start-break', { method: 'POST' });
+export const workforceMeStartBreak = (idempotencyKey?: string) =>
+  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/start-break', {
+    method: 'POST', body: JSON.stringify(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+  });
 
-export const workforceMeEndBreak = () =>
-  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/end-break', { method: 'POST' });
+export const workforceMeEndBreak = (idempotencyKey?: string) =>
+  apiFetch<{ break: WorkforceMeBreak }>('/api/workforce/me/end-break', {
+    method: 'POST', body: JSON.stringify(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+  });
+
+export const workforceMeRequestAttendanceRecovery = (body: {
+  failure_code: string;
+  reason: string;
+  request_key: string;
+  latitude?: number;
+  longitude?: number;
+  accuracy_meters?: number;
+}) =>
+  apiFetch<{ recovery: WorkforceMeAttendanceRecovery }>('/api/workforce/me/attendance-recovery', {
+    method: 'POST', body: JSON.stringify(body),
+  });
 
 export const workforceMeDashboard = () =>
   apiFetch<WorkforceMeDashboard>('/api/workforce/me/dashboard');
@@ -267,3 +311,9 @@ export const workforceMeRequestTimeCorrection = (body: {
     method: 'POST',
     body: JSON.stringify(body),
   });
+
+export const workforceMeCancelTimeCorrection = (id: string) =>
+  apiFetch<never>(`/api/workforce/me/time-correction/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+export const workforceMeAcknowledgeScheduleNotice = (id: string) =>
+  apiFetch<{ notice: { id: string; acknowledged_at: string } }>(`/api/workforce/me/schedule-notice/${encodeURIComponent(id)}`, { method: 'PATCH' });

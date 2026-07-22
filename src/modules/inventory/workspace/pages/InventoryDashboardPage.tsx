@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { inventoryApi } from '../../shared/api';
 import type { DashboardData } from '../../shared/types';
 import { InventoryTabs } from '../components/InventoryTabs';
 import { formatMoney } from '../../../../lib/currency';
+import { ErrorState, LoadingState } from '../../../../components/ui/Feedback';
+import { Button } from '../../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -29,11 +31,17 @@ export default function InventoryDashboardPage(_props: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError(null);
+    setData(null);
     inventoryApi.dashboard()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="inv-shell">
@@ -42,10 +50,10 @@ export default function InventoryDashboardPage(_props: Props) {
       </div>
       <InventoryTabs />
 
-      {error && <div className="inv-error" role="alert">{error}</div>}
-
-      {!data && !error ? (
-        <p className="inv-muted">Loading…</p>
+      {error ? (
+        <ErrorState title="Inventory could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>
+      ) : !data ? (
+        <LoadingState title="Loading inventory overview" />
       ) : data ? (
         <>
           <div className="inv-kpis">
@@ -63,8 +71,8 @@ export default function InventoryDashboardPage(_props: Props) {
           </div>
 
           <div className="inv-dash-grid">
-            <section className="inv-dash-panel">
-              <h2 className="inv-dash-h2">Low stock</h2>
+            <section className="inv-dash-panel inv-priority-panel">
+              <h2 className="inv-dash-h2">Needs attention</h2>
               {data.lowStock.length === 0 ? (
                 <p className="inv-muted">Everything is above its reorder level.</p>
               ) : (

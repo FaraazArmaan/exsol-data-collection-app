@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Button } from '../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/ui/Feedback';
 
 interface Props {
   title: string;
@@ -7,17 +9,18 @@ interface Props {
   empty: boolean;
   emptyText: string;
   children: ReactNode;
+  onRetry?: () => void;
 }
 
-export function Section({ title, loading, error, empty, emptyText, children }: Props) {
+export function Section({ title, loading, error, empty, emptyText, children, onRetry }: Props) {
   return (
     <section className="sc-section">
       <h2 className="sc-section-title">{title}</h2>
-      {loading && <div className="sc-state sc-loading">Loading…</div>}
+      {loading && <LoadingState title={`Loading ${title.toLowerCase()}`} />}
       {!loading && error && (
-        <div className="sc-state sc-error">Couldn't load {title.toLowerCase()} (error {error}).</div>
+        <ErrorState title={`${title} could not load`} action={onRetry && <Button variant="secondary" onClick={onRetry}>Try again</Button>}>{error}</ErrorState>
       )}
-      {!loading && !error && empty && <div className="sc-state sc-empty">{emptyText}</div>}
+      {!loading && !error && empty && <EmptyState title={emptyText} />}
       {!loading && !error && !empty && children}
     </section>
   );

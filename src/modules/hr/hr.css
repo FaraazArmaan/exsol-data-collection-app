@@ -1,5 +1,5 @@
 /* HR module — dark-theme tokens from src/lib/theme.css only (iron rule 9). */
-.hr-page { padding: 24px; max-width: 1000px; }
+.hr-page { width: 100%; min-width: 0; padding: 24px; max-width: var(--content-standard); }
 .hr-head h1 { margin: 0 0 16px; font-size: 20px; color: var(--text-primary); }
 
 .hr-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); margin-bottom: 20px; overflow-x: auto; }
@@ -39,6 +39,12 @@
   .hr-org { grid-template-columns: 1fr; }
   .hr-org-detail { position: static; }
   .hr-node-role { display: none; }
+}
+
+@container (max-width: 720px) {
+  .hr-page .hr-org { grid-template-columns: minmax(0, 1fr); }
+  .hr-page .hr-org-detail { position: static; }
+  .hr-page .hr-node-role { display: none; }
 }
 
 /* Checklists (onboarding / offboarding) */

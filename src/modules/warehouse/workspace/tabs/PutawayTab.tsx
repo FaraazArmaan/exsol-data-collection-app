@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { warehouseApi } from '../../shared/api';
 import type { PutawayStatus, PutawayTask, WarehouseLocation } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -71,21 +73,14 @@ export default function PutawayTab({ perms }: Props) {
       </div>
 
       {notice && <div className="wh-notice" role="status">{notice}</div>}
-      {error && (
-        <div className="wh-error" role="alert">
-          {error}{' '}
-          <button type="button" className="wh-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Putaway tasks could not load" action={<Button variant="secondary" onClick={() => load(status)}>Try again</Button>}>{error}</ErrorState>}
 
       {tasks === null ? (
-        <p className="wh-muted">Loading…</p>
+        <LoadingState title="Loading putaway tasks" />
       ) : tasks.length === 0 ? (
-        <p className="wh-empty">
-          {status === 'pending'
+        <EmptyState title={status === 'pending'
             ? 'No pending putaway tasks. Receive a purchase order in Procurement, then generate tasks.'
-            : 'No completed putaway tasks yet.'}
-        </p>
+            : 'No completed putaway tasks yet.'} />
       ) : (
         <table className="wh-table">
           <thead>

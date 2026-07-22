@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { inventoryApi } from '../../shared/api';
 import type { InventoryReturn, ReturnDisposition, StockRow } from '../../shared/types';
 import { InventoryTabs } from '../components/InventoryTabs';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
+import { Button } from '../../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -62,8 +64,8 @@ export default function ReturnsPage({ perms }: Props) {
       <div className="inv-header"><h1 className="inv-title">Inventory</h1></div>
       <InventoryTabs />
 
-      {error && <div className="inv-error" role="alert">{error}</div>}
-      {flash && <div className="inv-flash" role="status">{flash}</div>}
+      {error && <ErrorState title="Returns could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
+      {flash && <InlineNotice tone="success" title="Return logged">{flash}</InlineNotice>}
 
       {canCreate && (
         <form className="inv-return-form" onSubmit={submit}>
@@ -98,10 +100,10 @@ export default function ReturnsPage({ perms }: Props) {
         </form>
       )}
 
-      {returns === null ? (
-        <p className="inv-muted">Loading…</p>
+      {error ? null : returns === null ? (
+        <LoadingState title="Loading returns" />
       ) : returns.length === 0 ? (
-        <p className="inv-empty">No returns logged yet.</p>
+        <EmptyState title="No returns logged yet." />
       ) : (
         <table className="inv-table">
           <thead>

@@ -5,7 +5,9 @@ import { useNavItems } from '../nav/useNavItems';
 import { formatWorkforceTime } from '../../workforce/shared/time';
 import {
   workforceMeActOnShiftSwap,
+  workforceMeAcknowledgeScheduleNotice,
   workforceMeCancelLeaveRequest,
+  workforceMeCancelTimeCorrection,
   workforceMeClockIn,
   workforceMeClockOut,
   workforceMeCreateLeaveRequest,
@@ -13,6 +15,7 @@ import {
   workforceMeEndBreak,
   workforceMeOfferShiftSwap,
   workforceMeRequestTimeCorrection,
+  workforceMeRequestAttendanceRecovery,
   workforceMeStartBreak,
   workforceMeTimeStatus,
   type WorkforceMeDashboard,
@@ -53,6 +56,8 @@ function weekdayName(day: number): string {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day] ?? `Day ${day}`;
 }
 
+type BrowserLocationError = Error & { code: 'permission_denied' | 'position_unavailable' | 'location_timeout' };
+
 function browserLocation(): Promise<{ latitude: number; longitude: number; accuracy_meters: number }> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -65,7 +70,17 @@ function browserLocation(): Promise<{ latitude: number; longitude: number; accur
         longitude: pos.coords.longitude,
         accuracy_meters: pos.coords.accuracy,
       }),
-      () => reject(new Error('Allow location access to clock in.')),
+      (error) => {
+        const code = error.code === error.PERMISSION_DENIED
+          ? 'permission_denied'
+          : error.code === error.TIMEOUT ? 'location_timeout' : 'position_unavailable';
+        const message = code === 'permission_denied'
+          ? 'Location access was not allowed. You can request a supervisor review instead.'
+          : code === 'location_timeout'
+            ? 'Location capture timed out. You can try again or request a supervisor review.'
+            : 'Your location is unavailable. You can try again or request a supervisor review.';
+        reject(Object.assign(new Error(message), { code }));
+      },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   });
@@ -76,6 +91,9 @@ function WorkforceTimeCard({ enabled, timeZone }: { enabled: boolean; timeZone: 
   const [loading, setLoading] = useState(enabled);
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
+  const [recoveryFailure, setRecoveryFailure] = useState('');
+  const [recoveryReason, setRecoveryReason] = useState('');
+  const [recoveryLocation, setRecoveryLocation] = useState<{ latitude: number; longitude: number; accuracy_meters: number } | null>(null);
 
   async function load() {
     if (!enabled) return;
@@ -106,18 +124,23 @@ function WorkforceTimeCard({ enabled, timeZone }: { enabled: boolean; timeZone: 
     setMessage('');
     let res;
     try {
+      const idempotencyKey = crypto.randomUUID();
       if (action === 'clock-in') {
         const location = await browserLocation();
-        res = await workforceMeClockIn(location);
+        setRecoveryLocation(location);
+        res = await workforceMeClockIn(location, idempotencyKey);
       } else if (action === 'clock-out') {
-        res = await workforceMeClockOut();
+        res = await workforceMeClockOut(idempotencyKey);
       } else if (action === 'start-break') {
-        res = await workforceMeStartBreak();
+        res = await workforceMeStartBreak(idempotencyKey);
       } else {
-        res = await workforceMeEndBreak();
+        res = await workforceMeEndBreak(idempotencyKey);
       }
       if (!res.ok) {
         const code = res.error.code;
+        if (action === 'clock-in' && ['outside_geofence', 'location_accuracy_too_low', 'geofence_unconfigured', 'network_error'].includes(code)) {
+          setRecoveryFailure(code);
+        }
         setMessage(
           code === 'outside_geofence' ? 'You are outside an approved work location.'
             : code === 'location_accuracy_too_low' ? 'Location accuracy is too low. Move near the worksite and try again.'
@@ -126,12 +149,39 @@ function WorkforceTimeCard({ enabled, timeZone }: { enabled: boolean; timeZone: 
         );
         return;
       }
+      if (action === 'clock-in') {
+        setRecoveryFailure('');
+        setRecoveryReason('');
+      }
       await load();
     } catch (err) {
+      const locationError = err as BrowserLocationError;
+      if (action === 'clock-in' && locationError.code) setRecoveryFailure(locationError.code);
       setMessage(err instanceof Error ? err.message : 'Unable to complete time action.');
     } finally {
       setBusy('');
     }
+  }
+
+  async function submitRecovery(e: FormEvent) {
+    e.preventDefault();
+    if (!recoveryFailure) return;
+    setBusy('attendance-recovery');
+    setMessage('');
+    const res = await workforceMeRequestAttendanceRecovery({
+      failure_code: recoveryFailure,
+      reason: recoveryReason,
+      request_key: crypto.randomUUID(),
+      ...(recoveryLocation ?? {}),
+    });
+    if (res.ok) {
+      setRecoveryReason('');
+      setMessage('Attendance recovery request submitted for supervisor review.');
+      await load();
+    } else {
+      setMessage(res.error.message || res.error.code);
+    }
+    setBusy('');
   }
 
   return (
@@ -187,6 +237,37 @@ function WorkforceTimeCard({ enabled, timeZone }: { enabled: boolean; timeZone: 
               {busy === 'end-break' ? 'Ending...' : 'End break'}
             </button>
           )}
+        </div>
+      )}
+
+      {status && recoveryFailure && !openPunch && (
+        <form className="dash-mini-form dash-attendance-recovery" onSubmit={(e) => void submitRecovery(e)}>
+          <div className="dash-card-head">
+            <h3>Need help clocking in?</h3>
+            <span>Supervisor review</span>
+          </div>
+          <p className="muted">Your clock-in remains protected by the worksite rule. Tell your supervisor what happened; the request includes the captured location result when available.</p>
+          <label>
+            What happened?
+            <textarea required minLength={3} rows={2} value={recoveryReason} onChange={(e) => setRecoveryReason(e.target.value)} />
+          </label>
+          <button className="btn btn-secondary" disabled={busy === 'attendance-recovery'}>
+            {busy === 'attendance-recovery' ? 'Submitting...' : 'Request supervisor review'}
+          </button>
+        </form>
+      )}
+
+      {status && status.recovery_requests.length > 0 && (
+        <div className="dash-list dash-attendance-recovery-list">
+          {status.recovery_requests.slice(0, 2).map((request) => (
+            <div key={request.id} className="dash-list-row">
+              <div>
+                <strong>Clock-in recovery</strong>
+                <span>{request.resolution_note || request.failure_code.replaceAll('_', ' ')}</span>
+              </div>
+              <span className="dash-status">{request.status}</span>
+            </div>
+          ))}
         </div>
       )}
     </section>
@@ -284,6 +365,22 @@ function WorkforceSelfService({ enabled }: { enabled: boolean }) {
     } else {
       setMessage(res.error.message || res.error.code);
     }
+    setBusy('');
+  }
+
+  async function cancelCorrection(id: string) {
+    setBusy(id);
+    const res = await workforceMeCancelTimeCorrection(id);
+    if (res.ok) await load();
+    else setMessage(res.error.message || res.error.code);
+    setBusy('');
+  }
+
+  async function acknowledgeSchedule(noticeId: string) {
+    setBusy(noticeId);
+    const res = await workforceMeAcknowledgeScheduleNotice(noticeId);
+    if (res.ok) await load();
+    else setMessage(res.error.message || res.error.code);
     setBusy('');
   }
 
@@ -446,11 +543,38 @@ function WorkforceSelfService({ enabled }: { enabled: boolean }) {
               <div key={item.id} className="dash-list-row">
                 <div>
                   <strong>{item.correction_type}</strong>
-                  <span>{formatDate(item.created_at.slice(0, 10))}</span>
+                  <span>{item.resolution_note || formatDate(item.created_at.slice(0, 10))}</span>
                 </div>
-                <span className="dash-status">{item.status}</span>
+                {item.status === 'pending' ? (
+                  <button className="btn btn-ghost" disabled={busy === item.id} onClick={() => void cancelCorrection(item.id)}>Cancel</button>
+                ) : (
+                  <span className="dash-status">{item.status}</span>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="card dash-workforce-card">
+          <div className="dash-card-head">
+            <h3>Published schedule</h3>
+            <span>{dashboard.published_schedule.length} upcoming</span>
+          </div>
+          <div className="dash-list">
+            {dashboard.published_schedule.map((shift) => (
+              <div key={`${shift.notice_id}:${shift.shift_date}:${shift.start_time}`} className="dash-list-row">
+                <div>
+                  <strong>{formatDate(shift.shift_date)}</strong>
+                  <span>{shift.start_time}-{shift.end_time} · {shift.resource_name}</span>
+                </div>
+                {shift.acknowledgement_required && !shift.acknowledged_at ? (
+                  <button className="btn btn-secondary" disabled={busy === shift.notice_id} onClick={() => void acknowledgeSchedule(shift.notice_id)}>Acknowledge</button>
+                ) : (
+                  <span className="dash-status">{shift.acknowledged_at ? 'acknowledged' : 'published'}</span>
+                )}
+              </div>
+            ))}
+            {dashboard.published_schedule.length === 0 && <p className="muted">No published shifts are scheduled yet.</p>}
           </div>
         </div>
 

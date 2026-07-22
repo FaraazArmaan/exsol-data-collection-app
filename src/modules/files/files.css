@@ -13,8 +13,9 @@
 
 /* ── Page shell ────────────────────────────────────────────────────────── */
 .fm {
-  max-width: 1180px;
-  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: var(--content-canvas);
   padding: 28px 24px 96px;
   color: var(--text-primary);
   font-family: var(--font-sans);

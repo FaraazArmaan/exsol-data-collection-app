@@ -22,6 +22,8 @@ export function SupplyChainDashboard() {
   const enabledKeys = new Set(enabledModules.map((m) => m.key));
   const sections = visibleSectionsFor(enabledKeys);
 
+  const [active, setActive] = useState('overview');
+
   // Overview groups the cross-module live panels (Inventory / Procurement /
   // Manufacturing), which are gated on those modules being enabled. The
   // supply-chain-native tools each get their own tab so the page reads like the
@@ -29,11 +31,10 @@ export function SupplyChainDashboard() {
   const renderOverview = () => {
     if (sections.length === 0) {
       return (
-        <div className="sc-state sc-empty sc-empty-all">
-          Inventory, Procurement, and Manufacturing panels are hidden — enable those modules to
-          see their data here. Supply-chain tools (Suppliers, Risk, CO₂, AI Brief) are available in
-          the tabs above.
-        </div>
+        <section className="sc-empty-all">
+          <strong>Connect the operational modules to see the overview.</strong>
+          <p>Inventory, Procurement, and Manufacturing panels are hidden. Suppliers, risk, CO₂, and the AI brief are still available above.</p>
+        </section>
       );
     }
     return (
@@ -54,14 +55,16 @@ export function SupplyChainDashboard() {
     { key: 'brief', label: 'AI Brief', render: () => <BriefSection /> },
   ];
 
-  const [active, setActive] = useState('overview');
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0]!;
 
   return (
     <div className="sc-dashboard">
       <header className="sc-header">
-        <h1>Supply Chain</h1>
-        <p className="sc-sub">Live view across inventory, procurement, and production.</p>
+        <div>
+          <h1>Supply Chain</h1>
+          <p className="sc-sub">Live view across inventory, procurement, and production.</p>
+        </div>
+        <button type="button" className="btn btn-secondary" onClick={() => setActive('risk')}>Review risks</button>
       </header>
 
       <div className="sc-tabs" role="tablist" aria-label="Supply chain sections">

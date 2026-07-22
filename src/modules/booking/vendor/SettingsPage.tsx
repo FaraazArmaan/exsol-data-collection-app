@@ -10,6 +10,7 @@ import { BookingTabs } from './BookingTabs';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Field';
 import { DateField, TimeField } from '../../../components/ui/DateTimeField';
+import { ErrorState, InlineNotice, LoadingState } from '../../../components/ui/Feedback';
 
 const DAYS: Array<[string, string]> = [
   ['mon', 'Monday'],
@@ -35,20 +36,19 @@ export default function SettingsPage({ slug, perms }: Props) {
   const [newDate, setNewDate] = useState('');
   const [setup, setSetup] = useState<BookingSetup | null>(null);
 
-  useEffect(() => {
-    bookingApi
-      .getSettings()
-      .then(setS)
-      .catch(() => setError('load_error'));
-  }, []);
+  function loadSettings() {
+    setError(null);
+    bookingApi.getSettings().then(setS).catch(() => setError('load_error'));
+  }
+  useEffect(() => { loadSettings(); }, []);
   useEffect(() => {
     bookingApi
       .getSetup()
       .then(setSetup)
       .catch(() => {});
   }, []);
-  if (error === 'load_error') return <p className="error">Couldn’t load settings.</p>;
-  if (!s) return <div className="muted">Loading…</div>;
+  if (error === 'load_error') return <div className="page page-readable booking-vendor"><BookingTabs slug={slug} perms={perms} /><h1 className="page-title">Booking settings</h1><ErrorState title="Couldn’t load settings." action={<Button size="compact" onClick={loadSettings}>Try again</Button>} /></div>;
+  if (!s) return <div className="page page-readable booking-vendor"><BookingTabs slug={slug} perms={perms} /><h1 className="page-title">Booking settings</h1><LoadingState title="Loading settings…" /></div>;
 
   function setDay(day: string, open: string, close: string) {
     setS(
@@ -232,12 +232,10 @@ export default function SettingsPage({ slug, perms }: Props) {
         </p>
       </div>
 
-      {error ? <p className="error">Couldn’t save ({error}).</p> : null}
-      {saved ? <p className="muted">Saved.</p> : null}
+      {error ? <InlineNotice tone="danger" title={`Couldn’t save (${error}).`} /> : null}
+      {saved ? <InlineNotice tone="success" title="Settings saved." /> : null}
       {canEdit ? (
-        <button className="btn btn-primary booking-settings-save" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save settings'}
-        </button>
+        <Button className="booking-settings-save" variant="primary" onClick={save} loading={saving} loadingLabel="Saving settings…">Save settings</Button>
       ) : (
         <p className="muted">You have read-only access to settings.</p>
       )}

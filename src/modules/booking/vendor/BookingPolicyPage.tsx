@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { BookingApiError, bookingApi, type BookingPolicy } from '../shared/api';
 import { BookingTabs } from './BookingTabs';
+import { Button } from '../../../components/ui/Button';
+import { ErrorState, InlineNotice, LoadingState } from '../../../components/ui/Feedback';
 
 interface Props {
   slug: string;
@@ -33,16 +35,7 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
       <div className="page page-readable booking-vendor">
         <BookingTabs slug={slug} perms={perms} />
         <h1 className="page-title">Booking Rules</h1>
-        {message ? (
-          <div className="card">
-            <p className="error">{message}</p>
-            <button className="btn btn-secondary" onClick={() => setLoadAttempt((n) => n + 1)}>
-              Try again
-            </button>
-          </div>
-        ) : (
-          <div className="muted">Loading…</div>
-        )}
+        {message ? <ErrorState title={message} action={<Button size="compact" onClick={() => setLoadAttempt((n) => n + 1)}>Try again</Button>} /> : <LoadingState title="Loading booking rules…" />}
       </div>
     );
   }
@@ -204,11 +197,9 @@ export default function BookingPolicyPage({ slug, perms }: Props) {
         </p>
         </section>
       </div>
-      {message ? <p className="muted">{message}</p> : null}
+      {message ? <InlineNotice tone={message.startsWith('Could not') ? 'danger' : 'success'} title={message} /> : null}
       {canEdit ? (
-        <button className="btn btn-primary booking-policy-save" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save booking rules'}
-        </button>
+        <Button className="booking-policy-save" variant="primary" onClick={save} loading={saving} loadingLabel="Saving rules…">Save booking rules</Button>
       ) : (
         <p className="muted">You have read-only access to booking rules.</p>
       )}

@@ -8,7 +8,7 @@ import { MovementChart } from './MovementChart';
 import { DrillPanel } from './DrillPanel';
 
 export function InventorySection() {
-  const { data, loading, error } = useSupplyChain<InventoryResponse>('inventory');
+  const { data, loading, error, reload } = useSupplyChain<InventoryResponse>('inventory');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const empty = !!data && data.lowStock.length === 0 && data.movementSeries.every((p) => p.volume === 0);
   return (
@@ -18,6 +18,7 @@ export function InventorySection() {
       error={error}
       empty={empty}
       emptyText="No low-stock items and no recent movements."
+      onRetry={reload}
     >
       {data && (
         <>

@@ -2,10 +2,25 @@
    Uses the shared theme tokens (see src/lib/theme.css) so it tracks dark/light. */
 
 .ord-shell {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  min-width: 0;
+  max-width: var(--content-standard);
 }
+
+.ord-priority {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin: 0 0 28px;
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--danger) 52%, var(--border-default));
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.ord-priority .ord-section-title { margin-bottom: var(--space-1); }
+.ord-priority__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .ord-header {
   display: flex;

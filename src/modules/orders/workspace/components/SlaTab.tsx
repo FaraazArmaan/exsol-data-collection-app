@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { SlaTarget, SlaBreach, OrderStage } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState, PermissionState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -111,7 +113,7 @@ export default function SlaTab({ perms }: Props) {
   if (!canView) {
     return (
       <div className="ord-shell">
-        <p className="ord-muted">You don&rsquo;t have permission to view this section.</p>
+        <PermissionState />
       </div>
     );
   }
@@ -193,15 +195,13 @@ export default function SlaTab({ perms }: Props) {
         </h2>
 
         {loading ? (
-          <p className="ord-muted">Loading SLA data…</p>
+          <LoadingState title="Loading SLA data" />
         ) : loadError ? (
-          <div className="ord-error">{loadError}</div>
+          <ErrorState title="SLA data could not load" action={<Button variant="secondary" onClick={loadData}>Try again</Button>}>{loadError}</ErrorState>
         ) : !slaData || slaData.breaches.length === 0 ? (
-          <p className="ord-empty">
-            {targets.length === 0
-              ? 'No SLA targets configured yet.'
-              : 'No SLA breaches — all stages within target.'}
-          </p>
+          <EmptyState title={targets.length === 0
+            ? 'No SLA targets configured yet.'
+            : 'No SLA breaches — all stages within target.'} />
         ) : (
           <table className="ord-table">
             <thead>

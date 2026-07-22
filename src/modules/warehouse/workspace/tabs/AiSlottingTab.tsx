@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { warehouseApi } from '../../shared/api';
 import type { SlottingStatus, SlottingSuggestion } from '../../shared/types';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -82,21 +84,14 @@ export default function AiSlottingTab({ perms }: Props) {
       </div>
 
       {notice && <div className="wh-notice" role="status">{notice}</div>}
-      {error && (
-        <div className="wh-error" role="alert">
-          {error}{' '}
-          <button type="button" className="wh-link" onClick={() => setError(null)}>dismiss</button>
-        </div>
-      )}
+      {error && <ErrorState title="Slotting suggestions could not load" action={<Button variant="secondary" onClick={() => load(status)}>Try again</Button>}>{error}</ErrorState>}
 
       {suggestions === null ? (
-        <p className="wh-muted">Loading…</p>
+        <LoadingState title="Loading slotting suggestions" />
       ) : suggestions.length === 0 ? (
-        <p className="wh-empty">
-          {status === 'pending'
+        <EmptyState title={status === 'pending'
             ? 'No pending suggestions. Generate to analyse movement history and current placement.'
-            : `No ${status} suggestions.`}
-        </p>
+            : `No ${status} suggestions.`} />
       ) : (
         <ul className="wh-card-list">
           {suggestions.map((s) => (

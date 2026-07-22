@@ -1,4 +1,5 @@
-.sc-dashboard { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.sc-dashboard { width: 100%; min-width: 0; padding: 0; max-width: var(--content-canvas); }
+.sc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); }
 .sc-header h1 { margin: 0 0 4px; font-size: 22px; color: var(--text-primary); }
 .sc-sub { margin: 0 0 20px; color: var(--text-secondary); font-size: 13px; }
 .sc-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); margin-bottom: 20px; overflow-x: auto; }
@@ -20,7 +21,9 @@
 .sc-state { padding: 16px; font-size: 13px; color: var(--text-secondary); }
 .sc-error { color: var(--danger); }
 .sc-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
-.sc-empty-all { border: 1px dashed var(--border-default); border-radius: 10px; text-align: center; color: var(--text-secondary); }
+.sc-empty-all { border: 1px dashed var(--border-default); border-radius: var(--radius-md); padding: var(--space-5); text-align: center; color: var(--text-secondary); }
+.sc-empty-all strong { color: var(--text-primary); }
+.sc-empty-all p { margin: var(--space-2) 0 0; }
 .sc-mt8 { margin-top: 8px; }
 .sc-suppliers-layout { display: flex; gap: 20px; flex-wrap: wrap; }
 .sc-suppliers-list { flex: 0 0 300px; min-width: 220px; }
@@ -74,6 +77,7 @@
 .sc-brief-model { font-size: 11px; color: var(--text-muted); }
 .sc-brief-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 @media (max-width: 560px) {
+  .sc-header { flex-direction: column; }
   .sc-suppliers-layout { flex-direction: column; }
   .sc-suppliers-list { flex: none; }
   .sc-drill-table th, .sc-drill-table td { padding: 0.25rem 0.25rem; }

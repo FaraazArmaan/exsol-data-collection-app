@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { inventoryApi } from '../../shared/api';
 import type { WarehouseLocation } from '../../shared/types';
 import { InventoryTabs } from '../components/InventoryTabs';
+import { ErrorState, LoadingState } from '../../../../components/ui/Feedback';
+import { Button } from '../../../../components/ui/Button';
 
 interface Props {
   slug: string;
@@ -16,10 +18,18 @@ export default function LabelsPage(_props: Props) {
   const [locations, setLocations] = useState<WarehouseLocation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setError(null);
+    setLocations(null);
     inventoryApi.byLocation()
       .then((d) => setLocations(d.locations))
       .catch((e) => { setLocations([]); setError(msg(e)); });
+  };
+
+  useEffect(() => {
+    load();
+    // One initial request; the retry action above deliberately starts another.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -27,7 +37,7 @@ export default function LabelsPage(_props: Props) {
       <div className="inv-header"><h1 className="inv-title">Inventory</h1></div>
       <InventoryTabs />
 
-      {error && <div className="inv-error" role="alert">{error}</div>}
+      {error && <ErrorState title="Shelf labels could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
 
       <section className="inv-dash-panel">
         <h2 className="inv-dash-h2">Product labels</h2>
@@ -41,8 +51,8 @@ export default function LabelsPage(_props: Props) {
 
       <section className="inv-dash-panel inv-dash-wide">
         <h2 className="inv-dash-h2">Shelf labels by location</h2>
-        {locations === null ? (
-          <p className="inv-muted">Loading…</p>
+        {error ? null : locations === null ? (
+          <LoadingState title="Loading warehouse locations" />
         ) : locations.length === 0 ? (
           <p className="inv-muted">No warehouse locations yet — add locations in the Warehouse module to print shelf labels.</p>
         ) : (

@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import '../../orders.css';
 import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { OrdersDashboardData, StatusRow, ChannelRow } from '../../shared/types';
 import { formatMoney } from '../../../../lib/currency';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 import RefundsShipmentsTab from '../components/RefundsShipmentsTab';
 import BackordersTab from '../components/BackordersTab';
 import SlaTab from '../components/SlaTab';
@@ -52,8 +54,9 @@ export default function OrdersDashboardPage({ perms }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     ordersApi
       .dashboard()
       .then((d) => {
@@ -66,13 +69,7 @@ export default function OrdersDashboardPage({ perms }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="ord-shell">
-        <p className="ord-muted">Loading orders dashboard…</p>
-      </div>
-    );
-  }
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div className="ord-shell">
@@ -143,13 +140,13 @@ export default function OrdersDashboardPage({ perms }: Props) {
         <FulfillmentsTab perms={perms} />
       )}
 
-      {activeTab === 'overview' && error && (
-        <div className="ord-error" role="alert">
-          {error}
-        </div>
+      {activeTab === 'overview' && loading && <LoadingState title="Loading orders overview" />}
+
+      {activeTab === 'overview' && !loading && error && (
+        <ErrorState title="Orders could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>
       )}
 
-      {activeTab === 'overview' && data && (
+      {activeTab === 'overview' && !loading && !error && data && (
         <>
           {/* KPI cards */}
           <div className="ord-kpi-row">
@@ -182,11 +179,32 @@ export default function OrdersDashboardPage({ perms }: Props) {
             </div>
           </div>
 
+          {(data.backorders_active > 0 || data.sla_breaches > 0) && (
+            <section className="ord-priority" aria-label="Orders needing attention">
+              <div>
+                <h2 className="ord-section-title">Needs attention</h2>
+                <p className="ord-muted">Resolve fulfilment and service commitments before reviewing the full ledger.</p>
+              </div>
+              <div className="ord-priority__actions">
+                {data.backorders_active > 0 && (
+                  <Button variant="secondary" onClick={() => setActiveTab('backorders')}>
+                    Review {data.backorders_active} backorder{data.backorders_active === 1 ? '' : 's'}
+                  </Button>
+                )}
+                {data.sla_breaches > 0 && (
+                  <Button variant="danger" onClick={() => setActiveTab('sla')}>
+                    Review {data.sla_breaches} SLA risk{data.sla_breaches === 1 ? '' : 's'}
+                  </Button>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* By status */}
           <section className="ord-section">
             <h2 className="ord-section-title">By Status</h2>
             {data.by_status.length === 0 ? (
-              <p className="ord-empty">No sales recorded yet.</p>
+              <EmptyState title="No sales recorded yet." />
             ) : (
               <table className="ord-table">
                 <thead>
@@ -213,7 +231,7 @@ export default function OrdersDashboardPage({ perms }: Props) {
           <section className="ord-section">
             <h2 className="ord-section-title">By Channel</h2>
             {data.by_channel.length === 0 ? (
-              <p className="ord-empty">No sales recorded yet.</p>
+              <EmptyState title="No sales recorded yet." />
             ) : (
               <table className="ord-table">
                 <thead>

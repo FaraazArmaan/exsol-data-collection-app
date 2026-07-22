@@ -30,8 +30,9 @@ export function ProductTable(props: {
   const allSelected = items.length > 0 && items.every((p) => selected.has(p.id));
 
   return (
-    <div className="pm-table-frame">
-    <table className="pm-table">
+    <>
+      <div className="pm-table-frame">
+      <table className="pm-table">
       <colgroup>
         <col style={{ width: 36 }} />
         <col style={{ width: 44 }} />
@@ -133,7 +134,30 @@ export function ProductTable(props: {
           </tr>
         )}
       </tbody>
-    </table>
-    </div>
+      </table>
+      </div>
+      <div className="pm-mobile-list" aria-label="Product results">
+        {items.length === 0 ? <p className="pm-mobile-empty">No products match these filters.</p> : items.map((p) => (
+          <article key={p.id} className="pm-mobile-card">
+            <label className="pm-mobile-select">
+              <input type="checkbox" aria-label={`Select ${p.name}`} checked={selected.has(p.id)} onChange={() => onToggleSelect(p.id)} />
+            </label>
+            {p.hero_image_id
+              ? <img className="pm-thumb" src={imagesApi.thumbUrl(p.hero_image_id, { clientId: clientQuery })} alt="" loading="lazy" decoding="async" />
+              : <div className="pm-thumb pm-thumb-empty" aria-hidden />}
+            <div className="pm-mobile-main">
+              <Link to={`${basePath}/${p.id}/edit`} className="pm-row-name">{p.name}</Link>
+              <span className="pm-mobile-meta">{p.sku ?? 'No SKU'} · {formatPrice(p.price_cents, p.unit, p.type)}</span>
+              <span className="pm-mobile-meta">{p.type === 'service' ? 'Service' : (p.inventory_enabled ? (p.inventory_qty_available == null ? 'Not tracked' : `${p.inventory_qty_available} available`) : `${p.stock_qty ?? 0} available`)}</span>
+            </div>
+            <div className="pm-mobile-actions">
+              <span className={`pm-status pm-status-${p.status}`}>{p.status}</span>
+              {canEdit && <button type="button" className="pm-link" onClick={() => onEdit(p.id)}>Edit</button>}
+              {canDelete && <button type="button" className="pm-link pm-danger" onClick={() => onDelete(p.id)}>Archive</button>}
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
   );
 }

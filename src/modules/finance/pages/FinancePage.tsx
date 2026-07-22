@@ -17,9 +17,9 @@ interface Props {
 // (?tab=) so views are deep-linkable and survive a refresh.
 const TABS = [
   { key: 'overview', label: 'Overview' },
+  { key: 'approvals', label: 'Approvals' },
   { key: 'cashflow', label: 'Cashflow' },
   { key: 'recurring', label: 'Recurring' },
-  { key: 'approvals', label: 'Approvals' },
   { key: 'ai', label: 'AI Insights' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -63,7 +63,7 @@ export default function FinancePage({ perms }: Props) {
         ))}
       </nav>
 
-      {activeTab === 'overview' && <OverviewTab month={month} perms={perms} />}
+      {activeTab === 'overview' && <OverviewTab month={month} perms={perms} onOpenApprovals={() => setTab('approvals')} />}
       {activeTab === 'cashflow' && <CashflowTab month={month} />}
       {activeTab === 'recurring' && <RecurringTab perms={perms} />}
       {activeTab === 'approvals' && <ApprovalsTab perms={perms} />}

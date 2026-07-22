@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
@@ -6,15 +6,17 @@ import { procurementApi } from '../../shared/api';
 import type { SpendData } from '../../shared/types';
 import { formatMoney } from '../../shared/format';
 import { ProcurementTabs } from '../ProcurementTabs';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, LoadingState } from '../../../../components/ui/Feedback';
 
 interface Props {
   slug: string;
   perms: ReadonlySet<string>;
 }
 
-const AXIS = { fill: '#8a8578', fontSize: 12 };
-const GRID = '#2a2a2a';
-const ACCENT = '#c9a26a';
+const AXIS = { fill: 'var(--text-muted)', fontSize: 12 };
+const GRID = 'var(--border-subtle)';
+const ACCENT = 'var(--accent)';
 
 // Committed spend trends over 6 months — by supplier, category, and month.
 // recharts lives in this page; the route is lazy-loaded so it stays out of the
@@ -23,9 +25,12 @@ export default function SpendAnalyticsPage(_props: Props) {
   const [data, setData] = useState<SpendData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setData(null);
+    setError(null);
     procurementApi.spend().then(setData).catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
+  useEffect(() => { load(); }, [load]);
 
   const empty = data && data.overTime.length === 0 && data.bySupplier.length === 0;
   const money = (v: unknown) => formatMoney(Number(v));
@@ -35,12 +40,12 @@ export default function SpendAnalyticsPage(_props: Props) {
       <div className="proc-header"><h1 className="proc-title">Procurement</h1></div>
       <ProcurementTabs />
 
-      {error && <div className="proc-error" role="alert">{error}</div>}
+      {error && <ErrorState title="Spend trends could not load" action={<Button variant="secondary" onClick={load}>Try again</Button>}>{error}</ErrorState>}
 
       {!data && !error ? (
-        <p className="proc-muted">Loading…</p>
+        <LoadingState title="Loading spend trends" />
       ) : empty ? (
-        <p className="proc-empty">No committed spend in the last 6 months yet. Order some POs to see trends.</p>
+        <EmptyState title="No committed spend in the last 6 months yet.">Order some POs to see trends.</EmptyState>
       ) : data ? (
         <div className="proc-charts">
           <section className="proc-chart-card">
