@@ -9,6 +9,7 @@ import RefundsShipmentsTab from '../components/RefundsShipmentsTab';
 import BackordersTab from '../components/BackordersTab';
 import SlaTab from '../components/SlaTab';
 import FulfillmentsTab from '../components/FulfillmentsTab';
+import OrdersQueueTab from '../components/OrdersQueueTab';
 
 interface Props {
   slug: string;
@@ -46,10 +47,10 @@ function formatFulfilTime(secs: number): string {
   return `${m}m`;
 }
 
-type TabId = 'overview' | 'refunds-shipments' | 'backorders' | 'sla' | 'fulfillments';
+type TabId = 'queue' | 'overview' | 'refunds-shipments' | 'backorders' | 'sla' | 'fulfillments';
 
 export default function OrdersDashboardPage({ perms }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>('queue');
   const [data, setData] = useState<OrdersDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +83,14 @@ export default function OrdersDashboardPage({ perms }: Props) {
 
       {/* Tab bar */}
       <div className="ord-tabs" role="tablist">
+        <button
+          className={`ord-tab${activeTab === 'queue' ? ' ord-tab-active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'queue'}
+          onClick={() => setActiveTab('queue')}
+        >
+          Orders
+        </button>
         <button
           className={`ord-tab${activeTab === 'overview' ? ' ord-tab-active' : ''}`}
           role="tab"
@@ -139,6 +148,8 @@ export default function OrdersDashboardPage({ perms }: Props) {
       {activeTab === 'fulfillments' && (
         <FulfillmentsTab perms={perms} currency={data?.base_currency ?? 'USD'} />
       )}
+
+      {activeTab === 'queue' && <OrdersQueueTab />}
 
       {activeTab === 'overview' && loading && <LoadingState title="Loading orders overview" />}
 

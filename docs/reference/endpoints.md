@@ -6,7 +6,7 @@
 
 # API endpoints
 
-330 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+331 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -263,6 +263,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | orders-merge.ts | `/api/orders/merge` | POST | bucket-user | `orders.business.edit` |
 | orders-packing-slip.ts | `/api/orders/packing-slip/:id` | GET | bucket-user | `orders.business.view` |
 | orders-pick-list.ts | `/api/orders/pick-list/:id` | GET | bucket-user | `orders.business.view` |
+| orders-queue.ts | `/api/orders/queue` | GET | bucket-user | `orders.business.view` |
 | orders-refund-advance.ts | `/api/orders/refund-advance/:id` | POST | bucket-user | `orders.business.edit` |
 | orders-refunds.ts | `/api/orders/refunds` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
 | orders-sale-lines.ts | `/api/orders/sale-lines/:saleId` | GET | bucket-user | `orders.business.view` |

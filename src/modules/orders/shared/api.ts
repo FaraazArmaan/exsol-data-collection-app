@@ -3,6 +3,7 @@
 // code on any non-2xx so callers can surface it.
 import type {
   OrdersDashboardData,
+  OrdersQueueData,
   RefundRow,
   RefundAdvanceResult,
   ShipmentRow,
@@ -48,6 +49,15 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
 export const ordersApi = {
   dashboard: () =>
     jsonFetch<OrdersDashboardData>('/api/orders/dashboard'),
+
+  listQueue: (filters: { q?: string; status?: string; channel?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.q) params.set('q', filters.q);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.channel) params.set('channel', filters.channel);
+    const query = params.toString();
+    return jsonFetch<OrdersQueueData>(`/api/orders/queue${query ? `?${query}` : ''}`);
+  },
 
   // Refunds
   listRefunds: () =>

@@ -31,6 +31,39 @@ export interface OrdersDashboardData {
   sla_breaches: number;
 }
 
+// ── Operations queue ────────────────────────────────────────────────────────
+
+export type OrdersOperationalState =
+  | 'awaiting_payment'
+  | 'ready_for_fulfilment'
+  | 'fulfilment_in_progress'
+  | 'partially_fulfilled'
+  | 'remaining_cancelled'
+  | 'cancelled'
+  | 'fulfilled';
+
+export interface OrderQueueRow {
+  id: string;
+  order_no: number;
+  sale_status: SaleStatus;
+  channel: Exclude<SaleChannel, 'instore'>;
+  customer_name: string;
+  total_cents: number;
+  created_at: string;
+  paid_at: string | null;
+  ordered_qty: number;
+  fulfilled_qty: number;
+  cancelled_qty: number;
+  remaining_qty: number;
+  operational_state: OrdersOperationalState;
+  refund_state: RefundState | null;
+}
+
+export interface OrdersQueueData {
+  base_currency: string;
+  orders: OrderQueueRow[];
+}
+
 // ── Refunds ──────────────────────────────────────────────────────────────────
 
 export type RefundState = 'requested' | 'approved' | 'rejected' | 'completed';
