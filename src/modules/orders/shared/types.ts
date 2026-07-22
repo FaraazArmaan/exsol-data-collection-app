@@ -108,6 +108,18 @@ export interface ShipmentRow {
   customer_name: string;
 }
 
+export interface PickupRow {
+  id: string;
+  sale_id: string;
+  status: 'ready' | 'collected';
+  ready_at: string;
+  collected_at: string | null;
+  collector_name: string | null;
+  collector_phone_last4: string | null;
+  order_no: number;
+  customer_name: string;
+}
+
 // ── SLA ───────────────────────────────────────────────────────────────────────
 
 export type OrderStage =

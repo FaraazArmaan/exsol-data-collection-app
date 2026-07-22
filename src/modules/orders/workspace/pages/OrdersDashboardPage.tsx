@@ -10,6 +10,7 @@ import BackordersTab from '../components/BackordersTab';
 import SlaTab from '../components/SlaTab';
 import FulfillmentsTab from '../components/FulfillmentsTab';
 import OrdersQueueTab from '../components/OrdersQueueTab';
+import PickupsTab from '../components/PickupsTab';
 
 interface Props {
   slug: string;
@@ -47,7 +48,7 @@ function formatFulfilTime(secs: number): string {
   return `${m}m`;
 }
 
-type TabId = 'queue' | 'overview' | 'refunds-shipments' | 'backorders' | 'sla' | 'fulfillments';
+type TabId = 'queue' | 'overview' | 'pickups' | 'refunds-shipments' | 'backorders' | 'sla' | 'fulfillments';
 
 export default function OrdersDashboardPage({ perms }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('queue');
@@ -99,6 +100,7 @@ export default function OrdersDashboardPage({ perms }: Props) {
         >
           Overview
         </button>
+        <button className={`ord-tab${activeTab === 'pickups' ? ' ord-tab-active' : ''}`} role="tab" aria-selected={activeTab === 'pickups'} onClick={() => setActiveTab('pickups')}>Pickups</button>
         <button
           className={`ord-tab${activeTab === 'refunds-shipments' ? ' ord-tab-active' : ''}`}
           role="tab"
@@ -150,6 +152,7 @@ export default function OrdersDashboardPage({ perms }: Props) {
       )}
 
       {activeTab === 'queue' && <OrdersQueueTab />}
+      {activeTab === 'pickups' && <PickupsTab perms={perms} />}
 
       {activeTab === 'overview' && loading && <LoadingState title="Loading orders overview" />}
 

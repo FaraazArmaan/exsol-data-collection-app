@@ -405,6 +405,8 @@
   width: 1px;
   clip: rect(0, 0, 0, 0);
 }
+.ord-pickups__collect { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); display: grid; gap: var(--space-3); margin-top: var(--space-4); max-width: 460px; padding: var(--space-4); }
+.ord-pickups__collect h3 { color: var(--text-primary); font-size: 1rem; margin: 0; }
 
 /* Responsive: stack KPI cards at 560px */
 @media (max-width: 560px) {

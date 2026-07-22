@@ -7,6 +7,7 @@ import type {
   RefundRow,
   RefundAdvanceResult,
   ShipmentRow,
+  PickupRow,
   BackorderRow,
   BackorderFulfillResult,
   SlaTarget,
@@ -92,6 +93,10 @@ export const ordersApi = {
       method: 'PUT',
       body: JSON.stringify({ ...body, ...(body.status === 'shipped' || body.status === 'delivered' ? { idempotency_key: crypto.randomUUID() } : {}) }),
     }),
+
+  listPickups: () => jsonFetch<PickupRow[]>('/api/orders/pickups'),
+  markPickupReady: (saleId: string) => jsonFetch<PickupRow>('/api/orders/pickups', { method: 'POST', body: JSON.stringify({ sale_id: saleId, idempotency_key: crypto.randomUUID() }) }),
+  collectPickup: (id: string, collectorName: string, phoneLast4: string) => jsonFetch<PickupRow>(`/api/orders/pickups/${encodeURIComponent(id)}/collect`, { method: 'POST', body: JSON.stringify({ collector_name: collectorName, collector_phone_last4: phoneLast4, idempotency_key: crypto.randomUUID() }) }),
 
   // Backorders
   listBackorders: () =>
