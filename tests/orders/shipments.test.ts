@@ -3,6 +3,9 @@ import { describe, it, expect } from 'vitest';
 import { seedOrdersClient, seedSale, makeBucketUserRequest } from './_helpers';
 import shipmentsHandler from '../../netlify/functions/orders-shipments';
 import shipmentDetailHandler from '../../netlify/functions/orders-shipment-detail';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 describe('orders shipments', () => {
   it('POST create shipment → 201, status=pending', async () => {
@@ -182,5 +185,20 @@ describe('orders shipments', () => {
       }),
     );
     expect(res.status).toBe(404);
+  });
+
+  it('reuses a dispatch evidence response for the same idempotency key', async () => {
+    const ctx = await seedOrdersClient();
+    const { saleId } = await seedSale(ctx, { status: 'paid', total: 1000 });
+    const created = await shipmentsHandler(makeBucketUserRequest(ctx, 'POST', '/api/orders/shipments', { sale_id: saleId }));
+    const { id } = await created.json();
+    const key = crypto.randomUUID();
+    const first = await shipmentDetailHandler(makeBucketUserRequest(ctx, 'PUT', `/api/orders/shipment-detail/${id}`, { status: 'shipped', idempotency_key: key }));
+    const second = await shipmentDetailHandler(makeBucketUserRequest(ctx, 'PUT', `/api/orders/shipment-detail/${id}`, { status: 'shipped', idempotency_key: key }));
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect((await second.json()).status).toBe('shipped');
+    const evidence = await sql`SELECT COUNT(*)::int AS n FROM public.orders_shipment_evidence WHERE shipment_id=${id}::uuid AND event_type='dispatched'` as Array<{ n:number }>;
+    expect(evidence[0]!.n).toBe(1);
   });
 });

@@ -90,7 +90,7 @@ export const ordersApi = {
   updateShipment: (id: string, body: { carrier?: string; tracking_ref?: string; status?: string }) =>
     jsonFetch<ShipmentRow>(`/api/orders/shipment-detail/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, ...(body.status === 'shipped' || body.status === 'delivered' ? { idempotency_key: crypto.randomUUID() } : {}) }),
     }),
 
   // Backorders

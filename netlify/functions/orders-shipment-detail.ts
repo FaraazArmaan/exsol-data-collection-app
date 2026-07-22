@@ -9,6 +9,8 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireOrders } from './_orders-authz';
+import { ordersAuditSession } from './_orders-authz';
+import { logAudit } from './_shared/audit';
 
 const VALID_STATUSES = new Set(['pending', 'shipped', 'in_transit', 'delivered', 'returned']);
 
@@ -57,7 +59,7 @@ export default async function handler(req: Request): Promise<Response> {
     const { clientId } = a.ctx;
     const sql = db();
 
-    let body: { carrier?: unknown; tracking_ref?: unknown; status?: unknown };
+    let body: { carrier?: unknown; tracking_ref?: unknown; status?: unknown; idempotency_key?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -70,10 +72,17 @@ export default async function handler(req: Request): Promise<Response> {
     const carrierVal = carrier !== undefined ? (typeof carrier === 'string' ? carrier : null) : undefined;
     const trackingVal = tracking_ref !== undefined ? (typeof tracking_ref === 'string' ? tracking_ref : null) : undefined;
     const statusVal = typeof status === 'string' ? status : undefined;
+    const idempotencyKey = typeof body.idempotency_key === 'string' ? body.idempotency_key : '';
 
     // Validate status against the known enum before hitting Postgres (avoids 22P02 → 500).
     if (statusVal !== undefined && !VALID_STATUSES.has(statusVal)) {
       return jsonError(400, 'invalid_status');
+    }
+    const eventType = statusVal === 'shipped' ? 'dispatched' : statusVal === 'delivered' ? 'delivered' : null;
+    const evidenceType = eventType && idempotencyKey ? eventType : null;
+    if (evidenceType) {
+      const duplicate = await sql`SELECT sh.id, sh.sale_id, sh.carrier, sh.tracking_ref, sh.status, sh.shipped_at, sh.delivered_at, sh.created_at, sh.updated_at FROM public.orders_shipment_evidence ev JOIN public.orders_shipments sh ON sh.id=ev.shipment_id WHERE ev.client_id=${clientId}::uuid AND ev.idempotency_key=${idempotencyKey} LIMIT 1`;
+      if (duplicate[0]) return jsonOk(duplicate[0]);
     }
 
     // Enforce FSM when status is changing: load current status and check transition.
@@ -109,6 +118,14 @@ export default async function handler(req: Request): Promise<Response> {
     `) as Array<Record<string, unknown>>;
 
     if (!rows[0]) return jsonError(404, 'not_found');
+    if (evidenceType) {
+      try {
+        await sql`INSERT INTO public.orders_shipment_evidence (client_id,shipment_id,event_type,idempotency_key,recorded_by,provider_reference) VALUES (${clientId}::uuid,${id}::uuid,${evidenceType},${idempotencyKey},${a.ctx.userNodeId}::uuid,${trackingVal !== undefined ? trackingVal : rows[0].tracking_ref ?? null})`;
+      } catch (error: any) {
+        if (error?.code !== '23505') throw error;
+      }
+      await logAudit(sql,{session:ordersAuditSession(a.ctx),op:`orders.shipment.${evidenceType}`,clientId,targetType:'orders_shipment',targetId:id,detail:{idempotency_key:idempotencyKey}});
+    }
     return jsonOk(rows[0]);
   }
 
