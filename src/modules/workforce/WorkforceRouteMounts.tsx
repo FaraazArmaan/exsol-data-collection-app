@@ -13,6 +13,8 @@ import PayrollPage from './workspace/pages/PayrollPage';
 import TrainingPage from './workspace/pages/TrainingPage';
 import AssetsPage from './workspace/pages/AssetsPage';
 import EmployeeDashboardPage from './workspace/pages/EmployeeDashboardPage';
+import ApprovalInboxPage from './workspace/pages/ApprovalInboxPage';
+import WorkforcePrivacyPage from './workspace/pages/WorkforcePrivacyPage';
 
 // L1 Owner (or legacy null-level) is all-on — consistent with the backend
 // requireWorkforce bypass and every other gate in the codebase (Iron Rule 2).
@@ -59,6 +61,14 @@ function gate(perm: string, render: (slug: string, perms: ReadonlySet<string>) =
 }
 
 export const WorkforceMount = gate('workforce.employees.view', (slug, perms) => <WorkforcePage slug={slug} perms={perms} />);
+export const WorkforceApprovalsMount = gate('workforce.employees.view', (slug, perms) => <ApprovalInboxPage slug={slug} perms={perms} />);
+export function WorkforcePrivacyMount() {
+  const { user, client, perms, workforceEnabled, slug, loading } = useAuthBits();
+  if (loading) return null;
+  if (!user || !client) return <Navigate to={`/c/${slug}/login`} replace />;
+  if (!workforceEnabled || (user.level_number !== 1 && user.level_number != null)) return <Navigate to={`/c/${slug}/workforce`} replace />;
+  return <WorkforcePrivacyPage slug={slug} perms={perms} />;
+}
 export const WorkforceProjectsMount = gate('project-service.business.view', (slug, perms) => <ProjectsPage slug={slug} perms={perms} />);
 export const WorkforceTimesheetsMount = gate('workforce.employees.view', (slug, perms) => <TimesheetsPage slug={slug} perms={perms} />);
 export const WorkforceLeaveMount = gate('workforce.leave.view', (slug, perms) => <LeaveRequestsPage slug={slug} perms={perms} />);

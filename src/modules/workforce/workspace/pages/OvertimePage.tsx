@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { workforceApi, type OvertimeEntry, type StaffResource, type TimesheetEntry } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -123,6 +126,7 @@ export default function OvertimePage({ slug, perms }: Props) {
   }, []);
 
   async function load() {
+    setEntries(null);
     setError('');
     try {
       const params: { resource_id?: string; status?: string } = {};
@@ -187,6 +191,9 @@ export default function OvertimePage({ slug, perms }: Props) {
       <WorkforceNav slug={slug} active="overtime" />
 
       <div className="wf-ot-layout">
+        <div className="wf-page-heading">
+          <div><h1>Overtime</h1><p>Review overtime requests, weekly risk, and approval status in one place.</p></div>
+        </div>
         {/* Filters */}
         <div className="wf-ot-filters">
           <select
@@ -209,19 +216,18 @@ export default function OvertimePage({ slug, perms }: Props) {
             <option value="approved">Approved</option>
             <option value="denied">Denied</option>
           </select>
-          <label className="wf-label wf-date-filter">Week start
-            <input className="wf-input" type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} />
-          </label>
+          <div className="wf-date-filter"><DateField label="Week start" value={weekStart} onChange={setWeekStart} /></div>
           <label className="wf-label wf-date-filter">OT threshold
             <input className="wf-input" type="number" min="1" step="0.5" value={weeklyThreshold} onChange={e => setWeeklyThreshold(e.target.value)} />
           </label>
         </div>
 
         {/* Error / loading / empty */}
-        {error && <div className="wf-error">{error}</div>}
-        {entries === null && !error && <div className="wf-loading">Loading overtime entries…</div>}
+        {error && entries === null && <ErrorState title="Could not load overtime entries." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+        {error && entries !== null && <InlineNotice tone="danger" title="An overtime action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+        {entries === null && !error && <LoadingState title="Loading overtime entries…" />}
         {entries !== null && entries.length === 0 && (
-          <div className="wf-empty">No overtime entries found.</div>
+          <EmptyState title="No overtime entries found." />
         )}
 
         {forecast.length > 0 && (
@@ -260,14 +266,8 @@ export default function OvertimePage({ slug, perms }: Props) {
                 {e.reason && <div className="wf-ot-reason">{e.reason}</div>}
                 {canHandle && e.status === 'pending' && (
                   <div className="wf-ot-actions">
-                    <button
-                      className="wf-btn wf-btn-success"
-                      onClick={() => handleAction(e.id, 'approve')}
-                    >Approve</button>
-                    <button
-                      className="wf-btn wf-btn-danger"
-                      onClick={() => handleAction(e.id, 'deny')}
-                    >Deny</button>
+                    <Button size="compact" variant="primary" onClick={() => handleAction(e.id, 'approve')}>Approve</Button>
+                    <Button size="compact" variant="danger" onClick={() => handleAction(e.id, 'deny')}>Deny</Button>
                   </div>
                 )}
               </div>
@@ -298,7 +298,7 @@ export default function OvertimePage({ slug, perms }: Props) {
           <section className="wf-ot-form-section">
             <h3 className="wf-section-title">Log Overtime</h3>
             <form onSubmit={handleSubmit} className="wf-ot-form">
-              {formError && <div className="wf-error">{formError}</div>}
+              {formError && <InlineNotice tone="danger" title="The overtime entry could not be logged.">{formError}</InlineNotice>}
               <div className="wf-form-row">
                 <label className="wf-label">Staff member
                   <select
@@ -313,15 +313,7 @@ export default function OvertimePage({ slug, perms }: Props) {
                     ))}
                   </select>
                 </label>
-                <label className="wf-label">Date
-                  <input
-                    className="wf-input"
-                    type="date"
-                    value={formDate}
-                    onChange={e => setFormDate(e.target.value)}
-                    required
-                  />
-                </label>
+                <DateField label="Date" value={formDate} onChange={setFormDate} required />
                 <label className="wf-label">Hours
                   <input
                     className="wf-input"
@@ -342,9 +334,7 @@ export default function OvertimePage({ slug, perms }: Props) {
                   rows={2}
                 />
               </label>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Logging…' : 'Log overtime'}
-              </button>
+              <Button type="submit" variant="primary" loading={submitting} loadingLabel="Logging overtime…">Log overtime</Button>
             </form>
           </section>
         )}

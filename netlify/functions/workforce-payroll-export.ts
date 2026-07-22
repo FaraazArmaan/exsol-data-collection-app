@@ -5,40 +5,16 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
 import { jsonBodyField, optionalUuidParam, readJson, stringField } from './_workforce-depth-utils';
+import { getPayrollSnapshot } from './_workforce-payroll-snapshot';
+import { recordSensitiveAccess, requireSensitiveAccess } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/payroll-export' };
-
-interface LineRow {
-  user_node_id: string;
-  hours: string | number;
-  hourly_rate: string | number | null;
-}
-
-async function lineItems(clientId: string, periodStart: string, periodEnd: string): Promise<Array<{ user_node_id: string; amount: number }>> {
-  const rows = await db()`
-    SELECT te.user_node_id, SUM(EXTRACT(EPOCH FROM (te.end_time - te.start_time)) / 3600)::numeric(10,2) AS hours, (
-      SELECT pr.hourly_rate
-      FROM public.payroll_rates pr
-      WHERE pr.client_id = ${clientId}::uuid AND pr.user_node_id = te.user_node_id AND pr.effective_from <= ${periodStart}::date
-      ORDER BY pr.effective_from DESC
-      LIMIT 1
-    ) AS hourly_rate
-    FROM public.timesheet_entries te
-    WHERE te.client_id = ${clientId}::uuid
-      AND te.entry_date BETWEEN ${periodStart}::date AND ${periodEnd}::date
-      AND te.approved_at IS NOT NULL
-      AND te.user_node_id IS NOT NULL
-    GROUP BY te.user_node_id
-  ` as LineRow[];
-  return rows.map(row => {
-    const rate = row.hourly_rate === null ? 0 : Number(row.hourly_rate);
-    return { user_node_id: row.user_node_id, amount: Math.round(Number(row.hours) * rate * 100) / 100 };
-  });
-}
 
 async function handleGet(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.payroll.view']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'compensation');
+  if (accessBasis instanceof Response) return accessBasis;
 
   const periodId = optionalUuidParam(new URL(req.url).searchParams.get('period_id'), 'period_id');
   if (periodId instanceof Response) return periodId;
@@ -56,12 +32,15 @@ async function handleGet(req: Request): Promise<Response> {
       AND (${periodId}::uuid IS NULL OR period_id = ${periodId}::uuid)
     ORDER BY created_at DESC
   ` as unknown[];
+  await recordSensitiveAccess(a.ctx, 'compensation', '/api/workforce/payroll-export', accessBasis);
   return jsonOk({ exports, payslips });
 }
 
 async function handlePost(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.payroll.create']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'compensation');
+  if (accessBasis instanceof Response) return accessBasis;
 
   const body = await readJson(req);
   if (body instanceof Response) return body;
@@ -70,34 +49,66 @@ async function handlePost(req: Request): Promise<Response> {
 
   const sql = db();
   const periods = await sql`
-    SELECT id, to_char(period_start, 'YYYY-MM-DD') AS period_start, to_char(period_end, 'YYYY-MM-DD') AS period_end
+    SELECT id, status, snapshot_id
     FROM public.payroll_periods
     WHERE id = ${periodId}::uuid AND client_id = ${a.ctx.clientId}::uuid
     LIMIT 1
-  ` as Array<{ id: string; period_start: string; period_end: string }>;
+  ` as Array<{ id: string; status: string; snapshot_id: string | null }>;
   if (periods.length === 0) return jsonError(404, 'period_not_found');
+  if (periods[0]!.status !== 'approved' || !periods[0]!.snapshot_id) return jsonError(409, 'payroll_snapshot_required');
 
-  const items = await lineItems(a.ctx.clientId, periods[0]!.period_start, periods[0]!.period_end);
-  const total = Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
+  const snapshot = await getPayrollSnapshot(periods[0]!.snapshot_id, a.ctx.clientId);
+  if (!snapshot || snapshot.status !== 'frozen') return jsonError(409, 'payroll_snapshot_required');
+
+  const existingExports = await sql`
+    SELECT *
+    FROM public.workforce_payroll_exports
+    WHERE client_id = ${a.ctx.clientId}::uuid
+      AND snapshot_id = ${snapshot.id}::uuid
+      AND status <> 'void'
+    ORDER BY created_at DESC
+    LIMIT 1
+  ` as Array<Record<string, unknown>>;
+  if (existingExports.length > 0) {
+    const payslips = await sql`
+      SELECT *
+      FROM public.workforce_payslips
+      WHERE client_id = ${a.ctx.clientId}::uuid AND snapshot_id = ${snapshot.id}::uuid
+      ORDER BY created_at, id
+    ` as unknown[];
+    await recordSensitiveAccess(a.ctx, 'compensation', '/api/workforce/payroll-export', accessBasis);
+    return jsonOk({ export: existingExports[0], payslips, snapshot, reused: true });
+  }
+
+  const legacyPayslips = await sql`
+    SELECT id
+    FROM public.workforce_payslips
+    WHERE client_id = ${a.ctx.clientId}::uuid
+      AND period_id = ${periodId}::uuid
+      AND snapshot_id IS NULL
+    LIMIT 1
+  ` as unknown[];
+  if (legacyPayslips.length > 0) return jsonError(409, 'legacy_payslips_require_void');
+
   const exportRows = await sql`
-    INSERT INTO public.workforce_payroll_exports (client_id, period_id, export_format, status, total_amount, exported_by, exported_at, metadata)
-    VALUES (${a.ctx.clientId}::uuid, ${periodId}::uuid, COALESCE(NULLIF(${stringField(body, 'export_format')}::text, ''), 'csv'), 'generated', ${total}::numeric, ${a.ctx.userNodeId}::uuid, now(), ${jsonBodyField(body, 'metadata')}::jsonb)
+    INSERT INTO public.workforce_payroll_exports (client_id, period_id, snapshot_id, export_format, status, total_amount, exported_by, exported_at, metadata)
+    VALUES (${a.ctx.clientId}::uuid, ${periodId}::uuid, ${snapshot.id}::uuid, COALESCE(NULLIF(${stringField(body, 'export_format')}::text, ''), 'csv'), 'generated', ${snapshot.total_amount}::numeric, ${a.ctx.userNodeId}::uuid, now(), jsonb_build_object('snapshot_id', ${snapshot.id}::text, 'frozen_at', ${snapshot.frozen_at}::text, 'request_metadata', ${jsonBodyField(body, 'metadata')}::jsonb))
     RETURNING *
   ` as Array<Record<string, unknown>>;
   const exportId = exportRows[0]!.id as string;
 
   const payslips: unknown[] = [];
-  for (const item of items) {
+  for (const item of snapshot.lines) {
     const rows = await sql`
-      INSERT INTO public.workforce_payslips (client_id, export_id, period_id, user_node_id, gross_amount, net_amount)
-      VALUES (${a.ctx.clientId}::uuid, ${exportId}::uuid, ${periodId}::uuid, ${item.user_node_id}::uuid, ${item.amount}::numeric, ${item.amount}::numeric)
-      ON CONFLICT (client_id, period_id, user_node_id) DO UPDATE SET export_id = EXCLUDED.export_id, gross_amount = EXCLUDED.gross_amount, net_amount = EXCLUDED.net_amount, updated_at = now()
+      INSERT INTO public.workforce_payslips (client_id, export_id, period_id, snapshot_id, snapshot_line_id, user_node_id, gross_amount, net_amount, currency, metadata)
+      VALUES (${a.ctx.clientId}::uuid, ${exportId}::uuid, ${periodId}::uuid, ${snapshot.id}::uuid, ${item.id}::uuid, ${item.user_node_id}::uuid, ${item.gross_amount}::numeric, ${item.net_amount}::numeric, ${item.currency}::text, jsonb_build_object('source_evidence', ${JSON.stringify(item.source_evidence)}::jsonb, 'snapshot_id', ${snapshot.id}::text))
       RETURNING *
     ` as unknown[];
     payslips.push(rows[0]);
   }
 
-  return jsonOk({ export: exportRows[0], payslips }, { status: 201 });
+  await recordSensitiveAccess(a.ctx, 'compensation', '/api/workforce/payroll-export', accessBasis);
+  return jsonOk({ export: exportRows[0], payslips, snapshot, reused: false }, { status: 201 });
 }
 
 export default async function handler(req: Request): Promise<Response> {

@@ -24,6 +24,7 @@ export default async function handler(req: Request): Promise<Response> {
     assetRows,
     correctionRows,
     taskRows,
+    publishedScheduleRows,
   ] = await Promise.all([
     sql`
       SELECT id, leave_type, to_char(start_date, 'YYYY-MM-DD') AS start_date,
@@ -113,7 +114,7 @@ export default async function handler(req: Request): Promise<Response> {
       LIMIT 8
     `,
     sql`
-      SELECT id, correction_type, status, notes, created_at, reviewed_at
+      SELECT id, correction_type, status, notes, resolution_note, created_at, reviewed_at
       FROM public.workforce_time_corrections
       WHERE client_id = ${a.ctx.clientId}::uuid
         AND resource_id = ${employee.resource_id}::uuid
@@ -132,6 +133,30 @@ export default async function handler(req: Request): Promise<Response> {
       ORDER BY t.due_date NULLS LAST, t.created_at DESC
       LIMIT 8
     `,
+    sql`
+      SELECT
+        notice.id AS notice_id,
+        notice.acknowledgement_required,
+        notice.acknowledged_at,
+        to_char(version.week_start, 'YYYY-MM-DD') AS week_start,
+        to_char(snapshot.shift_date, 'YYYY-MM-DD') AS shift_date,
+        left(snapshot.start_time::text, 5) AS start_time,
+        left(snapshot.end_time::text, 5) AS end_time,
+        resource.name AS resource_name
+      FROM public.workforce_schedule_notices notice
+      JOIN public.workforce_schedule_versions version ON version.id = notice.schedule_version_id
+      JOIN public.workforce_schedule_version_shifts snapshot
+        ON snapshot.schedule_version_id = version.id
+       AND snapshot.user_node_id = notice.user_node_id
+      JOIN public.booking_resources resource ON resource.id = snapshot.resource_id
+      JOIN public.clients client ON client.id = version.client_id
+      WHERE notice.client_id = ${a.ctx.clientId}::uuid
+        AND notice.user_node_id = ${a.ctx.userNodeId}::uuid
+        AND version.status = 'published'
+        AND snapshot.shift_date >= (now() AT TIME ZONE client.timezone)::date
+      ORDER BY snapshot.shift_date, snapshot.start_time
+      LIMIT 14
+    `,
   ]);
 
   return jsonOk({
@@ -145,5 +170,6 @@ export default async function handler(req: Request): Promise<Response> {
     assets: assetRows,
     corrections: correctionRows,
     compliance_tasks: taskRows,
+    published_schedule: publishedScheduleRows,
   });
 }

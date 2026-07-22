@@ -5,6 +5,7 @@ import schedulePlanner from '../../netlify/functions/workforce-schedule-planner'
 import timeLedger from '../../netlify/functions/workforce-time-ledger';
 import leaveAccrual from '../../netlify/functions/workforce-leave-accrual';
 import payrollExport from '../../netlify/functions/workforce-payroll-export';
+import payrollPeriod from '../../netlify/functions/workforce-payroll-id';
 import complianceOps from '../../netlify/functions/workforce-compliance-ops';
 import reportingDashboard from '../../netlify/functions/workforce-reporting-dashboard';
 import { randName, seedShift, seedWorkforceClient } from './_helpers';
@@ -162,6 +163,9 @@ describe('workforce M5-M11 depth endpoints', () => {
       INSERT INTO public.timesheet_entries (client_id, resource_id, user_node_id, entry_date, start_time, end_time, approved_by, approved_at)
       VALUES (${ctx.clientId}::uuid, ${ctx.resourceId}::uuid, ${ctx.userNodeId}::uuid, ${start}::date, '09:00'::time, '17:00'::time, ${ctx.userNodeId}::uuid, now())
     `;
+
+    const approved = await payrollPeriod(req('PATCH', `http://localhost/api/workforce/payroll/${periodRows[0]!.id}`, { action: 'approve' }));
+    expect(approved.status).toBe(200);
 
     const post = await payrollExport(req('POST', 'http://localhost/api/workforce/payroll-export', {
       period_id: periodRows[0]!.id,

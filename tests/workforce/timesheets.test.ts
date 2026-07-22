@@ -143,7 +143,10 @@ describe('workforce timesheets', () => {
 
   it('PATCH approve sets approved_by and approved_at', async () => {
     const ctx = await seedWorkforceClient();
-    const id = await seedTimesheetEntry(ctx, ctx.resourceId, { entryDate: '2026-06-02' });
+    const id = await seedTimesheetEntry(ctx, ctx.resourceId, {
+      entryDate: '2026-06-02',
+      userNodeId: ctx.userNodeId,
+    });
 
     const res = await patch(ctx, id, { approve: true });
     expect(res.status).toBe(200);

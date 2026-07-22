@@ -5,6 +5,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
 import { jsonBodyField, nullableStringField, optionalUuidField, readJson, resourceExists, stringField } from './_workforce-depth-utils';
+import { recordSensitiveAccess, sensitiveAccessBasis } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/employee-master' };
 
@@ -13,14 +14,25 @@ async function handleGet(req: Request): Promise<Response> {
   if (!a.ok) return a.res;
 
   const status = new URL(req.url).searchParams.get('status');
+  const accessBasis = await sensitiveAccessBasis(a.ctx, 'profile');
   const rows = await db()`
-    SELECT p.*, br.name AS resource_name
+    SELECT
+      p.id, p.client_id, p.resource_id, br.name AS resource_name, p.user_node_id,
+      p.employee_number, p.legal_name, p.preferred_name, p.employment_status, p.employment_type,
+      p.job_title, p.department, p.hire_date, p.termination_date, p.manager_user_node_id,
+      (${a.ctx.levelNumber}::int = 1 OR ${accessBasis === 'grant'}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid) AS can_view_sensitive,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${accessBasis === 'grant'}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_email END AS primary_email,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${accessBasis === 'grant'}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_phone END AS primary_phone,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${accessBasis === 'grant'}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.emergency_contact END AS emergency_contact,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${accessBasis === 'grant'}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.custom_fields END AS custom_fields,
+      p.created_at, p.updated_at
     FROM public.workforce_employee_profiles p
     JOIN public.booking_resources br ON br.id = p.resource_id
     WHERE p.client_id = ${a.ctx.clientId}::uuid
       AND (${status}::text IS NULL OR p.employment_status = ${status}::text)
     ORDER BY p.legal_name, p.created_at DESC
   ` as unknown[];
+  if (accessBasis) await recordSensitiveAccess(a.ctx, 'profile', '/api/workforce/employee-master', accessBasis);
   return jsonOk({ profiles: rows });
 }
 
@@ -86,6 +98,18 @@ async function handlePost(req: Request): Promise<Response> {
     return jsonError(400, 'resource_or_user_node_required');
   }
 
+  const existingProfile = await sql`
+    SELECT user_node_id, manager_user_node_id
+    FROM public.workforce_employee_profiles
+    WHERE client_id = ${a.ctx.clientId}::uuid AND resource_id = ${resourceId}::uuid
+    LIMIT 1
+  ` as Array<{ user_node_id: string | null; manager_user_node_id: string | null }>;
+  const profileAccess = await sensitiveAccessBasis(a.ctx, 'profile');
+  const canWriteSensitive = !existingProfile[0]
+    || a.ctx.levelNumber === 1
+    || profileAccess === 'grant'
+    || existingProfile[0].manager_user_node_id === a.ctx.userNodeId;
+
   const rows = await sql`
     INSERT INTO public.workforce_employee_profiles (
       client_id, resource_id, user_node_id, employee_number, legal_name, preferred_name,
@@ -123,12 +147,13 @@ async function handlePost(req: Request): Promise<Response> {
       hire_date = EXCLUDED.hire_date,
       termination_date = EXCLUDED.termination_date,
       manager_user_node_id = EXCLUDED.manager_user_node_id,
-      primary_email = EXCLUDED.primary_email,
-      primary_phone = EXCLUDED.primary_phone,
-      emergency_contact = EXCLUDED.emergency_contact,
-      custom_fields = EXCLUDED.custom_fields
+      primary_email = CASE WHEN ${canWriteSensitive}::boolean THEN EXCLUDED.primary_email ELSE workforce_employee_profiles.primary_email END,
+      primary_phone = CASE WHEN ${canWriteSensitive}::boolean THEN EXCLUDED.primary_phone ELSE workforce_employee_profiles.primary_phone END,
+      emergency_contact = CASE WHEN ${canWriteSensitive}::boolean THEN EXCLUDED.emergency_contact ELSE workforce_employee_profiles.emergency_contact END,
+      custom_fields = CASE WHEN ${canWriteSensitive}::boolean THEN EXCLUDED.custom_fields ELSE workforce_employee_profiles.custom_fields END
     RETURNING *
   ` as Array<Record<string, unknown>>;
+  if (canWriteSensitive && profileAccess) await recordSensitiveAccess(a.ctx, 'profile', '/api/workforce/employee-master', profileAccess, userNodeId ?? existingProfile[0]?.user_node_id ?? null);
   return jsonOk({ profile: rows[0] }, { status: 201 });
 }
 

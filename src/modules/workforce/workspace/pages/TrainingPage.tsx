@@ -12,6 +12,9 @@ import {
   type StaffResource,
 } from '../../shared/api';
 import { findTeamMember, teamMembersFromResources, TeamEmployeePicker } from '../components/TeamBridge';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState, PermissionState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 interface Props {
@@ -35,6 +38,9 @@ export default function TrainingPage({ slug, perms }: Props) {
       <WorkforceNav slug={slug} active="training" />
 
       <div className="wf-training-layout">
+        <div className="wf-page-heading">
+          <div><h1>Training</h1><p>Manage courses, completion evidence, and compliance work without losing operational context.</p></div>
+        </div>
         {/* Inner tabs */}
         <div className="wf-training-inner-tabs">
           <button
@@ -92,12 +98,14 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
   const [taskNotes, setTaskNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   const teamMembers = teamMembersFromResources(staff);
   const counts = statusCounts(tasks);
 
   async function load() {
     if (!canView) return;
+    setLoaded(false);
     setError('');
     try {
       const [ops, courseData, staffData] = await Promise.all([
@@ -112,6 +120,7 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
       }));
       setCourses(courseData.courses);
       setStaff(staffData.resources);
+      setLoaded(true);
     } catch {
       setError('Failed to load compliance operations.');
     }
@@ -172,13 +181,18 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
   }
 
   if (!canView) {
-    return <div className="wf-empty">Training compliance operations require asset/compliance view access.</div>;
+    return <PermissionState title="Training compliance operations require asset/compliance access." />;
+  }
+
+  if (!loaded) {
+    return error
+      ? <ErrorState title="Could not load training compliance." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>
+      : <LoadingState title="Loading training compliance…" />;
   }
 
   return (
     <div className="wf-compliance-layout">
-      {error && <div className="wf-error">{error}</div>}
-      {formError && <div className="wf-error">{formError}</div>}
+      {formError && <InlineNotice tone="danger" title="The compliance change could not be saved.">{formError}</InlineNotice>}
       <section className="wf-attendance-board">
         <div className="wf-board-stat"><strong>{requirements.length}</strong><span>Training requirements</span></div>
         <div className="wf-board-stat"><strong>{counts.pending}</strong><span>Pending tasks</span></div>
@@ -189,7 +203,7 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
       <div className="wf-compliance-grid">
         <section className="wf-training-form">
           <h3 className="wf-section-title">Training Requirements</h3>
-          {requirements.length === 0 && <div className="wf-empty">No training requirements configured.</div>}
+          {requirements.length === 0 && <EmptyState title="No training requirements configured." />}
           {requirements.map(req => (
             <div key={req.id} className="wf-compliance-row">
               <strong>{req.name}</strong>
@@ -221,14 +235,14 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
                   <input className="wf-input" type="number" min="0" value={formDueDays} onChange={e => setFormDueDays(e.target.value)} />
                 </label>
               </div>
-              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create requirement'}</button>
+              <Button type="submit" variant="primary" loading={saving} loadingLabel="Saving requirement…">Create requirement</Button>
             </form>
           )}
         </section>
 
         <section className="wf-training-form">
           <h3 className="wf-section-title">Compliance Tasks</h3>
-          {tasks.length === 0 && <div className="wf-empty">No training compliance tasks.</div>}
+          {tasks.length === 0 && <EmptyState title="No training compliance tasks." />}
           {tasks.slice(0, 12).map(task => {
             const member = findTeamMember(staff, task.user_node_id);
             const resource = staff.find(s => s.id === task.resource_id);
@@ -263,14 +277,12 @@ function TrainingComplianceTab({ canView, canCreate }: { canView: boolean; canCr
                     {requirements.map(req => <option key={req.id} value={req.id}>{req.name}</option>)}
                   </select>
                 </label>
-                <label className="wf-label">Due date
-                  <input className="wf-input" type="date" value={taskDueDate} onChange={e => setTaskDueDate(e.target.value)} />
-                </label>
+                <DateField label="Due date" value={taskDueDate} onChange={setTaskDueDate} />
               </div>
               <label className="wf-label">Notes
                 <textarea className="wf-textarea" rows={2} value={taskNotes} onChange={e => setTaskNotes(e.target.value)} />
               </label>
-              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create task'}</button>
+              <Button type="submit" variant="primary" loading={saving} loadingLabel="Saving task…">Create task</Button>
             </form>
           )}
         </section>
@@ -301,6 +313,7 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
   const [formError, setFormError] = useState('');
 
   async function load() {
+    setCourses(null);
     setError('');
     try {
       const data = await workforceApi.listTrainingCourses();
@@ -350,9 +363,10 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
 
   return (
     <div>
-      {error && <div className="wf-error">{error}</div>}
-      {courses === null && !error && <div className="wf-loading">Loading courses…</div>}
-      {courses !== null && courses.length === 0 && <div className="wf-empty">No courses yet.</div>}
+      {error && courses === null && <ErrorState title="Could not load courses." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+      {error && courses !== null && <InlineNotice tone="danger" title="A course action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+      {courses === null && !error && <LoadingState title="Loading courses…" />}
+      {courses !== null && courses.length === 0 && <EmptyState title="No courses yet." />}
 
       {courses !== null && courses.length > 0 && (
         <div className="wf-course-list">
@@ -364,20 +378,20 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
                   {c.is_required ? 'Required' : 'Optional'}
                 </span>
                 {canEdit && (
-                  <button
-                    className="wf-btn"
+                  <Button
+                    size="compact"
+                    variant="secondary"
                     onClick={() => setEditingId(editingId === c.id ? null : c.id)}
-                    style={{ fontSize: '0.8rem', padding: '2px 10px' }}
                   >
                     {editingId === c.id ? 'Cancel' : 'Edit'}
-                  </button>
+                  </Button>
                 )}
                 {canDelete && (
-                  <button
-                    className="wf-btn wf-btn-danger"
+                  <Button
+                    size="compact"
+                    variant="danger"
                     onClick={() => handleDelete(c.id)}
-                    style={{ fontSize: '0.8rem', padding: '2px 10px' }}
-                  >Delete</button>
+                  >Delete</Button>
                 )}
               </div>
               {c.description && <div className="wf-course-desc">{c.description}</div>}
@@ -399,7 +413,7 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
         <div className="wf-training-form" style={{ marginTop: '1.25rem' }}>
           <h3 className="wf-section-title">Add Course</h3>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {formError && <div className="wf-error">{formError}</div>}
+            {formError && <InlineNotice tone="danger" title="The course could not be created.">{formError}</InlineNotice>}
             <div className="wf-form-row">
               <label className="wf-label">Name *
                 <input className="wf-input" value={formName} onChange={e => setFormName(e.target.value)} required />
@@ -415,9 +429,7 @@ function CoursesTab({ canCreate, canEdit, canDelete }: CoursesTabProps) {
               <input type="checkbox" checked={formRequired} onChange={e => setFormRequired(e.target.checked)} />
               Required course
             </label>
-            <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create course'}
-            </button>
+            <Button type="submit" variant="primary" loading={submitting} loadingLabel="Creating course…">Create course</Button>
           </form>
         </div>
       )}
@@ -455,7 +467,7 @@ function EditCourseForm({ course, onSaved }: { course: TrainingCourse; onSaved: 
 
   return (
     <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: '8px' }}>
-      {err && <div className="wf-error">{err}</div>}
+      {err && <InlineNotice tone="danger" title="The course could not be saved.">{err}</InlineNotice>}
       <div className="wf-form-row">
         <label className="wf-label">Name
           <input className="wf-input" value={name} onChange={e => setName(e.target.value)} />
@@ -471,9 +483,7 @@ function EditCourseForm({ course, onSaved }: { course: TrainingCourse; onSaved: 
         <input type="checkbox" checked={required} onChange={e => setRequired(e.target.checked)} />
         Required
       </label>
-      <button className="wf-btn wf-btn-primary" type="submit" disabled={saving}>
-        {saving ? 'Saving…' : 'Save changes'}
-      </button>
+      <Button type="submit" variant="primary" loading={saving} loadingLabel="Saving course…">Save changes</Button>
     </form>
   );
 }
@@ -508,6 +518,7 @@ function CompletionsTab({ canCreate }: CompletionsTabProps) {
   }, []);
 
   async function load() {
+    setCompletions(null);
     setError('');
     try {
       const params: { resource_id?: string; course_id?: string; expiring_soon?: boolean } = {};
@@ -577,9 +588,10 @@ function CompletionsTab({ canCreate }: CompletionsTabProps) {
         </div>
       )}
 
-      {error && <div className="wf-error">{error}</div>}
-      {completions === null && !error && <div className="wf-loading">Loading completions…</div>}
-      {completions !== null && completions.length === 0 && <div className="wf-empty">No completions found.</div>}
+      {error && completions === null && <ErrorState title="Could not load completions." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+      {error && completions !== null && <InlineNotice tone="danger" title="A completion action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+      {completions === null && !error && <LoadingState title="Loading completions…" />}
+      {completions !== null && completions.length === 0 && <EmptyState title="No completions found." />}
 
       {completions !== null && completions.length > 0 && (
         <div className="wf-completion-list">
@@ -613,7 +625,7 @@ function CompletionsTab({ canCreate }: CompletionsTabProps) {
         <div className="wf-training-form">
           <h3 className="wf-section-title">Log Completion</h3>
           <form onSubmit={handleLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {formError && <div className="wf-error">{formError}</div>}
+            {formError && <InlineNotice tone="danger" title="The completion could not be logged.">{formError}</InlineNotice>}
             <div className="wf-form-row">
               <label className="wf-label">Staff member *
                 <select className="wf-select" value={formResourceId} onChange={e => setFormResourceId(e.target.value)} required>
@@ -627,9 +639,7 @@ function CompletionsTab({ canCreate }: CompletionsTabProps) {
                   {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </label>
-              <label className="wf-label">Completed date *
-                <input className="wf-input" type="date" value={formCompletedAt} onChange={e => setFormCompletedAt(e.target.value)} required />
-              </label>
+              <DateField label="Completed date" value={formCompletedAt} onChange={setFormCompletedAt} required />
             </div>
             <label className="wf-label">Certificate URL (optional)
               <input className="wf-input" type="url" value={formCertUrl} onChange={e => setFormCertUrl(e.target.value)} />
@@ -637,9 +647,7 @@ function CompletionsTab({ canCreate }: CompletionsTabProps) {
             <label className="wf-label">Notes (optional)
               <textarea className="wf-textarea" rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} />
             </label>
-            <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-              {submitting ? 'Logging…' : 'Log completion'}
-            </button>
+            <Button type="submit" variant="primary" loading={submitting} loadingLabel="Logging completion…">Log completion</Button>
           </form>
         </div>
       )}

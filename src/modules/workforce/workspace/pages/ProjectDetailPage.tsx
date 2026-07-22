@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { workforceApi, type AiPlan, type Project, type ProjectAssignment, type ProjectBudget, type ProjectDoc, type ProjectRisk, type ProjectStatus, type ProjectTask, type StaffResource } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 const FSM_NEXT: Record<ProjectStatus, ProjectStatus | null> = {
@@ -107,18 +110,16 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
   useEffect(load, [projectId]);
   useEffect(loadBudget, [projectId]);
 
-  useEffect(() => {
-    if (tab !== 'docs') return;
+  function loadDocs() {
     setDocsLoading(true);
     setDocsError('');
     workforceApi.listProjectDocs(projectId)
       .then(({ docs: d }) => setDocs(d))
       .catch(() => setDocsError('Failed to load documents.'))
       .finally(() => setDocsLoading(false));
-  }, [tab, projectId]);
+  }
 
-  useEffect(() => {
-    if (tab !== 'tasks') return;
+  function loadTasks() {
     setTasksLoading(true);
     setTasksError('');
     Promise.all([
@@ -128,7 +129,15 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
       .then(([{ tasks: t }, { risk: r }]) => { setTasks(t); setRisk(r); })
       .catch(() => setTasksError('Failed to load tasks.'))
       .finally(() => setTasksLoading(false));
-  }, [tab, projectId]);
+  }
+
+  useEffect(() => {
+    if (tab === 'docs') loadDocs();
+  }, [tab, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tab === 'tasks') loadTasks();
+  }, [tab, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tab !== 'planner') return;
@@ -199,8 +208,8 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
     }
   }
 
-  if (!project && !error) return <div className="wf-page"><p>Loading…</p></div>;
-  if (error && !project) return <div className="wf-page"><p className="wf-error">{error}</p></div>;
+  if (!project && !error) return <div className="wf-page"><Link to={`/c/${slug}/workforce/projects`} className="wf-back-link">← Projects</Link><LoadingState title="Loading project…" /></div>;
+  if (error && !project) return <div className="wf-page"><Link to={`/c/${slug}/workforce/projects`} className="wf-back-link">← Projects</Link><ErrorState title="Could not load project." action={<Button size="compact" onClick={load}>Try again</Button>}>{error}</ErrorState></div>;
 
   const nextStatus = FSM_NEXT[project!.status];
   const assignedIds = new Set(assignments.map((a) => a.resource_id));
@@ -226,7 +235,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
         </p>
       )}
 
-      {error && <p className="wf-error">{error}</p>}
+      {error && <InlineNotice tone="danger" title="A project action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
 
       <div className="wf-proj-tabs">
         <button
@@ -277,14 +286,12 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
-              <button type="submit" disabled={assigning || !selectedResource}>
-                {assigning ? 'Assigning…' : 'Assign'}
-              </button>
+              <Button type="submit" variant="primary" loading={assigning} loadingLabel="Assigning resource…" disabled={!selectedResource}>Assign</Button>
             </form>
           )}
 
           {assignments.length === 0 && (
-            <p className="wf-empty">No resources assigned yet.</p>
+            <EmptyState title="No resources assigned yet." />
           )}
 
           <div className="wf-assignment-list">
@@ -306,9 +313,9 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
           <p className="wf-proj-doc-hint">
             Link existing files from your File Manager to this project. Upload files in the File Manager first, then link them here.
           </p>
-          {docsError && <p className="wf-error">{docsError}</p>}
-          {docsLoading && <p>Loading…</p>}
-          {!docsLoading && docs.length === 0 && <p className="wf-empty">No documents linked yet.</p>}
+          {docsError && <ErrorState title="Could not load project documents." action={<Button size="compact" onClick={loadDocs}>Try again</Button>}>{docsError}</ErrorState>}
+          {docsLoading && <LoadingState title="Loading project documents…" />}
+          {!docsLoading && !docsError && docs.length === 0 && <EmptyState title="No documents linked yet." />}
           <div className="wf-doc-list">
             {docs.map((d) => (
               <div key={d.file_id} className="wf-doc-row">
@@ -351,7 +358,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
               }}
             >
               <input name="file_id" placeholder="Paste File ID to link…" required />
-              <button type="submit">Link</button>
+              <Button type="submit" size="compact" variant="primary">Link</Button>
             </form>
           )}
         </div>
@@ -360,8 +367,8 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
       {tab === 'tasks' && (
         <div className="wf-section">
           <h3>Tasks &amp; Risk</h3>
-          {tasksError && <p className="wf-error">{tasksError}</p>}
-          {tasksLoading && <p>Loading…</p>}
+          {tasksError && <ErrorState title="Could not load project tasks." action={<Button size="compact" onClick={loadTasks}>Try again</Button>}>{tasksError}</ErrorState>}
+          {tasksLoading && <LoadingState title="Loading project tasks…" />}
           {!tasksLoading && risk && (
             <div className="wf-risk-banner">
               <div>
@@ -412,17 +419,11 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="New task title…"
               />
-              <input
-                type="date"
-                value={newTaskDue}
-                onChange={(e) => setNewTaskDue(e.target.value)}
-              />
-              <button type="submit" disabled={creatingTask || !newTaskTitle.trim()}>
-                {creatingTask ? 'Adding…' : 'Add Task'}
-              </button>
+              <DateField label="Due date" labelHidden value={newTaskDue} onChange={setNewTaskDue} />
+              <Button type="submit" variant="primary" loading={creatingTask} loadingLabel="Adding task…" disabled={!newTaskTitle.trim()}>Add Task</Button>
             </form>
           )}
-          {!tasksLoading && tasks.length === 0 && <p className="wf-empty">No tasks yet.</p>}
+          {!tasksLoading && !tasksError && tasks.length === 0 && <EmptyState title="No tasks yet." />}
           <div className="wf-task-list">
             {tasks.map((t) => {
               const isOverdue = t.due_date !== null && t.due_date < new Date().toISOString().slice(0, 10) && t.status !== 'done';
@@ -490,7 +491,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
             Describe what this project needs to accomplish. The AI will generate a draft task plan for your review.
           </p>
-          {plannerError && <p className="wf-error">{plannerError}</p>}
+          {plannerError && <InlineNotice tone="danger" title="The project plan could not be generated.">{plannerError}</InlineNotice>}
           <form
             className="wf-planner-form"
             onSubmit={async (e) => {
@@ -515,9 +516,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
               placeholder="e.g. Build a customer portal with login, dashboard, and billing pages…"
               maxLength={2000}
             />
-            <button type="submit" disabled={generatingPlan || !planDescription.trim()}>
-              {generatingPlan ? 'Generating…' : 'Generate Plan'}
-            </button>
+            <Button type="submit" variant="primary" loading={generatingPlan} loadingLabel="Generating plan…" disabled={!planDescription.trim()}>Generate Plan</Button>
           </form>
 
           {aiPlans.map((plan) => (
@@ -556,7 +555,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
             </div>
           ))}
           {aiPlans.length === 0 && !generatingPlan && (
-            <p className="wf-empty">No plans generated yet. Describe the project above to get started.</p>
+            <EmptyState title="No plans generated yet.">Describe the project above to get started.</EmptyState>
           )}
         </div>
       )}
@@ -564,7 +563,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
       {tab === 'budget' && (
         <div className="wf-section">
           <h3>Budget</h3>
-          {budgetError && <p className="wf-error">{budgetError}</p>}
+          {budgetError && <InlineNotice tone="danger" title="The project budget could not be updated.">{budgetError}</InlineNotice>}
           {budget && (
             <>
               <div className="wf-budget-grid">
@@ -620,9 +619,7 @@ export default function ProjectDetailPage({ slug, projectId, perms }: Props) {
                       placeholder="e.g. 50.00"
                     />
                   </label>
-                  <button type="submit" disabled={savingBudget}>
-                    {savingBudget ? 'Saving…' : 'Save Budget'}
-                  </button>
+                  <Button type="submit" variant="primary" loading={savingBudget} loadingLabel="Saving budget…">Save Budget</Button>
                 </form>
               )}
             </>

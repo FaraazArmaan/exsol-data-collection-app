@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { recordApprovalDecision, requireApprovalOwner } from './_workforce-approval-routing';
 
 export const config = { path: '/api/workforce/leave/:id' };
 
@@ -38,12 +39,14 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 
   // Fetch existing — client-scoped.
   const existing = (await sql`
-    SELECT id, status FROM public.leave_requests
+    SELECT id, status, user_node_id FROM public.leave_requests
     WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
     LIMIT 1
-  `) as Array<{ id: string; status: string }>;
+  `) as Array<{ id: string; status: string; user_node_id: string | null }>;
   if (existing.length === 0) return jsonError(404, 'request_not_found');
   if (existing[0]!.status !== 'pending') return jsonError(409, 'already_handled');
+  const routing = await requireApprovalOwner(a.ctx, 'leave', existing[0]!.user_node_id);
+  if (routing instanceof Response) return routing;
 
   const newStatus = action === 'approve' ? 'approved' : 'denied';
 
@@ -76,6 +79,7 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   `) as Array<Record<string, unknown>>;
 
   if (rows.length === 0) return jsonError(404, 'request_not_found');
+  await recordApprovalDecision(a.ctx, 'leave', id, routing.ownerUserNodeId, newStatus);
   return jsonOk({ request: rows[0] });
 }
 

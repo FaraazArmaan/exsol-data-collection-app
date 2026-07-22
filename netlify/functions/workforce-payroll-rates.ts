@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { recordSensitiveAccess, requireSensitiveAccess } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/payroll-rates' };
 
@@ -17,6 +18,8 @@ interface SetRateBody {
 async function handleGet(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.payroll.view']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'compensation');
+  if (accessBasis instanceof Response) return accessBasis;
 
   const url = new URL(req.url);
   const userNodeId = url.searchParams.get('user_node_id');
@@ -36,13 +39,15 @@ async function handleGet(req: Request): Promise<Response> {
       AND (${userNodeId}::uuid IS NULL OR pr.user_node_id = ${userNodeId}::uuid)
     ORDER BY pr.effective_from DESC, pr.created_at DESC
   `) as unknown[];
-
+  await recordSensitiveAccess(a.ctx, 'compensation', '/api/workforce/payroll-rates', accessBasis);
   return jsonOk({ rates });
 }
 
 async function handlePost(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.payroll.create']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'compensation');
+  if (accessBasis instanceof Response) return accessBasis;
 
   let body: SetRateBody;
   try {
@@ -85,7 +90,7 @@ async function handlePost(req: Request): Promise<Response> {
       notes,
       created_at
   `) as Array<Record<string, unknown>>;
-
+  await recordSensitiveAccess(a.ctx, 'compensation', '/api/workforce/payroll-rates', accessBasis, userNodeId);
   return jsonOk({ rate: rows[0] }, { status: 201 });
 }
 

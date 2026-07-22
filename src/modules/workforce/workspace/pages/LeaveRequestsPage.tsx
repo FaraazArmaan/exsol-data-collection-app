@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import { workforceApi, type LeaveRequest, type LeaveBalance, type StaffResource } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 const LEAVE_TYPES = ['annual', 'sick', 'personal', 'unpaid'] as const;
@@ -51,6 +54,7 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
   }, []);
 
   async function load() {
+    setRequests(null);
     setError('');
     try {
       const params: { resource_id?: string; status?: string } = {};
@@ -110,6 +114,9 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
       <WorkforceNav slug={slug} active="leave" />
 
       <div className="wf-leave-layout">
+        <div className="wf-page-heading">
+          <div><h1>Leave</h1><p>Review leave balances, approve requests, and record new time away.</p></div>
+        </div>
         {/* Filters */}
         <div className="wf-leave-filters">
           <select
@@ -147,14 +154,12 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
         )}
 
         {/* Requests list */}
-        {error && <div className="wf-error">{error}</div>}
-
-        {requests === null && !error && (
-          <div className="wf-loading">Loading leave requests…</div>
-        )}
+        {error && requests === null && <ErrorState title="Could not load leave requests." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+        {error && requests !== null && <InlineNotice tone="danger" title="A leave action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+        {requests === null && !error && <LoadingState title="Loading leave requests…" />}
 
         {requests !== null && requests.length === 0 && (
-          <div className="wf-empty">No leave requests found.</div>
+          <EmptyState title="No leave requests found." />
         )}
 
         {requests !== null && requests.length > 0 && (
@@ -176,14 +181,8 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
                 {r.notes && <div className="wf-leave-notes">{r.notes}</div>}
                 {canHandle && r.status === 'pending' && (
                   <div className="wf-leave-actions">
-                    <button
-                      className="wf-btn wf-btn-success"
-                      onClick={() => handleAction(r.id, 'approve')}
-                    >Approve</button>
-                    <button
-                      className="wf-btn wf-btn-danger"
-                      onClick={() => handleAction(r.id, 'deny')}
-                    >Deny</button>
+                    <Button size="compact" variant="primary" onClick={() => handleAction(r.id, 'approve')}>Approve</Button>
+                    <Button size="compact" variant="danger" onClick={() => handleAction(r.id, 'deny')}>Deny</Button>
                   </div>
                 )}
               </div>
@@ -196,7 +195,7 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
           <section className="wf-leave-form-section">
             <h3 className="wf-section-title">Apply for Leave</h3>
             <form onSubmit={handleSubmit} className="wf-leave-form">
-              {formError && <div className="wf-error">{formError}</div>}
+              {formError && <InlineNotice tone="danger" title="The leave request could not be submitted.">{formError}</InlineNotice>}
               <div className="wf-form-row">
                 <label className="wf-label">Staff member
                   <select
@@ -224,19 +223,13 @@ export default function LeaveRequestsPage({ slug, perms }: Props) {
                 </label>
               </div>
               <div className="wf-form-row">
-                <label className="wf-label">Start date
-                  <input className="wf-input" type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} required />
-                </label>
-                <label className="wf-label">End date
-                  <input className="wf-input" type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)} required />
-                </label>
+                <DateField label="Start date" value={formStartDate} onChange={setFormStartDate} required />
+                <DateField label="End date" value={formEndDate} onChange={setFormEndDate} required />
               </div>
               <label className="wf-label">Notes (optional)
                 <textarea className="wf-textarea" value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} />
               </label>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Submitting…' : 'Submit request'}
-              </button>
+              <Button type="submit" variant="primary" loading={submitting} loadingLabel="Submitting request…">Submit request</Button>
             </form>
           </section>
         )}

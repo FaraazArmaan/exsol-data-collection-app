@@ -34,6 +34,14 @@ export default async function handler(req: Request): Promise<Response> {
     ORDER BY occurred_at DESC
     LIMIT 20
   ` as unknown[];
+  const recoveryRequests = await db()`
+    SELECT id, action, status, failure_code, employee_reason, attempted_at, resolution_note, reviewed_at, created_at
+    FROM public.workforce_attendance_recovery_requests
+    WHERE client_id = ${a.ctx.clientId}::uuid
+      AND user_node_id = ${a.ctx.userNodeId}::uuid
+    ORDER BY created_at DESC
+    LIMIT 5
+  ` as unknown[];
 
   return jsonOk({
     employee,
@@ -47,5 +55,6 @@ export default async function handler(req: Request): Promise<Response> {
     })),
     geofence_required: true,
     today_events: todayEvents,
+    recovery_requests: recoveryRequests,
   });
 }

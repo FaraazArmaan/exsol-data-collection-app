@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { recordApprovalDecision, requireApprovalOwner } from './_workforce-approval-routing';
 
 export const config = { path: '/api/workforce/swap/:id' };
 
@@ -33,13 +34,21 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   const sql = db();
 
   const existing = (await sql`
-    SELECT id, status FROM public.shift_swaps
-    WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
+    SELECT s.id, s.status, p.user_node_id
+    FROM public.shift_swaps s
+    LEFT JOIN public.workforce_employee_profiles p
+      ON p.client_id = s.client_id AND p.resource_id = s.offering_resource_id
+    WHERE s.id = ${id}::uuid AND s.client_id = ${a.ctx.clientId}::uuid
     LIMIT 1
-  `) as Array<{ id: string; status: string }>;
+  `) as Array<{ id: string; status: string; user_node_id: string | null }>;
   if (existing.length === 0) return jsonError(404, 'swap_not_found');
 
   const currentStatus = existing[0]!.status;
+  let routing: Awaited<ReturnType<typeof requireApprovalOwner>> | null = null;
+  if (action === 'approve' || action === 'deny') {
+    routing = await requireApprovalOwner(a.ctx, 'shift_swap', existing[0]!.user_node_id);
+    if (routing instanceof Response) return routing;
+  }
   let rows: Array<Record<string, unknown>>;
 
   if (action === 'claim') {
@@ -112,6 +121,9 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
   }
 
   if (rows.length === 0) return jsonError(404, 'swap_not_found');
+  if ((action === 'approve' || action === 'deny') && routing && !(routing instanceof Response)) {
+    await recordApprovalDecision(a.ctx, 'shift_swap', id, routing.ownerUserNodeId, action === 'approve' ? 'approved' : 'denied');
+  }
   return jsonOk({ swap: rows[0] });
 }
 

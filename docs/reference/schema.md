@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-153 tables across 144 forward-only migrations.
+166 tables across 152 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -499,7 +499,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `payroll_periods`
 
-- created in `116_payroll.sql`
+- created in `116_payroll.sql`; altered in `175_workforce_payroll_snapshots_disputes.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `period_start DATE`, `period_end DATE`, `status TEXT`, `total_amount NUMERIC(12,2)`, `created_by UUID`, `approved_by UUID`, `approved_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `payroll_rates`
@@ -707,6 +707,21 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `110_project_tasks.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `project_id UUID`, `title TEXT`, `description TEXT`, `assigned_to UUID`, `status TEXT`, `due_date DATE`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
+### `workforce_approval_delegations`
+
+- created in `173_workforce_approval_routing.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `owner_user_node_id UUID`, `delegate_user_node_id UUID`, `request_type TEXT`, `starts_at TIMESTAMPTZ`, `ends_at TIMESTAMPTZ`, `reason TEXT`, `revoked_at TIMESTAMPTZ`, `revoked_by UUID`, `created_at TIMESTAMPTZ`
+
+### `workforce_approval_policies`
+
+- created in `173_workforce_approval_routing.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `request_type TEXT`, `primary_approver_user_node_id UUID`, `response_target_hours INTEGER`, `active BOOLEAN`, `created_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workforce_approval_routing_events`
+
+- created in `173_workforce_approval_routing.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `request_type TEXT`, `request_id UUID`, `event_type TEXT`, `owner_user_node_id UUID`, `actor_user_node_id UUID`, `details JSONB`, `created_at TIMESTAMPTZ`
+
 ### `workforce_asset_maintenance`
 
 - created in `149_training_assets_compliance_ops.sql`
@@ -716,6 +731,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 - created in `118_assets.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `name TEXT`, `description TEXT`, `serial_number TEXT`, `condition TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workforce_attendance_recovery_requests`
+
+- created in `172_workforce_attendance_recovery.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `action TEXT`, `status TEXT`, `failure_code TEXT`, `employee_reason TEXT`, `attempted_at TIMESTAMPTZ`, `work_location_id UUID`, `latitude NUMERIC(9,6)`, `longitude NUMERIC(9,6)`, `accuracy_meters NUMERIC(8,2)`, `distance_meters NUMERIC(10,2)`, `geofence_result TEXT`, `request_key TEXT`, `reviewed_by UUID`, `reviewed_at TIMESTAMPTZ`, `resolution_note TEXT`, `override_punch_id UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_compliance_requirements`
 
@@ -757,30 +777,75 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `147_leave_accrual_holiday_calendar.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `leave_type TEXT`, `accrual_rate_days NUMERIC(6,2)`, `accrual_period TEXT`, `carryover_cap_days NUMERIC(6,2)`, `effective_from DATE`, `effective_to DATE`, `active BOOLEAN`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
+### `workforce_payable_time_entries`
+
+- created in `168_workforce_payable_time_reconciliation.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `work_date DATE`, `minutes INTEGER`, `source_type TEXT`, `source_id UUID`, `approved_by UUID`, `approved_at TIMESTAMPTZ`, `notes TEXT`, `source_snapshot JSONB`, `created_at TIMESTAMPTZ`
+
+### `workforce_payroll_disputes`
+
+- created in `175_workforce_payroll_snapshots_disputes.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `period_id UUID`, `snapshot_id UUID`, `payslip_id UUID`, `user_node_id UUID`, `reason TEXT`, `status TEXT`, `resolution_note TEXT`, `submitted_by UUID`, `resolved_by UUID`, `resolved_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
 ### `workforce_payroll_exports`
 
-- created in `148_payroll_export_payslips.sql`
+- created in `148_payroll_export_payslips.sql`; altered in `175_workforce_payroll_snapshots_disputes.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `period_id UUID`, `export_format TEXT`, `status TEXT`, `total_amount NUMERIC(12,2)`, `exported_by UUID`, `exported_at TIMESTAMPTZ`, `file_id UUID`, `metadata JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workforce_payroll_snapshot_lines`
+
+- created in `175_workforce_payroll_snapshots_disputes.sql`
+- columns at creation: `id UUID`, `snapshot_id UUID`, `client_id UUID`, `user_node_id UUID`, `hours NUMERIC(10,2)`, `hourly_rate NUMERIC(12,2)`, `gross_amount NUMERIC(12,2)`, `tax_amount NUMERIC(12,2)`, `deductions_amount NUMERIC(12,2)`, `net_amount NUMERIC(12,2)`, `currency TEXT`, `source_evidence JSONB`, `created_at TIMESTAMPTZ`
+
+### `workforce_payroll_snapshots`
+
+- created in `175_workforce_payroll_snapshots_disputes.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `period_id UUID`, `status TEXT`, `total_amount NUMERIC(12,2)`, `created_by UUID`, `frozen_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`
 
 ### `workforce_payslips`
 
-- created in `148_payroll_export_payslips.sql`
+- created in `148_payroll_export_payslips.sql`; altered in `175_workforce_payroll_snapshots_disputes.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `export_id UUID`, `period_id UUID`, `user_node_id UUID`, `gross_amount NUMERIC(12,2)`, `tax_amount NUMERIC(12,2)`, `deductions_amount NUMERIC(12,2)`, `net_amount NUMERIC(12,2)`, `currency TEXT`, `status TEXT`, `published_at TIMESTAMPTZ`, `metadata JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_punch_breaks`
 
-- created in `151_workforce_self_service_geofence_time_clock.sql`
+- created in `151_workforce_self_service_geofence_time_clock.sql`; altered in `172_workforce_attendance_recovery.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `punch_id UUID`, `resource_id UUID`, `user_node_id UUID`, `started_at TIMESTAMPTZ`, `ended_at TIMESTAMPTZ`, `source TEXT`, `notes TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_punches`
 
-- created in `113_workforce_punches.sql`
+- created in `113_workforce_punches.sql`; altered in `172_workforce_attendance_recovery.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `shift_id UUID`, `punched_in_at TIMESTAMPTZ`, `punched_out_at TIMESTAMPTZ`, `late_minutes SMALLINT`, `is_absent BOOLEAN`, `notes TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_schedule_compliance_findings`
 
 - created in `145_scheduling_compliance_planner.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `shift_id UUID`, `rule_id UUID`, `schedule_date DATE`, `finding_type TEXT`, `severity TEXT`, `details JSONB`, `status TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
+
+### `workforce_schedule_notices`
+
+- created in `170_workforce_schedule_publication.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `schedule_version_id UUID`, `user_node_id UUID`, `acknowledgement_required BOOLEAN`, `notified_at TIMESTAMPTZ`, `acknowledged_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`
+
+### `workforce_schedule_version_shifts`
+
+- created in `170_workforce_schedule_publication.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `schedule_version_id UUID`, `source_shift_id UUID`, `resource_id UUID`, `user_node_id UUID`, `shift_date DATE`, `start_time TIME`, `end_time TIME`, `source_snapshot JSONB`, `created_at TIMESTAMPTZ`
+
+### `workforce_schedule_versions`
+
+- created in `170_workforce_schedule_publication.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `week_start DATE`, `status TEXT`, `acknowledgement_required BOOLEAN`, `created_by UUID`, `published_by UUID`, `published_at TIMESTAMPTZ`, `superseded_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ`
+
+### `workforce_sensitive_data_access_events`
+
+- created in `174_workforce_sensitive_data_access.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `actor_user_node_id UUID`, `data_scope TEXT`, `subject_user_node_id UUID`, `endpoint TEXT`, `access_basis TEXT`, `created_at TIMESTAMPTZ`
+
+### `workforce_sensitive_data_grants`
+
+- created in `174_workforce_sensitive_data_access.sql`
+- columns at creation: `id UUID`, `client_id UUID`, `user_node_id UUID`, `data_scope TEXT`, `reason TEXT`, `active BOOLEAN`, `granted_by UUID`, `revoked_at TIMESTAMPTZ`, `revoked_by UUID`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_shifts`
 
@@ -789,12 +854,12 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `workforce_time_clock_events`
 
-- created in `146_time_clock_ledger_corrections.sql`; altered in `151_workforce_self_service_geofence_time_clock.sql`
+- created in `146_time_clock_ledger_corrections.sql`; altered in `151_workforce_self_service_geofence_time_clock.sql`, `172_workforce_attendance_recovery.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `resource_id UUID`, `user_node_id UUID`, `punch_id UUID`, `event_type TEXT`, `occurred_at TIMESTAMPTZ`, `source TEXT`, `notes TEXT`, `metadata JSONB`, `recorded_by UUID`, `created_at TIMESTAMPTZ`
 
 ### `workforce_time_corrections`
 
-- created in `146_time_clock_ledger_corrections.sql`
+- created in `146_time_clock_ledger_corrections.sql`; altered in `169_workforce_correction_resolution.sql`, `171_workforce_correction_cancellation.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `punch_id UUID`, `resource_id UUID`, `requested_by UUID`, `correction_type TEXT`, `original_values JSONB`, `new_values JSONB`, `status TEXT`, `reviewed_by UUID`, `reviewed_at TIMESTAMPTZ`, `notes TEXT`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`
 
 ### `workforce_work_location_assignments`

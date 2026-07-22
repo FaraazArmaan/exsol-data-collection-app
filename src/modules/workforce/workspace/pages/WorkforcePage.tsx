@@ -4,10 +4,14 @@ import {
   workforceApi,
   type ScheduleFinding,
   type SchedulePlanRow,
+  type SchedulePublication,
   type StaffResource,
   type Shift,
 } from '../../shared/api';
 import { TeamEmployeePicker } from '../components/TeamBridge';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import { WorkspaceLayoutControl, useWorkspaceLayout } from '../../../../components/ui/WorkspaceLayout';
 import '../../workforce.css';
 
@@ -15,6 +19,12 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function weekStartIso(dateValue: string): string {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date.toISOString().slice(0, 10);
 }
 
 function hoursValue(value: number | string | null | undefined): number {
@@ -135,15 +145,22 @@ export default function WorkforcePage({ slug, perms }: Props) {
   const [breakAfterHours, setBreakAfterHours] = useState('5');
   const [minBreakMinutes, setMinBreakMinutes] = useState('30');
   const [savingRule, setSavingRule] = useState(false);
+  const [publication, setPublication] = useState<SchedulePublication | null>(null);
+  const [acknowledgementRequired, setAcknowledgementRequired] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publicationError, setPublicationError] = useState('');
   const [error, setError] = useState('');
+  const publicationWeekStart = weekStartIso(plannerDate);
 
   function load() {
-    workforceApi.listStaff()
-      .then((r) => setResources(r.resources))
-      .catch(() => { setResources([]); setError('Failed to load staff.'); });
-    workforceApi.listShifts()
-      .then((r) => setShifts(r.shifts))
-      .catch(() => setShifts([]));
+    setResources(null);
+    setError('');
+    Promise.all([workforceApi.listStaff(), workforceApi.listShifts()])
+      .then(([staff, schedule]) => {
+        setResources(staff.resources);
+        setShifts(schedule.shifts);
+      })
+      .catch(() => setError('Could not load staff and schedule.'));
   }
 
   useEffect(load, []);
@@ -162,6 +179,18 @@ export default function WorkforcePage({ slug, perms }: Props) {
   }
 
   useEffect(() => { void loadPlanner(); }, [plannerDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadPublication() {
+    setPublicationError('');
+    try {
+      setPublication(await workforceApi.getSchedulePublication(publicationWeekStart));
+    } catch {
+      setPublication(null);
+      setPublicationError('Could not load the published schedule state.');
+    }
+  }
+
+  useEffect(() => { void loadPublication(); }, [publicationWeekStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function deleteShift(id: string) {
     workforceApi.deleteShift(id).then(() => { load(); void loadPlanner(); }).catch(() => setError('Could not remove shift.'));
@@ -192,7 +221,31 @@ export default function WorkforcePage({ slug, perms }: Props) {
     }
   }
 
-  if (resources === null) return <div className="wf-page"><p>Loading…</p></div>;
+  async function publishSchedule() {
+    setPublishing(true);
+    setPublicationError('');
+    try {
+      setPublication(await workforceApi.publishSchedule({
+        week_start: publicationWeekStart,
+        acknowledgement_required: acknowledgementRequired,
+      }));
+    } catch (err: unknown) {
+      setPublicationError(err instanceof Error ? err.message : 'Could not publish this schedule.');
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  if (resources === null) {
+    return (
+      <div className="wf-page">
+        <WorkforceNav slug={slug} active="schedule" />
+        {error
+          ? <ErrorState title="Could not load Staff & Schedule." action={<Button size="compact" onClick={load}>Try again</Button>}>{error}</ErrorState>
+          : <LoadingState title="Loading Staff & Schedule…" />}
+      </div>
+    );
+  }
 
   const plannerByResource = new Map(plannerRows.map(row => [row.resource_id, row]));
   const exceededCount = plannerRows.filter(row => row.max_daily_hours_exceeded).length;
@@ -209,17 +262,42 @@ export default function WorkforcePage({ slug, perms }: Props) {
           <p>Planner-grade schedule checks with Team-linked staff and compliance warnings before the week is published.</p>
         </div>
         <div className="wf-page-heading__actions">
-          <label className="wf-label wf-date-filter">Planner date
-            <input className="wf-input" type="date" value={plannerDate} onChange={e => setPlannerDate(e.target.value)} />
-          </label>
+          <div className="wf-date-filter"><DateField label="Planner date" value={plannerDate} onChange={setPlannerDate} /></div>
           <WorkspaceLayoutControl definition={{ namespace: 'workforce.schedule', blocks: [
             { id: 'planner', label: 'Compliance planner', defaultSize: 'wide', sizes: ['wide'] },
             { id: 'staff', label: 'Staff schedule', defaultSize: 'wide', sizes: ['wide'] },
           ] }} layout={workspaceLayout} />
         </div>
       </div>
-      {error && <p className="wf-error">{error}</p>}
-      {plannerError && <p className="wf-error">{plannerError}</p>}
+      {error && <InlineNotice tone="danger" title="A schedule change could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+      {plannerError && <InlineNotice tone="danger" title="The compliance plan could not be updated." action={<Button size="compact" onClick={() => void loadPlanner()}>Try again</Button>}>{plannerError}</InlineNotice>}
+      {publicationError && <InlineNotice tone="danger" title="The schedule could not be published." action={<Button size="compact" onClick={() => void loadPublication()}>Try again</Button>}>{publicationError}</InlineNotice>}
+
+      <section className="wf-schedule-publication">
+        <div>
+          <div className="wf-section-title">Published schedule</div>
+          <p className="wf-muted-copy">Week of {publicationWeekStart}. Changes to recurring shifts remain draft until this week is published again.</p>
+        </div>
+        {publication?.version ? (
+          <div className="wf-schedule-publication__state">
+            <strong>Published</strong>
+            <span>{publication.notice_summary.acknowledged}/{publication.notice_summary.recipients} acknowledged</span>
+          </div>
+        ) : (
+          <div className="wf-schedule-publication__state"><strong>Draft</strong><span>Not yet shared with employees</span></div>
+        )}
+        {perms.has('workforce.employees.edit') && (
+          <div className="wf-schedule-publication__actions">
+            <label className="wf-check-label">
+              <input type="checkbox" checked={acknowledgementRequired} onChange={e => setAcknowledgementRequired(e.target.checked)} />
+              Require acknowledgement
+            </label>
+            <Button className="wf-btn wf-btn-primary" type="button" variant="primary" loading={publishing} loadingLabel="Publishing schedule…" onClick={() => void publishSchedule()}>
+              {publication?.version ? 'Publish updated schedule' : 'Publish schedule'}
+            </Button>
+          </div>
+        )}
+      </section>
 
       <div className="ui-workspace-blocks wf-workspace-blocks">
       <div className="ui-workspace-block" style={workspaceLayout.blockStyle('planner')}>
@@ -273,7 +351,7 @@ export default function WorkforcePage({ slug, perms }: Props) {
                 <input className="wf-input" type="number" min="0" step="5" value={minBreakMinutes} onChange={e => setMinBreakMinutes(e.target.value)} />
               </label>
               <div className="wf-rule-action">
-                <button className="wf-btn wf-btn-primary" type="submit" disabled={savingRule}>{savingRule ? 'Saving...' : 'Save rule'}</button>
+                <Button className="wf-btn wf-btn-primary" type="submit" variant="primary" loading={savingRule} loadingLabel="Saving rule…">Save rule</Button>
               </div>
             </div>
           </form>

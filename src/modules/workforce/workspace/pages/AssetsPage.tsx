@@ -16,6 +16,9 @@ import {
   TeamEmployeePicker,
   TeamStatusCard,
 } from '../components/TeamBridge';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 const CONDITION_LABELS: Record<string, string> = {
@@ -49,6 +52,9 @@ export default function AssetsPage({ slug, perms }: Props) {
       <WorkforceNav slug={slug} active="assets" />
 
       <div className="wf-assets-layout">
+        <div className="wf-page-heading">
+          <div><h1>Assets</h1><p>Track workplace assets, ownership, maintenance, and return conditions in one operational workspace.</p></div>
+        </div>
         {/* Inner tabs */}
         <div className="wf-assets-inner-tabs">
           <button
@@ -94,8 +100,10 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
   const [maintenanceNotes, setMaintenanceNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   async function load() {
+    setLoaded(false);
     setError('');
     try {
       const [assetData, ops] = await Promise.all([
@@ -105,6 +113,7 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
       setAssets(assetData.assets);
       setRequirements(ops.requirements.filter(req => req.requirement_type === 'asset'));
       setMaintenance(ops.maintenance);
+      setLoaded(true);
     } catch {
       setError('Failed to load asset compliance operations.');
     }
@@ -162,10 +171,15 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
   const overdue = maintenance.filter(row => row.status === 'overdue').length;
   const completed = maintenance.filter(row => row.status === 'completed').length;
 
+  if (!loaded) {
+    return error
+      ? <ErrorState title="Could not load asset maintenance." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>
+      : <LoadingState title="Loading asset maintenance…" />;
+  }
+
   return (
     <div className="wf-compliance-layout">
-      {error && <div className="wf-error">{error}</div>}
-      {formError && <div className="wf-error">{formError}</div>}
+      {formError && <InlineNotice tone="danger" title="The asset compliance change could not be saved.">{formError}</InlineNotice>}
       <section className="wf-attendance-board">
         <div className="wf-board-stat"><strong>{requirements.length}</strong><span>Asset requirements</span></div>
         <div className="wf-board-stat"><strong>{scheduled}</strong><span>Scheduled</span></div>
@@ -176,7 +190,7 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
       <div className="wf-compliance-grid">
         <section className="wf-asset-form">
           <h3 className="wf-section-title">Asset Requirements</h3>
-          {requirements.length === 0 && <div className="wf-empty">No asset requirements configured.</div>}
+          {requirements.length === 0 && <EmptyState title="No asset requirements configured." />}
           {requirements.map(req => {
             const asset = assets.find(a => a.id === req.asset_id);
             return (
@@ -202,14 +216,14 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
                   <input className="wf-input" type="number" min="0" value={requirementDueDays} onChange={e => setRequirementDueDays(e.target.value)} />
                 </label>
               </div>
-              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create requirement'}</button>
+              <Button type="submit" variant="primary" loading={saving} loadingLabel="Saving requirement…">Create requirement</Button>
             </form>
           )}
         </section>
 
         <section className="wf-asset-form">
           <h3 className="wf-section-title">Maintenance Schedule</h3>
-          {maintenance.length === 0 && <div className="wf-empty">No maintenance rows scheduled.</div>}
+          {maintenance.length === 0 && <EmptyState title="No maintenance rows scheduled." />}
           {maintenance.slice(0, 12).map(row => {
             const asset = assets.find(a => a.id === row.asset_id);
             return (
@@ -228,14 +242,12 @@ function MaintenanceTab({ canCreate }: { canCreate: boolean }) {
                     {assets.filter(asset => asset.condition !== 'retired').map(asset => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
                   </select>
                 </label>
-                <label className="wf-label">Scheduled for
-                  <input className="wf-input" type="date" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} required />
-                </label>
+                <DateField label="Scheduled for" value={scheduledFor} onChange={setScheduledFor} required />
               </div>
               <label className="wf-label">Notes
                 <textarea className="wf-textarea" rows={2} value={maintenanceNotes} onChange={e => setMaintenanceNotes(e.target.value)} />
               </label>
-              <button className="wf-btn wf-btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Schedule maintenance'}</button>
+              <Button type="submit" variant="primary" loading={saving} loadingLabel="Scheduling maintenance…">Schedule maintenance</Button>
             </form>
           )}
         </section>
@@ -266,6 +278,7 @@ function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
   const [formError, setFormError] = useState('');
 
   async function load() {
+    setAssets(null);
     setError('');
     try {
       const params = conditionFilter ? { condition: conditionFilter } : undefined;
@@ -330,9 +343,10 @@ function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
         </select>
       </div>
 
-      {error && <div className="wf-error">{error}</div>}
-      {assets === null && !error && <div className="wf-loading">Loading assets…</div>}
-      {assets !== null && assets.length === 0 && <div className="wf-empty">No assets found.</div>}
+      {error && assets === null && <ErrorState title="Could not load assets." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+      {error && assets !== null && <InlineNotice tone="danger" title="An asset action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+      {assets === null && !error && <LoadingState title="Loading assets…" />}
+      {assets !== null && assets.length === 0 && <EmptyState title="No assets found." />}
 
       {assets !== null && assets.length > 0 && (
         <div className="wf-asset-list">
@@ -362,11 +376,7 @@ function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
               })()}
               <div className="wf-asset-actions">
                 {canDelete && a.condition !== 'retired' && (
-                  <button
-                    className="wf-btn wf-btn-danger"
-                    style={{ fontSize: '0.8rem', padding: '2px 10px' }}
-                    onClick={() => handleRetire(a.id)}
-                  >Retire</button>
+                  <Button size="compact" variant="danger" onClick={() => handleRetire(a.id)}>Retire</Button>
                 )}
               </div>
             </div>
@@ -378,7 +388,7 @@ function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
         <div className="wf-asset-form" style={{ marginTop: '1.25rem' }}>
           <h3 className="wf-section-title">Add Asset</h3>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {formError && <div className="wf-error">{formError}</div>}
+            {formError && <InlineNotice tone="danger" title="The asset could not be created.">{formError}</InlineNotice>}
             <div className="wf-form-row">
               <label className="wf-label">Name *
                 <input className="wf-input" value={formName} onChange={e => setFormName(e.target.value)} required />
@@ -397,9 +407,7 @@ function AssetsTab({ canCreate, canDelete, staff }: AssetsTabProps) {
             <label className="wf-label">Description (optional)
               <textarea className="wf-textarea" rows={2} value={formDesc} onChange={e => setFormDesc(e.target.value)} />
             </label>
-            <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create asset'}
-            </button>
+            <Button type="submit" variant="primary" loading={submitting} loadingLabel="Creating asset…">Create asset</Button>
           </form>
         </div>
       )}
@@ -447,6 +455,7 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
   }
 
   async function load() {
+    setAssignments(null);
     setError('');
     try {
       const params: { user_node_id?: string; active?: boolean } = {};
@@ -526,9 +535,10 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
         </label>
       </div>
 
-      {error && <div className="wf-error">{error}</div>}
-      {assignments === null && !error && <div className="wf-loading">Loading assignments…</div>}
-      {assignments !== null && assignments.length === 0 && <div className="wf-empty">No assignments found.</div>}
+      {error && assignments === null && <ErrorState title="Could not load assignments." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+      {error && assignments !== null && <InlineNotice tone="danger" title="An assignment action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+      {assignments === null && !error && <LoadingState title="Loading assignments…" />}
+      {assignments !== null && assignments.length === 0 && <EmptyState title="No assignments found." />}
 
       {assignments !== null && assignments.length > 0 && (
         <div className="wf-assignment-list">
@@ -559,7 +569,7 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
                 <div>
                   {returningId === aa.id ? (
                     <div className="wf-return-form">
-                      {returnError && <div className="wf-error">{returnError}</div>}
+                      {returnError && <InlineNotice tone="danger" title="The asset could not be returned.">{returnError}</InlineNotice>}
                       <select
                         className="wf-select"
                         value={returnCondition}
@@ -578,23 +588,12 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
                         onChange={e => setReturnNotes(e.target.value)}
                       />
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          className="wf-btn wf-btn-primary"
-                          onClick={() => handleReturn(aa.id)}
-                          disabled={returning}
-                        >{returning ? 'Returning…' : 'Confirm return'}</button>
-                        <button
-                          className="wf-btn"
-                          onClick={() => { setReturningId(null); setReturnError(''); }}
-                        >Cancel</button>
+                        <Button variant="primary" loading={returning} loadingLabel="Returning asset…" onClick={() => handleReturn(aa.id)}>Confirm return</Button>
+                        <Button variant="quiet" onClick={() => { setReturningId(null); setReturnError(''); }}>Cancel</Button>
                       </div>
                     </div>
                   ) : (
-                    <button
-                      className="wf-btn"
-                      style={{ fontSize: '0.8rem', padding: '2px 10px', marginTop: '0.25rem' }}
-                      onClick={() => { setReturningId(aa.id); setReturnCondition(''); setReturnNotes(''); }}
-                    >Return</button>
+                    <Button size="compact" variant="secondary" onClick={() => { setReturningId(aa.id); setReturnCondition(''); setReturnNotes(''); }}>Return</Button>
                   )}
                 </div>
               )}
@@ -607,7 +606,7 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
         <div className="wf-asset-form" style={{ marginTop: '1.25rem' }}>
           <h3 className="wf-section-title">Assign Asset</h3>
           <form onSubmit={handleAssign} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {assignError && <div className="wf-error">{assignError}</div>}
+            {assignError && <InlineNotice tone="danger" title="The asset could not be assigned.">{assignError}</InlineNotice>}
             <div className="wf-form-row">
               <label className="wf-label">Asset
                 <select
@@ -639,9 +638,7 @@ function AssignmentsTab({ canCreate, canEdit, staff, slug }: AssignmentsTabProps
             <label className="wf-label">Notes (optional)
               <textarea className="wf-textarea" rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} />
             </label>
-            <button className="wf-btn wf-btn-primary" type="submit" disabled={assigning}>
-              {assigning ? 'Assigning…' : 'Assign asset'}
-            </button>
+            <Button type="submit" variant="primary" loading={assigning} loadingLabel="Assigning asset…">Assign asset</Button>
           </form>
         </div>
       )}

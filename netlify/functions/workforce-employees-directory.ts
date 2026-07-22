@@ -4,6 +4,7 @@
 import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
+import { recordSensitiveAccess, sensitiveAccessBasis } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/employees-directory' };
 
@@ -14,6 +15,8 @@ export default async function handler(req: Request): Promise<Response> {
   if (!a.ok) return a.res;
 
   const sql = db();
+  const profileAccess = await sensitiveAccessBasis(a.ctx, 'profile');
+  const hasProfileGrant = profileAccess === 'grant';
   const teamRows = await sql`
     SELECT
       un.id AS user_node_id,
@@ -38,10 +41,11 @@ export default async function handler(req: Request): Promise<Response> {
       p.hire_date,
       p.termination_date,
       p.manager_user_node_id,
-      p.primary_email,
-      p.primary_phone,
-      p.emergency_contact,
-      p.custom_fields,
+      (${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid) AS can_view_sensitive,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_email END AS primary_email,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_phone END AS primary_phone,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.emergency_contact END AS emergency_contact,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.custom_fields END AS custom_fields,
       p.created_at AS profile_created_at,
       p.updated_at AS profile_updated_at,
       (
@@ -102,10 +106,11 @@ export default async function handler(req: Request): Promise<Response> {
       p.hire_date,
       p.termination_date,
       p.manager_user_node_id,
-      p.primary_email,
-      p.primary_phone,
-      p.emergency_contact,
-      p.custom_fields,
+      (${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid) AS can_view_sensitive,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_email END AS primary_email,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.primary_phone END AS primary_phone,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.emergency_contact END AS emergency_contact,
+      CASE WHEN ${a.ctx.levelNumber}::int = 1 OR ${hasProfileGrant}::boolean OR p.manager_user_node_id = ${a.ctx.userNodeId}::uuid THEN p.custom_fields END AS custom_fields,
       p.created_at AS profile_created_at,
       p.updated_at AS profile_updated_at,
       (
@@ -135,5 +140,6 @@ export default async function handler(req: Request): Promise<Response> {
     ORDER BY p.legal_name ASC
   ` as Array<Record<string, unknown>>;
 
+  if (profileAccess) await recordSensitiveAccess(a.ctx, 'profile', '/api/workforce/employees-directory', profileAccess);
   return jsonOk({ employees: [...teamRows, ...unlinkedProfileRows] });
 }

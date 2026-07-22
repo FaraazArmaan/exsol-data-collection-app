@@ -93,6 +93,14 @@ export function geoFromBody(body: Record<string, unknown>): GeoInput | Response 
   return { latitude, longitude, accuracy_meters: accuracy };
 }
 
+export function idempotencyKeyFromBody(body: Record<string, unknown>): string | null | Response {
+  if (body.idempotency_key === undefined || body.idempotency_key === null || body.idempotency_key === '') return null;
+  if (typeof body.idempotency_key !== 'string') return jsonError(400, 'idempotency_key_invalid');
+  const key = body.idempotency_key.trim();
+  if (key.length < 8 || key.length > 128) return jsonError(400, 'idempotency_key_invalid');
+  return key;
+}
+
 export function validateGeofence(geo: GeoInput, locations: WorkLocation[]): GeoDecision {
   if (locations.length === 0) {
     return { ok: false, code: 'geofence_unconfigured', location: null, distance_meters: null, result: 'unconfigured' };
@@ -169,18 +177,19 @@ export async function openBreak(ctx: WorkforceAuthCtx, punchId: string) {
 export async function appendClockEvent(args: {
   ctx: WorkforceAuthCtx;
   employee: SelfEmployee;
-  eventType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end' | 'correction';
+  eventType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end' | 'correction' | 'note';
   punchId?: string | null;
   notes?: string | null;
   geo?: GeoInput | null;
   decision?: GeoDecision | null;
+  idempotencyKey?: string | null;
 }) {
   const location = args.decision?.location ?? null;
   const result = args.decision?.result ?? (args.geo ? 'failed' : 'not_required');
   await db()`
     INSERT INTO public.workforce_time_clock_events (
       client_id, resource_id, user_node_id, punch_id, event_type, source, notes, recorded_by,
-      work_location_id, latitude, longitude, accuracy_meters, distance_meters, geofence_result
+      work_location_id, latitude, longitude, accuracy_meters, distance_meters, geofence_result, idempotency_key
     )
     VALUES (
       ${args.ctx.clientId}::uuid,
@@ -196,8 +205,10 @@ export async function appendClockEvent(args: {
       ${args.geo?.longitude ?? null}::numeric,
       ${args.geo?.accuracy_meters ?? null}::numeric,
       ${args.decision?.distance_meters ?? null}::numeric,
-      ${result}::text
+      ${result}::text,
+      ${args.idempotencyKey ?? null}::text
     )
+    ON CONFLICT DO NOTHING
   `;
 }
 

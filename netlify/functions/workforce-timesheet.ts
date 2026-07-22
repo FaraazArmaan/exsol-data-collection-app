@@ -45,17 +45,15 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
 
   const sql = db();
 
-  // Guard: reject edits to already-approved entries (approve action itself is still allowed).
-  if (!approve) {
-    const existing = (await sql`
-      SELECT id, approved_at
-      FROM public.timesheet_entries
-      WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
-      LIMIT 1
-    `) as Array<{ id: string; approved_at: string | null }>;
-    if (existing.length === 0) return jsonError(404, 'entry_not_found');
-    if (existing[0]!.approved_at !== null) return jsonError(409, 'already_approved');
-  }
+  const existing = (await sql`
+    SELECT id, approved_at, user_node_id
+    FROM public.timesheet_entries
+    WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
+    LIMIT 1
+  `) as Array<{ id: string; approved_at: string | null; user_node_id: string | null }>;
+  if (existing.length === 0) return jsonError(404, 'entry_not_found');
+  if (existing[0]!.approved_at !== null) return jsonError(409, 'already_approved');
+  if (approve && !existing[0]!.user_node_id) return jsonError(409, 'payable_user_required');
 
   try {
     const rows = (await sql`
@@ -70,6 +68,40 @@ async function handlePatch(req: Request, id: string): Promise<Response> {
           updated_at  = now()
         WHERE id = ${id}::uuid AND client_id = ${a.ctx.clientId}::uuid
         RETURNING *
+      ), payable AS (
+        INSERT INTO public.workforce_payable_time_entries (
+          client_id,
+          resource_id,
+          user_node_id,
+          work_date,
+          minutes,
+          source_type,
+          source_id,
+          approved_by,
+          approved_at,
+          notes,
+          source_snapshot
+        )
+        SELECT
+          upd.client_id,
+          upd.resource_id,
+          upd.user_node_id,
+          upd.entry_date,
+          ROUND(EXTRACT(EPOCH FROM (upd.end_time - upd.start_time)) / 60)::integer,
+          'approved_timesheet',
+          upd.id,
+          ${a.ctx.userNodeId}::uuid,
+          upd.approved_at,
+          upd.notes,
+          jsonb_build_object(
+            'entry_date', to_char(upd.entry_date, 'YYYY-MM-DD'),
+            'start_time', left(upd.start_time::text, 5),
+            'end_time', left(upd.end_time::text, 5),
+            'timesheet_id', upd.id
+          )
+        FROM upd
+        WHERE ${approve}
+        ON CONFLICT (client_id, source_type, source_id) DO NOTHING
       )
       SELECT
         te.id,

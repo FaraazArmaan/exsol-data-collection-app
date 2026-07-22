@@ -74,18 +74,19 @@ export async function seedProject(
 export async function seedTimesheetEntry(
   ctx: PosTestCtx,
   resourceId: string,
-  opts: { entryDate?: string; startTime?: string; endTime?: string; approvedBy?: string } = {},
+  opts: { entryDate?: string; startTime?: string; endTime?: string; userNodeId?: string; approvedBy?: string } = {},
 ): Promise<string> {
   const entryDate = opts.entryDate ?? '2026-01-15';
   const startTime = opts.startTime ?? '09:00';
   const endTime = opts.endTime ?? '17:00';
+  const userNodeId = opts.userNodeId ?? null;
   const approvedBy = opts.approvedBy ?? null;
   if (approvedBy) {
     const rows = (await sql`
       INSERT INTO public.timesheet_entries
-        (client_id, resource_id, entry_date, start_time, end_time, approved_by, approved_at)
+        (client_id, resource_id, user_node_id, entry_date, start_time, end_time, approved_by, approved_at)
       VALUES (
-        ${ctx.clientId}::uuid, ${resourceId}::uuid, ${entryDate}::date,
+        ${ctx.clientId}::uuid, ${resourceId}::uuid, ${userNodeId}::uuid, ${entryDate}::date,
         ${startTime}::time, ${endTime}::time, ${approvedBy}::uuid, now()
       )
       RETURNING id
@@ -94,9 +95,9 @@ export async function seedTimesheetEntry(
   }
   const rows = (await sql`
     INSERT INTO public.timesheet_entries
-      (client_id, resource_id, entry_date, start_time, end_time)
+      (client_id, resource_id, user_node_id, entry_date, start_time, end_time)
     VALUES (
-      ${ctx.clientId}::uuid, ${resourceId}::uuid, ${entryDate}::date,
+      ${ctx.clientId}::uuid, ${resourceId}::uuid, ${userNodeId}::uuid, ${entryDate}::date,
       ${startTime}::time, ${endTime}::time
     )
     RETURNING id

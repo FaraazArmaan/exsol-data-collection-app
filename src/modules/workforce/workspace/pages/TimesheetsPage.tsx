@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import { workforceApi, type TimesheetEntry, type StaffResource } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { DateField, TimeField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import { WorkspaceLayoutControl, useWorkspaceLayout } from '../../../../components/ui/WorkspaceLayout';
 import '../../workforce.css';
 
@@ -127,7 +130,8 @@ function LogEntryForm({
   onLogged: () => void;
 }) {
   const today = toISODate(new Date());
-  const [resourceId, setResourceId] = useState(resources[0]?.id ?? '');
+  const payableResources = resources.filter(resource => resource.team_members.length === 1);
+  const [resourceId, setResourceId] = useState(payableResources[0]?.id ?? '');
   const [entryDate, setEntryDate] = useState(today);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
@@ -137,17 +141,23 @@ function LogEntryForm({
 
   // Keep default resource in sync if resources load after mount
   useEffect(() => {
-    if (!resourceId && resources[0]) setResourceId(resources[0].id);
-  }, [resources, resourceId]);
+    if (!payableResources.some(resource => resource.id === resourceId)) {
+      setResourceId(payableResources[0]?.id ?? '');
+    }
+  }, [payableResources, resourceId]);
+
+  const selectedResource = payableResources.find(resource => resource.id === resourceId);
+  const selectedUserNodeId = selectedResource?.team_members[0]?.id ?? '';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!resourceId) return;
+    if (!resourceId || !selectedUserNodeId) return;
     setSaving(true);
     setError('');
     try {
       await workforceApi.logTimesheet({
         resource_id: resourceId,
+        user_node_id: selectedUserNodeId,
         entry_date: entryDate,
         start_time: startTime,
         end_time: endTime,
@@ -174,41 +184,17 @@ function LogEntryForm({
               onChange={(e) => setResourceId(e.target.value)}
               required
             >
-              {resources.length === 0 && <option value="">No resources</option>}
-              {resources.map((r) => (
+              {payableResources.length === 0 && <option value="">No Team-linked employees</option>}
+              {payableResources.map((r) => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
           </label>
-          <label className="wf-label">Date
-            <input
-              className="wf-input"
-              type="date"
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-              required
-            />
-          </label>
+          <DateField label="Date" value={entryDate} onChange={setEntryDate} required />
           <div className="wf-ts-time-pair">
-            <label className="wf-label">Start
-              <input
-                className="wf-input"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-              />
-            </label>
+            <TimeField label="Start" value={startTime} onChange={setStartTime} required />
             <span>to</span>
-            <label className="wf-label">End
-              <input
-                className="wf-input"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-              />
-            </label>
+            <TimeField label="End" value={endTime} onChange={setEndTime} required />
           </div>
         </div>
         <label className="wf-label">Notes
@@ -221,12 +207,11 @@ function LogEntryForm({
           />
         </label>
         <div className="wf-form-actions">
-          <button className="wf-btn wf-btn-primary" type="submit" disabled={saving || !resourceId}>
-            {saving ? 'Saving…' : 'Log entry'}
-          </button>
+          <Button className="wf-btn wf-btn-primary" type="submit" variant="primary" loading={saving} loadingLabel="Saving entry…" disabled={!selectedUserNodeId}>Log entry</Button>
         </div>
       </form>
-      {error && <p className="wf-error">{error}</p>}
+      {payableResources.length === 0 && <p className="wf-empty">Link a Team user to an employee profile before recording payable time.</p>}
+      {error && <InlineNotice tone="danger" title="The entry could not be logged.">{error}</InlineNotice>}
     </div>
   );
 }
@@ -295,14 +280,12 @@ export default function TimesheetsPage({ slug, perms }: Props) {
 
       <div className="ui-workspace-blocks wf-workspace-blocks">
       <div className="ui-workspace-block" style={workspaceLayout.blockStyle('entries')}>
-      {entriesState === 'loading' && <p className="wf-empty">Loading timesheet entries…</p>}
+      {entriesState === 'loading' && <LoadingState title="Loading timesheet entries…" />}
 
-      {entriesState === 'error' && <div className="wf-inline-state wf-inline-state--error" role="alert">
-        <span>{error}</span><button className="wf-btn" type="button" onClick={loadEntries}>Retry</button>
-      </div>}
+      {entriesState === 'error' && <ErrorState title="Could not load timesheet entries." action={<Button size="compact" onClick={loadEntries}>Try again</Button>}>{error}</ErrorState>}
 
       {entriesState === 'ready' && grouped.size === 0 && (
-        <p className="wf-empty">No entries this week.</p>
+        <EmptyState title="No entries this week." />
       )}
 
       {entriesState === 'ready' && grouped.size > 0 && (

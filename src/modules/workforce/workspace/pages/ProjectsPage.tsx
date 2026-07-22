@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { Link } from 'react-router-dom';
 import { workforceApi, type Project } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 interface Props {
@@ -22,9 +24,11 @@ export default function ProjectsPage({ slug, perms }: Props) {
   const [error, setError] = useState('');
 
   function load() {
+    setProjects(null);
+    setError('');
     workforceApi.listProjects()
       .then((r) => setProjects(r.projects))
-      .catch(() => { setProjects([]); setError('Failed to load projects.'); });
+      .catch(() => setError('Failed to load projects.'));
   }
 
   useEffect(load, []);
@@ -49,8 +53,11 @@ export default function ProjectsPage({ slug, perms }: Props) {
     <div className="wf-page">
       <WorkforceNav slug={slug} active="projects" />
 
-      <h1>Projects</h1>
-      {error && <p className="wf-error">{error}</p>}
+      <div className="wf-page-heading">
+        <div><h1>Projects</h1><p>Plan delivery work, assign resources, and track project health.</p></div>
+      </div>
+      {error && projects === null && <ErrorState title="Could not load projects." action={<Button size="compact" onClick={load}>Try again</Button>}>{error}</ErrorState>}
+      {error && projects !== null && <InlineNotice tone="danger" title="The project could not be created." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
 
       {canCreate && (
         <form className="wf-create-form" onSubmit={createProject}>
@@ -61,15 +68,13 @@ export default function ProjectsPage({ slug, perms }: Props) {
             onChange={(e) => setNewName(e.target.value)}
             required
           />
-          <button type="submit" disabled={creating || !newName.trim()}>
-            {creating ? 'Creating…' : 'New project'}
-          </button>
+          <Button type="submit" variant="primary" loading={creating} loadingLabel="Creating project…" disabled={!newName.trim()}>New project</Button>
         </form>
       )}
 
-      {projects === null && <p>Loading…</p>}
+      {projects === null && !error && <LoadingState title="Loading projects…" />}
       {projects !== null && projects.length === 0 && (
-        <p className="wf-empty">No projects yet. Create one above.</p>
+        <EmptyState title="No projects yet.">Create one above to begin.</EmptyState>
       )}
 
       <div className="wf-project-list">

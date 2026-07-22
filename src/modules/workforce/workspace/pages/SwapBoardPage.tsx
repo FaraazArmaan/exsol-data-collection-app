@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react';
 import { WorkforceNav } from '../components/WorkforceNav';
 import { workforceApi, type ShiftSwap, type Shift, type StaffResource } from '../../shared/api';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,6 +59,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
   }, []);
 
   async function load() {
+    setSwaps(null);
     setError('');
     try {
       const params: { status?: string } = {};
@@ -177,10 +181,11 @@ export default function SwapBoardPage({ slug, perms }: Props) {
         </div>
 
         {/* Error / loading / empty */}
-        {error && <div className="wf-error">{error}</div>}
-        {swaps === null && !error && <div className="wf-loading">Loading swap board…</div>}
+        {error && swaps === null && <ErrorState title="Could not load the swap board." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+        {error && swaps !== null && <InlineNotice tone="danger" title="A swap action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
+        {swaps === null && !error && <LoadingState title="Loading swap board…" />}
         {swaps !== null && swaps.length === 0 && (
-          <div className="wf-empty">No swap offers found.</div>
+          <EmptyState title="No swap offers found." />
         )}
 
         {/* Swap list */}
@@ -259,36 +264,21 @@ export default function SwapBoardPage({ slug, perms }: Props) {
                             </option>
                           ))}
                         </select>
-                        <button
-                          className="wf-btn wf-btn-primary"
-                          disabled={!claimResource[s.id]}
-                          onClick={() => handleClaim(s.id)}
-                        >
-                          Claim
-                        </button>
+                        <Button size="compact" variant="primary" disabled={!claimResource[s.id]} onClick={() => handleClaim(s.id)}>Claim</Button>
                       </div>
                     )}
 
                     {/* Manager: approve / deny for claimed swaps */}
                     {canHandle && s.status === 'claimed' && (
                       <>
-                        <button
-                          className="wf-btn wf-btn-success"
-                          onClick={() => handleAction(s.id, 'approve')}
-                        >Approve</button>
-                        <button
-                          className="wf-btn wf-btn-danger"
-                          onClick={() => handleAction(s.id, 'deny')}
-                        >Deny</button>
+                        <Button size="compact" variant="primary" onClick={() => handleAction(s.id, 'approve')}>Approve</Button>
+                        <Button size="compact" variant="danger" onClick={() => handleAction(s.id, 'deny')}>Deny</Button>
                       </>
                     )}
 
                     {/* Cancel: open or claimed */}
                     {(s.status === 'open' || s.status === 'claimed') && (
-                      <button
-                        className="wf-btn wf-btn-danger"
-                        onClick={() => handleAction(s.id, 'cancel')}
-                      >Cancel</button>
+                      <Button size="compact" variant="danger" onClick={() => handleAction(s.id, 'cancel')}>Cancel</Button>
                     )}
                   </div>
                 </div>
@@ -302,7 +292,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
           <section className="wf-swap-form-section">
             <h3 className="wf-section-title">Offer a Swap</h3>
             <form onSubmit={handleSubmit} className="wf-swap-form">
-              {formError && <div className="wf-error">{formError}</div>}
+              {formError && <InlineNotice tone="danger" title="The swap offer could not be created.">{formError}</InlineNotice>}
               <div className="wf-form-row">
                 <label className="wf-label">Shift
                   <select
@@ -317,15 +307,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
                     ))}
                   </select>
                 </label>
-                <label className="wf-label">Date
-                  <input
-                    className="wf-input"
-                    type="date"
-                    value={formDate}
-                    onChange={e => setFormDate(e.target.value)}
-                    required
-                  />
-                </label>
+                <DateField label="Date" value={formDate} onChange={setFormDate} required />
               </div>
               <label className="wf-label">Notes (optional)
                 <textarea
@@ -335,9 +317,7 @@ export default function SwapBoardPage({ slug, perms }: Props) {
                   rows={2}
                 />
               </label>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Offering...' : 'Offer swap'}
-              </button>
+              <Button type="submit" variant="primary" loading={submitting} loadingLabel="Offering swap…">Offer swap</Button>
             </form>
           </section>
         )}

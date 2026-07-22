@@ -5,6 +5,8 @@ import clockInHandler from '../../netlify/functions/workforce-me-clock-in';
 import clockOutHandler from '../../netlify/functions/workforce-me-clock-out';
 import startBreakHandler from '../../netlify/functions/workforce-me-start-break';
 import endBreakHandler from '../../netlify/functions/workforce-me-end-break';
+import attendanceRecoveryHandler from '../../netlify/functions/workforce-me-attendance-recovery';
+import reviewAttendanceRecoveryHandler from '../../netlify/functions/workforce-attendance-recovery';
 import workLocationsHandler from '../../netlify/functions/workforce-work-locations';
 import { makeBucketUserRequest, randName, seedWorkforceClient } from './_helpers';
 
@@ -110,5 +112,66 @@ describe('workforce self-service geofenced time clock', () => {
     const clockOut = await clockOutHandler(req(ctx, 'POST', '/api/workforce/me/clock-out', {}));
     expect(clockOut.status).toBe(200);
     expect((await clockOut.json()).punch.punched_out_at).not.toBeNull();
+  });
+
+  it('replays an idempotent clock-in and lets a manager approve a geofence recovery with its evidence', async () => {
+    const ctx = await seedWorkforceClient();
+    await linkEmployee(ctx);
+    await workLocationsHandler(req(ctx, 'POST', '/api/workforce/work-locations', {
+      name: randName('Store'),
+      latitude: 12.9716,
+      longitude: 77.5946,
+      radius_meters: 120,
+      min_accuracy_meters: 80,
+      applies_to_all: true,
+    }));
+
+    const commandKey = randName('clock-command');
+    const firstClockIn = await clockInHandler(req(ctx, 'POST', '/api/workforce/me/clock-in', {
+      latitude: 12.97161,
+      longitude: 77.59461,
+      accuracy_meters: 20,
+      idempotency_key: commandKey,
+    }));
+    expect(firstClockIn.status).toBe(201);
+    const replay = await clockInHandler(req(ctx, 'POST', '/api/workforce/me/clock-in', {
+      latitude: 12.97161,
+      longitude: 77.59461,
+      accuracy_meters: 20,
+      idempotency_key: commandKey,
+    }));
+    expect(replay.status).toBe(200);
+    expect((await replay.json()).replayed).toBe(true);
+    await clockOutHandler(req(ctx, 'POST', '/api/workforce/me/clock-out', {}));
+
+    const recovery = await attendanceRecoveryHandler(req(ctx, 'POST', '/api/workforce/me/attendance-recovery', {
+      failure_code: 'outside_geofence',
+      reason: 'Working at a temporary client site approved by the shift lead.',
+      request_key: randName('recovery-command'),
+      latitude: 13.05,
+      longitude: 77.7,
+      accuracy_meters: 20,
+    }));
+    expect(recovery.status).toBe(201);
+    const recoveryBody = await recovery.json() as { recovery: { id: string; status: string; geofence_result: string } };
+    expect(recoveryBody.recovery.status).toBe('pending');
+    expect(recoveryBody.recovery.geofence_result).toBe('failed');
+
+    const approved = await reviewAttendanceRecoveryHandler(req(ctx, 'PATCH', `/api/workforce/attendance-recovery/${recoveryBody.recovery.id}`, {
+      action: 'approve',
+      resolution_note: 'Temporary site confirmed with the shift lead.',
+    }));
+    expect(approved.status).toBe(200);
+    expect((await approved.json()).recovery.status).toBe('approved');
+    const overridden = await sql`
+      SELECT p.id, e.metadata->>'attendance_recovery_id' AS recovery_id
+      FROM public.workforce_punches p
+      JOIN public.workforce_time_clock_events e ON e.punch_id = p.id
+      WHERE p.client_id = ${ctx.clientId}::uuid
+        AND p.resource_id = ${ctx.resourceId}::uuid
+        AND p.notes LIKE 'Supervisor override:%'
+    `;
+    expect(overridden).toHaveLength(1);
+    expect(overridden[0]!.recovery_id).toBe(recoveryBody.recovery.id);
   });
 });

@@ -8,6 +8,8 @@ import {
   type PayrollLineItem,
   type PayrollRate,
   type PayrollExport,
+  type PayrollSnapshot,
+  type PayrollDispute,
   type Payslip,
   type StaffResource,
 } from '../../shared/api';
@@ -17,6 +19,9 @@ import {
   TeamEmployeePicker,
   TeamStatusCard,
 } from '../components/TeamBridge';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 interface Props {
@@ -28,9 +33,15 @@ export default function PayrollPage({ slug, perms }: Props) {
   const [periods, setPeriods] = useState<PayrollPeriod[] | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null);
   const [lineItems, setLineItems] = useState<PayrollLineItem[]>([]);
+  const [snapshot, setSnapshot] = useState<PayrollSnapshot | null>(null);
   const [rates, setRates] = useState<PayrollRate[] | null>(null);
   const [exports, setExports] = useState<PayrollExport[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [disputes, setDisputes] = useState<PayrollDispute[]>([]);
+  const [disputeSubjectId, setDisputeSubjectId] = useState('');
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeError, setDisputeError] = useState('');
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false);
   const [staff, setStaff] = useState<StaffResource[]>([]);
   const [error, setError] = useState('');
   const [exportFormat, setExportFormat] = useState<PayrollExport['export_format']>('csv');
@@ -55,6 +66,7 @@ export default function PayrollPage({ slug, perms }: Props) {
   const canApprove = perms.has('workforce.payroll.edit');
 
   async function loadPeriods() {
+    setPeriods(null);
     setError('');
     try {
       const data = await workforceApi.listPayrollPeriods();
@@ -65,11 +77,12 @@ export default function PayrollPage({ slug, perms }: Props) {
   }
 
   async function loadRates() {
+    setRates(null);
     try {
       const data = await workforceApi.listPayrollRates();
       setRates(data.rates);
     } catch {
-      // noop
+      setError('Could not load payroll rates.');
     }
   }
 
@@ -82,17 +95,23 @@ export default function PayrollPage({ slug, perms }: Props) {
   async function selectPeriod(p: PayrollPeriod) {
     setSelectedPeriod(p);
     setLineItems([]);
+    setSnapshot(null);
     setExports([]);
     setPayslips([]);
+    setDisputes([]);
     try {
-      const [data, exportData] = await Promise.all([
+      const [data, exportData, disputeData] = await Promise.all([
         workforceApi.getPayrollPeriod(p.id),
         workforceApi.listPayrollExports(p.id),
+        workforceApi.listPayrollDisputes(p.id),
       ]);
       setSelectedPeriod(data.period);
       setLineItems(data.line_items);
+      setSnapshot(data.snapshot);
+      setDisputeSubjectId(data.line_items[0]?.user_node_id ?? '');
       setExports(exportData.exports);
       setPayslips(exportData.payslips);
+      setDisputes(disputeData.disputes);
     } catch {
       setError('Failed to load period detail.');
     }
@@ -122,10 +141,36 @@ export default function PayrollPage({ slug, perms }: Props) {
     try {
       const data = await workforceApi.approvePayrollPeriod(selectedPeriod.id);
       setSelectedPeriod(data.period);
+      setSnapshot(data.snapshot);
+      setLineItems(data.snapshot.lines);
       await loadPeriods();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to approve period.';
       setError(msg);
+    }
+  }
+
+  async function handleCreateDispute(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedPeriod || !disputeSubjectId || !disputeReason.trim()) {
+      setDisputeError('Select an employee and describe the issue.');
+      return;
+    }
+    setDisputeSubmitting(true);
+    setDisputeError('');
+    try {
+      await workforceApi.createPayrollDispute({
+        period_id: selectedPeriod.id,
+        user_node_id: disputeSubjectId,
+        reason: disputeReason.trim(),
+      });
+      setDisputeReason('');
+      const data = await workforceApi.listPayrollDisputes(selectedPeriod.id);
+      setDisputes(data.disputes);
+    } catch (err: unknown) {
+      setDisputeError(err instanceof Error ? err.message : 'Could not record the dispute.');
+    } finally {
+      setDisputeSubmitting(false);
     }
   }
 
@@ -179,29 +224,33 @@ export default function PayrollPage({ slug, perms }: Props) {
 
   const currentRateUsers = new Set((rates ?? []).map(r => r.user_node_id));
   const missingRateCount = lineItems.filter(li => !currentRateUsers.has(li.user_node_id)).length;
-  const canExportSelected = !!selectedPeriod && lineItems.length > 0 && missingRateCount === 0;
+  const canExportSelected = !!selectedPeriod && selectedPeriod.status === 'approved' && snapshot?.status === 'frozen' && lineItems.length > 0;
 
   return (
     <div className="wf-page">
       <WorkforceNav slug={slug} active="payroll" />
 
       <div className="wf-payroll-layout">
+        <div className="wf-page-heading">
+          <div><h1>Payroll</h1><p>Prepare approved time, maintain rates, and generate payroll records without executing payments.</p></div>
+        </div>
         {/* Notice banner */}
         <div className="wf-payroll-notice">
           PAYROLL TRACKING ONLY — no payment execution. Use this module to track rates and approved
           period totals; payments must be processed through your payroll provider.
         </div>
 
-        {error && <div className="wf-error">{error}</div>}
+        {error && periods === null && <ErrorState title="Could not load payroll." action={<Button size="compact" onClick={() => { void loadPeriods(); void loadRates(); }}>Try again</Button>}>{error}</ErrorState>}
+        {error && periods !== null && <InlineNotice tone="danger" title="A payroll action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
 
         <div className="wf-payroll-cols">
           {/* Left: Periods */}
           <div className="wf-payroll-section">
             <h3 className="wf-section-title">Payroll Periods</h3>
 
-            {periods === null && <div className="wf-loading">Loading periods…</div>}
+            {periods === null && !error && <LoadingState title="Loading payroll periods…" />}
             {periods !== null && periods.length === 0 && (
-              <div className="wf-empty">No payroll periods yet.</div>
+              <EmptyState title="No payroll periods yet." />
             )}
 
             {periods !== null && periods.length > 0 && (
@@ -239,7 +288,7 @@ export default function PayrollPage({ slug, perms }: Props) {
                 </h4>
 
                 {lineItems.length === 0 && (
-                  <div className="wf-empty">No approved timesheet entries for this period.</div>
+                  <EmptyState title="No approved timesheet entries for this period." />
                 )}
 
                 {lineItems.length > 0 && (
@@ -288,12 +337,20 @@ export default function PayrollPage({ slug, perms }: Props) {
                     <span>{selectedPeriod.status === 'approved' ? 'Locked' : 'Draft'}</span>
                     <strong>Period approval</strong>
                   </div>
+                  <div className={snapshot?.status === 'frozen' ? 'wf-ready-row ok' : 'wf-ready-row warn'}>
+                    <span>{snapshot?.status === 'frozen' ? 'Frozen' : 'Preview'}</span>
+                    <strong>Payroll calculation</strong>
+                  </div>
                 </div>
 
+                <p className="wf-muted-copy">
+                  {snapshot?.status === 'frozen'
+                    ? 'This period is frozen. Exports and payslips use the recorded time and rates shown here.'
+                    : 'Draft totals are a live preview and can change until this period is approved.'}
+                </p>
+
                 {canApprove && selectedPeriod.status === 'draft' && (
-                  <button className="wf-btn wf-btn-success" onClick={() => void handleApprovePeriod()}>
-                    Approve Period
-                  </button>
+                  <Button variant="primary" onClick={() => void handleApprovePeriod()}>Approve Period</Button>
                 )}
 
                 <div className="wf-payroll-export-box">
@@ -301,7 +358,7 @@ export default function PayrollPage({ slug, perms }: Props) {
                     <div className="wf-section-title" style={{ fontSize: '0.9rem' }}>Export Register</div>
                     <p className="wf-muted-copy">Generate an export batch and draft payslips for review. This does not execute payroll.</p>
                   </div>
-                  {exportError && <div className="wf-error">{exportError}</div>}
+                  {exportError && <InlineNotice tone="danger" title="The export could not be generated.">{exportError}</InlineNotice>}
                   <div className="wf-form-row">
                     <label className="wf-label">Format
                       <select className="wf-select" value={exportFormat} onChange={e => setExportFormat(e.target.value as PayrollExport['export_format'])}>
@@ -311,9 +368,7 @@ export default function PayrollPage({ slug, perms }: Props) {
                       </select>
                     </label>
                     {canCreate && (
-                      <button className="wf-btn wf-btn-primary" type="button" disabled={!canExportSelected || exporting} onClick={() => void handleGenerateExport()}>
-                        {exporting ? 'Generating...' : 'Generate export'}
-                      </button>
+                      <Button type="button" variant="primary" disabled={!canExportSelected} loading={exporting} loadingLabel="Generating export…" onClick={() => void handleGenerateExport()}>Generate export</Button>
                     )}
                   </div>
                   {exports.length > 0 && (
@@ -342,6 +397,36 @@ export default function PayrollPage({ slug, perms }: Props) {
                     </div>
                   )}
                 </div>
+
+                {selectedPeriod.status === 'approved' && snapshot?.status === 'frozen' && (
+                  <section className="wf-payroll-disputes">
+                    <div>
+                      <div className="wf-section-title" style={{ fontSize: '0.9rem' }}>Dispute Register</div>
+                      <p className="wf-muted-copy">Record a discrepancy for review. Resolving it never rewrites this approved payroll snapshot.</p>
+                    </div>
+                    {disputes.length > 0 && (
+                      <div className="wf-payroll-export-list">
+                        {disputes.map(dispute => (
+                          <div key={dispute.id} className="wf-payroll-export-row">
+                            <span>{dispute.subject_name ?? findTeamMember(staff, dispute.user_node_id)?.display_name ?? 'Employee'}</span>
+                            <span>{dispute.status.replace('_', ' ')}</span>
+                            <strong>{dispute.reason}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {canCreate && (
+                      <form onSubmit={(e) => void handleCreateDispute(e)} className="wf-payroll-form">
+                        {disputeError && <InlineNotice tone="danger" title="The dispute could not be recorded.">{disputeError}</InlineNotice>}
+                        <TeamEmployeePicker label="Employee" value={disputeSubjectId} onChange={setDisputeSubjectId} members={teamMembersFromResources(staff)} required />
+                        <label className="wf-label">What needs review?
+                          <textarea className="wf-textarea" value={disputeReason} onChange={e => setDisputeReason(e.target.value)} required />
+                        </label>
+                        <Button type="submit" variant="secondary" loading={disputeSubmitting} loadingLabel="Recording dispute…">Record dispute</Button>
+                      </form>
+                    )}
+                  </section>
+                )}
               </div>
             )}
 
@@ -350,30 +435,12 @@ export default function PayrollPage({ slug, perms }: Props) {
               <section>
                 <h4 className="wf-section-title" style={{ fontSize: '0.9rem' }}>New Period</h4>
                 <form onSubmit={(e) => void handleCreatePeriod(e)} className="wf-payroll-form">
-                  {periodFormError && <div className="wf-error">{periodFormError}</div>}
+                  {periodFormError && <InlineNotice tone="danger" title="The payroll period could not be created.">{periodFormError}</InlineNotice>}
                   <div className="wf-form-row">
-                    <label className="wf-label">Start date
-                      <input
-                        className="wf-input"
-                        type="date"
-                        value={formStart}
-                        onChange={e => setFormStart(e.target.value)}
-                        required
-                      />
-                    </label>
-                    <label className="wf-label">End date
-                      <input
-                        className="wf-input"
-                        type="date"
-                        value={formEnd}
-                        onChange={e => setFormEnd(e.target.value)}
-                        required
-                      />
-                    </label>
+                    <DateField label="Start date" value={formStart} onChange={setFormStart} required />
+                    <DateField label="End date" value={formEnd} onChange={setFormEnd} required />
                   </div>
-                  <button className="wf-btn wf-btn-primary" type="submit" disabled={periodSubmitting}>
-                    {periodSubmitting ? 'Creating…' : 'Create period'}
-                  </button>
+                  <Button type="submit" variant="primary" loading={periodSubmitting} loadingLabel="Creating period…">Create period</Button>
                 </form>
               </section>
             )}
@@ -383,9 +450,9 @@ export default function PayrollPage({ slug, perms }: Props) {
           <div className="wf-payroll-section">
             <h3 className="wf-section-title">Hourly Rates</h3>
 
-            {rates === null && <div className="wf-loading">Loading rates…</div>}
+            {rates === null && !error && <LoadingState title="Loading hourly rates…" />}
             {rates !== null && rates.length === 0 && (
-              <div className="wf-empty">No rates configured yet.</div>
+              <EmptyState title="No rates configured yet." />
             )}
 
             {rates !== null && rates.length > 0 && (
@@ -416,7 +483,7 @@ export default function PayrollPage({ slug, perms }: Props) {
               <section>
                 <h4 className="wf-section-title" style={{ fontSize: '0.9rem' }}>Set Rate</h4>
                 <form onSubmit={(e) => void handleSetRate(e)} className="wf-payroll-form">
-                  {rateFormError && <div className="wf-error">{rateFormError}</div>}
+                  {rateFormError && <InlineNotice tone="danger" title="The hourly rate could not be saved.">{rateFormError}</InlineNotice>}
                   <TeamEmployeePicker
                     label="Team user"
                     value={rateUserNodeId}
@@ -440,15 +507,7 @@ export default function PayrollPage({ slug, perms }: Props) {
                         required
                       />
                     </label>
-                    <label className="wf-label">Effective from
-                      <input
-                        className="wf-input"
-                        type="date"
-                        value={rateEffective}
-                        onChange={e => setRateEffective(e.target.value)}
-                        required
-                      />
-                    </label>
+                    <DateField label="Effective from" value={rateEffective} onChange={setRateEffective} required />
                   </div>
                   <label className="wf-label">Notes (optional)
                     <input
@@ -458,9 +517,7 @@ export default function PayrollPage({ slug, perms }: Props) {
                       onChange={e => setRateNotes(e.target.value)}
                     />
                   </label>
-                  <button className="wf-btn wf-btn-primary" type="submit" disabled={rateSubmitting}>
-                    {rateSubmitting ? 'Saving…' : 'Set rate'}
-                  </button>
+                  <Button type="submit" variant="primary" loading={rateSubmitting} loadingLabel="Saving rate…">Set rate</Button>
                 </form>
               </section>
             )}

@@ -15,6 +15,9 @@ import {
   TeamEmployeePicker,
   TeamStatusCard,
 } from '../components/TeamBridge';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 interface Props {
@@ -387,9 +390,9 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
             </select>
           </label>
 
-          {directoryLoading && <div className="wf-emp-loading">Loading employee directory...</div>}
+          {directoryLoading && <LoadingState title="Loading employee directory…" />}
           {!directoryLoading && employees.length === 0 && (
-            <div className="wf-emp-empty wf-emp-empty-compact">No Team users found for this workspace.</div>
+            <EmptyState title="No Team users found for this workspace." />
           )}
           {!directoryLoading && employees.length > 0 && (
             <div className="wf-emp-roster-list">
@@ -425,12 +428,12 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
 
         <section className="wf-emp-detail" aria-label={selectedDisplayName ? `${selectedDisplayName} employee profile` : 'Employee profile'}>
           {!selectedEmployee && !directoryLoading && (
-            <div className="wf-emp-empty wf-emp-empty-panel">Select an employee from the roster to view or complete their profile.</div>
+            <EmptyState title="Select an employee to view or complete their profile." />
           )}
 
           {selectedEmployee && (
             <div className="wf-emp-layout">
-              {error && <div className="wf-error">{error}</div>}
+              {error && <InlineNotice tone="danger" title="The employee profile could not be loaded.">{error}</InlineNotice>}
 
               <div className="wf-emp-selected-banner">
                 <span className="wf-emp-avatar wf-emp-avatar-large" aria-hidden="true">{employeeInitials(selectedDisplayName)}</span>
@@ -518,7 +521,7 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
               <section className="wf-emp-card">
             <div className="wf-emp-card-title">Master Profile</div>
             <form className="wf-employee-form" onSubmit={handleSave}>
-              {formError && <div className="wf-error">{formError}</div>}
+              {formError && <InlineNotice tone="danger" title="The employee profile could not be saved.">{formError}</InlineNotice>}
               <div className="wf-form-row">
                 <TeamEmployeePicker
                   label="Linked Team user"
@@ -565,12 +568,8 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                 </label>
               </div>
               <div className="wf-form-row">
-                <label className="wf-label">Hire date
-                  <input className="wf-input" type="date" value={form.hire_date} onChange={e => setForm(prev => ({ ...prev, hire_date: e.target.value }))} />
-                </label>
-                <label className="wf-label">Termination date
-                  <input className="wf-input" type="date" value={form.termination_date} onChange={e => setForm(prev => ({ ...prev, termination_date: e.target.value }))} />
-                </label>
+                <DateField label="Hire date" value={form.hire_date} onChange={value => setForm(prev => ({ ...prev, hire_date: value }))} />
+                <DateField label="Termination date" value={form.termination_date} onChange={value => setForm(prev => ({ ...prev, termination_date: value }))} />
                 <label className="wf-label">Primary email
                   <input className="wf-input" type="email" value={form.primary_email} onChange={e => setForm(prev => ({ ...prev, primary_email: e.target.value }))} />
                 </label>
@@ -590,18 +589,16 @@ export default function EmployeeDashboardPage({ slug, perms }: Props) {
                 </label>
               </div>
               {canSave ? (
-                <button className="wf-btn wf-btn-primary" type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save employee profile'}
-                </button>
+                <Button type="submit" variant="primary" loading={saving} loadingLabel="Saving profile…">Save employee profile</Button>
               ) : (
                 <div className="wf-emp-stat-label">You can view employee profiles, but cannot edit them.</div>
               )}
             </form>
               </section>
 
-              {selectedResourceId && loading && <div className="wf-emp-loading">Loading operational profile...</div>}
+              {selectedResourceId && loading && <LoadingState title="Loading operational profile…" />}
               {!selectedResourceId && (
-                <div className="wf-emp-empty">Save this employee profile to create their operational Workforce resource.</div>
+                <EmptyState title="This employee does not have a Workforce resource yet.">Save the profile to create its operational Workforce resource.</EmptyState>
               )}
               {selectedResourceId && !loading && !error && profile && (
                 <div className="wf-emp-grid">

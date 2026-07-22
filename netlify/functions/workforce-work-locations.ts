@@ -3,12 +3,15 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
 import { numberValue, readJsonObject } from './_workforce-self-time';
+import { recordSensitiveAccess, requireSensitiveAccess } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/work-locations' };
 
 async function handleGet(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.employees.edit']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'location_history');
+  if (accessBasis instanceof Response) return accessBasis;
 
   const locations = await db()`
     SELECT
@@ -33,12 +36,15 @@ async function handleGet(req: Request): Promise<Response> {
     GROUP BY wl.id
     ORDER BY wl.active DESC, wl.name ASC
   ` as unknown[];
+  await recordSensitiveAccess(a.ctx, 'location_history', '/api/workforce/work-locations', accessBasis);
   return jsonOk({ locations });
 }
 
 async function handlePost(req: Request): Promise<Response> {
   const a = await requireWorkforce(req, ['workforce.employees.edit']);
   if (!a.ok) return a.res;
+  const accessBasis = await requireSensitiveAccess(a.ctx, 'location_history');
+  if (accessBasis instanceof Response) return accessBasis;
 
   const body = await readJsonObject(req);
   if (body instanceof Response) return body;
@@ -85,6 +91,7 @@ async function handlePost(req: Request): Promise<Response> {
       ${userNodeId}::uuid
     )
   `;
+  await recordSensitiveAccess(a.ctx, 'location_history', '/api/workforce/work-locations', accessBasis, userNodeId);
   return jsonOk({ location }, { status: 201 });
 }
 

@@ -55,6 +55,56 @@ export interface TeamMember {
   login_disabled: boolean;
 }
 
+export type ApprovalRequestType = 'leave' | 'overtime' | 'shift_swap' | 'time_correction' | 'attendance_recovery' | 'payroll';
+
+export interface ApprovalPolicy {
+  id: string;
+  request_type: ApprovalRequestType;
+  primary_approver_user_node_id: string | null;
+  response_target_hours: number;
+  active: boolean;
+}
+
+export interface ApprovalDelegation {
+  id: string;
+  request_type: ApprovalRequestType;
+  owner_user_node_id: string;
+  delegate_user_node_id: string;
+  owner_name: string;
+  delegate_name: string;
+  starts_at: string;
+  ends_at: string | null;
+  reason: string;
+  revoked_at: string | null;
+}
+
+export interface ApprovalInboxItem {
+  request_type: ApprovalRequestType;
+  request_id: string;
+  resource_id: string | null;
+  resource_name: string | null;
+  summary: string;
+  created_at: string;
+  owner_user_node_id: string | null;
+  owner_name: string | null;
+  response_target_hours: number | null;
+  due_at: string;
+  delegated_to_me: boolean;
+}
+
+export type SensitiveDataScope = 'profile' | 'compensation' | 'location_history';
+
+export interface SensitiveDataGrant {
+  id: string;
+  user_node_id: string;
+  user_name: string;
+  data_scope: SensitiveDataScope;
+  reason: string;
+  active: boolean;
+  revoked_at: string | null;
+  created_at: string;
+}
+
 export interface Shift {
   id: string;
   resource_id: string;
@@ -64,6 +114,29 @@ export interface Shift {
   weekday: number;
   start_time: string;
   end_time: string;
+}
+
+export interface PublishedScheduleShift {
+  id: string;
+  resource_id: string;
+  resource_name: string;
+  user_node_id: string | null;
+  user_display_name: string | null;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface SchedulePublication {
+  version: {
+    id: string;
+    week_start: string;
+    status: 'published';
+    acknowledgement_required: boolean;
+    published_at: string;
+  } | null;
+  shifts: PublishedScheduleShift[];
+  notice_summary: { recipients: number; acknowledged: number };
 }
 
 export type ProjectStatus = 'quoted' | 'active' | 'done';
@@ -258,6 +331,7 @@ export interface PayrollPeriod {
   period_end: string;
   status: 'draft' | 'approved';
   total_amount: number | null;
+  snapshot_id?: string | null;
   created_by: string | null;
   approved_by: string | null;
   approved_at: string | null;
@@ -269,6 +343,15 @@ export interface PayrollLineItem {
   hours: number;
   hourly_rate: number;
   amount: number;
+  source_evidence?: unknown[];
+}
+
+export interface PayrollSnapshot {
+  id: string;
+  status: 'building' | 'frozen';
+  total_amount: number;
+  frozen_at: string | null;
+  lines: PayrollLineItem[];
 }
 
 export interface TrainingCourse {
@@ -389,6 +472,7 @@ export interface EmployeeDirectoryEntry {
   hire_date: string | null;
   termination_date: string | null;
   manager_user_node_id: string | null;
+  can_view_sensitive: boolean;
   primary_email: string | null;
   primary_phone: string | null;
   emergency_contact: Record<string, unknown> | null;
@@ -445,6 +529,25 @@ export interface TimeClockEvent {
   created_at: string;
 }
 
+export interface AttendanceRecoveryRequest {
+  id: string;
+  resource_id: string;
+  user_node_id: string;
+  resource_name: string;
+  work_location_name: string | null;
+  action: 'clock_in';
+  status: 'pending' | 'approved' | 'denied' | 'cancelled';
+  failure_code: string;
+  employee_reason: string;
+  attempted_at: string;
+  accuracy_meters: number | null;
+  distance_meters: number | null;
+  geofence_result: string | null;
+  resolution_note: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 export interface TimeCorrection {
   id: string;
   punch_id: string | null;
@@ -456,6 +559,9 @@ export interface TimeCorrection {
   status: 'pending' | 'approved' | 'denied';
   reviewed_by: string | null;
   reviewed_at: string | null;
+  resolution_note?: string | null;
+  payable_time_entry_id?: string | null;
+  applied_at?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -464,6 +570,7 @@ export interface TimeCorrection {
 export interface PayrollExport {
   id: string;
   period_id: string;
+  snapshot_id?: string | null;
   export_format: 'csv' | 'json' | 'provider';
   status: 'draft' | 'generated' | 'sent' | 'void';
   total_amount: number | string;
@@ -479,6 +586,8 @@ export interface Payslip {
   id: string;
   export_id: string | null;
   period_id: string;
+  snapshot_id?: string | null;
+  snapshot_line_id?: string | null;
   user_node_id: string;
   gross_amount: number | string;
   tax_amount: number | string;
@@ -490,6 +599,23 @@ export interface Payslip {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+export interface PayrollDispute {
+  id: string;
+  period_id: string;
+  snapshot_id: string;
+  payslip_id: string | null;
+  user_node_id: string;
+  reason: string;
+  status: 'open' | 'under_review' | 'resolved' | 'rejected';
+  resolution_note: string | null;
+  submitted_by: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  subject_name?: string | null;
 }
 
 export interface ComplianceRequirement {
@@ -578,6 +704,14 @@ export const workforceApi = {
 
   deleteShift(id: string): Promise<void> {
     return call(`/api/workforce/shift/${id}`, { method: 'DELETE' });
+  },
+
+  getSchedulePublication(week_start: string): Promise<SchedulePublication> {
+    return call(`/api/workforce/schedule-publication?week_start=${encodeURIComponent(week_start)}`);
+  },
+
+  publishSchedule(data: { week_start: string; acknowledgement_required: boolean }): Promise<SchedulePublication> {
+    return call('/api/workforce/schedule-publication', json(data));
   },
 
   listProjects(status?: string): Promise<{ projects: Project[] }> {
@@ -793,12 +927,12 @@ export const workforceApi = {
     return call<{ period: PayrollPeriod }>('/api/workforce/payroll', { method: 'POST', body: JSON.stringify(data) });
   },
 
-  getPayrollPeriod(id: string): Promise<{ period: PayrollPeriod; line_items: PayrollLineItem[] }> {
-    return call<{ period: PayrollPeriod; line_items: PayrollLineItem[] }>(`/api/workforce/payroll/${id}`);
+  getPayrollPeriod(id: string): Promise<{ period: PayrollPeriod; line_items: PayrollLineItem[]; snapshot: PayrollSnapshot | null }> {
+    return call<{ period: PayrollPeriod; line_items: PayrollLineItem[]; snapshot: PayrollSnapshot | null }>(`/api/workforce/payroll/${id}`);
   },
 
-  approvePayrollPeriod(id: string): Promise<{ period: PayrollPeriod }> {
-    return call<{ period: PayrollPeriod }>(`/api/workforce/payroll/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'approve' }) });
+  approvePayrollPeriod(id: string): Promise<{ period: PayrollPeriod; snapshot: PayrollSnapshot }> {
+    return call<{ period: PayrollPeriod; snapshot: PayrollSnapshot }>(`/api/workforce/payroll/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'approve' }) });
   },
 
   deletePayrollPeriod(id: string): Promise<void> {
@@ -822,6 +956,19 @@ export const workforceApi = {
 
   generatePayrollExport(data: { period_id: string; export_format?: PayrollExport['export_format']; metadata?: Record<string, unknown> }): Promise<{ export: PayrollExport; payslips: Payslip[] }> {
     return call<{ export: PayrollExport; payslips: Payslip[] }>('/api/workforce/payroll-export', json(data));
+  },
+
+  listPayrollDisputes(period_id?: string): Promise<{ disputes: PayrollDispute[] }> {
+    const q = period_id ? `?period_id=${encodeURIComponent(period_id)}` : '';
+    return call<{ disputes: PayrollDispute[] }>(`/api/workforce/payroll-disputes${q}`);
+  },
+
+  createPayrollDispute(data: { period_id: string; user_node_id?: string; payslip_id?: string; reason: string }): Promise<{ dispute: PayrollDispute }> {
+    return call<{ dispute: PayrollDispute }>('/api/workforce/payroll-disputes', json(data));
+  },
+
+  updatePayrollDispute(id: string, data: { action: 'start_review' | 'resolve' | 'reject'; resolution_note?: string }): Promise<{ dispute: PayrollDispute }> {
+    return call<{ dispute: PayrollDispute }>(`/api/workforce/payroll-dispute/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   },
 
   listTrainingCourses(): Promise<{ courses: TrainingCourse[] }> {
@@ -950,6 +1097,34 @@ export const workforceApi = {
     return call<{ employees: EmployeeDirectoryEntry[] }>('/api/workforce/employees-directory');
   },
 
+  getApprovalRouting(): Promise<{ policies: ApprovalPolicy[]; delegations: ApprovalDelegation[] }> {
+    return call('/api/workforce/approval-routing');
+  },
+
+  saveApprovalPolicy(data: { request_type: ApprovalRequestType; primary_approver_user_node_id?: string | null; response_target_hours: number; active?: boolean }): Promise<{ policy: ApprovalPolicy }> {
+    return call('/api/workforce/approval-routing', { method: 'POST', body: JSON.stringify({ kind: 'policy', ...data }) });
+  },
+
+  createApprovalDelegation(data: { request_type: ApprovalRequestType; owner_user_node_id: string; delegate_user_node_id: string; ends_at?: string | null; reason: string }): Promise<{ delegation: ApprovalDelegation }> {
+    return call('/api/workforce/approval-routing', { method: 'POST', body: JSON.stringify({ kind: 'delegation', ...data }) });
+  },
+
+  revokeApprovalDelegation(id: string): Promise<void> {
+    return call(`/api/workforce/approval-routing?delegation_id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  listApprovalInbox(): Promise<{ items: ApprovalInboxItem[] }> {
+    return call('/api/workforce/approval-inbox');
+  },
+
+  listSensitiveDataGrants(): Promise<{ grants: SensitiveDataGrant[] }> {
+    return call('/api/workforce/sensitive-access');
+  },
+
+  saveSensitiveDataGrant(data: { user_node_id: string; data_scope: SensitiveDataScope; reason: string; active?: boolean }): Promise<{ grant: SensitiveDataGrant }> {
+    return call('/api/workforce/sensitive-access', { method: 'POST', body: JSON.stringify(data) });
+  },
+
   saveEmployeeMaster(data: {
     resource_id?: string | null;
     user_node_id?: string | null;
@@ -991,6 +1166,14 @@ export const workforceApi = {
     return call<{ events: TimeClockEvent[]; corrections: TimeCorrection[] }>(`/api/workforce/time-ledger${q}`);
   },
 
+  listAttendanceRecoveryRequests(status = 'pending'): Promise<{ requests: AttendanceRecoveryRequest[] }> {
+    return call<{ requests: AttendanceRecoveryRequest[] }>(`/api/workforce/attendance-recoveries?status=${encodeURIComponent(status)}`);
+  },
+
+  reviewAttendanceRecovery(id: string, data: { action: 'approve' | 'deny'; resolution_note: string; clock_in_at?: string }): Promise<{ recovery: AttendanceRecoveryRequest }> {
+    return call<{ recovery: AttendanceRecoveryRequest }>(`/api/workforce/attendance-recovery/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  },
+
   appendTimeLedgerEvent(data: {
     resource_id: string;
     user_node_id?: string | null;
@@ -1013,6 +1196,15 @@ export const workforceApi = {
     notes?: string | null;
   }): Promise<{ correction: TimeCorrection }> {
     return call<{ correction: TimeCorrection }>('/api/workforce/time-ledger', json({ kind: 'correction', ...data }));
+  },
+
+  reviewTimeCorrection(id: string, data: {
+    action: 'approve' | 'deny';
+    resolution_note: string;
+    work_date?: string;
+    minutes?: number;
+  }): Promise<{ correction: TimeCorrection }> {
+    return call<{ correction: TimeCorrection }>(`/api/workforce/time-correction/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   },
 
   generateAiPlan: (project_id: string, description: string) =>

@@ -5,6 +5,7 @@ import { jsonOk, jsonError } from './_shared/http';
 import { db } from './_shared/db';
 import { requireWorkforce } from './_workforce-authz';
 import { jsonBodyField, nullableStringField, optionalUuidField, optionalUuidParam, readJson, resourceExists, stringField } from './_workforce-depth-utils';
+import { recordSensitiveAccess, requireSensitiveAccess } from './_workforce-privacy';
 
 export const config = { path: '/api/workforce/time-ledger' };
 
@@ -14,14 +15,28 @@ async function handleGet(req: Request): Promise<Response> {
 
   const resourceId = optionalUuidParam(new URL(req.url).searchParams.get('resource_id'), 'resource_id');
   if (resourceId instanceof Response) return resourceId;
-  const events = await db()`
-    SELECT *
-    FROM public.workforce_time_clock_events
-    WHERE client_id = ${a.ctx.clientId}::uuid
-      AND (${resourceId}::uuid IS NULL OR resource_id = ${resourceId}::uuid)
-    ORDER BY occurred_at DESC, created_at DESC
-    LIMIT 200
-  ` as unknown[];
+  const includeLocation = new URL(req.url).searchParams.get('include_location') === 'true';
+  const locationBasis = includeLocation ? await requireSensitiveAccess(a.ctx, 'location_history') : null;
+  if (locationBasis instanceof Response) return locationBasis;
+  const events = includeLocation
+    ? await db()`
+      SELECT *
+      FROM public.workforce_time_clock_events
+      WHERE client_id = ${a.ctx.clientId}::uuid
+        AND (${resourceId}::uuid IS NULL OR resource_id = ${resourceId}::uuid)
+      ORDER BY occurred_at DESC, created_at DESC
+      LIMIT 200
+    ` as unknown[]
+    : await db()`
+      SELECT
+        id, client_id, resource_id, user_node_id, punch_id, event_type, occurred_at, source, notes, metadata, recorded_by, created_at, work_location_id,
+        NULL::numeric AS latitude, NULL::numeric AS longitude, NULL::numeric AS accuracy_meters, NULL::numeric AS distance_meters, NULL::text AS geofence_result
+      FROM public.workforce_time_clock_events
+      WHERE client_id = ${a.ctx.clientId}::uuid
+        AND (${resourceId}::uuid IS NULL OR resource_id = ${resourceId}::uuid)
+      ORDER BY occurred_at DESC, created_at DESC
+      LIMIT 200
+    ` as unknown[];
   const corrections = await db()`
     SELECT *
     FROM public.workforce_time_corrections
@@ -30,6 +45,7 @@ async function handleGet(req: Request): Promise<Response> {
     ORDER BY created_at DESC
     LIMIT 200
   ` as unknown[];
+  if (locationBasis) await recordSensitiveAccess(a.ctx, 'location_history', '/api/workforce/time-ledger', locationBasis);
   return jsonOk({ events, corrections });
 }
 

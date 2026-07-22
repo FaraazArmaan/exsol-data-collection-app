@@ -6,6 +6,7 @@ import { useUserAuth } from '../../../user-portal/user-auth-context';
 import {
   workforceApi,
   type Punch,
+  type AttendanceRecoveryRequest,
   type StaffResource,
   type TimeClockEvent,
   type TimeCorrection,
@@ -18,6 +19,9 @@ import {
   workforceDateKey,
   workforceTimeZone,
 } from '../../shared/time';
+import { Button } from '../../../../components/ui/Button';
+import { DateField } from '../../../../components/ui/DateTimeField';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../../components/ui/Feedback';
 import '../../workforce.css';
 
 interface Props {
@@ -43,6 +47,12 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   const [correctionNotes, setCorrectionNotes] = useState('');
   const [correctionError, setCorrectionError] = useState('');
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
+  const [reviewingCorrectionId, setReviewingCorrectionId] = useState('');
+  const [reviewWorkDate, setReviewWorkDate] = useState('');
+  const [reviewMinutes, setReviewMinutes] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [reviewing, setReviewing] = useState(false);
   const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
   const [locationName, setLocationName] = useState('');
   const [locationLat, setLocationLat] = useState('');
@@ -51,11 +61,18 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   const [locationAccuracy, setLocationAccuracy] = useState('150');
   const [locationError, setLocationError] = useState('');
   const [savingLocation, setSavingLocation] = useState(false);
+  const [recoveryRequests, setRecoveryRequests] = useState<AttendanceRecoveryRequest[]>([]);
+  const [reviewingRecoveryId, setReviewingRecoveryId] = useState('');
+  const [recoveryReviewNote, setRecoveryReviewNote] = useState('');
+  const [recoveryReviewError, setRecoveryReviewError] = useState('');
+  const [reviewingRecovery, setReviewingRecovery] = useState(false);
 
   const canClockIn = perms.has('workforce.employees.create');
   const canClockOut = perms.has('workforce.employees.edit');
   const canCorrect = perms.has('workforce.employees.create');
   const canManageLocations = perms.has('workforce.employees.edit');
+  const canReviewCorrections = perms.has('workforce.employees.edit');
+  const canReviewRecovery = perms.has('workforce.employees.edit');
 
   useEffect(() => {
     workforceApi.listStaff().then(d => setStaff(d.resources)).catch(() => {});
@@ -80,17 +97,20 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
   useEffect(() => { void loadWorkLocations(); }, [canManageLocations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
+    setPunches(null);
     setError('');
     try {
       const params: { resource_id?: string } = {};
       if (selectedResourceId) params.resource_id = selectedResourceId;
-      const [data, ledger] = await Promise.all([
+      const [data, ledger, recoveryData] = await Promise.all([
         workforceApi.listPunches(params),
         workforceApi.getTimeLedger(selectedResourceId || undefined),
+        canReviewRecovery ? workforceApi.listAttendanceRecoveryRequests() : Promise.resolve({ requests: [] }),
       ]);
       setPunches(data.punches);
       setEvents(ledger.events);
       setCorrections(ledger.corrections);
+      setRecoveryRequests(recoveryData.requests);
     } catch {
       setError('Failed to load punch records.');
     }
@@ -189,6 +209,75 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
     }
   }
 
+  function startCorrectionReview(correction: TimeCorrection) {
+    const requestedTime = correction.new_values.requested_time ?? correction.new_values.requested_at;
+    setReviewingCorrectionId(correction.id);
+    setReviewWorkDate(typeof requestedTime === 'string' ? requestedTime.slice(0, 10) : '');
+    setReviewMinutes('');
+    setReviewNote('');
+    setReviewError('');
+  }
+
+  async function submitCorrectionReview(action: 'approve' | 'deny') {
+    if (!reviewingCorrectionId) return;
+    if (!reviewNote.trim()) {
+      setReviewError('Add a decision note for the employee and audit record.');
+      return;
+    }
+    const minutes = Number(reviewMinutes);
+    if (action === 'approve' && (!reviewWorkDate || !Number.isInteger(minutes) || minutes === 0 || Math.abs(minutes) > 1440)) {
+      setReviewError('Approved adjustments need a work date and a non-zero number of minutes.');
+      return;
+    }
+    setReviewing(true);
+    setReviewError('');
+    try {
+      await workforceApi.reviewTimeCorrection(reviewingCorrectionId, {
+        action,
+        resolution_note: reviewNote.trim(),
+        ...(action === 'approve' ? { work_date: reviewWorkDate, minutes } : {}),
+      });
+      setReviewingCorrectionId('');
+      setReviewWorkDate('');
+      setReviewMinutes('');
+      setReviewNote('');
+      await load();
+    } catch (err: unknown) {
+      setReviewError(err instanceof Error ? err.message : 'Failed to review correction.');
+    } finally {
+      setReviewing(false);
+    }
+  }
+
+  function startRecoveryReview(request: AttendanceRecoveryRequest) {
+    setReviewingRecoveryId(request.id);
+    setRecoveryReviewNote('');
+    setRecoveryReviewError('');
+  }
+
+  async function submitRecoveryReview(action: 'approve' | 'deny') {
+    if (!reviewingRecoveryId) return;
+    if (recoveryReviewNote.trim().length < 3) {
+      setRecoveryReviewError('Add a decision note for the employee and audit record.');
+      return;
+    }
+    setReviewingRecovery(true);
+    setRecoveryReviewError('');
+    try {
+      await workforceApi.reviewAttendanceRecovery(reviewingRecoveryId, {
+        action,
+        resolution_note: recoveryReviewNote.trim(),
+      });
+      setReviewingRecoveryId('');
+      setRecoveryReviewNote('');
+      await load();
+    } catch (err: unknown) {
+      setRecoveryReviewError(err instanceof Error ? err.message : 'Failed to review attendance recovery.');
+    } finally {
+      setReviewingRecovery(false);
+    }
+  }
+
   const pendingCorrections = corrections.filter(c => c.status === 'pending');
   const latePunches = todayPunches.filter(p => (p.late_minutes ?? 0) > 0);
   const absentPunches = todayPunches.filter(p => p.is_absent);
@@ -242,7 +331,8 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           </select>
         </label>
 
-        {error && <div className="wf-error">{error}</div>}
+        {error && punches === null && <ErrorState title="Could not load attendance." action={<Button size="compact" onClick={() => void load()}>Try again</Button>}>{error}</ErrorState>}
+        {error && punches !== null && <InlineNotice tone="danger" title="An attendance action could not be completed." action={<Button size="compact" variant="quiet" onClick={() => setError('')}>Dismiss</Button>}>{error}</InlineNotice>}
 
         <section className="wf-attendance-board">
           <div className="wf-board-stat">
@@ -267,7 +357,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           <section className="wf-ot-form-section">
             <h3 className="wf-section-title">Work Locations</h3>
             <form className="wf-ot-form" onSubmit={submitWorkLocation}>
-              {locationError && <div className="wf-error">{locationError}</div>}
+              {locationError && <InlineNotice tone="danger" title="The work location could not be saved.">{locationError}</InlineNotice>}
               <div className="wf-form-row">
                 <label className="wf-label">Name
                   <input className="wf-input" value={locationName} onChange={e => setLocationName(e.target.value)} required />
@@ -286,13 +376,11 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                 </label>
               </div>
               <div className="wf-form-actions">
-                <button className="wf-btn wf-btn-primary" type="submit" disabled={savingLocation}>
-                  {savingLocation ? 'Saving...' : 'Add work location'}
-                </button>
+                <Button type="submit" variant="primary" loading={savingLocation} loadingLabel="Saving location…">Add work location</Button>
               </div>
             </form>
             {workLocations.length === 0 ? (
-              <div className="wf-empty">No work locations configured. Employee dashboard clock-in stays blocked until one is assigned.</div>
+              <EmptyState title="No work locations configured.">Employee dashboard clock-in stays blocked until one is assigned.</EmptyState>
             ) : (
               <div className="wf-work-location-list">
                 {workLocations.map(location => (
@@ -333,26 +421,14 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
                         )}
                       </div>
                       {canClockOut && (
-                        <button
-                          className="wf-btn"
-                          disabled={isBusy}
-                          onClick={() => handleClockOut(openPunch.id, s.id)}
-                        >
-                          {isBusy ? 'Clocking out…' : 'Clock out'}
-                        </button>
+                        <Button variant="secondary" loading={isBusy} loadingLabel="Clocking out…" onClick={() => handleClockOut(openPunch.id, s.id)}>Clock out</Button>
                       )}
                     </>
                   ) : (
                     <>
                       <div className="wf-punch-time" style={{ color: 'var(--text-muted)' }}>Not clocked in</div>
                       {canClockIn && (
-                        <button
-                          className="wf-btn wf-btn-primary"
-                          disabled={isBusy}
-                          onClick={() => handleClockIn(s.id)}
-                        >
-                          {isBusy ? 'Clocking in…' : 'Clock in'}
-                        </button>
+                        <Button variant="primary" loading={isBusy} loadingLabel="Clocking in…" onClick={() => handleClockIn(s.id)}>Clock in</Button>
                       )}
                     </>
                   )}
@@ -364,12 +440,10 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
 
         <section className="wf-attendance-history">
           <h2>Attendance history</h2>
-        {punches === null && !error && (
-          <div className="wf-empty">Loading punch records…</div>
-        )}
+        {punches === null && !error && <LoadingState title="Loading attendance history…" />}
 
         {punches !== null && punches.length === 0 && (
-          <div className="wf-empty">No punch records found.</div>
+          <EmptyState title="No punch records found." />
         )}
 
         {punches !== null && punches.length > 0 && (
@@ -401,7 +475,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           <div className="wf-ledger-panel">
             <div className="wf-section-title">Time Ledger</div>
             {events.length === 0 ? (
-              <div className="wf-empty">No ledger events found for the current filter.</div>
+              <EmptyState title="No ledger events found for the current filter." />
             ) : (
               <div className="wf-ledger-list">
                 {events.slice(0, 12).map(event => (
@@ -419,15 +493,41 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           <div className="wf-ledger-panel">
             <div className="wf-section-title">Correction Queue</div>
             {pendingCorrections.length === 0 ? (
-              <div className="wf-empty">No pending corrections.</div>
+              <EmptyState title="No pending corrections." />
             ) : (
               <div className="wf-ledger-list">
                 {pendingCorrections.slice(0, 8).map(correction => (
-                  <div key={correction.id} className="wf-ledger-row">
-                    <span>{staffNameForResource(correction.resource_id)}</span>
-                    <span>{correction.correction_type.replaceAll('_', ' ')}</span>
-                    <span>{formatWorkforceDate(correction.created_at, timeZone)}</span>
-                    <span className="wf-status-badge wf-status-pending">Pending</span>
+                  <div key={correction.id} className="wf-correction-item">
+                    <div className="wf-ledger-row">
+                      <span>{staffNameForResource(correction.resource_id)}</span>
+                      <span>{correction.correction_type.replaceAll('_', ' ')}</span>
+                      <span>{formatWorkforceDate(correction.created_at, timeZone)}</span>
+                      {canReviewCorrections ? (
+                        <Button size="compact" variant="secondary" type="button" onClick={() => startCorrectionReview(correction)}>Review</Button>
+                      ) : (
+                        <span className="wf-status-badge wf-status-pending">Pending</span>
+                      )}
+                    </div>
+                    {reviewingCorrectionId === correction.id && (
+                      <div className="wf-correction-review">
+                        <div className="wf-muted-copy">Approving creates an auditable payable-time adjustment. It does not overwrite the original clock evidence.</div>
+                        {reviewError && <InlineNotice tone="danger" title="The correction needs attention.">{reviewError}</InlineNotice>}
+                        <div className="wf-correction-review-grid">
+                          <DateField label="Work date" value={reviewWorkDate} onChange={setReviewWorkDate} />
+                          <label className="wf-label">Minutes
+                            <input className="wf-input" type="number" min="-1440" max="1440" step="1" value={reviewMinutes} onChange={e => setReviewMinutes(e.target.value)} />
+                          </label>
+                        </div>
+                        <label className="wf-label">Decision note
+                          <textarea className="wf-textarea" rows={2} value={reviewNote} onChange={e => setReviewNote(e.target.value)} />
+                        </label>
+                        <div className="wf-form-actions">
+                          <Button variant="primary" type="button" loading={reviewing} loadingLabel="Saving decision…" onClick={() => void submitCorrectionReview('approve')}>Approve adjustment</Button>
+                          <Button variant="secondary" type="button" disabled={reviewing} onClick={() => void submitCorrectionReview('deny')}>Deny request</Button>
+                          <Button variant="quiet" type="button" disabled={reviewing} onClick={() => setReviewingCorrectionId('')}>Cancel</Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -435,11 +535,48 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
           </div>
         </section>
 
+        {canReviewRecovery && (
+          <section className="wf-ledger-panel wf-attendance-recovery-panel">
+            <div className="wf-section-title">Attendance Recovery Queue</div>
+            {recoveryRequests.length === 0 ? (
+              <EmptyState title="No geofence recovery requests." />
+            ) : (
+              <div className="wf-ledger-list">
+                {recoveryRequests.map((request) => (
+                  <div key={request.id} className="wf-correction-item">
+                    <div className="wf-ledger-row">
+                      <span>{request.resource_name}</span>
+                      <span>{request.failure_code.replaceAll('_', ' ')}</span>
+                      <span>{formatWorkforceDate(request.attempted_at, timeZone)} {formatWorkforceTime(request.attempted_at, timeZone)}</span>
+                      <Button size="compact" variant="secondary" type="button" onClick={() => startRecoveryReview(request)}>Review</Button>
+                    </div>
+                    <div className="wf-muted-copy">{request.employee_reason}{request.work_location_name ? ` · nearest ${request.work_location_name}` : ''}{request.distance_meters !== null ? ` · ${Math.round(Number(request.distance_meters))}m away` : ''}{request.accuracy_meters !== null ? ` · ${Math.round(Number(request.accuracy_meters))}m accuracy` : ''}</div>
+                    {reviewingRecoveryId === request.id && (
+                      <div className="wf-correction-review">
+                        <div className="wf-muted-copy">Approving creates a supervisor-override clock-in at the recorded attempt time. It preserves the geofence evidence and decision note.</div>
+                        {recoveryReviewError && <InlineNotice tone="danger" title="The recovery decision needs attention.">{recoveryReviewError}</InlineNotice>}
+                        <label className="wf-label">Decision note
+                          <textarea className="wf-textarea" rows={2} value={recoveryReviewNote} onChange={e => setRecoveryReviewNote(e.target.value)} />
+                        </label>
+                        <div className="wf-form-actions">
+                          <Button variant="primary" type="button" loading={reviewingRecovery} loadingLabel="Saving decision…" onClick={() => void submitRecoveryReview('approve')}>Approve clock-in override</Button>
+                          <Button variant="secondary" type="button" disabled={reviewingRecovery} onClick={() => void submitRecoveryReview('deny')}>Deny request</Button>
+                          <Button variant="quiet" type="button" disabled={reviewingRecovery} onClick={() => setReviewingRecoveryId('')}>Cancel</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {canCorrect && (
           <section className="wf-ot-form-section">
             <h3 className="wf-section-title">Request Time Correction</h3>
             <form className="wf-ot-form" onSubmit={submitCorrection}>
-              {correctionError && <div className="wf-error">{correctionError}</div>}
+              {correctionError && <InlineNotice tone="danger" title="The correction request could not be submitted.">{correctionError}</InlineNotice>}
               <div className="wf-form-row">
                 <label className="wf-label">Staff member
                   <select
@@ -467,9 +604,7 @@ export default function SmartPunchingPage({ slug, perms }: Props) {
               <label className="wf-label">Reason
                 <textarea className="wf-textarea" rows={2} value={correctionNotes} onChange={e => setCorrectionNotes(e.target.value)} />
               </label>
-              <button className="wf-btn wf-btn-primary" type="submit" disabled={submittingCorrection}>
-                {submittingCorrection ? 'Submitting...' : 'Submit correction'}
-              </button>
+              <Button type="submit" variant="primary" loading={submittingCorrection} loadingLabel="Submitting correction…">Submit correction</Button>
             </form>
           </section>
         )}
