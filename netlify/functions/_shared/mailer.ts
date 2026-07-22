@@ -7,16 +7,17 @@
 import { db } from './db';
 import { loadBrandForEmail } from './brand-email';
 import {
-  renderBookingConfirmation, renderStorefrontReceipt,
-  type BookingConfirmationData, type StorefrontReceiptData,
+  renderBookingConfirmation, renderStorefrontReceipt, renderOrderHandoff,
+  type BookingConfirmationData, type StorefrontReceiptData, type OrderHandoffData,
 } from './email-templates';
 import { deliver } from './resend';
 
-export type MailTemplate = 'booking_confirmation' | 'storefront_receipt';
+export type MailTemplate = 'booking_confirmation' | 'storefront_receipt' | 'order_handoff';
 
 export type SendMailInput =
   | { clientId: string; to: string | null | undefined; template: 'booking_confirmation'; data: BookingConfirmationData }
-  | { clientId: string; to: string | null | undefined; template: 'storefront_receipt'; data: StorefrontReceiptData };
+  | { clientId: string; to: string | null | undefined; template: 'storefront_receipt'; data: StorefrontReceiptData }
+  | { clientId: string; to: string | null | undefined; template: 'order_handoff'; data: OrderHandoffData };
 
 export async function sendMail(input: SendMailInput): Promise<void> {
   try {
@@ -30,8 +31,11 @@ export async function sendMail(input: SendMailInput): Promise<void> {
     if (input.template === 'booking_confirmation') {
       const r = renderBookingConfirmation(brand, input.data);
       subject = r.subject; html = r.html; ics = r.ics;
-    } else {
+    } else if (input.template === 'storefront_receipt') {
       const r = renderStorefrontReceipt(brand, input.data);
+      subject = r.subject; html = r.html;
+    } else {
+      const r = renderOrderHandoff(brand, input.data);
       subject = r.subject; html = r.html;
     }
 

@@ -134,3 +134,24 @@ export function renderStorefrontReceipt(
     html: layout(brand, 'Order received', inner),
   };
 }
+
+export interface OrderHandoffData {
+  customerName: string | null;
+  orderNo: string | number;
+  event: 'pickup_ready' | 'shipped' | 'delivered';
+  carrier?: string | null;
+  trackingRef?: string | null;
+}
+
+export function renderOrderHandoff(brand: EmailBrand, d: OrderHandoffData): { subject: string; html: string } {
+  const copy = d.event === 'pickup_ready'
+    ? { heading: 'Ready for pickup', message: 'Your order is ready for pickup.' }
+    : d.event === 'shipped'
+      ? { heading: 'Order shipped', message: 'Your order has been handed to the carrier.' }
+      : { heading: 'Order delivered', message: 'Your order has been marked as delivered.' };
+  const tracking = d.trackingRef ? `<p style="margin:12px 0 0;color:#71717a;font-size:13px">${esc(d.carrier || 'Tracking')}: ${esc(d.trackingRef)}</p>` : '';
+  return {
+    subject: `${copy.heading} — #${d.orderNo} · ${brand.name}`,
+    html: layout(brand, copy.heading, `<p style="margin:0;color:#3f3f46;font-size:14px">Hi ${esc(d.customerName || 'there')}, ${esc(copy.message)}</p><p style="margin:16px 0 0;color:#71717a;font-size:13px">Order #${esc(d.orderNo)}</p>${tracking}`),
+  };
+}

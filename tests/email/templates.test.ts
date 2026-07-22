@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  renderBookingConfirmation, renderStorefrontReceipt,
+  renderBookingConfirmation, renderStorefrontReceipt, renderOrderHandoff,
 } from '../../netlify/functions/_shared/email-templates';
 import type { EmailBrand } from '../../netlify/functions/_shared/brand-email';
 
@@ -42,6 +42,16 @@ describe('renderBookingConfirmation', () => {
       startIso: '2026-07-10T09:00:00.000Z', endIso: '2026-07-10T09:30:00.000Z', uid: 'y@exsol',
     });
     expect(r.html).not.toContain('<script>x</script>');
+  });
+});
+
+describe('renderOrderHandoff', () => {
+  it('renders a tracking-safe shipped notice without customer HTML injection', () => {
+    const r = renderOrderHandoff(brand, { customerName: '<img>', orderNo: 73, event: 'shipped', carrier: 'DHL', trackingRef: 'DHL-73' });
+    expect(r.subject).toContain('#73');
+    expect(r.html).toContain('Order shipped');
+    expect(r.html).toContain('DHL-73');
+    expect(r.html).toContain('&lt;img&gt;');
   });
 });
 
