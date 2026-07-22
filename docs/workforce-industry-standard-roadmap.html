@@ -1,0 +1,1517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workforce Module - Industry Standard Roadmap</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1017;
+      --panel: #111923;
+      --panel-2: #172231;
+      --text: #eef3f8;
+      --muted: #9fb0c3;
+      --line: #2b3a4c;
+      --accent: #65d6ad;
+      --blue: #71a7ff;
+      --warn: #f2c56b;
+      --danger: #ff7f7f;
+      --ok: #55d98b;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--blue); }
+    code {
+      color: #d5e4ff;
+      background: rgba(113, 167, 255, 0.12);
+      border: 1px solid rgba(113, 167, 255, 0.22);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+    .page { max-width: 1180px; margin: 0 auto; padding: 32px 22px 64px; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 5vw, 4.5rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+    .hero p { margin: 0; color: var(--muted); max-width: 860px; }
+    .hero-main, .hero-side, .card, .milestone, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px var(--shadow);
+    }
+    .hero-main { padding: 30px; }
+    .hero-side { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px;
+    }
+    .kpi b { display: block; font-size: 1.3rem; line-height: 1.2; }
+    .kpi span { color: var(--muted); font-size: 0.82rem; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .tag.ok { color: var(--ok); border-color: rgba(85, 217, 139, 0.35); }
+    .tag.warn { color: var(--warn); border-color: rgba(242, 197, 107, 0.35); }
+    .tag.danger { color: var(--danger); border-color: rgba(255, 127, 127, 0.35); }
+    h2 { margin: 34px 0 14px; font-size: 1.55rem; letter-spacing: 0; }
+    h3 { margin: 0 0 10px; font-size: 1.05rem; letter-spacing: 0; }
+    .lead { color: var(--muted); margin: -4px 0 16px; max-width: 940px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .card { padding: 18px; }
+    .card ul, .panel ul { margin: 8px 0 0; padding-left: 18px; }
+    .card li, .panel li { margin: 7px 0; }
+    .good h3 { color: var(--ok); }
+    .bad h3 { color: var(--warn); }
+    .missing h3 { color: var(--danger); }
+    .map {
+      display: grid;
+      grid-template-columns: 1fr 46px 1fr 46px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 18px 0 8px;
+    }
+    .map-box {
+      min-height: 110px;
+      padding: 16px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .arrow { color: var(--accent); text-align: center; font-size: 1.6rem; }
+    .score-table, .matrix, .integration-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--panel-2); color: var(--text); font-size: 0.82rem; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    .rating { font-weight: 700; color: var(--text); white-space: nowrap; }
+    .rating.good { color: var(--ok); }
+    .rating.warn { color: var(--warn); }
+    .rating.bad { color: var(--danger); }
+    .timeline { display: flex; flex-direction: column; gap: 14px; }
+    .milestone { display: grid; grid-template-columns: 170px minmax(0, 1fr); overflow: hidden; }
+    .mile-left {
+      background: var(--panel-2);
+      border-right: 1px solid var(--line);
+      padding: 16px;
+    }
+    .mile-left .num { display: block; font-weight: 800; font-size: 1.35rem; color: var(--accent); }
+    .mile-left .status { display: inline-block; margin-top: 8px; font-size: 0.78rem; }
+    .mile-body { padding: 18px; }
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 16px;
+      margin: 12px 0;
+    }
+    .check {
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .box {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--bg);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .box.done { background: var(--ok); border-color: var(--ok); }
+    .box.todo { background: transparent; }
+    .integration {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .integration div {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 10px;
+      min-height: 76px;
+    }
+    .integration b { display: block; color: var(--text); margin-bottom: 4px; font-size: 0.82rem; }
+    .integration span { color: var(--muted); font-size: 0.88rem; }
+    .handoff {
+      white-space: pre-wrap;
+      background: #071019;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      color: #cfe0ef;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+    }
+    .legend { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 18px; }
+    .footnote { color: var(--muted); font-size: 0.88rem; margin-top: 16px; }
+    @media (max-width: 880px) {
+      .hero, .grid-3, .grid-2, .checks, .integration { grid-template-columns: 1fr; }
+      .map { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .milestone { grid-template-columns: 1fr; }
+      .mile-left { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    /* Field-guide visual system: shared with the Booking and Payments roadmaps. */
+    :root { color-scheme:light; --bg:#f8f5ee; --panel:#fffdf8; --panel-2:#eef2e8; --text:#18231d; --muted:#607068; --line:#d9d6ca; --accent:#176b4d; --blue:#265b87; --warn:#a65e00; --danger:#aa352b; --ok:#176b4d; --shadow:0 10px 28px rgba(38,47,31,.05); }
+    body { font:16px/1.58 Georgia,'Times New Roman',serif; background:linear-gradient(125deg,#edf1e5 0%,var(--bg) 42%,#f7eee2 100%); }.page { max-width:1180px; padding:32px 24px 80px; }.hero-main { background:radial-gradient(circle at 83% 25%,#315f4b 0 4%,transparent 4.2%),linear-gradient(135deg,#102a20,#1d5942); color:#f8f4e9; }.hero-main p { color:#dce9dd; }.hero h1,h2,h3 { font-family:'Trebuchet MS',Arial,sans-serif; }.hero h1 { letter-spacing:-.055em; }.hero-side,.card,.milestone,.panel { box-shadow:var(--shadow); border-radius:12px; }.tag { background:var(--panel-2); }.kpi { background:var(--panel-2); }.mile-left { background:var(--panel-2); }.handoff { background:#10231c; color:#dcefe0; }.learning-tour { display:grid; gap:16px; }.tour-tree { overflow:auto; margin:0; padding:20px; border:1px solid #254235; border-radius:12px; background:#10231c; color:#e6f0e8; font:14px/1.58 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }.tour-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }.tour-card { padding:18px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }.tour-card h3 { color:var(--accent); }.journey { display:grid; gap:9px; counter-reset:journey; }.journey > div { position:relative; padding:14px 16px 14px 58px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }.journey > div::before { position:absolute; left:17px; top:14px; color:var(--accent); font:700 22px/1 'Trebuchet MS',Arial,sans-serif; counter-increment:journey; content:counter(journey); }
+    @media (max-width:880px) { .page { padding:20px 16px 60px; }.tour-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <h1>Workforce Module Roadmap</h1>
+        <p>
+          Industry-standard assessment and integration-ready milestone plan for ExSol Workforce
+          and Project Service. This file is designed to be updated as a checklist after every
+          milestone and pasted into the Main integration chat with exact branch, migration,
+          port, route, endpoint, docs, and verification details.
+        </p>
+        <div class="tag-row">
+          <span class="tag ok">Current state: broad functional depth</span>
+          <span class="tag warn">Main risk: HR-grade rigor still shallow</span>
+          <span class="tag warn">Workforce terminal ports: 5189 / 8899</span>
+          <span class="tag danger">Future migration numbers: human allocation only</span>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <h3>Baseline Snapshot</h3>
+        <div class="kpi-grid">
+          <div class="kpi"><b>35</b><span>Workforce API functions</span></div>
+          <div class="kpi"><b>19</b><span>Workforce test files</span></div>
+          <div class="kpi"><b>059, 107-119</b><span>Core migrations in main</span></div>
+          <div class="kpi"><b>11</b><span>Workspace routes</span></div>
+        </div>
+        <p class="footnote">
+          Source of truth inspected: current <code>main</code> at <code>6a56408</code>, root worktree plus
+          <code>worktrees/ExSol-Workforce-WT</code> coordination state.
+        </p>
+      </aside>
+    </section>
+
+    <section>
+      <h2>Architecture Map</h2>
+      <p class="lead">Workforce is not a standalone employee database. It composes Booking resources, user nodes, CRM customers, Finance expenses, File Manager files, and the shared auth/permission registry.</p>
+      <div class="map">
+        <div class="map-box">
+          <h3>Frontend</h3>
+          <p><code>src/modules/workforce</code> owns RouteMounts, sub-nav, pages, shared API wrappers, and namespaced <code>.wf-*</code> CSS.</p>
+        </div>
+        <div class="arrow">-&gt;</div>
+        <div class="map-box">
+          <h3>Functions</h3>
+          <p><code>netlify/functions/workforce-*.ts</code> expose flat Netlify Functions behind <code>requireWorkforce</code>.</p>
+        </div>
+        <div class="arrow">-&gt;</div>
+        <div class="map-box">
+          <h3>Data</h3>
+          <p><code>workforce_shifts</code>, <code>timesheet_entries</code>, leave, punches, OT, swaps, payroll, training, assets, projects, tasks, docs, plans.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Module architecture and file-system tour</h2>
+      <p class="lead">This is the teaching map behind the many Workforce screens. The module is broad, so the rule is to group code by the system responsibility it serves—people, time, leave, payroll, assets, training, or projects—while keeping tenant/auth decisions at one server boundary.</p>
+      <div class="learning-tour"><pre class="tour-tree">src/modules/workforce/
+  WorkforceRouteMounts.tsx       # Client enable/Owner/permission gate and route composition
+  workforce.css                  # .wf-* visual rules; theme tokens keep dark platform coherent
+  shared/api.ts                  # Typed browser request layer; current large boundary to split carefully
+  workspace/
+    pages/                        # Staff, shifts, time, leave, payroll, assets, training, projects
+    components/                   # WorkforceNav and small page-specific bridges
+
+netlify/functions/
+  _workforce-authz.ts             # Shared server gate for Workforce and Project Service
+  _workforce-self-time.ts         # Self-service clock/break/correction rules
+  _workforce-employee-sync.ts     # Keeps Workforce records aligned with platform identities
+  workforce-*.ts                  # Flat handlers grouped by workforce system, never nested folders
+
+db/migrations/
+  059, 107–119, 144–151_*.sql    # Forward-only worker, schedule, time, leave, payroll and ops history
+
+tests/workforce/
+  _helpers.ts                     # Tenant/user seed fixtures for real handler and DB tests
+  *.test.ts                       # Scope, approval, time-clock, payroll, asset and project evidence</pre><div class="tour-grid"><article class="tour-card"><h3>Why does Workforce not own login identity?</h3><p><code>user_nodes</code> and the platform auth system own identity, session, and permission truth. Workforce owns employment-specific facts and operational records. This avoids two employee accounts drifting apart and keeps one login/security model for the whole platform.</p></article><article class="tour-card"><h3>Why do Project Service and Workforce share auth?</h3><p>The product unlocks both systems and they use the same tenant/user hierarchy. Sharing <code>_workforce-authz.ts</code> means a staff member cannot pass one set of scope rules in Projects and a different set in Workforce.</p></article></div><div><h3>One real journey: an employee clocks out</h3><div class="journey"><div><strong>Screen:</strong> the self-service workforce page shows only temporary browser state and calls a typed shared API function.</div><div><strong>HTTP boundary:</strong> <code>workforce-me-clock-out.ts</code> resolves the signed-in worker, checks the Workforce product and permission/scope rules, and validates the request.</div><div><strong>Domain rule:</strong> the self-time helper confirms there is an open time record, applies break/time policy, and rejects an invalid transition rather than guessing.</div><div><strong>Durable truth:</strong> the time ledger/punch record is written tenant-scoped, with audit-ready timestamps. Later timesheets, payroll export, reporting, and manager review read that same truth.</div></div></div></div>
+    </section>
+
+    <section>
+      <h2>Good, Bad, Missing</h2>
+      <div class="grid-3">
+        <article class="card good">
+          <h3>Good</h3>
+          <ul>
+            <li>Real module anatomy: manifest, product entry, RouteMounts, authz, shared API, CSS, functions, tests.</li>
+            <li>Server auth uses <code>makeModuleAuthz</code>: session, enable-gate, Owner bypass, then matrix check.</li>
+            <li>Tenant scope is consistently anchored on <code>client_id</code> or <code>bucket_id</code>.</li>
+            <li>Depth features are real CRUD/approval flows, not static mock screens.</li>
+            <li>Project Service reuses Workforce auth and product enablement instead of inventing a second product shell.</li>
+            <li>Tests cover most handlers and include characterization coverage for branch-matrix simplification.</li>
+            <li>CSS uses dark-theme tokens and <code>.wf-*</code> namespacing.</li>
+          </ul>
+        </article>
+        <article class="card bad">
+          <h3>Bad</h3>
+          <ul>
+            <li><code>shared/api.ts</code> is a 674-line mixed type/client file. It is navigable, but not an industry-grade boundary.</li>
+            <li>Permission lists are duplicated in <code>_workforce-authz.ts</code> and <code>WorkforceRouteMounts.tsx</code>; there is no <code>shared/permissions.ts</code>.</li>
+            <li>Many comments narrate obvious behavior. The new rule should reduce this without deleting comments that explain constraints.</li>
+            <li>Some UX still asks users to paste UUIDs for employees, assets, and files. That is acceptable for an internal prototype, not for production HR ops.</li>
+            <li>Validation is manual and inconsistent across handlers; several routes rely on Postgres casts for invalid UUID/date errors.</li>
+            <li>Payroll is explicitly tracking only. It lacks statutory deductions, payslip generation, export formats, and lock/reopen controls.</li>
+            <li>Audit logging is thin for sensitive actions like approval, payroll approval, asset assignment, and training certification.</li>
+          </ul>
+        </article>
+        <article class="card missing">
+          <h3>Missing</h3>
+          <ul>
+            <li>Employee master profile: employment status, start/end dates, department, work location, job title, manager override, and emergency fields.</li>
+            <li>Scheduling standards: availability, shift conflict prevention, break rules, local holidays, labor-rule policies, and schedule publish/lock.</li>
+            <li>Leave accrual: policy rules, carry-forward, adjustments ledger, holidays, and manager-facing balance history.</li>
+            <li>Time clock rigor: device/kiosk mode, correction requests, manager edits, and immutable punch history.</li>
+            <li>Reporting: utilization, absence rate, overtime cost, training compliance, asset custody, payroll export, and workforce cost by project.</li>
+            <li>Operational safeguards: audit log rows, CSV export, seeded demo coverage for all tabs, real-browser mobile verification evidence.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Industry Standard Scorecard</h2>
+      <table class="score-table">
+        <thead>
+          <tr><th>Area</th><th>Current Rating</th><th>Why</th><th>Target</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Module architecture</td>
+            <td class="rating good">Strong</td>
+            <td>Follows the ExSol module pattern and uses shared authz factory.</td>
+            <td>Single permission source and slimmer API boundary.</td>
+          </tr>
+          <tr>
+            <td>Core HR data</td>
+            <td class="rating warn">Partial</td>
+            <td>Uses canonical <code>user_nodes</code> and <code>booking_resources</code>, but lacks HR profile depth.</td>
+            <td>Employee profile extension without duplicating identity.</td>
+          </tr>
+          <tr>
+            <td>Scheduling</td>
+            <td class="rating warn">Functional</td>
+            <td>Recurring weekly shifts exist, but no availability, publish workflow, or rule engine.</td>
+            <td>Policy-backed schedule planner with conflicts and compliance flags.</td>
+          </tr>
+          <tr>
+            <td>Time and attendance</td>
+            <td class="rating warn">Functional</td>
+            <td>Punching, timesheets, overtime exist; correction and audit history are missing.</td>
+            <td>Manager edits, punch ledger, approvals, exports.</td>
+          </tr>
+          <tr>
+            <td>Leave management</td>
+            <td class="rating warn">Functional</td>
+            <td>Requests and balances exist; accrual policy and adjustment ledger are missing.</td>
+            <td>Policy-driven accrual with balance history and holiday calendars.</td>
+          </tr>
+          <tr>
+            <td>Payroll</td>
+            <td class="rating bad">Prototype-grade</td>
+            <td>Period/rate tracking works, but this is not payroll execution.</td>
+            <td>Export-ready payroll register, payslip PDF, locked periods, audit trail.</td>
+          </tr>
+          <tr>
+            <td>Training and assets</td>
+            <td class="rating warn">Functional</td>
+            <td>Courses, completions, assets, assignments exist; expiry workflows and custody evidence are thin.</td>
+            <td>Compliance dashboard, alerts, assignment history, acknowledgements.</td>
+          </tr>
+          <tr>
+            <td>UX and operations</td>
+            <td class="rating warn">Needs hardening</td>
+            <td>Feature coverage is wide, but several flows expose UUIDs and need mobile/browser QA.</td>
+            <td>Selector-driven workflows, bulk actions, exports, mobile-safe layouts.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Frontend Product Roadmap: S1-S8</h2>
+      <p class="lead">
+        This is the product roadmap for turning the existing Workforce backend depth into a real
+        workforce frontend. The baseline problem remains: backend depth arrived before product
+        workflow design. The module has the nouns: shifts, leave, punches, payroll, courses, assets,
+        profiles. It still needs manager workflows: publish schedule, detect conflicts,
+        request/approve/correct, notify, export, audit, and guide daily decisions.
+      </p>
+
+      <div class="grid-2">
+        <article class="card good">
+          <h3>Team Integration Contract</h3>
+          <ul>
+            <li><strong>Team remains the source of truth</strong> for users, credentials, access levels, invitations, module permissions, and active/inactive account state.</li>
+            <li><strong>Workforce extends Team</strong>; it must not duplicate login identity, role hierarchy, access-level editing, or the Team drag/drop level board.</li>
+            <li><strong>Employee records link to Team</strong> through <code>user_nodes</code> where the person has a login, and to <code>booking_resources</code> where the person/resource is schedulable.</li>
+            <li><strong>Workforce can show employment context</strong> such as department, manager, hire date, worker type, documents, assets, leave, punches, training, and payroll readiness.</li>
+            <li><strong>Workforce cannot silently mutate access</strong>. Role, level, permissions, invite, disable, and credential flows stay in Team/AMS, with deep links from Workforce when needed.</li>
+            <li><strong>Owner bypass and module gating</strong> must stay identical to Team, Sidebar, RouteMounts, and <code>requireWorkforce</code>.</li>
+          </ul>
+        </article>
+        <article class="card bad">
+          <h3>Build Constraint</h3>
+          <ul>
+            <li>Every Workforce employee picker should show Team-backed names, emails, access levels, and employment status, not raw UUID fields.</li>
+            <li>Every sensitive Workforce write should preserve Team boundaries: no cross-client user lookup, no privilege escalation, no hidden level changes.</li>
+            <li>Every Workforce profile page should make Team state visible: invited, active, disabled, access level, products/modules available, and whether the person has login access.</li>
+            <li>When a workflow needs account/access changes, route the user to Team instead of reimplementing Team controls inside Workforce.</li>
+          </ul>
+        </article>
+      </div>
+
+      <table class="score-table" style="margin-top: 14px;">
+        <thead>
+          <tr><th>System</th><th>Product Goal</th><th>Team Integration</th><th>Frontend Roadmap</th><th>Done Bar</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>S1</strong><br>Shift, Leave, and Compliance Tracker</td>
+            <td>Planner-grade scheduling with leave overlay, availability, coverage, break rules, overtime risk, schedule publish, and compliance warnings.</td>
+            <td>Use Team users/access levels for eligible staff filters. Never edit access levels here. Link each scheduled person to <code>user_nodes</code> and/or <code>booking_resources</code>.</td>
+            <td>Replace static weekly cards with a weekly/monthly planner, coverage sidebar, leave overlay, conflict drawer, publish/lock controls, and compliance warning panel. Surface M6 schedule-planner API.</td>
+            <td>A manager can build a week, see conflicts before publish, understand who is unavailable/on leave, publish the schedule, and audit overrides.</td>
+          </tr>
+          <tr>
+            <td><strong>S2</strong><br>Payroll Tracking</td>
+            <td>Payroll close workflow: review time, approve exceptions, lock period, export register, and view payslips without pretending to execute payroll.</td>
+            <td>Display Team names/emails/access levels in payroll rows. Rate assignment must use employee pickers, not raw <code>user_node_id</code>. Access to payroll remains permission-gated.</td>
+            <td>Replace UUID rate form with staff picker, add payroll readiness checklist, exceptions review, export button, payslip list, lock/reopen reason flow, and named employee register. Surface M9 payroll-export/payslip API.</td>
+            <td>A payroll admin can close a period from pending exceptions to export-ready output, with clear employee names and no UUID paste flow.</td>
+          </tr>
+          <tr>
+            <td><strong>S3</strong><br>Smart Punching</td>
+            <td>Attendance operations: clock-in/out, late/absent detection, breaks, correction requests, manager edits, and kiosk/mobile mode.</td>
+            <td>Clock actions must resolve to Team-linked employees. Team disabled users should not appear as active punch candidates unless explicitly shown as historical records.</td>
+            <td>Add kiosk layout, personal punch mode, active attendance board, late/absent cards, break tracking, correction request queue, manager correction drawer, and M7 time-ledger/corrections UI.</td>
+            <td>A manager can see today's attendance live, fix bad punches with reasoned audit rows, and employees can clock without seeing admin-only controls.</td>
+          </tr>
+          <tr>
+            <td><strong>S4</strong><br>Swap Board</td>
+            <td>Employee self-service shift swaps with eligible replacement matching, manager approval, schedule impact preview, and notification-ready states.</td>
+            <td>Eligible claimers come from Team-linked active employees plus Workforce availability/skills. Access levels decide who can approve, not who can request.</td>
+            <td>Upgrade cards into request detail, eligible staff suggestions, conflict/coverage preview, approval drawer, and employee-facing "my swaps" view. Tie approvals back to S1 published schedule state.</td>
+            <td>A staff member can offer/claim a swap, a manager can see why it is safe or risky, and approved swaps update the schedule without breaking Team permissions.</td>
+          </tr>
+          <tr>
+            <td><strong>S5</strong><br>Overtime Tracker</td>
+            <td>Predictive overtime management, not just manual overtime logging: forecast risk, approval workflow, policy rules, and payroll impact.</td>
+            <td>Use Team employee identity for summaries and approval routing. Finance/payroll access must not leak to employees without payroll permission.</td>
+            <td>Add overtime forecast by week, risk badges in S1 planner, policy thresholds, approval queue, cost impact panel, and payroll-period linkage. Keep manual OT as fallback, not the primary flow.</td>
+            <td>Before publishing or closing payroll, a manager can see who will exceed thresholds, approve/deny OT, and understand payroll impact.</td>
+          </tr>
+          <tr>
+            <td><strong>S6</strong><br>Training Tracker</td>
+            <td>Compliance learning operations: required courses, assignments, completions, certificates, expiry alerts, reminders, and skill matrix.</td>
+            <td>Assignments target Team-linked employees and optionally access levels/departments. Team state controls whether a person is active for new assignments.</td>
+            <td>Add assign-course workflow, role/level/dept targeting, certificate upload/file link, overdue dashboard, expiring-soon queue, employee skill matrix, and M10 compliance-ops frontend.</td>
+            <td>A manager can assign required training, track who is overdue, open certificate evidence, and see compliance by team/access level.</td>
+          </tr>
+          <tr>
+            <td><strong>S7</strong><br>Asset Tracker</td>
+            <td>Employee asset lifecycle: issue, acknowledge, return, inspect, maintain, retire, and offboard without UUID paste flows.</td>
+            <td>Asset custody must use Team employee pickers. Offboarding should read Team disabled/inactive state and produce asset-return tasks, not disable users itself.</td>
+            <td>Replace asset/user UUID fields with pickers, add asset detail page, custody timeline, return inspection, maintenance schedule, document/photo evidence, offboarding checklist, and M10 maintenance UI.</td>
+            <td>A manager can issue and recover assets with named custodians, condition evidence, maintenance history, and offboarding visibility.</td>
+          </tr>
+          <tr>
+            <td><strong>S8</strong><br>Employee Tracking</td>
+            <td>Employee 360 profile that joins Team identity, Workforce employment profile, schedule, leave, punches, payroll readiness, training, assets, documents, and audit timeline.</td>
+            <td>This is the bridge system. It must show Team access level, email, invite/account status, and link to Team for access edits. Workforce owns employment metadata only.</td>
+            <td>Build master profile editor, employment lifecycle fields, manager/department fields, sensitive fields with Owner-only affordances, timeline, documents, linked Team card, and profile completeness checks. Surface M5 employee-master API.</td>
+            <td>A manager can open one employee record and understand identity, employment state, schedule/attendance, leave, payroll, training, assets, and what must be changed in Team.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="grid-2" style="margin-top: 14px;">
+        <article class="card good">
+          <h3>Recommended Build Order</h3>
+          <ul>
+            <li><strong>R0 Team bridge:</strong> shared employee picker, Team status card, no-UUID form components, permission-safe deep links to Team.</li>
+            <li><strong>S8 Employee Tracking:</strong> profile 360 first, because every other system needs a trusted employee identity surface.</li>
+            <li><strong>S1 Planner:</strong> schedule + leave + compliance planner, because it drives attendance, swaps, and OT risk.</li>
+            <li><strong>S3 + S5:</strong> punch ledger/corrections and overtime forecasting as the attendance exception layer.</li>
+            <li><strong>S4:</strong> swap board upgraded after schedule publish/coverage rules exist.</li>
+            <li><strong>S2:</strong> payroll close/export after time, leave, and OT exceptions are reviewable.</li>
+            <li><strong>S6 + S7:</strong> training/assets compliance ops, then dashboard snapshots and reporting.</li>
+          </ul>
+        </article>
+        <article class="card missing">
+          <h3>Non-Negotiables Before Implementation</h3>
+          <ul>
+            <li>No Workforce flow may create a second person/account model beside Team <code>user_nodes</code>.</li>
+            <li>No Workforce UI may change access level, role, invite, password, credential, or disable state directly.</li>
+            <li>No raw UUID fields in finished manager workflows where the referenced Team/resource/asset data is already loadable.</li>
+            <li>Every high-risk write needs a reason/audit story: payroll close, punch correction, leave approval, schedule override, asset return, training certificate change.</li>
+            <li>Every new tab must pass real-browser dark/mobile checks because this module is operational and likely used on phones/tablets.</li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="footnote">
+        Product benchmarks used:
+        <a href="https://www.deputy.com/features">Deputy features</a>,
+        <a href="https://www.adp.com/what-we-offer/payroll.aspx">ADP payroll</a>,
+        <a href="https://www.talentlms.com/features">TalentLMS features</a>,
+        <a href="https://www.rippling.com/products/it/device-management">Rippling device management</a>.
+      </p>
+    </section>
+
+    <section id="x01-workspace-time">
+      <h2>X01 Field Lesson: Attendance Time Must Belong to the Workspace</h2>
+      <p class="lead">Added 22 July 2026. This is a production-behaviour lesson, not a cosmetic timezone preference. A clock record is an instant, but an attendance day, a shift start, lateness, and an AM/PM label all have meaning only in the client workspace's configured timezone.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X01 Problem: Correct timestamps appeared to have the wrong AM/PM</h3>
+          <p>A senior reviewing an employee timesheet saw clock records such as <strong>10:40 PM to 7:40 AM</strong>, even though the employee had worked the expected daytime shift. The database values were not reversed. They were UTC instants displayed by the reviewer's browser in its own timezone instead of the workspace timezone.</p>
+          <ul>
+            <li>A value stored as <code>2026-07-20T05:40:00Z</code> is <strong>11:10 AM</strong> in <code>Asia/Kolkata</code>, but can display as <strong>10:40 PM</strong> on the previous day in a UTC-7 browser.</li>
+            <li>The old page mixed two incompatible rules: <code>new Date(value).toLocaleTimeString()</code> for display, which follows the viewer's browser, and <code>timestamp.slice(0, 10)</code> for grouping, which follows UTC.</li>
+            <li>That creates contradictory evidence: a row can appear under one calendar day while its displayed time belongs to another local day. It also makes “today”, late detection, date filters, and payroll-period review unreliable around midnight.</li>
+            <li>The manager workflow made diagnosis slower: the action lived under a vaguely named <em>Punching</em> tab, with no direct attendance path from schedule planning or an employee profile.</li>
+          </ul>
+        </article>
+
+        <article class="card good">
+          <h3>X01 Decision: UTC storage, workspace-local interpretation</h3>
+          <p>Keep durable event timestamps as PostgreSQL <code>timestamptz</code> values. Do not rewrite historical punches and do not store a second local timestamp. Instead, interpret an instant through the owning client's <code>clients.timezone</code> everywhere a human calendar value is needed.</p>
+          <ul>
+            <li><strong>Storage invariant:</strong> a punch/event is one absolute instant in UTC. This preserves auditability and lets a record remain unambiguous if a reviewer travels.</li>
+            <li><strong>Workspace invariant:</strong> an attendance date, clock label, weekday, late calculation, and range filter use the client timezone, never the reviewer computer timezone.</li>
+            <li><strong>Browser invariant:</strong> a Workforce page receives the timezone from authenticated client context; it does not infer it from <code>Intl.DateTimeFormat().resolvedOptions().timeZone</code>.</li>
+            <li><strong>Server invariant:</strong> when SQL compares a timestamp to a date or weekday, it converts first: <code>(punched_in_at AT TIME ZONE client_timezone)::date</code>. UTC <code>CURRENT_DATE</code> is not an attendance-day definition.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did to Solve It</h3>
+        <div class="journey">
+          <div><strong>Made the workspace timezone available to the browser.</strong> <code>u-me.ts</code> now returns <code>client.timezone</code>; the user-portal client type carries that optional value. Login and client-slug responses return it too, so the authenticated client model stays coherent. No new table or migration was needed because <code>clients.timezone</code> already existed.</div>
+          <div><strong>Created one Workforce time boundary.</strong> <code>src/modules/workforce/shared/time.ts</code> validates a supplied IANA timezone, falls back safely to UTC only when it is absent/invalid, and exposes <code>formatWorkforceTime</code>, <code>formatWorkforceDate</code>, and <code>workforceDateKey</code>. Pages no longer each decide how to turn an ISO instant into a clock label or day key.</div>
+          <div><strong>Corrected manager and employee display paths.</strong> Attendance cards, history, ledger events, correction dates, and the employee dashboard's “Today’s time” tile now use the shared formatter with the workspace timezone. The Attendance screen visibly states which timezone it is using, making the interpretation reviewable rather than implicit.</div>
+          <div><strong>Corrected server-side day boundaries.</strong> <code>workforce-punches.ts</code> uses the workspace timezone for <code>from</code>/<code>to</code> filters, duplicate clock-in checks, shift weekday matching, and late-minute calculations. <code>workforce-me-clock-in.ts</code> uses the same rule for self-service lateness; <code>workforce-me-time-status.ts</code> uses it for today's event list. Browser and server therefore agree on what “today” means.</div>
+          <div><strong>Made attendance discoverable for managers.</strong> The former <em>Punching</em> navigation label is now <em>Attendance</em>; <em>Timesheets</em> is now <em>Time entries</em> to distinguish manual records from clock evidence. Staff &amp; Schedule has a <em>Review attendance</em> command, and every linked employee profile has <em>View attendance</em>, which opens Attendance already filtered to that employee.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Why This Fix Is Correct</h3>
+          <p>The system now separates three concepts that were previously conflated:</p>
+          <ol>
+            <li><strong>Instant:</strong> when the event happened globally. PostgreSQL owns this as <code>timestamptz</code>.</li>
+            <li><strong>Business calendar:</strong> which workplace day, shift, or pay period the event belongs to. The client timezone owns this.</li>
+            <li><strong>Viewer locale:</strong> language/formatting preferences. This may affect presentation style, but must not change the attendance date or AM/PM meaning.</li>
+          </ol>
+          <p>This is why changing only the React formatter would have been incomplete: server filters and late calculations could still disagree with what the manager sees.</p>
+        </article>
+        <article class="card missing">
+          <h3>Guardrails for Future Work</h3>
+          <ul>
+            <li>Never use <code>toISOString().slice(0, 10)</code>, <code>timestamp.slice(0, 10)</code>, <code>CURRENT_DATE</code>, or <code>EXTRACT(DOW FROM NOW())</code> for a Workforce business-day decision unless the query has first converted through the client timezone.</li>
+            <li>Never use browser-local <code>toLocaleTimeString()</code> directly for Workforce attendance. Use the shared helper so a travelling manager cannot reinterpret the employee's day.</li>
+            <li>Any new Workforce reporting, payroll close, leave overlap, attendance export, or schedule planner date filter must explicitly identify whether it is an instant or a workspace-calendar value.</li>
+            <li>Do not silently change the workspace timezone after history exists without a product policy. Historical instants remain correct, but their calendar classification can change if the business timezone changes.</li>
+            <li>When a manager needs a person's records, provide an employee-context entry point. A broad tab plus an unlabeled filter is not a complete operational workflow.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>src/modules/workforce/shared/time.test.ts</code> proves one UTC instant maps to different local dates in <code>Asia/Kolkata</code> and <code>America/Los_Angeles</code>, and that the displayed clock time follows the workspace.</li>
+          <li><code>tests/workforce/punches.test.ts</code> inserts a punch at <code>2026-07-20T19:30:00Z</code>. It proves an India workspace returns it for <code>2026-07-21</code> and excludes it from <code>2026-07-20</code>.</li>
+          <li><code>npm run typecheck</code> passed. Focused Workforce tests passed: 11 tests across the formatter, punch filtering, and self-service clock lifecycle.</li>
+          <li>The full suite was attempted. It reported 2,088/2,098 tests passing, with unrelated Neon connection failures/timeouts in Finance, Inventory, Marketing, POS, Supply Chain, and Procurement. Treat a later clean full-suite rerun and real-browser timezone review as release evidence before deployment.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x03-x04-payable-exceptions">
+      <h2>X03-X04 Field Lesson: A Correction Must Become an Explainable Decision</h2>
+      <p class="lead">Added 22 July 2026. A manager should never have to infer whether an approved change reached payroll, and an employee should never have to infer whether their correction was accepted. This implementation establishes the first end-to-end payable adjustment and correction-review path.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X03 Problem: Payroll could calculate from a changing operational table</h3>
+          <p>Approved manual time entries were used directly when payroll was viewed or exported. A later correction, an imported approved entry, or a future additional source could therefore produce a total without a single durable explanation of the pay decision.</p>
+          <ul>
+            <li>Attendance evidence, manual entries, and corrections answer different questions. Treating them as the same record invites silent omission or double counting.</li>
+            <li>A payroll reviewer needs the source record, work date, signed-off actor, approval moment, minutes, and reason for every payable change.</li>
+            <li>Historic/imported approved entries must not disappear merely because they predate a new workflow.</li>
+          </ul>
+        </article>
+
+        <article class="card good">
+          <h3>X03 Decision: Payroll reads one immutable payable-time ledger</h3>
+          <p><code>workforce_payable_time_entries</code> is now the only input to payroll detail, payroll approval, exports, and payslips. It stores a source type and source ID under a unique constraint, so one approved source can create at most one payable line.</p>
+          <ul>
+            <li><strong>Approved manual time:</strong> approving a Team-linked timesheet creates its ledger entry in the same SQL statement.</li>
+            <li><strong>Approved correction:</strong> creates a positive or negative adjustment linked to the correction, not a mutation of original evidence.</li>
+            <li><strong>Reconciliation:</strong> payroll reads idempotently capture older/imported approved timesheets before calculation. This repairs legacy drift without calculating directly from the mutable table.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X03</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 168.</strong> <code>168_workforce_payable_time_reconciliation.sql</code> creates the payable ledger, indexes it by client/date/person and client/resource/date, enforces non-zero bounded minutes, and ensures a client/source-type/source-ID combination is unique. It backfills already approved Team-linked timesheets once.</div>
+          <div><strong>Moved payroll to the ledger boundary.</strong> Payroll period detail, approval totals, CSV export, and payslip generation use <code>computePayableLineItems</code>. Rate selection remains effective-date based, but hours and amount now come only from approved ledger records.</div>
+          <div><strong>Made timesheet approval atomic.</strong> The timesheet update and its payable insert share one SQL CTE. A network failure cannot leave the entry approved while its payable source is missing.</div>
+          <div><strong>Added reconciliation as recovery, not a second truth.</strong> Before a payroll read, approved imported timesheets are inserted into the ledger with <code>ON CONFLICT DO NOTHING</code>. The process is repeatable and cannot add the same source twice.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card bad">
+          <h3>X04 Problem: A correction could stop at “requested”</h3>
+          <p>A correction request had no structured manager decision, resolution note, payable outcome, or clear audit record that connected the request to payroll. That leaves the employee unsure and creates a manual reconciliation burden for payroll.</p>
+          <ul>
+            <li>A denial without an explanation does not close the employee's question.</li>
+            <li>An approval that overwrites the original punch destroys the evidence needed to review the decision later.</li>
+            <li>Separate database writes can result in a correction marked approved with no corresponding pay adjustment.</li>
+          </ul>
+        </article>
+
+        <article class="card good">
+          <h3>X04 Decision: Review creates an audited outcome</h3>
+          <p>A manager reviews a pending correction with a required decision note. Approval creates an explicit payable adjustment; denial records the reason and neither path changes the original clock evidence. Both append a ledger event showing who decided and when.</p>
+          <ul>
+            <li>The manager supplies a work date and non-zero minutes only when approving, including negative minutes for a valid deduction.</li>
+            <li>The correction stores its payable ledger ID and applied timestamp, so a future reviewer can follow the record without guessing.</li>
+            <li>The review SQL is one operation: state, payable adjustment, and audit event succeed together or fail together.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X04</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 169.</strong> <code>169_workforce_correction_resolution.sql</code> adds a resolution note, applied timestamp, and a one-to-one link from a correction to its payable entry.</div>
+          <div><strong>Built a protected review endpoint.</strong> <code>PATCH /api/workforce/time-correction/:id</code> accepts only approve or deny from a Workforce manager, requires a decision note, validates date/minutes, rejects a second decision, and distinguishes a missing request from an already reviewed one.</div>
+          <div><strong>Made the Attendance queue actionable.</strong> Pending corrections now expose a Review action. The employee's requested time seeds the manager form where available; the manager still supplies the exact payable date and minutes so the decision is deliberate rather than inferred.</div>
+          <div><strong>Tested the operational accounting rule.</strong> The focused reconciliation test proves one approved timesheet produces one payable source, an approved 90-minute correction becomes 1.5 paid hours at the applicable rate, and a denied correction never reaches payroll.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Why This Boundary Is Correct</h3>
+          <ol>
+            <li><strong>Evidence remains evidence:</strong> clock records and original manual entries are not rewritten to make a pay figure look tidy.</li>
+            <li><strong>Approval remains a decision:</strong> only an approved source becomes payable, with actor, time, source, and reason retained.</li>
+            <li><strong>Payroll remains explainable:</strong> the calculation starts from a finite ledger rather than reconstructing different operational screens each time.</li>
+            <li><strong>Recovery remains safe:</strong> reconciliation uses source idempotency, so it can repair legacy imports without duplicate pay.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>This is the correction-review slice, not yet the shared manager exception inbox. X08 still needs ownership, due time, delegation, escalation, and cross-system items.</li>
+            <li>Payroll periods still need X10 frozen close snapshots, exception gating, controlled reopen/dispute handling, and a line-by-line payslip explanation.</li>
+            <li>Attendance-only and overtime sources need explicit reconciliation policies before they are added to payable time. They must not be implicitly folded in.</li>
+            <li>Real-browser manager and employee review testing remains required before release, particularly on smaller screens.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/payable-time-reconciliation.test.ts</code> covers atomic timesheet approval, payroll use of the ledger, approved correction, denied correction, and rate calculation.</li>
+          <li><code>tests/workforce/m5-m11.test.ts</code> confirms a legacy direct approved-timesheet seed is reconciled into the ledger before M9 export, preserving historical/import compatibility.</li>
+          <li><code>npm run migrate</code> applied migrations 168 and 169 to the configured development database. <code>npm run typecheck</code> and focused X03/X04 plus timesheet tests passed.</li>
+          <li>The full repository suite was attempted but reported unrelated failures in <code>tests/integration/auth.test.ts</code>. A later Workforce-suite rerun also hit a transient Neon <code>fetch failed</code> in an unrelated project-risk test after the X03/X04 tests passed. Release verification still needs a clean full-suite run before deployment.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x05-x06-self-service-publication">
+      <h2>X05-X06 Field Lesson: A Schedule Is Not Real Until the Employee Can See It</h2>
+      <p class="lead">Added 22 July 2026. Team identity tells the system who is acting. Workforce must use that identity to present the employee's own records and a dated schedule they can rely on. A recurring template is a manager's editing tool, not proof that an employee was notified.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X05 Problem: Self-service could still lose the employee's story</h3>
+          <p>The employee dashboard already derived identity from the signed-in Team user for leave, swaps, and corrections. However, cancelling a pending correction deleted it. The manager had an event trail, but the employee's request history no longer showed that they had withdrawn it.</p>
+          <ul>
+            <li>Deleting a high-impact request turns a valid state change into an absence of evidence.</li>
+            <li>A bare approved or denied label does not tell an employee why their correction was decided.</li>
+            <li>Any self-service endpoint that accepts a different resource or user ID would allow the employee surface to become an administrative form.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X05 Decision: The signed-in Team user owns the lifecycle</h3>
+          <p>Self-service resolves the active employee profile from the authenticated Team user and scopes every action to that person. Cancellation is a durable <code>cancelled</code> state, not a delete; manager resolution notes and request status remain visible in the employee dashboard.</p>
+          <ul>
+            <li>Leave cancellation, swap cancellation, and correction cancellation are all limited to the employee's own pending record.</li>
+            <li>A correction cancellation writes both the state transition and a time-ledger audit event in one SQL operation.</li>
+            <li>The dashboard presents the manager's resolution note, so a person sees an outcome rather than needing to ask whether the request vanished.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X05</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 171.</strong> <code>171_workforce_correction_cancellation.sql</code> extends the correction state machine from <code>pending → approved|denied</code> to include <code>pending → cancelled</code>. A completed decision cannot be withdrawn.</div>
+          <div><strong>Added a scoped cancellation endpoint.</strong> <code>DELETE /api/workforce/me/time-correction/:id</code> resolves the signed-in employee, verifies ownership and pending state, retains the row with a cancellation note, and rejects a second cancellation.</div>
+          <div><strong>Made cancellation auditable and visible.</strong> The update and a self-service correction event occur together. The employee dashboard shows the persistent status and manager/cancellation note, while the cancel command is available only while the request remains pending.</div>
+          <div><strong>Preserved the Team boundary.</strong> Neither the dashboard nor the endpoint accepts an employee selector. Team continues to own identity and access; Workforce adds only the employee's operational record.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card bad">
+          <h3>X06 Problem: Recurring shifts looked like a communicated schedule</h3>
+          <p><code>workforce_shifts</code> stores weekly repeating templates. If a manager edits one, the old system had no dated record of which shift pattern was shared for a particular week, whether a previous schedule was replaced, or whether an employee acknowledged it.</p>
+          <ul>
+            <li>A later template edit could silently change the apparent schedule for a week already under way.</li>
+            <li>An employee could not distinguish an upcoming published shift from an internal manager draft.</li>
+            <li>A manager could not establish a recipient list or measure acknowledgement without manually reconstructing it.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X06 Decision: Templates are drafts; published weeks are immutable snapshots</h3>
+          <p>Publishing materialises a Monday-starting weekly version from recurring shifts. The snapshot stores dated assignments and one in-app notice per Team user. Re-publishing supersedes, rather than overwrites, the prior publication.</p>
+          <ul>
+            <li>Managers edit recurring templates, select the target week, decide whether acknowledgement is required, and publish deliberately.</li>
+            <li>Employees see only currently published upcoming snapshot shifts assigned to their Team identity.</li>
+            <li>One published schedule per workspace/week is enforced by a partial unique index; replacement versions preserve the old record as <code>superseded</code>.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X06</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 170.</strong> <code>170_workforce_schedule_publication.sql</code> adds schedule versions, immutable version-shift snapshots, and per-user schedule notices. The snapshot keeps the source recurring-shift ID only as provenance; it does not depend on a future template edit for its dates or hours.</div>
+          <div><strong>Added manager publication.</strong> <code>POST /api/workforce/schedule-publication</code> validates a Monday week start, rejects an empty template schedule, supersedes the current publication for that week, creates the new version, copies all shifts to dated rows, and creates distinct notices for assigned Team users in one transaction.</div>
+          <div><strong>Added manager visibility.</strong> Staff &amp; Schedule now shows Draft versus Published status, recipient acknowledgement progress, a deliberate acknowledgement requirement, and a clear warning that template changes stay draft until publication.</div>
+          <div><strong>Added employee acknowledgement.</strong> The employee dashboard shows only future published shifts attached to the signed-in Team user. <code>PATCH /api/workforce/me/schedule-notice/:id</code> can acknowledge only that employee's currently published, acknowledgement-required notice.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Why This Boundary Is Correct</h3>
+          <ol>
+            <li><strong>Draft is editable:</strong> recurring shifts can continue to be managed without rewriting employee-visible history.</li>
+            <li><strong>Publication is evidence:</strong> the dated version states what was communicated for that week and who received it.</li>
+            <li><strong>Replacement is explicit:</strong> a revision supersedes the prior publication rather than altering it in place.</li>
+            <li><strong>Acknowledgement is scoped:</strong> the employee can acknowledge their notice, not another person's schedule or a manager-only draft.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>Notices are in-app records today. Outbound email, push, or SMS delivery and delivery-failure tracking need a deliberate notification integration.</li>
+            <li>The present publish check verifies that a schedule exists. Skill, role, location, and staffing-demand coverage checks require their own data model and remain future X06 work.</li>
+            <li>X08 still needs delegated approvers, response deadlines, and escalation ownership for requests that remain unresolved.</li>
+            <li>Real-browser mobile review is required for the employee acknowledgement card and manager publish state before release.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/self-service-schedule-publication.test.ts</code> proves that a cancellation remains visible as <code>cancelled</code> with its audit event, a schedule publication snapshots a Team-linked shift, a second publication supersedes the first, and only the employee can acknowledge their notice.</li>
+          <li><code>npm run migrate</code> applied migrations 170 and 171 to the configured development database. Focused X05/X06 tests and <code>npm run typecheck</code> passed.</li>
+          <li>Repository-wide and real-browser release checks remain required. Earlier suite attempts had unrelated authentication failures and transient Neon connectivity errors.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x07-field-reliability">
+      <h2>X07 Field Lesson: A Geofence Must Protect Attendance Without Trapping the Employee</h2>
+      <p class="lead">Added 22 July 2026. Location is evidence for attendance, not a reason to strand someone outside the system. A legitimate employee can have denied GPS permission, poor accuracy, no signal, or an approved temporary site. The product must retain the rule, explain the result, safely recover from a retry, and route an exception to a person who can decide it.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X07 Problem: A rejected location became a dead end</h3>
+          <p>The first self-service clock-in implementation correctly rejected unassigned, inaccurate, and out-of-radius locations. It recorded the failed event, but a person could only retry. If the device had no location permission or the shift was legitimately at a temporary site, the employee had no structured next step and a manager had no dedicated evidence-led queue.</p>
+          <ul>
+            <li>A browser retry after a slow network response could look like a second action even when the first punch had succeeded.</li>
+            <li>“Allow location access” is insufficient guidance when the device cannot produce a reliable location or the configured worksite does not describe the day&apos;s work.</li>
+            <li>A manager override without a captured failure reason, geofence result, actor, and decision note would quietly undo the attendance policy.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X07 Decision: Keep automatic geofencing strict; recover through an explicit, audited exception</h3>
+          <p>Automatic clock-in still requires an assigned Workforce work location and a passing server-side distance and accuracy check. When that cannot happen, the employee may submit a reasoned recovery request. A manager can approve a supervisor override only from the queue, with the recorded attempt time and evidence retained beside the decision.</p>
+          <ul>
+            <li>Every self-service clock command can carry an idempotency key, so a lost response replays the original result instead of creating another punch or break.</li>
+            <li>Recovery reasons distinguish permission denial, unavailable or timed-out location, poor accuracy, outside-geofence attempts, missing configuration, and network interruption.</li>
+            <li>An approval creates a normal punch plus a linked time-clock event marked as a supervisor override. It does not rewrite, erase, or disguise the original location failure.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X07</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 172.</strong> <code>172_workforce_attendance_recovery.sql</code> adds command keys to punches, breaks, and time-clock events, with partial unique indexes scoped to the workspace, Team user, action, and key. It also adds the attendance-recovery record: employee, failure code, reason, attempted time, optional location evidence, status, manager decision, and resulting override punch.</div>
+          <div><strong>Made self-service retries safe.</strong> Clock in, clock out, start break, and end break accept an optional <code>idempotency_key</code>. The dashboard creates one per command. A repeated successful clock-in command returns the original punch as a replay rather than creating a duplicate; the ledger also suppresses duplicate evidence for the same command.</div>
+          <div><strong>Added a human recovery path.</strong> The dashboard translates browser permission, timeout, and availability failures into plain language. For a failed geofence check or location-capture failure, the employee can submit <code>POST /api/workforce/me/attendance-recovery</code> with a reason and any captured coordinates, accuracy, nearest worksite, distance, and geofence result.</div>
+          <div><strong>Added a manager decision queue.</strong> Attendance now loads pending recovery requests separately from corrections. <code>PATCH /api/workforce/attendance-recovery/:id</code> requires a decision note. Approval creates a supervisor-override clock-in at the server-recorded attempt time and an event tied to the recovery ID; denial retains the same evidence and outcome.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Why This Boundary Is Correct</h3>
+          <ol>
+            <li><strong>Location remains minimum necessary:</strong> it is captured only for the attempted attendance command or a recovery that the employee deliberately submits.</li>
+            <li><strong>Automatic approval remains impossible:</strong> a failed geofence is not converted into a punch by the client, a retry, or a generic manager edit.</li>
+            <li><strong>The manager decides from evidence:</strong> the queue identifies the employee, failure category, reason, attempt time, nearest worksite, distance, and accuracy before an override is considered.</li>
+            <li><strong>The historical record stays explainable:</strong> the original failed event, recovery request, manager note, override punch, and linked event form one traceable story for payroll and audit review.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>The current dashboard requires an online request submission. Durable browser-side offline storage and automatic background replay need a deliberate client queue, conflict policy, and device-security review.</li>
+            <li>Temporary worksites still use a supervisor override. A future location-assignment workflow can add time-bounded, schedule-linked temporary-site eligibility before a shift begins.</li>
+            <li>Recovery approval now follows the X08 policy owner and delegation model. Automatic overdue escalation, reminder delivery, and a substitute owner after a missed response target remain future work.</li>
+            <li>Real-device checks are still required for browser permission prompts, low-accuracy GPS behaviour, mobile retry timing, and the wording shown in each platform&apos;s location error.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/self-time-clock.test.ts</code> proves a repeated clock-in command replays the original punch, an out-of-geofence employee can submit a recovery request with failed geofence evidence, and a manager approval produces exactly one supervisor-override punch with the linked recovery ID.</li>
+          <li><code>npm run migrate</code> applied migration 172 to the configured development database. Focused Workforce self-time, X05/X06 schedule-publication tests, and <code>npm run typecheck</code> passed.</li>
+          <li>The full repository suite and real-device browser verification remain release requirements. The prior full-suite run was blocked by transient shared-Neon connection failures across unrelated tests.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x08-approval-ownership">
+      <h2>X08 Field Lesson: A Pending Request Is Work Only When Someone Owns It</h2>
+      <p class="lead">Added 22 July 2026. A request that merely says <em>pending</em> is not operationally managed. Leave, overtime, shift swaps, time corrections, attendance recovery, and payroll can all wait indefinitely when a manager is absent or the decision rule lives only in a person&apos;s memory. Workforce now assigns an accountable decision owner, makes the due point visible, and permits narrowly scoped cover without changing Team access.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X08 Problem: Approval authority was scattered and implicit</h3>
+          <p>Each Workforce screen had its own approve or deny action. The action checked a broad module permission, but it did not consistently answer who was responsible for this request, who could act while that person was away, or when the decision was due.</p>
+          <ul>
+            <li>A manager could spend time searching Leave, Overtime, Punching, Swaps, and Payroll to find requests that were waiting.</li>
+            <li>Delegating coverage in Team would have changed someone&apos;s workspace access, which is much broader than granting a temporary approval duty.</li>
+            <li>A request with no visible owner or response target becomes a silent service failure rather than an exception that can be managed.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X08 Decision: Route every decision type through policy ownership</h3>
+          <p>Each request type has a policy with a primary Team user and a response target in hours. When a policy intentionally has no primary owner, the employee profile&apos;s recorded manager is the compatibility fallback. A temporary delegation is specific to one request type, one owner, one delegate, and an optional expiry. It grants approval responsibility only; it does not modify Team levels, roles, login access, or wider Workforce permissions.</p>
+          <ul>
+            <li>The Level 1 Owner remains an explicit operational override, preserving the existing owner bypass rather than leaving an absent manager as a single point of failure.</li>
+            <li>Decision endpoints enforce the same routing rule, so the inbox is not just a visual suggestion.</li>
+            <li>Delegation, revocation, policy changes, and final decisions leave a routing event for later audit review.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X08</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 173.</strong> <code>173_workforce_approval_routing.sql</code> adds workspace-scoped approval policies, time-bounded delegation records, and an approval-routing event trail. A uniqueness rule permits one policy per request type per workspace; delegation rows require distinct Team users and a valid time range.</div>
+          <div><strong>Added one manager queue.</strong> <code>GET /api/workforce/approval-inbox</code> combines pending leave, overtime, claimed shift swaps, time corrections, attendance recovery requests, and draft payroll periods. It returns the current owner, whether the request was delegated to the signed-in person, the response target, and a calculated due time. It filters the queue to the policy owner, active delegate, manager fallback, or Level 1 Owner override.</div>
+          <div><strong>Added policy and cover management.</strong> <code>GET|POST|DELETE /api/workforce/approval-routing</code> reads and saves per-type owner/target rules, creates a delegation, and revokes an active delegation. Both people are verified as Team users in the same workspace. A past expiry, self-delegation, cross-workspace user, or missing reason is rejected.</div>
+          <div><strong>Moved enforcement to the point of decision.</strong> Leave, overtime, shift-swap, time-correction, attendance-recovery, and payroll approval handlers now check the configured owner or an active delegate after their normal permission check. A broad Workforce permission alone is not enough to make a routed decision. Existing workspaces without an assigned owner continue through manager fallback or the legacy unassigned path until policy setup is complete.</div>
+          <div><strong>Made the workflow discoverable.</strong> The Workforce <em>Approvals</em> tab is a manager starting point: it shows the user&apos;s queue first, then owner and response-target policy controls, then active delegation cover. Each queue item links to its decision surface so the review remains in the domain screen that has the supporting evidence.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Operational Flow</h3>
+          <ol>
+            <li><strong>Set the accountable owner:</strong> an Owner or permitted Workforce manager chooses a primary approver and a response target for each request type.</li>
+            <li><strong>Publish temporary cover:</strong> when the owner is unavailable, choose a delegate, request type, reason, and expiry. The delegate must already have normal Workforce permission to act.</li>
+            <li><strong>Work from Approvals:</strong> managers start with the consolidated queue, see the named owner and due point, then open the specialised request screen to review its evidence and approve or deny.</li>
+            <li><strong>Preserve accountability:</strong> the final decision records the actor, routed owner, request ID, and outcome; revoking cover immediately removes the delegate&apos;s routing authority.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>The current due point is visible but passive. Scheduled reminders, escalation to a second owner, and overdue reporting need a notification worker and an explicit escalation policy before they can be promised operationally.</li>
+            <li>The inbox links to the evidence-rich decision tab rather than offering blind bulk approval. A future batch action must define per-request evidence, conflict, and audit requirements first.</li>
+            <li>Conflict-of-interest rules, multi-step approvals, and payroll separation-of-duties are deliberately not inferred from a Team hierarchy. They need a separately approved policy model.</li>
+            <li>Real-browser manager verification remains required for owner setup, delegation expiry, an absent-manager simulation, and a manager with permission but no routing assignment.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/approval-routing.test.ts</code> proves that a leave policy routes a pending request to its configured owner with the response target, rejects a policy owner from another workspace, records a delegation revocation, and blocks a permitted Level 2 manager until the policy owner delegates that request type.</li>
+          <li><code>npm run migrate</code> applied migration 173 to the configured development database. Focused X08 approval-routing tests and <code>npm run typecheck</code> passed.</li>
+          <li>The repository-wide suite and real-browser release checks remain required. Shared development Neon can produce unrelated transient connection failures, so this evidence does not replace the release gate.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x09-sensitive-data-boundaries">
+      <h2>X09 Field Lesson: Workforce Access Is Not Permission to Read Every Employee Detail</h2>
+      <p class="lead">Added 22 July 2026. Workforce records combine ordinary operating data with personal contact details, emergency contacts, compensation, and precise location evidence. A broad module-view permission is enough to run a schedule; it is not enough to expose every sensitive field to every colleague. The system must separate Team membership from data purpose and leave evidence when sensitive data is accessed.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X09 Problem: Broad Workforce views silently exposed sensitive records</h3>
+          <p>Employee directory and master-profile APIs returned personal phone, non-login email, emergency contact, and arbitrary custom fields to any caller who could view Workforce. Payroll rates were similarly tied only to the Payroll screen. Clock evidence and recovery queues could return exact latitude, longitude, accuracy, and distance through otherwise general manager workflows.</p>
+          <ul>
+            <li>A Team role answers what a person can do in the workspace; it does not prove a continuing need to know somebody&apos;s pay, emergency contact, or location trail.</li>
+            <li>Hiding a field in React is not a privacy control when the API already sent the value to the browser.</li>
+            <li>Location data is particularly easy to overcollect: a manager may need a pass/fail result for attendance, not the employee&apos;s exact coordinate history.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X09 Decision: Use named, purpose-limited data scopes</h3>
+          <p>Workforce now recognises three sensitive scopes: <code>profile</code> for personal contact and emergency details, <code>compensation</code> for pay-rate records, and <code>location_history</code> for precise worksite and clock evidence. The Level 1 Owner retains the documented override. An Owner may grant one scope to one Team user with a business reason, and may revoke it without changing the person&apos;s Team role or module permissions.</p>
+          <ul>
+            <li>A recorded direct manager may see their direct report&apos;s profile-contact fields without a global profile grant; all other profile viewers receive redacted values.</li>
+            <li>Exact location is opt-in on manager history endpoints. The normal attendance queue still shows the operational result and reason, but not coordinate evidence.</li>
+            <li>Grant-based and Owner-based sensitive reads write a small access event containing the actor, scope, endpoint, subject where known, and access basis. The event never stores the sensitive value itself.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X09</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 174.</strong> <code>174_workforce_sensitive_data_access.sql</code> adds a workspace-scoped sensitive-data grant register and immutable access-event table. One user can hold at most one grant per scope; updating a grant reactivates or revokes that named capability rather than creating an ambiguous history.</div>
+          <div><strong>Separated data access from Team access.</strong> <code>GET|POST /api/workforce/sensitive-access</code> is Owner-only. The Privacy tab presents the three scopes, asks for a Team user and business reason, lists active and revoked grants, and revokes future access immediately. This does not modify the Team hierarchy, role, login, or ordinary Workforce permissions.</div>
+          <div><strong>Redacted profile APIs by default.</strong> Employee directory and master-profile responses now withhold personal phone, non-login email, emergency contact, and custom fields unless the caller is the Owner, has an active profile grant, or is that employee&apos;s recorded direct manager. Profile writes from an unapproved actor retain existing sensitive values instead of replacing them with blank form data.</div>
+          <div><strong>Scoped pay and location evidence.</strong> Payroll-rate reads and writes require the compensation scope. Worksite configuration requires the location-evidence scope. Generic time-ledger and attendance-recovery queues omit exact coordinates unless <code>include_location=true</code> is requested by an Owner or a user with an active location-evidence grant; decision responses apply the same redaction.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Operational Flow</h3>
+          <ol>
+            <li><strong>Start with the least scope:</strong> managers use ordinary Workforce screens for schedules, attendance outcomes, and approvals. They do not automatically see personal profile, pay, or precise GPS data.</li>
+            <li><strong>Grant for a defined responsibility:</strong> the Owner selects the minimum scope and records why, for example temporary payroll cover or an HR emergency-contact duty.</li>
+            <li><strong>Use location evidence deliberately:</strong> a manager reviewing a failed attendance request normally sees the failure and employee reason. Exact coordinates are requested only when they are necessary to resolve the case.</li>
+            <li><strong>Revoke at the end of cover:</strong> the Owner removes the grant when the business need ends. Future reads are blocked; access evidence remains available for audit.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>Direct-manager profile access is based on the recorded manager relationship. Acting manager, HR caseworker, and emergency-access workflows need time-bound, case-linked rules before they can bypass that relationship.</li>
+            <li>Access events are retained for audit but do not yet have a manager-facing audit explorer, export retention policy, or automated unusual-access alert.</li>
+            <li>Data export, files, and other modules have their own privacy surfaces. A whole-product data-retention and subject-access-request programme remains outside this Workforce migration.</li>
+            <li>Real-browser review is still required for the redacted employee form, the Owner-only Privacy tab, revoked-grant refresh, and a manager attempting the location-evidence view without a grant.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/sensitive-data-access.test.ts</code> proves that a Level 2 manager receives redacted profile data by default, sees it after an Owner profile grant with an access audit event, and is separately blocked from compensation and exact location history until the corresponding scope is granted.</li>
+          <li><code>npm run migrate</code> applied migration 174 to the configured development database. Focused X09 sensitive-data tests and <code>npm run typecheck</code> passed.</li>
+          <li>The repository-wide suite and real-browser release checks remain required. This focused test set validates API boundaries, not every screen that consumes Workforce data.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x10-payroll-snapshots-disputes">
+      <h2>X10 Field Lesson: Closing Payroll Must Freeze the Explanation, Not Just the Total</h2>
+      <p class="lead">Added 22 July 2026. A payroll period can look approved while still being calculated from live payable time and live rates. That means a legitimate later correction or rate change can silently change a period that a manager already reviewed. The operational failure is not merely a wrong number: payroll staff can no longer explain why an old export changed, and a worker has no durable record to dispute.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>X10 Problem: Exporting live data rewrote closed payroll</h3>
+          <p>The original period screen recomputed payable entries and rates whenever it was read. Export generation used the same live calculation and upserted the existing payslip for the employee and period. A changed hourly rate, newly approved correction, or late source record could therefore alter a previously generated amount without creating a new version or explaining the difference.</p>
+          <ul>
+            <li>An approval total is not evidence if its inputs remain live and mutable.</li>
+            <li>A payslip upsert can make an old export appear to have said something it did not say when it was generated.</li>
+            <li>Asking payroll staff to remember the old rate or reconstruct the source rows from several screens is not an audit trail.</li>
+          </ul>
+        </article>
+        <article class="card good">
+          <h3>X10 Decision: Approval creates one immutable calculation snapshot</h3>
+          <p>Approving a draft period now creates a workspace-scoped snapshot before the period changes to Approved. Each worker line freezes total hours, blended hourly rate, gross and net values, currency, and the individual payable ledger sources with the rate used for each source. The approved period points to that one snapshot; all later reads, exports, and payslips use it instead of recalculating live history.</p>
+          <ul>
+            <li>Rate changes and later payable entries affect only future draft periods; they cannot rewrite a frozen snapshot.</li>
+            <li>Export is idempotent per snapshot. Repeating the command returns the existing export and payslips rather than creating a new amount or updating the old payslip.</li>
+            <li>A dispute is a separate, status-tracked record linked to the period, snapshot, optional payslip, and affected Team user. Resolving a dispute records the decision without changing the closed evidence.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>What We Did for X10</h3>
+        <div class="journey">
+          <div><strong>Allocated migration 175.</strong> <code>175_workforce_payroll_snapshots_disputes.sql</code> adds one snapshot per workspace payroll period, immutable snapshot lines, snapshot references on payroll periods, exports, and payslips, and a durable payroll-dispute register. Snapshot lines retain source evidence rather than only storing a final total.</div>
+          <div><strong>Changed the close boundary.</strong> <code>PATCH /api/workforce/payroll/:id</code> now reconciles approved time, calculates the line evidence once, persists the snapshot, then marks the period approved with the frozen total and snapshot reference. A period GET returns frozen lines after close and a clearly live preview while the period is still draft.</div>
+          <div><strong>Changed export semantics.</strong> <code>POST /api/workforce/payroll-export</code> rejects a draft or snapshot-less period. For a frozen snapshot it creates one export and one immutable payslip per snapshot line. A repeat request returns that existing batch. Legacy payslips without a snapshot are blocked from silent overwrite and must be deliberately voided or migrated by payroll operations.</div>
+          <div><strong>Added a controlled discrepancy path.</strong> <code>GET|POST /api/workforce/payroll-disputes</code> lists and records disputes. <code>PATCH /api/workforce/payroll-dispute/:id</code> moves an open case through review, resolution, or rejection with a required decision note at close. The Payroll screen labels Draft calculations as live previews, labels approved calculations as Frozen, exposes the export register, and provides a dispute register for the selected frozen period.</div>
+          <div><strong>Protected the data purpose.</strong> Period detail, export, and dispute endpoints require both the existing Payroll permission bucket and the compensation sensitive-data scope introduced in X09. Reading compensation evidence writes the same purpose-limited access event instead of treating a broad Workforce view as entitlement to payroll detail.</div>
+        </div>
+      </article>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Operational Flow</h3>
+          <ol>
+            <li><strong>Prepare:</strong> payroll works in a Draft period, where time and rates are visibly a live preview. Missing or incorrect source time is fixed through the normal time and correction workflows before close.</li>
+            <li><strong>Close:</strong> the assigned payroll approver approves the period. Workforce freezes each included payable source and rate into one snapshot and stores the closed total.</li>
+            <li><strong>Export:</strong> payroll generates the provider file or review batch from that snapshot. Repeating the action is safe: the existing batch is returned, not recomputed.</li>
+            <li><strong>Question:</strong> payroll records a dispute against the frozen employee line or payslip. The reviewer investigates the preserved evidence, records a review outcome, and leaves the original period intact.</li>
+            <li><strong>Correct forward:</strong> once a future-period adjustment policy is approved, the resolution should create a separately identified adjustment in a future draft period. It must reference this dispute and never edit the original snapshot.</li>
+          </ol>
+        </article>
+        <article class="card missing">
+          <h3>Remaining Scope</h3>
+          <ul>
+            <li>Disputes are durable and reviewable, but automatic carry-forward adjustment creation is deliberately not inferred. It needs an approved adjustment type, target-period selection, accounting treatment, and provider export rules.</li>
+            <li>Snapshot lines preserve time and rate evidence. Tax, deductions, leave valuation, overtime multipliers, statutory calculations, and provider-specific payslip layout remain outside the current tracking-only payroll scope.</li>
+            <li>Void and replacement-export controls for legacy unsnapshotted payslips need a payroll-operations UI and a documented migration procedure before they are exposed as a routine action.</li>
+            <li>Real-browser verification remains required for a compensation-granted payroll reviewer, a repeat export, a rate change after approval, and a dispute resolved through the manager workflow.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Verification Evidence</h3>
+        <ul>
+          <li><code>tests/workforce/payroll-snapshots-disputes.test.ts</code> creates approved time at 40 per hour, freezes a period at 320, changes the live rate to 100, and proves the period and export still return 320. It also proves repeat export reuse and a resolved dispute that does not alter the snapshot.</li>
+          <li><code>tests/workforce/m5-m11.test.ts</code> now proves the M9 path approves a period before export, matching the closed-period requirement.</li>
+          <li><code>npm run migrate</code> applied migration 175 to the configured development database. Focused X10 payroll tests and <code>npm run typecheck</code> passed.</li>
+          <li>The repository-wide suite and real-browser release checks remain required. This evidence validates the data boundary and API flow, not a payroll-provider integration.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="x02-operational-workflows">
+      <h2>X02-X10 Field Lessons: Workforce Must Be Operated, Not Merely Configured</h2>
+      <p class="lead">Added 22 July 2026. A Workforce product succeeds when a person on a busy shift can complete the next right action and a manager can resolve the exceptions without reconstructing the story from separate tabs. The roadmap therefore has to cover operational ownership, recovery, communication, and trust alongside schemas and endpoints.</p>
+
+      <div class="grid-2">
+        <article class="card bad">
+          <h3>The Operational Failure Mode</h3>
+          <p>A tab can be technically complete and still fail in daily use. The current module exposes many capable screens, but a user can still be forced to decide where a task belongs, select the person they already are, discover prerequisites only after an action fails, or manually join attendance, corrections, schedules, and pay records.</p>
+          <ul>
+            <li>An employee should not need to understand the Workforce information architecture to clock in, request leave, or see the result of a request.</li>
+            <li>A manager should not have to visit every tab to discover missed punches, under-coverage, pending leave, expiring training, overdue assets, and payroll blockers.</li>
+            <li>An Owner needs clear setup order and policy controls, not a collection of forms whose dependencies are implicit.</li>
+            <li>Payroll and audit reviewers need a frozen, explainable account of what was approved, including corrections and overrides, rather than a total that can change after the fact.</li>
+          </ul>
+        </article>
+
+        <article class="card good">
+          <h3>The Product Decision</h3>
+          <p>Design Workforce around three operating surfaces and a shared exception model. The same Team identity remains the source for access, while Workforce extends that person only with employment and operational data.</p>
+          <ul>
+            <li><strong>Employee surface:</strong> today's shift and time status, personal requests, personal balances, assigned learning/assets, and a clear recovery path when something goes wrong.</li>
+            <li><strong>Manager surface:</strong> an action-ranked daily inbox for coverage, attendance, approvals, corrections, readiness, and follow-up; every item has an owner, due point, state, and resolution.</li>
+            <li><strong>Owner/payroll surface:</strong> guided configuration, policy visibility, publishing controls, period close, audit exports, and controlled reopening.</li>
+            <li><strong>Shared rule:</strong> the user sees the task in the context where they need it, while detailed records remain reachable through direct links rather than hidden filters.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>The Daily Operating Loop</h3>
+        <div class="journey">
+          <div><strong>Employee begins work.</strong> The dashboard identifies the employee automatically, shows today's scheduled work and allowed worksite, and provides Clock in, Break, Clock out, or a clearly named fallback such as Request correction. It never asks the employee to select themselves from a staff list.</div>
+          <div><strong>Manager runs the day.</strong> A single review queue surfaces late/missing punches, failed location checks, uncovered or skill-ineligible shifts, leave awaiting a decision, swaps, expiring certificates, and assets due back. The manager can open each item already scoped to the relevant person, shift, or request.</div>
+          <div><strong>Owner publishes and controls policy.</strong> Setup has an explicit order: Team person, employment profile, worksite/eligibility, schedule, publish. Policy changes state their effective date and never silently reinterpret past attendance or payroll.</div>
+          <div><strong>Payroll closes evidence.</strong> The period cannot become payable until reconciliation is complete. Closing produces immutable line items and a human-readable explanation; a later correction follows a controlled reopen/dispute path rather than silently changing a past payslip.</div>
+        </div>
+      </article>
+
+      <table class="score-table" style="margin-top:14px">
+        <thead>
+          <tr><th>Lesson</th><th>Problem to prevent</th><th>Product response</th><th>Done evidence</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>X02</strong><br>Role-first entry and setup</td>
+            <td>Team membership, employee readiness, worksite eligibility, and schedule setup are treated as unrelated forms. A user reaches a blocked action without knowing the missing prerequisite.</td>
+            <td>Create role-based Employee, Manager, and Owner entry surfaces. Provide a setup checklist and activation state: Team person &rarr; profile &rarr; worksite/eligibility &rarr; schedule &rarr; publish. Offboarding has an equivalent controlled sequence.</td>
+            <td>A newly invited Team user is visibly a Workforce candidate, not silently assumed ready. Owners can see exactly why a person cannot be scheduled or clock in; deactivation preserves history and removes future eligibility deliberately.</td>
+          </tr>
+          <tr>
+            <td><strong>X03</strong><br>One time-to-pay truth</td>
+            <td>Clock evidence, manual time entries, corrections, overtime, and payroll can describe the same work differently. That risks missing hours, double counting, and manager confusion.</td>
+            <td>Define one payable-time reconciliation model. Each payable line identifies its source evidence, adjustments, approver, and reason. Attendance is evidence; manual entries and approved corrections are explicit adjustments, never invisible parallel truth.</td>
+            <td>A manager can explain why an hour is included or excluded. A period shows unreconciled time before close, and tests cover punch-only, manual-only, corrected, rejected, and overnight cases without double counting.</td>
+          </tr>
+          <tr>
+            <td><strong>X04</strong><br>Exception inbox and recovery</td>
+            <td>Missed punches, geofence failures, duplicate actions, correction requests, unapproved leave, and readiness problems are scattered across screens or end in a generic error.</td>
+            <td>Build a shared exception queue with severity, owner, due time, linked record, resolution state, and audit note. Every failed employee action exposes a next step; every manager decision applies or rejects the requested change atomically.</td>
+            <td>A manager can start the day from one inbox and clear an item end-to-end. An employee sees Submitted, Under review, Approved, Rejected, or Needs information instead of wondering whether a request disappeared.</td>
+          </tr>
+          <tr>
+            <td><strong>X05</strong><br>Employee self-service lifecycle</td>
+            <td>Employees are given administrative forms, can select another staff member accidentally, or cannot cancel/correct a request while it is still pending.</td>
+            <td>Resolve the employee identity from the signed-in Team user. Separate self-service requests from manager actions, show request history and status, permit safe cancellation/editing, and state the escalation contact and deadline.</td>
+            <td>Employee flows contain no staff selector for actions on their own record. A mobile user can see what they submitted, what changed, who owns the next decision, and what to do when the deadline passes.</td>
+          </tr>
+          <tr>
+            <td><strong>X06</strong><br>Schedule publishing and communication</td>
+            <td>A recurring template or draft is mistaken for a communicated schedule. Schedule changes can arrive without acknowledgement, coverage can be measured by headcount rather than required skills.</td>
+            <td>Model dated schedule versions with Draft, Published, Changed, and Superseded states. Publish changes with a recipient list, notice window, acknowledgement where required, and coverage checks for role/skill/location eligibility.</td>
+            <td>Every employee sees one authoritative upcoming schedule and a change notice. Managers can prove who was notified and see uncovered skill requirements before publishing.</td>
+          </tr>
+          <tr>
+            <td><strong>X07</strong><br>Field reliability and geofence fallback</td>
+            <td>GPS permission, inaccurate location, device connectivity, or a retry can prevent a legitimate clock event. A non-idempotent retry may create duplicate events.</td>
+            <td>Use a deliberate attendance recovery flow: explain the location rule before capture, show accuracy and worksite result, permit a reasoned supervisor override where policy allows, queue/retry safely, and make clock commands idempotent.</td>
+            <td>Offline, denied-permission, poor-accuracy, duplicate-submit, and temporary-site scenarios have a tested user-facing outcome. Overrides record actor, reason, location evidence, and follow-up review requirement.</td>
+          </tr>
+          <tr>
+            <td><strong>X08</strong><br>Approval ownership and escalation</td>
+            <td>Requests wait because the named manager is absent, a request has no deadline, or nobody can tell whether leave, swaps, corrections, overtime, and payroll approval have the same authority rule.</td>
+            <td>Define an approval policy per request type: primary owner, delegate, response target, escalation path, conflict rule, and final audit event. Managers can delegate responsibility without changing Team access levels.</td>
+            <td>Every pending item names the current decision owner and due point. A simulated absent-manager case routes correctly, and the audit history shows delegation and final authority.</td>
+          </tr>
+          <tr>
+            <td><strong>X09</strong><br>Trust, privacy, and scoped access</td>
+            <td>Worksite location, emergency contact, phone, compensation, and employment data are sensitive. Broad employee lists or unexplained location collection reduce trust and create avoidable access risk.</td>
+            <td>Use field-level visibility, minimum necessary location capture, a visible location/policy explanation, and purpose-specific audit access. Workforce must respect Team permissions without treating all employee data as shareable among peers.</td>
+            <td>Permission tests prove employees cannot read another person's sensitive fields. The clock-in experience states why location is requested, when it is captured, and how an employee can request review.</td>
+          </tr>
+          <tr>
+            <td><strong>X10</strong><br>Payroll explanation and disputes</td>
+            <td>Live recalculation changes a previously reviewed amount, and a payslip total cannot be traced to hours, rates, leave, overtime, adjustments, or approvals.</td>
+            <td>Close a payroll period into a frozen snapshot with line-level source evidence, rate effective date, totals, approvers, export state, and a controlled reopen/dispute workflow. Keep payment execution clearly outside this tracking module until integrated deliberately.</td>
+            <td>A worker and payroll reviewer can explain every line item without database access. A post-close correction creates a new controlled adjustment or reopened version; it never silently rewrites the original evidence.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="grid-2" style="margin-top:14px">
+        <article class="card">
+          <h3>Acceptance Questions for Every Workflow</h3>
+          <ul>
+            <li>Who performs this action in normal work: employee, manager, delegated manager, owner, payroll reviewer, or system?</li>
+            <li>What starts it, what information is already known, and what is the shortest valid path?</li>
+            <li>What happens when the network, GPS, policy, schedule, or approver is unavailable?</li>
+            <li>Who owns the next decision, when is it due, how is it escalated, and how does the requester see the outcome?</li>
+            <li>Which downstream records change, and how can a future reviewer explain that change without reconstructing hidden state?</li>
+          </ul>
+        </article>
+        <article class="card missing">
+          <h3>Implementation Guardrails</h3>
+          <ul>
+            <li>No silent background transition for a high-risk Workforce state. The user needs confirmation, record state, and a route to evidence.</li>
+            <li>No generic empty state where a prerequisite is missing. Explain the blocked condition, the responsible role, and the next action.</li>
+            <li>No manager override without a reason, actor, time, and reviewable audit event.</li>
+            <li>No workflow is complete because its create endpoint exists. It needs resolution, cancellation, notification, visibility, permission, and failure-path coverage.</li>
+            <li>No dashboard counter without an actionable drill-down that preserves the relevant person/date/request context.</li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="card" style="margin-top:14px">
+        <h3>Prioritised Operational Sequence</h3>
+        <ol>
+          <li><strong>X02 and X05:</strong> make Team-to-Workforce setup visible and give employees a safe, role-appropriate home before adding more manager forms.</li>
+          <li><strong>X04 and X08:</strong> finish the exception, correction, approval, delegation, and escalation loop so current data has an operational owner.</li>
+          <li><strong>X03 and X10:</strong> reconcile time to pay and introduce immutable payroll snapshots before treating payroll tracking as dependable.</li>
+          <li><strong>X06 and X07:</strong> make schedules publishable and attendance reliable in real field conditions, including change communication and recovery.</li>
+          <li><strong>X09:</strong> enforce privacy and explain the collection of sensitive workforce data across all preceding work, not as a final cosmetic review.</li>
+        </ol>
+      </article>
+    </section>
+
+    <section>
+      <h2>Roadmap Checklist</h2>
+      <p class="lead">Update the checkboxes and integration fields after every milestone. Each milestone must end with the handoff format at the bottom of this file.</p>
+      <div class="legend">
+        <span class="tag ok">Checked = merged or already on current main</span>
+        <span class="tag warn">Unchecked = future work</span>
+        <span class="tag danger">Migration numbers marked TBA need human allocation</span>
+      </div>
+
+      <div class="timeline">
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M0</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Baseline Workforce + Project Service v1</h3>
+            <p>Staff schedule, project list/detail, resource assignments, product/manifest wiring, authz, nav, seed flow.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Migration <code>059_workforce.sql</code> applied.</span>
+              <span class="check"><span class="box done">x</span>Routes <code>/workforce</code>, <code>/workforce/projects</code>, <code>/workforce/projects/:projectId</code>.</span>
+              <span class="check"><span class="box done">x</span>Endpoints <code>workforce-shifts</code>, <code>workforce-shift</code>, <code>workforce-projects</code>, <code>workforce-project</code>, <code>workforce-project-assignments</code>, <code>workforce-staff</code>.</span>
+              <span class="check"><span class="box done">x</span>Seed script <code>npm run seed:workforce</code>.</span>
+            </div>
+            <div class="integration">
+              <div><b>Worktree / branch</b><span>Historical: main already contains it.</span></div>
+              <div><b>Ports</b><span>Workforce terminal convention: app <code>5189</code>, Netlify <code>8899</code>.</span></div>
+              <div><b>Docs</b><span>Regenerate <code>npm run docs:reference</code> if endpoints/manifests change.</span></div>
+              <div><b>Review priority</b><span>Auth/product enablement and migration order.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M1</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Timesheets Depth Slice</h3>
+            <p>Billable time logging, approval, edit/delete guards, current-week UI, project cost input for later budget work.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Migration <code>107_timesheet_entries.sql</code>.</span>
+              <span class="check"><span class="box done">x</span>Routes <code>/workforce/timesheets</code>.</span>
+              <span class="check"><span class="box done">x</span>Endpoints <code>workforce-timesheets</code>, <code>workforce-timesheet</code>.</span>
+              <span class="check"><span class="box done">x</span>Tests <code>tests/workforce/timesheets.test.ts</code>.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>107. Already in depth range and on main.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Seed</b><span><code>seed-workforce.ts</code> adds demo entries.</span></div>
+              <div><b>Gotcha</b><span>Persistent DB tests need randomized unique data.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M2</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Workforce Operational Depth</h3>
+            <p>Leave, punching, overtime, swaps, payroll tracking, training, assets, and employee dashboard.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Migrations <code>112_leave_requests.sql</code> through <code>119_employee_dashboard_indexes.sql</code>.</span>
+              <span class="check"><span class="box done">x</span>Routes <code>/leave</code>, <code>/punching</code>, <code>/overtime</code>, <code>/swaps</code>, <code>/payroll</code>, <code>/training</code>, <code>/assets</code>, <code>/employees</code>.</span>
+              <span class="check"><span class="box done">x</span>Endpoints cover leave, punches, OT, swaps, payroll, training, assets, compliance, employee profile.</span>
+              <span class="check"><span class="box done">x</span>Tests exist for each feature group.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>112, 113, 114, 115, 116, 117, 118, 119.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Docs</b><span><code>docs/reference/endpoints.md</code>, <code>permissions.md</code>, <code>schema.md</code> must include this state.</span></div>
+              <div><b>Review priority</b><span>Payroll, leave approvals, asset custody, and employee data privacy.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M3</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Project Service Depth</h3>
+            <p>Project budget tracker, document hub, task/risk analytics, and AI project planner.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Migrations <code>108_project_budget.sql</code>, <code>109_project_documents.sql</code>, <code>110_project_tasks.sql</code>, <code>111_project_ai_plans.sql</code>.</span>
+              <span class="check"><span class="box done">x</span>Endpoints <code>workforce-project-budget</code>, <code>workforce-project-docs</code>, <code>workforce-project-tasks</code>, <code>workforce-project-task</code>, <code>workforce-project-risk</code>, <code>workforce-project-plan</code>, <code>workforce-project-plan-apply</code>.</span>
+              <span class="check"><span class="box done">x</span>Tests <code>project-budget</code>, <code>project-docs</code>, <code>project-tasks</code>, <code>project-planner</code>.</span>
+              <span class="check"><span class="box done">x</span>Consumes Finance expenses, File Manager files, timesheets, and AI seam.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>108-111. Already on current main.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Worktree note</b><span><code>ExSol-Workforce-WT</code> is on stale <code>feat/project-depth-iso</code>; rebase before reuse.</span></div>
+              <div><b>Review priority</b><span>Cross-module Finance/File Manager reads and project file scoping.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M4</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Conformance Pass</h3>
+            <p>Main integration closed M4 as the module-pattern conformance cleanup. The broader HR hardening ideas are follow-up review items, not blockers for M5-M11.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Record Workforce as conforming in <code>docs/reference/CONFORMANCE.md</code> across manifest, product entry, authz, RouteMount, shared API, and CSS.</span>
+              <span class="check"><span class="box done">x</span>Move Workforce frontend API into <code>src/modules/workforce/shared/api.ts</code>.</span>
+              <span class="check"><span class="box done">x</span>Adopt the shared <code>makeModuleAuthz</code> backend factory in <code>_workforce-authz.ts</code>.</span>
+              <span class="check"><span class="box done">x</span>Adopt the local <code>gate()</code> RouteMount pattern in <code>WorkforceRouteMounts.tsx</code>.</span>
+              <span class="check"><span class="box done">x</span>Preserve enable-gate then Owner-bypass ordering on backend and frontend gates.</span>
+              <span class="check"><span class="box done">x</span>Document deferred non-M4 hardening separately instead of blocking Workforce depth.</span>
+            </div>
+            <div class="integration">
+              <div><b>Main evidence</b><span><code>CONFORMANCE.md</code> cleanup-2 round marks Workforce RouteMount debt resolved.</span></div>
+              <div><b>Key commits</b><span><code>dc89eae</code>, <code>0c08df5</code>, <code>39885ea</code>, <code>f0c2cf4</code>.</span></div>
+              <div><b>Migration</b><span>None. Conformance-only cleanup.</span></div>
+              <div><b>Review note</b><span>Audit expansion, extra picker polish, and browser smoke remain normal follow-up hardening.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M5</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Employee Master Profile</h3>
+            <p>Bring Workforce closer to real HRIS standards without duplicating login identity.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add employee profile extension keyed to <code>user_nodes</code> or <code>booking_resources</code> with clear ownership.</span>
+              <span class="check"><span class="box done">x</span>Track employment status, hire date, exit date, department, location, job title, worker type, and emergency contact.</span>
+              <span class="check"><span class="box done">x</span>Add profile history for sensitive field changes.</span>
+              <span class="check"><span class="box done">x</span>Expose profile editor with manager-safe fields and Owner-only sensitive fields.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human. Expected 1-2 files: profile table plus history/audit table if not using existing audit.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-employee-profile-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>PII, access control, user_nodes canonical identity, no duplicate person table.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M6</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Scheduling Compliance Planner</h3>
+            <p>Move from recurring shifts to a publishable, rule-aware schedule.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add availability, time-off overlay, shift conflict detection, and max-hours/break policy checks.</span>
+              <span class="check"><span class="box done">x</span>Add schedule publish/lock states and manager override reason.</span>
+              <span class="check"><span class="box done">x</span>Warn on missing coverage, double booking, and leave conflicts before save.</span>
+              <span class="check"><span class="box done">x</span>Show weekly/monthly planner with mobile-safe review mode.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human. Expected tables: schedule periods, availability, policy config, override ledger.</span></div>
+              <div><b>Endpoints</b><span>New flat files under <code>workforce-schedule-*</code>; set <code>config.method</code> if sharing paths.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Rule precedence and no cross-client schedule leakage.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M7</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Time Clock Ledger and Corrections</h3>
+            <p>Turn smart punching into auditable attendance infrastructure.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add punch event ledger so edits never destroy the original clock-in/out fact.</span>
+              <span class="check"><span class="box done">x</span>Add correction requests, manager approval, and reason codes.</span>
+              <span class="check"><span class="box done">x</span>Add kiosk/mobile mode with device label and optional location capture if product policy allows it.</span>
+              <span class="check"><span class="box done">x</span>Connect approved attendance to overtime and payroll calculation consistently.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human. Expected 1-2 files: punch events/corrections plus indexes.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-attendance-ledger-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Attendance auditability, privacy, payroll impact.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M8</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Leave Accrual and Holiday Calendar</h3>
+            <p>Make leave balances explainable and auditable.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add leave policies, accrual cadence, carry-forward caps, and manual adjustment reasons.</span>
+              <span class="check"><span class="box done">x</span>Add holiday calendars per client/location.</span>
+              <span class="check"><span class="box done">x</span>Show balance history and projected balance before approval.</span>
+              <span class="check"><span class="box done">x</span>Export leave report by employee/date/type/status.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human. Expected tables: leave policies, holiday calendar, balance ledger.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-leave-accrual-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Balance math, approval race cases, audit trail.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M9</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Payroll Export and Payslips</h3>
+            <p>Keep "tracking only" clear, but make payroll output operational.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add payroll register with gross totals, OT totals, leave impact, and locked period snapshots.</span>
+              <span class="check"><span class="box done">x</span>Add CSV export for common payroll processors.</span>
+              <span class="check"><span class="box done">x</span>Add PDF payslip generation through the shared PDF seam if available.</span>
+              <span class="check"><span class="box done">x</span>Add reopen workflow with reason and audit row.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human if snapshots/export logs are persisted. Otherwise no schema.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-payroll-export-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Money-adjacent logic, PDF seam, export correctness.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M10</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Training, Assets, and Compliance Ops</h3>
+            <p>Promote training and asset tracking from recordkeeping to compliance operations.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Add expiry alerts, required-course coverage, and overdue training dashboard.</span>
+              <span class="check"><span class="box done">x</span>Add asset acknowledgement, custody history, maintenance/calibration due dates.</span>
+              <span class="check"><span class="box done">x</span>Add bulk assignment/completion actions.</span>
+              <span class="check"><span class="box done">x</span>Add export/report endpoints for audits.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>TBA by human. Expected asset custody/maintenance and training evidence extensions.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-compliance-ops-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Evidence retention, delete behavior, asset assignment race cases.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="milestone">
+          <aside class="mile-left"><span class="num">M11</span><span class="tag ok status">Done on main</span></aside>
+          <div class="mile-body">
+            <h3>Workforce Reporting and Executive Dashboard</h3>
+            <p>Give owners the "what is happening with labor" view expected from mature workforce software.</p>
+            <div class="checks">
+              <span class="check"><span class="box done">x</span>Labor cost by project, employee, period, and department.</span>
+              <span class="check"><span class="box done">x</span>Absence, lateness, overtime, utilization, training compliance, and asset custody KPIs.</span>
+              <span class="check"><span class="box done">x</span>CSV export for every report and date range.</span>
+              <span class="check"><span class="box done">x</span>Analytics-ready query shapes with indexes measured against seeded data.</span>
+            </div>
+            <div class="integration">
+              <div><b>Migration</b><span>No migration unless materialized report snapshots are required; otherwise query/index-only TBA by human.</span></div>
+              <div><b>Branch</b><span><code>feat/workforce-reporting-iso</code>.</span></div>
+              <div><b>Ports</b><span><code>5189</code> / <code>8899</code>.</span></div>
+              <div><b>Review priority</b><span>Performance, subtree visibility, cross-client scope.</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Integration Matrix</h2>
+      <table class="integration-table">
+        <thead>
+          <tr><th>Item</th><th>Current Value</th><th>Use In Every Handoff</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Worktree</td>
+            <td><code>worktrees/ExSol-Workforce-WT</code> for implementation; this roadmap branch is <code>worktrees/ExSol-WorkforceRoadmap-WT</code>.</td>
+            <td>State absolute path, branch, and HEAD SHA.</td>
+          </tr>
+          <tr>
+            <td>Ports</td>
+            <td>Workforce depth convention from the depth plan: Vite <code>5189</code>, Netlify/API <code>8899</code>.</td>
+            <td>If occupied, use next free pair and record the actual pair.</td>
+          </tr>
+          <tr>
+            <td>Existing migrations</td>
+            <td><code>059</code>, <code>107</code>, <code>108</code>, <code>109</code>, <code>110</code>, <code>111</code>, <code>112</code>-<code>119</code>.</td>
+            <td>List exact files changed. Future migrations require human allocation before coding.</td>
+          </tr>
+          <tr>
+            <td>Products/modules</td>
+            <td>Product <code>workforce</code> unlocks modules <code>workforce</code> and <code>project-service</code>; requires <code>saloon-booking</code>.</td>
+            <td>Regenerate docs if manifests or product entries change.</td>
+          </tr>
+          <tr>
+            <td>Auth/permissions</td>
+            <td><code>requireWorkforce</code> checks both modules. Permission buckets: employees, leave, payroll, assets, project-service business/customers.</td>
+            <td>Flag auth and employee/payroll data as high-priority review.</td>
+          </tr>
+          <tr>
+            <td>Verification</td>
+            <td>Minimum: targeted Workforce tests while iterating; before handoff: <code>npm run typecheck</code> and full <code>npm test</code>.</td>
+            <td>Include exact test counts and any skipped/browser checks.</td>
+          </tr>
+          <tr>
+            <td>Docs</td>
+            <td><code>docs/reference/*</code> generated by <code>npm run docs:reference</code>.</td>
+            <td>Run when endpoints, manifests, permissions, products, or migrations change.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Per-Milestone Handoff Template</h2>
+      <p class="lead">Use this after every checked milestone. Do not emit it as final until the branch is committed, tree is clean, and required verification is green.</p>
+      <pre class="handoff">Work done. &lt;one-paragraph milestone summary&gt;
+
+Worktree: &lt;absolute path&gt;
+Branch: &lt;branch&gt; @ &lt;short SHA&gt;
+Migrations used: &lt;none | exact allocated migration filenames&gt;
+Ports used: Vite &lt;port&gt;; Netlify/API &lt;port&gt;
+New/changed functions and routes: &lt;flat function files + config.path routes&gt;
+New/changed env vars: &lt;none | names&gt;
+Docs regenerated: &lt;yes/no; include npm run docs:reference status&gt;
+Tests run: &lt;npm run typecheck; full npm test count; targeted tests; browser checks&gt;
+Summary: &lt;what changed, checklist items completed&gt;
+Gotchas / review priority: &lt;auth, payroll, PII, migration ordering, cross-module scope, browser gaps&gt;
+
+Suggested next prompt for Main:
+Review branch &lt;branch&gt; from &lt;worktree&gt;. Check migrations first, then auth/permission gates,
+then Workforce routes/functions, then UI. Run npm run docs:reference if required, npm run
+typecheck, and full npm test before pushing. Do not push until the human confirms.</pre>
+    </section>
+  </main>
+</body>
+</html>
