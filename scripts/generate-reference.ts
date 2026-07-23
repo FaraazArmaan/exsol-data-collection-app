@@ -240,6 +240,25 @@ interface TableInfo {
   alteredIn: string[];
 }
 
+function splitTableDefinitions(body: string): string[] {
+  if (body.includes('\n')) return body.split('\n');
+  const definitions: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (const char of body) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    if (char === ',' && depth === 0) {
+      definitions.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  definitions.push(current);
+  return definitions;
+}
+
 function parseSchema(): TableInfo[] {
   const tables = new Map<string, TableInfo>();
   const migrations = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).sort();
@@ -247,11 +266,11 @@ function parseSchema(): TableInfo[] {
     const sql = readFileSync(join(MIG_DIR, mig), 'utf8');
     // CREATE TABLE [IF NOT EXISTS] [public.]name ( ... );
     const createRe = /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_0-9]+)\s*\(([\s\S]*?)\n\)\s*;/gi;
-    for (const m of sql.matchAll(createRe)) {
+    const inlineCreateRe = /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_0-9]+)\s*\(([^\n]*)\)\s*;/gi;
+    for (const m of [...sql.matchAll(createRe), ...sql.matchAll(inlineCreateRe)]) {
       const name = m[1]!;
       const body = m[2]!;
-      const cols = body
-        .split('\n')
+      const cols = splitTableDefinitions(body)
         .map((l) => l.trim().replace(/,$/, ''))
         .filter((l) => l && !l.startsWith('--'))
         .filter((l) => !/^(PRIMARY KEY|UNIQUE|CHECK|CONSTRAINT|FOREIGN KEY|EXCLUDE)/i.test(l))

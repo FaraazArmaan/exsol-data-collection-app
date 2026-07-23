@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-166 tables across 156 forward-only migrations.
+172 tables across 156 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -422,6 +422,16 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `088_orders_backorders.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `product_id uuid`, `product_name_snap text`, `qty_ordered int`, `qty_fulfilled int`, `status backorder_status`, `created_at timestamptz`, `updated_at timestamptz`, `fulfilled_at timestamptz`
 
+### `orders_fulfillment_cancellation_lines`
+
+- created in `167_orders_fulfillment_cancellations.sql`
+- columns at creation: `id uuid`, `cancellation_id uuid`, `sale_line_id uuid`, `qty int`, `refund_amount_cents int`, `created_at timestamptz`
+
+### `orders_fulfillment_cancellations`
+
+- created in `167_orders_fulfillment_cancellations.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `reason text`, `idempotency_key text`, `created_by uuid`, `created_at timestamptz`
+
 ### `orders_fulfillment_lines`
 
 - created in `090_orders_fulfillments.sql`
@@ -442,10 +452,30 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - created in `091_orders_merge.sql`
 - columns at creation: `id uuid`, `group_id uuid`, `sale_id uuid`
 
+### `orders_pickup_handoffs`
+
+- created in `177_orders_pickup_handoffs.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `status text`, `ready_at timestamptz`, `ready_by uuid`, `ready_idempotency_key text`, `collected_at timestamptz`, `collected_by uuid`, `collector_name text`, `collector_phone_last4 text`, `collection_idempotency_key text`, `created_at timestamptz`, `updated_at timestamptz`
+
 ### `orders_refunds`
 
 - created in `087_orders_refunds_shipments.sql`; altered in `167_orders_fulfillment_cancellations.sql`
 - columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `amount_cents bigint`, `reason text`, `state refund_state`, `requested_by uuid`, `created_at timestamptz`, `updated_at timestamptz`, `completed_at timestamptz`
+
+### `orders_return_case_lines`
+
+- created in `181_orders_return_cases.sql`
+- columns at creation: `id uuid`, `return_case_id uuid`, `sale_line_id uuid`, `qty int`, `reason text`, `inventory_return_id uuid`, `refund_id uuid`, `created_at timestamptz`
+
+### `orders_return_cases`
+
+- created in `181_orders_return_cases.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `sale_id uuid`, `status orders_return_case_status`, `request_reason text`, `requested_by uuid`, `authorized_by uuid`, `authorized_at timestamptz`, `refused_by uuid`, `refused_at timestamptz`, `refusal_reason text`, `idempotency_key text`, `created_at timestamptz`, `updated_at timestamptz`
+
+### `orders_shipment_evidence`
+
+- created in `179_orders_shipment_evidence.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `shipment_id uuid`, `event_type text`, `idempotency_key text`, `recorded_by uuid`, `recorded_at timestamptz`, `provider_reference text`
 
 ### `orders_shipments`
 
