@@ -6,7 +6,7 @@
 
 # API endpoints
 
-337 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+339 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -268,6 +268,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | orders-queue.ts | `/api/orders/queue` | GET | bucket-user | `orders.business.view` |
 | orders-refund-advance.ts | `/api/orders/refund-advance/:id` | POST | bucket-user | `orders.business.edit` |
 | orders-refunds.ts | `/api/orders/refunds` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
+| orders-return-access.ts | `/api/orders/returns/access` | POST, DELETE | bucket-user | `orders.business.create` |
 | orders-return-advance.ts | `/api/orders/returns/:id/advance` | POST | bucket-user | `orders.business.edit` |
 | orders-return-receipt-link.ts | `/api/orders/returns/:id/receipt-link` | POST | bucket-user | `orders.business.edit` |
 | orders-return-refund-request.ts | `/api/orders/returns/:id/refund-request` | POST | bucket-user | `orders.business.create` |
@@ -336,6 +337,7 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | pub-cart-save.ts | `/api/public/cart` | POST | public | — |
 | pub-coupon-validate.ts | `/api/public/coupon-validate` | POST | public | — |
 | pub-menu.ts | `/api/public/menu/:slug` | GET | public | — |
+| pub-orders-returns.ts | `/api/public/returns` | GET, POST | public | — |
 | pub-review-create.ts | `/api/public/reviews` | POST | public | — |
 | pub-reviews.ts | `/api/public/reviews/:slug` | GET | public | — |
 | pub-sale-create.ts | `/api/public/sales` | POST | public | `pos.sale.created` |

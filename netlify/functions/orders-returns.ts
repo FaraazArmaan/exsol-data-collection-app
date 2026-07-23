@@ -1,12 +1,14 @@
 import { jsonError, jsonOk } from './_shared/http';
 import { db } from './_shared/db';
 import { requireOrders } from './_orders-authz';
-import { createOrdersReturnCase } from './_orders-return-cases';
+import { createOrdersReturnCase, ordersReturnCaseActor } from './_orders-return-cases';
 
 export const config = { path: '/api/orders/returns', method: ['GET', 'POST'] };
 
 export default async function handler(req: Request): Promise<Response> {
-  const a = await requireOrders(req, [req.method === 'POST' ? 'orders.business.create' : 'orders.business.view']);
+  const a = await requireOrders(req, [
+    req.method === 'POST' ? 'orders.business.create' : 'orders.business.view',
+  ]);
   if (!a.ok) return a.res;
   const sql = db();
 
@@ -43,8 +45,12 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   let body: unknown;
-  try { body = await req.json(); } catch { return jsonError(400, 'invalid_body'); }
-  const result = await createOrdersReturnCase(a.ctx, body);
+  try {
+    body = await req.json();
+  } catch {
+    return jsonError(400, 'invalid_body');
+  }
+  const result = await createOrdersReturnCase(ordersReturnCaseActor(a.ctx), body);
   if (!result.ok) return jsonError(result.status, result.code);
   return jsonOk(result.returnCase, { status: result.created ? 201 : 200 });
 }
