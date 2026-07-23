@@ -82,6 +82,7 @@ function ownerFor(name: string, src: string): string {
 function tierFor(_name: string, src: string): string {
   const tiers: string[] = [];
   if (/\brequireAdmin\b/.test(src)) tiers.push('admin');
+  if (/\brequireOrdersWarehouseService\b/.test(src)) tiers.push('service');
   const hasModuleAuthz = /from '\.\/_(?!pub-)[a-z-]+-authz'/.test(src);
   if (/\brequireBucketUser\b|\bauthenticateForPermission\b/.test(src) || hasModuleAuthz) {
     tiers.push('bucket-user');
@@ -132,7 +133,7 @@ function renderEndpoints(rows: EndpointRow[]): string {
   out += `${rows.length} functions. "name-routed" = no \`config.path\`; reachable as \`/api/<file>\` via the\n`;
   out += 'netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).\n\n';
   out += 'Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via\n';
-  out += '`requireBucketUser`/`authenticateForPermission`/module `_<key>-authz`) · **public** (no session).\n\n';
+  out += '`requireBucketUser`/`authenticateForPermission`/module `_<key>-authz`) · **service** (narrow server-to-server secret) · **public** (no session).\n\n';
   const byModule = new Map<string, EndpointRow[]>();
   for (const r of rows) {
     const list = byModule.get(r.module) ?? [];
