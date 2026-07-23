@@ -568,7 +568,7 @@
                 <td>Warehouse picker/packer/receiver: execute task and return fact.</td>
                 <td><span class="tag risk">missing contract</span></td>
                 <td>Warehouse executes; Orders stays canonical case.</td>
-                <td>Blocked on Warehouse handoff.</td>
+                <td>Contract integrated; task-focused UI and recovery queue remain next.</td>
               </tr>
               <tr>
                 <td>Support: customer context, notes/evidence, return authorisation.</td>
@@ -835,10 +835,13 @@
           </table>
         </div>
         <div class="callout warn">
-          <strong>Actual status.</strong> Inventory seam is separate at <code>e03fe42</code>;
-          Procurement receipt foundation at <code>eb05833</code>. Warehouse current head is not an
-          Orders task contract. Payments and POS/Storefront production worktrees are dirty, so their
-          new contracts are not integration-ready.
+          <strong>Verified implementation checkpoint (2026-07-23).</strong> Main now contains the
+          canonical return case, public return access tokens, and the clean Warehouse execution
+          contract. Both immutable <code>182_orders_return_access_tokens</code> and
+          <code>182_warehouse_outbound_execution_evidence</code> filenames are applied in the
+          development schema. Orders calls Warehouse only through the server-only
+          <code>/api/internal/orders/warehouse-execution-tasks</code> seam; Warehouse never advances
+          Orders, Inventory or Payments.
         </div>
       </section>
       <section id="contracts">
@@ -1140,28 +1143,38 @@
           <article class="phase">
             <h3>Canonical returns</h3>
             <p>
-              Create Orders <code>return_case_id</code>/lines. Inventory owns
-              receipt/inspection/disposition; Payments owns allocation/refund state; POS/Ecommerce
-              initiates and displays authorised projection.
+              <strong>Implemented.</strong> Orders owns <code>return_case_id</code>/lines and
+              authorisation. POS/Storefront submits a request or reads a safe projection; Inventory
+              owns receipt/inspection/disposition; Payments owns allocation/refund state.
             </p>
             <ul>
               <li>
-                <strong>Dependencies:</strong> POS/Ecommerce initiation, Inventory projection,
-                Files/CRM privacy and Payments contract.
+                <strong>Verified:</strong> staff and public initiation delegate to one Orders
+                service; public access uses a hashed, expiring, revocable single-sale token.
               </li>
-              <li><strong>Schema:</strong> required across owners; no number allocated.</li>
+              <li>
+                <strong>Schema:</strong> Orders return cases (181) and public token records (182)
+                are applied. No copied Inventory or Payments lifecycle exists.
+              </li>
             </ul>
           </article>
           <article class="phase">
             <h3>Warehouse and replenishment collaboration</h3>
             <p>
-              After Warehouse publishes task contract, Orders may request tasks/consume results.
-              Procurement/Supply Chain publish supply facts, never Orders state.
+              <strong>Implemented first seam.</strong> Orders creates idempotent line-scoped pick,
+              pack, handoff and return-intake tasks through the server-only Warehouse API. It
+              consumes terminal evidence and advances its own state only after every relevant line
+              completed; an exception leaves Orders unchanged.
             </p>
             <ul>
               <li>
-                <strong>Dependencies:</strong> actual Warehouse, integrated Inventory seam and
-                Procurement receipt foundation.
+                <strong>Verified transitions:</strong> pick → picked, pack → packed, handoff →
+                shipped, and authorised return intake → awaiting receipt. The next physical fact is
+                still Inventory's receipt/inspection/disposition decision.
+              </li>
+              <li>
+                <strong>Next safe phase:</strong> operational task UI, exception-recovery queue,
+                then Inventory disposition request and Payments reconciliation projections.
               </li>
             </ul>
           </article>
@@ -1260,10 +1273,11 @@
           </article>
         </div>
         <div class="callout">
-          <strong>Verified now.</strong> Main is newer than this base. Inventory
-          <code>e03fe42</code> and Procurement <code>eb05833</code> are committed but unintegrated.
-          Warehouse <code>354ea39</code> does not prove Orders task contract. Payments and
-          POS/Storefront worktrees are dirty. Record differences; do not import them here.
+          <strong>Verified now.</strong> Main includes Warehouse contract commit
+          <code>15ff8e5</code>, Orders evidence consumption <code>6bc8a36</code>, and return-flow
+          compatibility fix <code>8ea8aa2</code>. Warehouse task creation is server-only; browser
+          Warehouse users list/complete evidence but receive <code>orders_origin_required</code>
+          if they try to originate an outbound task.
         </div>
         <div class="callout warn">
           <strong>Human decisions.</strong> Return eligibility/window; refund before/after receipt;
