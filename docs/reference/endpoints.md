@@ -6,11 +6,11 @@
 
 # API endpoints
 
-339 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+342 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
-`requireBucketUser`/`authenticateForPermission`/module `_<key>-authz`) · **public** (no session).
+`requireBucketUser`/`authenticateForPermission`/module `_<key>-authz`) · **service** (narrow server-to-server secret) · **public** (no session).
 
 ## ams (platform)
 
@@ -402,8 +402,11 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | warehouse-asn-detail.ts | `/api/warehouse/asn-detail/:id` | GET | bucket-user | `warehouse.products.view` |
 | warehouse-asn-receive.ts | `/api/warehouse/asn-receive` | POST | bucket-user | `warehouse.products.edit` |
 | warehouse-asn.ts | `/api/warehouse/asn` | any | bucket-user | `warehouse.products.create`, `warehouse.products.view` |
+| warehouse-execution-task-complete.ts | `/api/warehouse/execution-task-complete` | POST | bucket-user | `warehouse.products.edit` |
+| warehouse-execution-tasks.ts | `/api/warehouse/execution-tasks` | GET, POST | bucket-user | `warehouse.products.view` |
 | warehouse-location.ts | `/api/warehouse/location/:id` | any | bucket-user | `warehouse.business.delete`, `warehouse.business.edit` |
 | warehouse-locations.ts | `/api/warehouse/locations` | any | bucket-user | `warehouse.business.create`, `warehouse.business.view` |
+| warehouse-orders-execution-tasks.ts | `/api/internal/orders/warehouse-execution-tasks` | GET, POST | service | — |
 | warehouse-products.ts | `/api/warehouse/products` | GET | bucket-user | `warehouse.products.view` |
 | warehouse-putaway-confirm.ts | `/api/warehouse/putaway-confirm` | POST | bucket-user | `warehouse.products.edit` |
 | warehouse-putaway-generate.ts | `/api/warehouse/putaway-generate` | POST | bucket-user | `warehouse.products.edit` |

@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-173 tables across 158 forward-only migrations.
+174 tables across 159 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -704,6 +704,11 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 - columns at creation: `id uuid`, `client_id uuid`, `type product_type`, `name text`, `description text`, `category_id uuid`, `brand text`, `tags text[]`, `price_cents int`, `currency text`, `sku text`, `stock_qty int`, `unit text`, `status product_status`, `hero_image_key text`, `created_by_user_node uuid`, `created_at timestamptz`, `updated_at timestamptz`, `deleted_at timestamptz`, `(type =`, `(type =`, `)`
 
 ## warehouse
+
+### `warehouse_execution_tasks`
+
+- created in `182_warehouse_outbound_execution_evidence.sql`
+- columns at creation: `id uuid`, `client_id uuid`, `kind text`, `status text`, `idempotency_key text`, `fulfillment_id uuid`, `fulfillment_line_id uuid`, `return_case_id uuid`, `return_case_line_id uuid`, `product_id uuid`, `location_id uuid`, `qty int`, `completion_evidence jsonb`, `completed_by uuid`, `completed_at timestamptz`, `created_at timestamptz`, `updated_at timestamptz`
 
 ### `warehouse_locations`
 
