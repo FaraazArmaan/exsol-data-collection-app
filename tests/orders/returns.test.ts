@@ -7,6 +7,13 @@ import refundRequest from '../../netlify/functions/orders-return-refund-request'
 import { makeBucketUserRequest, seedOrdersClient, seedProducts, seedSale } from './_helpers';
 const sql=neon(process.env.DATABASE_URL!);
 describe('orders return cases', () => {
+  it('rejects a non-object request body before reaching the canonical service', async () => {
+    const ctx = await seedOrdersClient();
+    const response = await returns(makeBucketUserRequest(ctx, 'POST', '/api/orders/returns', null));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe('invalid_body');
+  });
+
   it('creates a line-scoped request idempotently and authorizes it once', async () => {
     const ctx = await seedOrdersClient();
     const { saleId } = await seedSale(ctx, { status: 'fulfilled', channel: 'pickup', total: 200 });
