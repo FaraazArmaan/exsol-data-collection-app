@@ -27,7 +27,7 @@ export default async function handler(req: Request): Promise<Response> {
       AND sale.id=line.sale_line_id
       AND inventory.id=${inventoryId}::uuid
       AND c.client_id=${a.ctx.clientId}::uuid
-      AND c.status='authorized'
+      AND c.status IN ('authorized','awaiting_receipt')
       AND inventory.client_id=${a.ctx.clientId}::uuid
       AND inventory.product_id=sale.product_id
       AND inventory.qty=line.qty

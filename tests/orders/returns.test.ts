@@ -121,6 +121,7 @@ describe('orders return cases', () => {
         to: 'authorized',
       }),
     );
+    await sql`UPDATE public.orders_return_cases SET status='awaiting_receipt' WHERE id=${returnCase.id}::uuid`;
     const inventoryRows =
       (await sql`INSERT INTO public.inventory_returns (client_id,product_id,qty,disposition,reason,created_by) VALUES (${ctx.clientId}::uuid,${productId}::uuid,1,'restock','received for test',${ctx.userNodeId}::uuid) RETURNING id`) as Array<{
         id: string;

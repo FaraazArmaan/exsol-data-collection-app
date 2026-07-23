@@ -16,7 +16,7 @@ export default async function handler(req: Request): Promise<Response> {
   const lineId = typeof body.return_line_id === 'string' ? body.return_line_id : '';
   if (!UUID.test(lineId)) return jsonError(400, 'invalid_body');
   const sql = db();
-  const lines = await sql`SELECT line.id,line.qty,line.refund_id,c.sale_id,sale.qty AS sale_qty,sale.line_total_cents FROM public.orders_return_case_lines line JOIN public.orders_return_cases c ON c.id=line.return_case_id JOIN public.sale_lines sale ON sale.id=line.sale_line_id WHERE line.id=${lineId}::uuid AND line.return_case_id=${caseId}::uuid AND c.client_id=${a.ctx.clientId}::uuid AND c.status='authorized' AND line.inventory_return_id IS NOT NULL LIMIT 1` as Array<{id:string;qty:number;refund_id:string|null;sale_id:string;sale_qty:number;line_total_cents:number}>;
+  const lines = await sql`SELECT line.id,line.qty,line.refund_id,c.sale_id,sale.qty AS sale_qty,sale.line_total_cents FROM public.orders_return_case_lines line JOIN public.orders_return_cases c ON c.id=line.return_case_id JOIN public.sale_lines sale ON sale.id=line.sale_line_id WHERE line.id=${lineId}::uuid AND line.return_case_id=${caseId}::uuid AND c.client_id=${a.ctx.clientId}::uuid AND c.status IN ('authorized','awaiting_receipt') AND line.inventory_return_id IS NOT NULL LIMIT 1` as Array<{id:string;qty:number;refund_id:string|null;sale_id:string;sale_qty:number;line_total_cents:number}>;
   const line = lines[0];
   if (!line) return jsonError(409, 'refund_not_requestable');
   if (line.refund_id) {
