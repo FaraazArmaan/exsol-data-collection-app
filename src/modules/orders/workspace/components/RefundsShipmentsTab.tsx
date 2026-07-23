@@ -6,6 +6,7 @@ import { ordersApi, OrdersApiError } from '../../shared/api';
 import type { RefundRow, RefundState, ShipmentRow } from '../../shared/types';
 import { Button } from '../../../../components/ui/Button';
 import { EmptyState, ErrorState, LoadingState, PermissionState } from '../../../../components/ui/Feedback';
+import ReturnCasesPanel from './ReturnCasesPanel';
 
 interface Props {
   perms: ReadonlySet<string>;
@@ -406,6 +407,7 @@ export default function RefundsShipmentsTab({ perms }: Props) {
 
   return (
     <div className="ord-shell">
+      <ReturnCasesPanel perms={perms} />
       <RefundsPanel canCreate={canCreate} canEdit={canEdit} />
       <ShipmentsPanel canCreate={canCreate} canEdit={canEdit} />
     </div>

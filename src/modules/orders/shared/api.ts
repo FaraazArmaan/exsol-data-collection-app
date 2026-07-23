@@ -6,6 +6,7 @@ import type {
   OrdersQueueData,
   RefundRow,
   RefundAdvanceResult,
+  ReturnCaseRow,
   ShipmentRow,
   PickupRow,
   BackorderRow,
@@ -79,6 +80,18 @@ export const ordersApi = {
     }),
   submitRefundToPayments: (id: string) =>
     jsonFetch<{ id: string; state: string; provider_pending: boolean }>(`/api/payments/orders-refunds/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
+
+  // Return cases — Orders owns authorisation and refund intent. Inventory and
+  // Payments evidence is read as a projection, never edited from this surface.
+  listReturnCases: () => jsonFetch<ReturnCaseRow[]>('/api/orders/returns'),
+  advanceReturnCase: (id: string, to: 'authorized' | 'refused', reason?: string) =>
+    jsonFetch<ReturnCaseRow>(`/api/orders/returns/${encodeURIComponent(id)}/advance`, {
+      method: 'POST', body: JSON.stringify({ to, ...(reason ? { reason } : {}) }),
+    }),
+  requestReturnRefund: (caseId: string, returnLineId: string, reason?: string) =>
+    jsonFetch<{ id: string; state: string; amount_cents: number }>(`/api/orders/returns/${encodeURIComponent(caseId)}/refund-request`, {
+      method: 'POST', body: JSON.stringify({ return_line_id: returnLineId, ...(reason ? { reason } : {}) }),
+    }),
 
   // Shipments
   listShipments: () =>

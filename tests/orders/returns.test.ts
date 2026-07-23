@@ -22,6 +22,11 @@ describe('orders return cases', () => {
     const authorized = await advance(makeBucketUserRequest(ctx, 'POST', `/api/orders/returns/${c.id}/advance`, { to: 'authorized' }));
     expect(authorized.status).toBe(200);
     expect((await authorized.json()).status).toBe('authorized');
+    const listed = await returns(makeBucketUserRequest(ctx, 'GET', '/api/orders/returns'));
+    expect(listed.status).toBe(200);
+    const listedCase = (await listed.json()).find((row: { id: string }) => row.id === c.id);
+    expect(listedCase).toMatchObject({ status: 'authorized', order_no: expect.any(Number) });
+    expect(listedCase.lines[0]).toMatchObject({ sale_line_id: lines[0]!.id, qty: 1, inventory_return_id: null, refund_id: null });
   });
 
   it('does not reopen already-returned fulfilled quantity', async () => {

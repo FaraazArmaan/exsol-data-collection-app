@@ -90,6 +90,35 @@ export interface RefundAdvanceResult {
   provider_pending?: boolean;
 }
 
+// ── Return cases ────────────────────────────────────────────────────────────
+
+export type ReturnCaseStatus = 'requested' | 'authorized' | 'refused' | 'awaiting_receipt' | 'closed';
+
+export interface ReturnCaseLine {
+  id: string;
+  sale_line_id: string;
+  qty: number;
+  reason: string | null;
+  inventory_return_id: string | null;
+  refund_id: string | null;
+  refund_state: RefundState | null;
+  provider_refund_status: 'pending' | 'succeeded' | 'failed' | 'void' | null;
+}
+
+export interface ReturnCaseRow {
+  id: string;
+  sale_id: string;
+  status: ReturnCaseStatus;
+  request_reason: string | null;
+  refusal_reason: string | null;
+  created_at: string;
+  authorized_at: string | null;
+  refused_at: string | null;
+  order_no: number;
+  customer_name: string;
+  lines: ReturnCaseLine[];
+}
+
 // ── Shipments ─────────────────────────────────────────────────────────────────
 
 export type ShipmentStatus = 'pending' | 'shipped' | 'in_transit' | 'delivered' | 'returned';
