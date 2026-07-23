@@ -6,7 +6,7 @@
 
 # Database schema by module
 
-172 tables across 156 forward-only migrations.
+172 tables across 157 forward-only migrations.
 Columns listed are AS OF CREATION — check the "altered in" migrations (and the live DB)
 for the current shape. Migration numbers are allocated by the human coordinator (iron rule 1).
 
@@ -150,7 +150,7 @@ for the current shape. Migration numbers are allocated by the human coordinator 
 
 ### `email_outbox`
 
-- created in `052_email_outbox.sql`
+- created in `052_email_outbox.sql`; altered in `180_email_order_handoff_template.sql`
 - columns at creation: `id UUID`, `client_id UUID`, `to_email TEXT`, `template TEXT`, `subject TEXT`, `payload JSONB`, `body_html TEXT`, `status TEXT`, `provider_id TEXT`, `error TEXT`, `created_at TIMESTAMPTZ`, `sent_at TIMESTAMPTZ`
 
 ## files (platform)
