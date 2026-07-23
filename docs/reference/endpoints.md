@@ -6,7 +6,7 @@
 
 # API endpoints
 
-339 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
+341 functions. "name-routed" = no `config.path`; reachable as `/api/<file>` via the
 netlify.toml `/api/* -> /.netlify/functions/:splat` redirect (iron rule 5: the FILE NAME is the route).
 
 Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspace user via
@@ -279,6 +279,8 @@ Auth tiers: **admin** (`requireAdmin`, AMS console) · **bucket-user** (workspac
 | orders-sla-targets.ts | `/api/orders/sla-targets` | GET, PUT | bucket-user | `orders.business.edit`, `orders.business.view` |
 | orders-sla.ts | `/api/orders/sla` | GET | bucket-user | `orders.business.view` |
 | orders-split.ts | `/api/orders/split/:saleId` | POST | bucket-user | `orders.business.edit` |
+| orders-warehouse-execution-consume.ts | `/api/orders/warehouse-execution-consume` | POST | bucket-user | `orders.business.edit` |
+| orders-warehouse-execution-tasks.ts | `/api/orders/warehouse-execution-tasks` | GET, POST | bucket-user | `orders.business.create`, `orders.business.view` |
 
 ## payments
 
