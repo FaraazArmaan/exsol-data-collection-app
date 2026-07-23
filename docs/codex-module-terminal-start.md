@@ -139,6 +139,73 @@ risks; handoff; and newcomer glossary/learning path. Use the established
 Payment-roadmap design language unless the human provides another visual
 reference, and preserve useful facts if a roadmap already exists.
 
+## UI/UX Discovery and Decision-Efficiency Standard
+
+Run UI/UX discovery only after the roadmap is approved or the human explicitly
+requests it. First read `src/public/ExSol-UIUX-Guidelines.html`; accepted shared
+platform decisions are binding and must not be repeatedly re-litigated in each
+module. Research current production and accessibility practice from
+authoritative sources, audit the actual module in a real local browser, and
+include desktop, phone, keyboard, loading, empty, error, disabled, destructive,
+conflict and recovery states relevant to the workflow.
+
+Use efficient batched decisions by default:
+
+- Automatically accept and record established, low-risk production conventions
+  when they do not create a meaningful domain, commercial, operational,
+  accessibility, security, privacy, cost, implementation-risk or cross-module
+  ownership trade-off.
+- Do not ask the human to approve obvious safety defaults individually. Examples
+  include truthful availability/stock wording, no silent price or money change,
+  visible loading/error/recovery states, accessible focus treatment, hosted
+  payment-provider credential collection, and explicit pending-versus-complete
+  language.
+- Auto-acceptance is not permission to silently choose business policy, add
+  schema, select a paid service, change data/consent behaviour, move ownership,
+  or broaden scope. Those remain explicit human decisions.
+- Ask only when two or more reasonable choices materially affect customer
+  experience, workflow speed, business policy, data/consent, ownership,
+  operations, cost, accessibility or implementation risk.
+- Group related unresolved choices into one interactive batch: normally 3–5
+  decisions and never more than 6. Each decision may have at most three clearly
+  labelled options and must identify a recommendation, rationale, limits and
+  practical implications.
+
+Create or update `[Module]-UIUX-Options.html` as a learning and decision lab,
+run it on localhost, and provide the exact URL. Each batch must clearly separate:
+
+1. **Recorded production defaults** — automatically accepted conventions with
+   a short reason and implementation consequence.
+2. **Your decisions** — only consequential choices needing A/B/C input.
+
+For every user decision, keep a realistic interactive desktop preview and a
+real phone-sized preview visible side by side. Selecting an option must
+immediately update both previews; static swatches, disconnected mock-ups and
+unchanged reference previews are insufficient. Include relevant light/dark,
+loading, empty, error, pending, conflict and recovery controls when they affect
+the choice. Show consequences for dense data, money, schedules, scanners,
+keyboard use, touch/mobile use, accessibility and cross-module reuse where
+applicable.
+
+After the human answers a batch, record all answers together, update the live
+page once, verify every option control changes both previews, and present
+another batch only when meaningful unresolved choices remain. Record accepted
+defaults, selected options, rejected alternatives, rationale, accessibility
+rules and implementation consequences in
+`src/public/ExSol-UIUX-Guidelines.html`. Keep the live page current and avoid
+terminal-only status stops between decision batches.
+
+A human request for single-question, highly granular exploration overrides
+batching for that module or decision. Otherwise, older tailored prompts that
+require exactly one A/B/C decision per turn are superseded by this batched
+policy.
+
+Do not use browser-default controls as the proposed finished design. Use the
+shared component language and semantic theme tokens, with accessible names,
+visible focus, correct loading/disabled behaviour and responsive targets. Do
+not implement application UI/CSS until the relevant decisions are approved;
+after implementation, verify in the real browser as well as the required tests.
+
 ## Verification Bar
 
 Before handoff:
